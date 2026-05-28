@@ -15,6 +15,8 @@
 // Note: Primal-named endpoint helpers were removed in favor of capability-based discovery
 // and `ConfigUtils` for ToadStool's own bind/API settings.
 
+use toadstool_common::interned_strings::socket_env;
+
 /// Default request timeout in seconds
 pub const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
 
@@ -50,6 +52,6 @@ pub fn default_federation_address() -> std::net::SocketAddr {
 /// # Self-Knowledge: ToadStool's own bind address
 #[must_use]
 pub fn get_bind_host() -> String {
-    std::env::var("BIND_ADDRESS")
+    std::env::var(socket_env::BIND_ADDRESS)
         .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.to_string())
 }

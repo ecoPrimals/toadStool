@@ -94,7 +94,7 @@ mod dns_defaults {
 
 /// Resolver search domains: `TOADSTOOL_DNS_SEARCH_DOMAINS` first, then [`dns_defaults`].
 fn default_orchestration_dns_search_domains() -> Vec<String> {
-    if let Ok(v) = std::env::var("TOADSTOOL_DNS_SEARCH_DOMAINS") {
+    if let Ok(v) = std::env::var(socket_env::TOADSTOOL_DNS_SEARCH_DOMAINS) {
         let domains: Vec<String> = v
             .split(',')
             .map(str::trim)
@@ -127,7 +127,7 @@ fn parse_resolv_conf(contents: &str) -> Vec<String> {
 }
 
 fn default_audit_log_path() -> String {
-    std::env::var("TOADSTOOL_AUDIT_LOG_PATH")
+    std::env::var(socket_env::TOADSTOOL_AUDIT_LOG_PATH)
         .unwrap_or_else(|_| install_paths::VAR_LOG_TOADSTOOL_AUDIT.into())
 }
 
@@ -169,7 +169,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             mesh_type: "native".to_string(),
             sidecar: SidecarConfig {
                 enabled: true,
-                image: std::env::var("TOADSTOOL_SIDECAR_IMAGE")
+                image: std::env::var(socket_env::TOADSTOOL_SIDECAR_IMAGE)
                     .unwrap_or_else(|_| DEFAULT_SIDECAR_IMAGE.to_string()),
                 resources: SidecarResources {
                     cpu_limit: "200m".to_string(),
@@ -194,14 +194,14 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                     tracing_enabled: true,
                     access_logs: true,
                     metrics_port: DEFAULT_METRICS_PORT,
-                    tracing_endpoint: std::env::var("TOADSTOOL_JAEGER_ENDPOINT").ok(),
+                    tracing_endpoint: std::env::var(socket_env::TOADSTOOL_JAEGER_ENDPOINT).ok(),
                 },
             },
             mtls: MutualTLSConfig {
-                enabled: std::env::var("TOADSTOOL_CA_CERT").is_ok(),
-                ca_cert: std::env::var("TOADSTOOL_CA_CERT").unwrap_or_default(),
-                service_cert: std::env::var("TOADSTOOL_SERVICE_CERT").unwrap_or_default(),
-                private_key: std::env::var("TOADSTOOL_SERVICE_KEY").unwrap_or_default(),
+                enabled: std::env::var(socket_env::TOADSTOOL_CA_CERT).is_ok(),
+                ca_cert: std::env::var(socket_env::TOADSTOOL_CA_CERT).unwrap_or_default(),
+                service_cert: std::env::var(socket_env::TOADSTOOL_SERVICE_CERT).unwrap_or_default(),
+                private_key: std::env::var(socket_env::TOADSTOOL_SERVICE_KEY).unwrap_or_default(),
                 rotation_interval: Duration::from_secs(MTLS_ROTATION_INTERVAL_SECS),
                 verification_mode: "strict".to_string(),
             },
@@ -584,13 +584,13 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                 exporters: vec![MetricsExporter {
                     exporter_type: "prometheus".to_string(),
                     config: {
-                        let prometheus_port = std::env::var("TOADSTOOL_PROMETHEUS_PORT")
-                            .or_else(|_| std::env::var("PROMETHEUS_PORT"))
+                        let prometheus_port = std::env::var(socket_env::TOADSTOOL_PROMETHEUS_PORT)
+                            .or_else(|_| std::env::var(socket_env::PROMETHEUS_PORT))
                             .ok()
                             .and_then(|p| p.parse().ok())
                             .unwrap_or(toadstool_config::ports::toadstool::METRICS);
-                        let prometheus_host = std::env::var("TOADSTOOL_PROMETHEUS_HOST")
-                            .or_else(|_| std::env::var("PROMETHEUS_HOST"))
+                        let prometheus_host = std::env::var(socket_env::TOADSTOOL_PROMETHEUS_HOST)
+                            .or_else(|_| std::env::var(socket_env::PROMETHEUS_HOST))
                             .unwrap_or_else(|_| "prometheus".to_string());
                         HashMap::from([(
                             "endpoint".to_string(),

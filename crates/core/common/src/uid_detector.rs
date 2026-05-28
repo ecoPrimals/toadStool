@@ -26,6 +26,8 @@
 use std::fs;
 use std::io;
 
+use crate::interned_strings::socket_env;
+
 /// Get current user ID in pure Rust (no unsafe, no libc!)
 ///
 /// ## Platform Strategy
@@ -143,7 +145,7 @@ fn get_uid_from_proc() -> io::Result<u32> {
 /// 100% safe Rust - no unsafe blocks, no FFI!
 fn get_uid_from_passwd() -> io::Result<u32> {
     // Get current username from environment
-    let username = std::env::var("USER").map_err(|_| {
+    let username = std::env::var(socket_env::USER).map_err(|_| {
         io::Error::new(io::ErrorKind::NotFound, "USER environment variable not set")
     })?;
 
@@ -224,7 +226,7 @@ mod tests {
     #[test]
     fn test_get_uid_from_passwd() {
         // Should work if USER env var is set and /etc/passwd exists
-        if std::env::var("USER").is_ok() && std::path::Path::new("/etc/passwd").exists() {
+        if std::env::var(socket_env::USER).is_ok() && std::path::Path::new("/etc/passwd").exists() {
             let result = get_uid_from_passwd();
             // May or may not work depending on system, but shouldn't panic
             if let Ok(uid) = result {

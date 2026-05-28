@@ -24,6 +24,7 @@
 use super::platform::{self, Endpoint};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::network::LOCALHOST_IPV4;
+use toadstool_common::interned_strings::socket_env;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 /// Universal IPC stream
@@ -187,7 +188,7 @@ impl IpcClient {
             }
         }
 
-        if let Ok(port_str) = std::env::var("BIOMEOS_IPC_PORT") {
+        if let Ok(port_str) = std::env::var(socket_env::BIOMEOS_IPC_PORT) {
             if let Ok(port) = port_str.parse::<u16>() {
                 return port;
             }

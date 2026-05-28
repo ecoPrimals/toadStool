@@ -13,6 +13,7 @@ use crate::ecosystem_types::{
     DiscoveredServices, DiscoverySummary, ServiceInfo, ServicePattern, ServiceType,
 };
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::interned_strings::socket_env;
 use toadstool_config::env_config::EnvironmentConfig;
 
 /// Ecosystem discovery system for finding and configuring primal services
@@ -147,8 +148,8 @@ impl EcosystemDiscoverer {
             .name()
             .is_some_and(|n| n.contains("test"))
             || cfg!(test)
-            || std::env::var("CI").is_ok()
-            || std::env::var("TOADSTOOL_SKIP_DISCOVERY").is_ok();
+            || std::env::var(socket_env::CI).is_ok()
+            || std::env::var(socket_env::TOADSTOOL_SKIP_DISCOVERY).is_ok();
 
         if is_test {
             debug!("⚡ Fast mode: Skipping network discovery (test/CI environment)");
@@ -231,7 +232,7 @@ impl EcosystemDiscoverer {
         }
 
         let config = EnvironmentConfig::from_env();
-        let discovery_bind_fallback = std::env::var("TOADSTOOL_DISCOVERY_BIND_ADDR")
+        let discovery_bind_fallback = std::env::var(socket_env::TOADSTOOL_DISCOVERY_BIND_ADDR)
             .unwrap_or_else(|_| {
                 toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT.to_owned()
             });

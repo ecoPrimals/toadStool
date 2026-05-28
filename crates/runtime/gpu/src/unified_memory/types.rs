@@ -398,6 +398,25 @@ impl UnifiedBufferMetadata {
     }
 }
 
+/// Errors during unified buffer construction or validation.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum BufferError {
+    /// Buffer size must be greater than zero.
+    #[error("Buffer size cannot be zero")]
+    ZeroSize,
+
+    /// CPU pointer must not be null.
+    #[error("CPU pointer cannot be null at buffer creation")]
+    NullCpuPointer,
+
+    /// CPU pointer must not lie in the NULL page.
+    #[error("CPU pointer {ptr:#x} lies in the NULL page (must be >= 4096)")]
+    NullPagePointer {
+        /// Invalid pointer value.
+        ptr: usize,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

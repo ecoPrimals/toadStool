@@ -188,9 +188,10 @@ pub unsafe fn fork_isolated_mmio_read(
     let ptr_val = bar0_ptr as usize;
 
     let result = fork_isolated_raw(timeout, 4, move |pipe_fd| {
-        // SAFETY: same mmap in child (COW pages, same virtual address).
         let bar0 = ptr_val as *const u8;
+        // SAFETY: same mmap in child (COW pages, same virtual address); offset within bounds.
         let reg_ptr = unsafe { bar0.add(offset as usize).cast::<u32>() };
+        // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
         let value = unsafe { std::ptr::read_volatile(reg_ptr) };
         let _ = write(pipe_fd, &value.to_le_bytes());
     });
@@ -224,10 +225,10 @@ pub unsafe fn fork_isolated_mmio_write(
     let ptr_val = bar0_ptr as usize;
 
     let result = fork_isolated_raw(timeout, 1, move |pipe_fd| {
-        // SAFETY: same mmap in child (COW pages, same virtual address);
-        // offset is within bounds per caller's `# Safety` contract.
         let bar0 = ptr_val as *mut u8;
+        // SAFETY: same mmap in child (COW pages, same virtual address); offset within bounds.
         let reg_ptr = unsafe { bar0.add(offset as usize).cast::<u32>() };
+        // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
         unsafe { std::ptr::write_volatile(reg_ptr, value) };
         let _ = write(pipe_fd, &[1u8]);
     });
@@ -265,16 +266,17 @@ pub unsafe fn fork_isolated_mmio_batch(
     let ops_copy: Vec<(u32, Option<u32>)> = ops.to_vec();
 
     let result = fork_isolated_raw(timeout, max_bytes, move |pipe_fd| {
-        // SAFETY: same mmap in child (COW pages, same virtual address);
-        // all offsets are within bounds per caller's `# Safety` contract.
         let bar0 = ptr_val as *mut u8;
         for &(offset, maybe_val) in &ops_copy {
+            // SAFETY: same mmap in child (COW pages, same virtual address); offset within bounds.
             let reg_ptr = unsafe { bar0.add(offset as usize).cast::<u32>() };
             let result_val = match maybe_val {
                 Some(v) => {
+                    // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
                     unsafe { std::ptr::write_volatile(reg_ptr, v) };
                     v
                 }
+                // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
                 None => unsafe { std::ptr::read_volatile(reg_ptr) },
             };
             let _ = write(pipe_fd, &result_val.to_le_bytes());

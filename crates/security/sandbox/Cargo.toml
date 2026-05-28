@@ -34,7 +34,7 @@ tracing = { workspace = true }
 # EVOLVED: procfs removed (Mar 20, 2026) — unused; toadstool-sysmon provides /proc parsing
 [target.'cfg(target_os = "linux")'.dependencies]
 # `rustix`: mounts, capabilities, `no_new_privs`, `/proc` helpers via `param`.
-rustix = { version = "1.1", features = ["fs", "mount", "process", "thread", "param"] }
+rustix = { workspace = true, features = ["fs", "mount", "process", "thread", "param"] }
 # Pure Rust seccomp-BPF compile/install (Firecracker); optional — see `seccomp` feature.
 seccompiler = { version = "0.5", optional = true }
 

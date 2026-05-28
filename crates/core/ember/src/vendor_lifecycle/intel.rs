@@ -7,6 +7,8 @@
 use crate::error::SwapError;
 use crate::sysfs;
 
+use toadstool_common::interned_strings::socket_env;
+
 use super::types::{RebindStrategy, VendorLifecycle};
 
 const DEFAULT_INTEL_SETTLE_SECS: u64 = 5;
@@ -23,7 +25,7 @@ impl IntelXeLifecycle {
     /// Create a lifecycle handler for an Intel Xe/Arc device.
     #[must_use]
     pub fn new(device_id: u16) -> Self {
-        let settle_secs = std::env::var("TOADSTOOL_INTEL_SETTLE_SECS")
+        let settle_secs = std::env::var(socket_env::TOADSTOOL_INTEL_SETTLE_SECS)
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(DEFAULT_INTEL_SETTLE_SECS);

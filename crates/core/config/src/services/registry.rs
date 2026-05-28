@@ -5,6 +5,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
+use toadstool_common::interned_strings::socket_env;
+
 use super::types::{ServiceEndpoint, ServiceError, ServiceResult, ServiceType};
 
 fn build_by_type_index(
@@ -185,7 +187,7 @@ impl ServiceRegistry {
         let mut registry = Self::default();
 
         // Load coordinator
-        if let Ok(coord_str) = std::env::var("TOADSTOOL_COORDINATOR") {
+        if let Ok(coord_str) = std::env::var(socket_env::TOADSTOOL_COORDINATOR) {
             if let Some((name, endpoint)) = coord_str.split_once(':') {
                 let service =
                     ServiceEndpoint::new(name.trim(), ServiceType::Coordinator, endpoint.trim());
@@ -194,7 +196,7 @@ impl ServiceRegistry {
         }
 
         // Load storage
-        if let Ok(storage_str) = std::env::var("TOADSTOOL_STORAGE") {
+        if let Ok(storage_str) = std::env::var(socket_env::TOADSTOOL_STORAGE) {
             if let Some((name, endpoint)) = storage_str.split_once(':') {
                 let service =
                     ServiceEndpoint::new(name.trim(), ServiceType::Storage, endpoint.trim());
@@ -203,7 +205,7 @@ impl ServiceRegistry {
         }
 
         // Load services from JSON
-        if let Ok(services_json) = std::env::var("TOADSTOOL_SERVICES") {
+        if let Ok(services_json) = std::env::var(socket_env::TOADSTOOL_SERVICES) {
             if let Ok(services) = serde_json::from_str::<Vec<ServiceEndpoint>>(&services_json) {
                 for service in services {
                     registry.register_or_update(service);

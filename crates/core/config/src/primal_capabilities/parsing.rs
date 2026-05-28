@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use toadstool_common::interned_strings::socket_env;
+
 /// Primal capability registry error.
 #[derive(Debug, thiserror::Error)]
 pub enum CapabilityError {
@@ -209,7 +211,7 @@ impl PrimalCapabilitiesRegistry {
     /// Returns error if no file found or parse fails
     pub fn load_default() -> CapabilityResult<Self> {
         // Try environment variable
-        if let Ok(path) = std::env::var("PRIMAL_CAPABILITIES_PATH") {
+        if let Ok(path) = std::env::var(socket_env::PRIMAL_CAPABILITIES_PATH) {
             if Path::new(&path).exists() {
                 return Self::load_from_file(&path);
             }

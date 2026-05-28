@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Self IP / bind host discovery for primal execution context.
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT;
 
 /// Discovers the primal's own IP/host for `PrimalContext.network_location`.
@@ -12,32 +13,32 @@ use toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT;
 #[must_use]
 pub(in crate::universal::scheduler::execution) fn discover_self_ip_address() -> String {
     // 1. TOADSTOOL_BIND_ADDRESS (host:port) — extract host
-    if let Ok(addr) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
+    if let Ok(addr) = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS) {
         let host = addr.split(':').next().unwrap_or(&addr).trim();
         if !host.is_empty() {
             return host.to_string();
         }
     }
     // 2. TOADSTOOL_BIND_HOST
-    if let Ok(h) = std::env::var("TOADSTOOL_BIND_HOST") {
+    if let Ok(h) = std::env::var(socket_env::TOADSTOOL_BIND_HOST) {
         if !h.is_empty() {
             return h;
         }
     }
     // 3. BIND_HOST
-    if let Ok(h) = std::env::var("BIND_HOST") {
+    if let Ok(h) = std::env::var(socket_env::BIND_HOST) {
         if !h.is_empty() {
             return h;
         }
     }
     // 4. HOST
-    if let Ok(h) = std::env::var("HOST") {
+    if let Ok(h) = std::env::var(socket_env::HOST) {
         if !h.is_empty() {
             return h;
         }
     }
     // 5. HOSTNAME
-    if let Ok(h) = std::env::var("HOSTNAME") {
+    if let Ok(h) = std::env::var(socket_env::HOSTNAME) {
         if !h.is_empty() {
             return h;
         }

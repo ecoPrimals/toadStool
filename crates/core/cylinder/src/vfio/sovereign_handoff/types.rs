@@ -129,7 +129,7 @@ impl HandoffCapabilityProfile {
         // All NVIDIA GPUs share the same major domain layout in BAR0.
         // The Volta domain map is the most comprehensive and works as a
         // superset for other generations (unmapped regions just read 0/fault).
-        &crate::nv::pri::VOLTA_BAR0_DOMAINS
+        crate::nv::pri::VOLTA_BAR0_DOMAINS
     }
 }
 

@@ -15,6 +15,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool::error::ToadStoolResult;
 
 use super::provider::*;
@@ -62,7 +63,7 @@ impl LocalKeyringProvider {
     fn probe_backend() -> KeyringBackend {
         #[cfg(target_os = "linux")]
         {
-            let dbus_available = std::env::var("DBUS_SESSION_BUS_ADDRESS").is_ok()
+            let dbus_available = std::env::var(socket_env::DBUS_SESSION_BUS_ADDRESS).is_ok()
                 || std::path::Path::new("/run/user").exists();
             if dbus_available {
                 debug!("D-Bus session bus detected — using SecretService backend");

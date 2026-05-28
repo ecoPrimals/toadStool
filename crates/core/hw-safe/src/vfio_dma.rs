@@ -75,6 +75,8 @@ unsafe impl Ioctl for DmaMapIoctl<'_> {
         std::ptr::from_ref(self.0).cast_mut().cast()
     }
 
+    /// # Safety
+    /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
         _: IoctlOutput,
         _: *mut std::ffi::c_void,
@@ -98,6 +100,8 @@ unsafe impl Ioctl for DmaUnmapIoctl<'_> {
         std::ptr::from_ref(self.0).cast_mut().cast()
     }
 
+    /// # Safety
+    /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
         _: IoctlOutput,
         _: *mut std::ffi::c_void,

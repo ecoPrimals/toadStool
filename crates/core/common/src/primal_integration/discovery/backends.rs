@@ -8,6 +8,7 @@ use std::time::Duration;
 use tracing::debug;
 
 use crate::constants::network::HTTP_PROTOCOL;
+use crate::interned_strings::socket_env;
 
 use super::super::PrimalEndpoint;
 use super::discovery_http_port;
@@ -103,8 +104,8 @@ pub fn try_discover_via_mdns(_capability: &str) -> Option<Vec<PrimalEndpoint>> {
 pub fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing Kubernetes DNS for capability '{}'", capability);
 
-    let _k8s_host = std::env::var("KUBERNETES_SERVICE_HOST").ok()?;
-    let namespace = std::env::var("POD_NAMESPACE").unwrap_or_else(|_| "default".to_string());
+    let _k8s_host = std::env::var(socket_env::KUBERNETES_SERVICE_HOST).ok()?;
+    let namespace = std::env::var(socket_env::POD_NAMESPACE).unwrap_or_else(|_| "default".to_string());
     let service_name = capability.replace('_', "-");
     let dns_name = format!("{service_name}.{namespace}.svc.cluster.local");
     let port = discovery_http_port();
@@ -132,7 +133,7 @@ pub fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoin
 pub fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing Docker Compose for capability '{}'", capability);
 
-    let in_compose = std::env::var("COMPOSE_PROJECT_NAME").is_ok()
+    let in_compose = std::env::var(socket_env::COMPOSE_PROJECT_NAME).is_ok()
         || std::path::Path::new("docker-compose.yml").exists()
         || std::path::Path::new("compose.yaml").exists()
         || std::path::Path::new("compose.yml").exists();
@@ -188,15 +189,15 @@ pub fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>
 
     debug!("Probing registry for capability '{}'", capability);
 
-    let endpoint = std::env::var("TOADSTOOL_REGISTRY_ENDPOINT")
+    let endpoint = std::env::var(socket_env::TOADSTOOL_REGISTRY_ENDPOINT)
         .ok()
         .or_else(|| {
-            std::env::var("CONSUL_HTTP_ADDR")
+            std::env::var(socket_env::CONSUL_HTTP_ADDR)
                 .ok()
                 .map(|a| format!("http://{a}"))
         })
         .or_else(|| {
-            std::env::var("ETCD_ENDPOINTS")
+            std::env::var(socket_env::ETCD_ENDPOINTS)
                 .ok()
                 .and_then(|s| s.split(',').next().map(|e| format!("http://{}", e.trim())))
         })?;
@@ -292,8 +293,8 @@ pub const fn builtin_default_endpoint(_capability: &str) -> Option<String> {
 pub fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing filesystem for capability '{}'", capability);
 
-    let base = std::env::var("TOADSTOOL_SERVICE_DIR").ok().or_else(|| {
-        std::env::var("XDG_RUNTIME_DIR")
+    let base = std::env::var(socket_env::TOADSTOOL_SERVICE_DIR).ok().or_else(|| {
+        std::env::var(socket_env::XDG_RUNTIME_DIR)
             .ok()
             .map(|xdg| format!("{xdg}/biomeos"))
     })?;

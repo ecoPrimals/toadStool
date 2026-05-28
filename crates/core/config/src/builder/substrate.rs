@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use toadstool_common::interned_strings::socket_env;
+
 use super::{ConfigError, Result, ToadStoolConfigTrait};
 
 /// Substrate selection configuration
@@ -83,7 +85,7 @@ impl ToadStoolConfigTrait for SubstrateConfig {
         use std::env;
 
         let preferred =
-            env::var("TOADSTOOL_SUBSTRATE_PREFERRED")
+            env::var(socket_env::TOADSTOOL_SUBSTRATE_PREFERRED)
                 .ok()
                 .map_or(SubstratePreference::Auto, |s| {
                     match s.to_lowercase().as_str() {
@@ -98,10 +100,10 @@ impl ToadStoolConfigTrait for SubstrateConfig {
         Ok(Self {
             preferred,
             fallback_order: vec![SubstrateType::Gpu, SubstrateType::Cpu],
-            power_budget_watts: env::var("TOADSTOOL_POWER_BUDGET")
+            power_budget_watts: env::var(socket_env::TOADSTOOL_POWER_BUDGET)
                 .ok()
                 .and_then(|s| s.parse().ok()),
-            performance_target: env::var("TOADSTOOL_PERFORMANCE_TARGET").ok().map_or(
+            performance_target: env::var(socket_env::TOADSTOOL_PERFORMANCE_TARGET).ok().map_or(
                 PerformanceTarget::Balanced,
                 |s| match s.to_lowercase().as_str() {
                     "latency" => PerformanceTarget::Latency,
@@ -110,7 +112,7 @@ impl ToadStoolConfigTrait for SubstrateConfig {
                     _ => PerformanceTarget::Balanced,
                 },
             ),
-            auto_discover: env::var("TOADSTOOL_AUTO_DISCOVER")
+            auto_discover: env::var(socket_env::TOADSTOOL_AUTO_DISCOVER)
                 .map(|s| s != "false" && s != "0")
                 .unwrap_or(true),
         })

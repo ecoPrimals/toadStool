@@ -33,6 +33,8 @@
 use std::env;
 use std::time::Duration;
 
+use crate::interned_strings::socket_env;
+
 const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 5;
 const DEFAULT_CACHE_TTL_SECS: u64 = 60;
 const PROD_DISCOVERY_TIMEOUT_SECS: u64 = 10;
@@ -64,7 +66,8 @@ pub struct DiscoveryConfig {
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         let is_production =
-            env::var("TOADSTOOL_ENV").unwrap_or_else(|_| "development".to_string()) == "production";
+            env::var(socket_env::TOADSTOOL_ENV).unwrap_or_else(|_| "development".to_string())
+                == "production";
 
         Self {
             // Only enable fallback in non-production
@@ -129,7 +132,7 @@ pub struct LocalhostFallbacks {
 impl Default for LocalhostFallbacks {
     fn default() -> Self {
         Self {
-            enabled: env::var("TOADSTOOL_ENV").unwrap_or_else(|_| "development".to_string())
+            enabled: env::var(socket_env::TOADSTOOL_ENV).unwrap_or_else(|_| "development".to_string())
                 != "production",
         }
     }
@@ -181,7 +184,8 @@ pub enum DiscoveryErrorStrategy {
 impl Default for DiscoveryErrorStrategy {
     fn default() -> Self {
         let is_production =
-            env::var("TOADSTOOL_ENV").unwrap_or_else(|_| "development".to_string()) == "production";
+            env::var(socket_env::TOADSTOOL_ENV).unwrap_or_else(|_| "development".to_string())
+                == "production";
 
         if is_production {
             Self::FailFast

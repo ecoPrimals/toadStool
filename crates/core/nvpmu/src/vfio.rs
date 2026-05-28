@@ -255,6 +255,8 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
     fn as_ptr(&mut self) -> *mut std::ffi::c_void {
         self.ptr.cast()
     }
+    /// # Safety
+    /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
         _ioctl_ret: IoctlOutput,
         extract_output: *mut std::ffi::c_void,

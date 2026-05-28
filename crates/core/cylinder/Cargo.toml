@@ -11,7 +11,6 @@ categories = ["hardware-support", "os::linux-apis"]
 
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
-libc = "0.2"
 object = { version = "0.39.1", features = ["read", "write"] }
 rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe", "fs", "system"] }
 ruzstd = "0.8"

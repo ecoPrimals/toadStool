@@ -496,11 +496,12 @@ pub fn diff_bar_maps(before: &BarMap, after: &BarMap) -> BarMapDiff {
                 went_dead.push((offset, before_probe.map_or(0, |bp| bp.read1)));
             }
             (false, false) => {
-                let bp = before_probe.expect("before_probe set in preceding branch");
-                if bp.read1 != after_probe.read1 {
-                    value_changed.push((offset, bp.read1, after_probe.read1));
-                } else {
-                    unchanged += 1;
+                if let Some(bp) = before_probe {
+                    if bp.read1 != after_probe.read1 {
+                        value_changed.push((offset, bp.read1, after_probe.read1));
+                    } else {
+                        unchanged += 1;
+                    }
                 }
             }
             (true, true) => {} // both dead, ignore

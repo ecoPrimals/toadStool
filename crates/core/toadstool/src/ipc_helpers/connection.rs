@@ -12,6 +12,7 @@ use tracing::{debug, info};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::constants::timeouts;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::primal_sockets::{
     SocketPathEnv, resolve_capability_socket_fallback, resolve_toadstool_socket,
 };
@@ -37,8 +38,8 @@ pub const DISCOVERY_CAPABILITIES: &[&str] = &[
 
 /// Get runtime directory: `$XDG_RUNTIME_DIR` → `$BIOMEOS_RUNTIME_DIR` → `/run/user/$UID` → temp dir.
 fn get_runtime_dir() -> String {
-    std::env::var("XDG_RUNTIME_DIR")
-        .or_else(|_| std::env::var("BIOMEOS_RUNTIME_DIR"))
+    std::env::var(socket_env::XDG_RUNTIME_DIR)
+        .or_else(|_| std::env::var(socket_env::BIOMEOS_RUNTIME_DIR))
         .unwrap_or_else(|_| {
             uid_detector::get_user_id().map_or_else(
                 |_| {

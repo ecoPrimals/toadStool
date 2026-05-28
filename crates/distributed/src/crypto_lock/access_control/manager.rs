@@ -10,6 +10,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 
 use super::super::cache::PermissionCache;
@@ -413,7 +414,7 @@ impl ToadStoolCryptoLock {
     ///
     /// Missing file or empty file is treated as an empty store (not an error).
     fn load_permissions(&mut self) -> ToadStoolResult<()> {
-        let path = std::env::var("TOADSTOOL_CRYPTO_PERMISSIONS_STORE")
+        let path = std::env::var(socket_env::TOADSTOOL_CRYPTO_PERMISSIONS_STORE)
             .map(PathBuf::from)
             .unwrap_or_else(|_| {
                 let env = PathEnv::from_env();

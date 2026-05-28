@@ -78,6 +78,7 @@ pub struct CatalystWatchdogGuard {
 
 impl CatalystWatchdogGuard {
     /// Signal that the handoff pipeline is still making progress.
+    #[allow(dead_code, clippy::unused_self)] // guard-scoped API; free `heartbeat()` used today
     pub fn heartbeat(&self) {
         WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
     }
@@ -115,11 +116,14 @@ pub fn activate(
     timeout: Option<Duration>,
 ) -> CatalystWatchdogGuard {
     {
-        let mut locked_bdf = WATCHDOG.bdf.lock().unwrap_or_else(|e| e.into_inner());
+        let mut locked_bdf = WATCHDOG.bdf.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked_bdf = bdf.to_string();
     }
     {
-        let mut locked_profile = WATCHDOG.interrupt_profile.lock().unwrap_or_else(|e| e.into_inner());
+        let mut locked_profile = WATCHDOG
+            .interrupt_profile
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked_profile = profile;
     }
     let timeout = timeout.unwrap_or(DEFAULT_WATCHDOG_TIMEOUT);
@@ -135,7 +139,11 @@ pub fn activate(
 
 /// Start the watchdog background thread. Call once at daemon startup.
 /// The thread sleeps until activated by `activate()`.
-pub fn start_watchdog_thread() {
+///
+/// # Errors
+///
+/// Returns an error if the OS refuses to spawn the watchdog thread.
+pub fn start_watchdog_thread() -> std::io::Result<()> {
     std::thread::Builder::new()
         .name("catalyst-watchdog".into())
         .spawn(move || {
@@ -153,12 +161,15 @@ pub fn start_watchdog_thread() {
                 let elapsed_ms = now.saturating_sub(last_hb);
 
                 if elapsed_ms > timeout_ms {
-                    let bdf = WATCHDOG.bdf.lock()
-                        .unwrap_or_else(|e| e.into_inner())
+                    let bdf = WATCHDOG
+                        .bdf
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
                         .clone();
-                    let profile = WATCHDOG.interrupt_profile.lock()
-                        .unwrap_or_else(|e| e.into_inner())
-                        .clone();
+                    let profile = *WATCHDOG
+                        .interrupt_profile
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
                     error!(
                         bdf,
@@ -185,5 +196,5 @@ pub fn start_watchdog_thread() {
                 }
             }
         })
-        .expect("failed to spawn catalyst watchdog thread");
+        .map(|_| ())
 }

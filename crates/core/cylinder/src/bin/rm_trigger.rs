@@ -16,10 +16,18 @@
 
 // SAFETY: Raw NVIDIA RM ioctls require unsafe ioctl() calls.
 #![allow(unsafe_code)]
+#![allow(
+    clippy::borrow_as_ptr, clippy::needless_pass_by_value,
+    clippy::field_reassign_with_default, clippy::similar_names,
+    clippy::if_not_else, clippy::cast_ptr_alignment,
+    clippy::map_unwrap_or, clippy::items_after_statements,
+    clippy::ref_as_ptr, unused_assignments,
+)]
 
-use std::os::fd::AsRawFd;
+use std::os::fd::{AsFd, AsRawFd};
 use std::process::ExitCode;
-use std::os::unix::fs::OpenOptionsExt;
+
+use rustix::ioctl::{Ioctl, IoctlOutput, Opcode};
 
 use toadstool_cylinder::nv::rm_abi::{
     self,
@@ -74,13 +82,60 @@ struct NvGpfifoScheduleParams {
     b_enable: u32,
 }
 
-const fn iowr(magic: u8, nr: u8, size: usize) -> u64 {
-    let dir: u64 = 3;
-    (dir << 30) | ((size as u64 & 0x3FFF) << 16) | ((magic as u64) << 8) | nr as u64
+const fn iowr(magic: u8, nr: u8, size: usize) -> Opcode {
+    let dir: u32 = 3;
+    (dir << 30) | ((size as u32 & 0x3FFF) << 16) | ((magic as u32) << 8) | nr as u32
 }
 
-const RM_ALLOC_CMD: u64 = iowr(NV_IOCTL_MAGIC, NV_ESC_RM_ALLOC, size_of::<Nvos21Parameters>());
-const RM_CTRL_CMD: u64 = iowr(NV_IOCTL_MAGIC, NV_ESC_RM_CONTROL, size_of::<Nvos54Parameters>());
+const RM_ALLOC_OP: Opcode = iowr(NV_IOCTL_MAGIC, NV_ESC_RM_ALLOC, size_of::<Nvos21Parameters>());
+const RM_CTRL_OP: Opcode = iowr(NV_IOCTL_MAGIC, NV_ESC_RM_CONTROL, size_of::<Nvos54Parameters>());
+
+/// Rustix ioctl adapter for raw-buffer NVIDIA RM commands.
+struct RmRawIoctl<const OP: Opcode> {
+    ptr: *mut u8,
+}
+
+// SAFETY: OP is a compile-time NVIDIA RM ioctl opcode; ptr points to a properly
+// sized buffer matching the kernel ABI; IS_MUTATING=true because kernel writes back.
+unsafe impl<const OP: Opcode> Ioctl for RmRawIoctl<OP> {
+    type Output = i32;
+    const IS_MUTATING: bool = true;
+
+    fn opcode(&self) -> Opcode { OP }
+
+    fn as_ptr(&mut self) -> *mut std::ffi::c_void { self.ptr.cast() }
+
+    /// # Safety
+    /// Caller guarantees `out` points to valid ioctl return data.
+    unsafe fn output_from_ptr(
+        out: IoctlOutput, _: *mut std::ffi::c_void,
+    ) -> rustix::io::Result<Self::Output> {
+        Ok(out)
+    }
+}
+
+/// Rustix ioctl adapter for typed struct RM commands.
+struct RmIoctl<const OP: Opcode, T> {
+    ptr: *mut T,
+}
+
+// SAFETY: same as RmRawIoctl but for typed repr(C) structs.
+unsafe impl<const OP: Opcode, T> Ioctl for RmIoctl<OP, T> {
+    type Output = i32;
+    const IS_MUTATING: bool = true;
+
+    fn opcode(&self) -> Opcode { OP }
+
+    fn as_ptr(&mut self) -> *mut std::ffi::c_void { self.ptr.cast() }
+
+    /// # Safety
+    /// Caller guarantees `out` points to valid ioctl return data.
+    unsafe fn output_from_ptr(
+        out: IoctlOutput, _: *mut std::ffi::c_void,
+    ) -> rustix::io::Result<Self::Output> {
+        Ok(out)
+    }
+}
 
 // ── Handle namespace ────────────────────────────────────────────────────
 const H_ROOT: u32 = 0xCAFE_0001;
@@ -108,7 +163,7 @@ struct RmAllocResult {
 /// nvidia-470 RM may REWRITE h_object_new with its own RM-assigned handle.
 /// Callers MUST use the returned `h_object_new` for subsequent operations.
 fn rm_alloc(
-    fd: std::os::fd::RawFd,
+    fd: impl AsFd,
     root: u32,
     parent: u32,
     handle: u32,
@@ -126,11 +181,14 @@ fn rm_alloc(
     buf[24..28].copy_from_slice(&sentinel_24.to_ne_bytes());
     buf[28..32].copy_from_slice(&0xDEAD_BEEFu32.to_ne_bytes());
 
-    let rc = unsafe { libc::ioctl(fd, RM_ALLOC_CMD, buf.as_mut_ptr()) };
-    let errno = if rc < 0 {
-        std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
-    } else {
-        0
+    // SAFETY: buf is 32 bytes matching NVOS21 kernel ABI; fd is valid.
+    let ioctl = RmRawIoctl::<{ RM_ALLOC_OP }> { ptr: buf.as_mut_ptr() };
+    let rc = match unsafe { rustix::ioctl::ioctl(&fd, ioctl) } {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("  RM_ALLOC(cls=0x{class:04x}, h=0x{handle:08x}): errno={e}");
+            return RmAllocResult { rc: -1, status: 0xFFFF_FFFF, h_object_new: handle };
+        }
     };
 
     let h_new_out = u32::from_ne_bytes(buf[8..12].try_into().unwrap());
@@ -139,8 +197,8 @@ fn rm_alloc(
     let status = if val_28 != 0xDEAD_BEEF { val_28 } else { val_24 };
 
     eprintln!(
-        "  RM_ALLOC(cls=0x{:04x}, h=0x{:08x}→0x{:08x}): rc={} errno={} status=0x{:x}",
-        class, handle, h_new_out, rc, errno, status
+        "  RM_ALLOC(cls=0x{:04x}, h=0x{:08x}→0x{:08x}): rc={} status=0x{:x}",
+        class, handle, h_new_out, rc, status
     );
 
     RmAllocResult { rc, status, h_object_new: h_new_out }
@@ -148,7 +206,7 @@ fn rm_alloc(
 
 /// Issue NV_ESC_RM_CONTROL. Returns (ioctl_rc, rm_status).
 fn rm_ctrl(
-    fd: std::os::fd::RawFd,
+    fd: impl AsFd,
     client: u32,
     object: u32,
     cmd: u32,
@@ -164,15 +222,18 @@ fn rm_ctrl(
         status: 0,
         ..Default::default()
     };
-    let rc = unsafe { libc::ioctl(fd, RM_CTRL_CMD, &mut p as *mut Nvos54Parameters) };
-    let errno = if rc < 0 {
-        std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
-    } else {
-        0
+    // SAFETY: p is repr(C) matching kernel NVOS54 ABI; fd is valid.
+    let ioctl = RmIoctl::<{ RM_CTRL_OP }, Nvos54Parameters> { ptr: &mut p };
+    let rc = match unsafe { rustix::ioctl::ioctl(&fd, ioctl) } {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("  RM_CTRL(cmd=0x{cmd:08x}, obj=0x{object:08x}): errno={e}");
+            return (-1, p.status);
+        }
     };
     eprintln!(
-        "  RM_CTRL(cmd=0x{:08x}, obj=0x{:08x}): rc={} errno={} status=0x{:x}",
-        cmd, object, rc, errno, p.status
+        "  RM_CTRL(cmd=0x{:08x}, obj=0x{:08x}): rc={} status=0x{:x}",
+        cmd, object, rc, p.status
     );
     (rc, p.status)
 }
@@ -195,24 +256,23 @@ fn read_pmc_enable(bdf: &str) -> Option<u32> {
     let path = format!("/sys/bus/pci/devices/{bdf}/resource0");
     let f = std::fs::OpenOptions::new()
         .read(true)
-        .custom_flags(libc::O_RDONLY)
         .open(&path).ok()?;
-    let bar0_fd = f.as_raw_fd();
+    // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC registers;
+    // MAP_SHARED is required for MMIO coherency.
     let map = unsafe {
-        libc::mmap(
+        rustix::mm::mmap(
             std::ptr::null_mut(),
             0x1000,
-            libc::PROT_READ,
-            libc::MAP_SHARED,
-            bar0_fd,
-            0, // BAR0 start (resource0 is already the BAR0 region)
+            rustix::mm::ProtFlags::READ,
+            rustix::mm::MapFlags::SHARED,
+            &f,
+            0,
         )
-    };
-    if map == libc::MAP_FAILED {
-        return None;
-    }
-    let val = unsafe { std::ptr::read_volatile((map as *const u8).add(0x200) as *const u32) };
-    unsafe { libc::munmap(map, 0x1000); }
+    }.ok()?;
+    // SAFETY: offset 0x200 is PMC_ENABLE within the mapped BAR0 page.
+    let val = unsafe { std::ptr::read_volatile(map.cast::<u8>().add(0x200).cast::<u32>()) };
+    // SAFETY: map and size match the successful mmap above.
+    unsafe { let _ = rustix::mm::munmap(map, 0x1000); }
     Some(val)
 }
 
@@ -243,42 +303,42 @@ fn quench_gpu_interrupts(bdf: &str) {
         .write(true)
         .open(&bar0_path)
     {
-        let bar0_fd = f.as_raw_fd();
-        let map = unsafe {
-            libc::mmap(
+        // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC registers;
+        // MAP_SHARED + R/W is required for MMIO register writes.
+        let map_result = unsafe {
+            rustix::mm::mmap(
                 std::ptr::null_mut(),
                 0x1000,
-                libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_SHARED,
-                bar0_fd,
+                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
+                rustix::mm::MapFlags::SHARED,
+                &f,
                 0,
             )
         };
-        if map != libc::MAP_FAILED {
-            // Read current INTR_EN state (read-only register at 0x140)
+        if let Ok(map) = map_result {
+            let base = map.cast::<u8>();
+            // SAFETY: all offsets are within the 0x1000 mapped page.
             let old_en = unsafe {
-                std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_EN_0) as *const u32)
+                std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>())
             };
 
-            // CLEAR all interrupt enables by writing 0xFFFFFFFF to INTR_EN_CLEAR (0x180)
             unsafe {
                 std::ptr::write_volatile(
-                    (map as *mut u8).add(NV_PMC_INTR_EN_CLEAR_0) as *mut u32,
+                    base.add(NV_PMC_INTR_EN_CLEAR_0).cast::<u32>(),
                     0xFFFF_FFFF,
                 );
             }
 
-            // Read back INTR_EN to verify the CLEAR took effect
             let new_en = unsafe {
-                std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_EN_0) as *const u32)
+                std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>())
             };
 
-            // Also read and ACK any pending interrupts (read NV_PMC_INTR clears edge-triggered)
             let pending = unsafe {
-                std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_0) as *const u32)
+                std::ptr::read_volatile(base.add(NV_PMC_INTR_0).cast::<u32>())
             };
 
-            unsafe { libc::munmap(map, 0x1000); }
+            // SAFETY: map and size match the successful mmap above.
+            unsafe { let _ = rustix::mm::munmap(map, 0x1000); }
             eprintln!(
                 "[QUENCH] INTR_EN: 0x{old_en:08x} → 0x{new_en:08x} (wrote 0xFFFFFFFF to CLEAR@0x180) pending=0x{pending:08x}"
             );
@@ -318,8 +378,8 @@ fn main() -> ExitCode {
     eprintln!("rm_trigger: major={major}, channel_mode={channel_mode}, bdf={bdf}");
     eprintln!("sizeof(Nvos21Parameters) = {}", size_of::<Nvos21Parameters>());
     eprintln!("sizeof(NvChannelAllocParams) = {}", size_of::<NvChannelAllocParams>());
-    eprintln!("RM_ALLOC_CMD = 0x{RM_ALLOC_CMD:x}");
-    eprintln!("RM_CTRL_CMD  = 0x{RM_CTRL_CMD:x}");
+    eprintln!("RM_ALLOC_OP = 0x{RM_ALLOC_OP:x}");
+    eprintln!("RM_CTRL_OP  = 0x{RM_CTRL_OP:x}");
 
     let ctl_path = "/dev/toadstool-rm-nvidiactl";
     let gpu_path = "/dev/toadstool-rm-nvidia0";
@@ -371,7 +431,7 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    let fd = ctl_file.as_raw_fd();
+    let fd = &ctl_file;
 
     let pmc_post_ctl = read_pmc_enable(bdf);
     eprintln!("[Diag] PMC_ENABLE after CTL open: {:?}", pmc_post_ctl.map(|v| format!("0x{v:08x}")));
@@ -397,15 +457,15 @@ fn main() -> ExitCode {
     }
 
     // Try RM operations on BOTH fds to see if the GPU fd works differently
-    let gpu_raw_fd = gpu_fd.as_ref().map(|f| f.as_raw_fd()).unwrap_or(-1);
-    if gpu_raw_fd >= 0 {
-        eprintln!("\n[Diag] Trying root alloc on GPU fd ({gpu_raw_fd})...");
-        let r_gpu = rm_alloc(gpu_raw_fd, 0, 0, 0xBEEF_0001, class::NV01_ROOT_CLIENT, 0, 0);
+    if let Ok(ref gpu_file) = gpu_fd {
+        let gpu_raw = gpu_file.as_raw_fd();
+        eprintln!("\n[Diag] Trying root alloc on GPU fd ({gpu_raw})...");
+        let r_gpu = rm_alloc(gpu_file, 0, 0, 0xBEEF_0001, class::NV01_ROOT_CLIENT, 0, 0);
         if r_gpu.status == 0 {
             let gpu_root = r_gpu.h_object_new;
             eprintln!("  ✓ Root client on GPU fd: handle=0x{gpu_root:08x}");
             let mut p_ids = [0u32; 32];
-            let (_, st) = rm_ctrl(gpu_raw_fd, gpu_root, gpu_root, 0x0000_0214,
+            let (_, st) = rm_ctrl(gpu_file, gpu_root, gpu_root, 0x0000_0214,
                 p_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
             let ids: Vec<u32> = p_ids.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
             eprintln!("  GPU_GET_PROBED_IDS on GPU fd: status=0x{st:x} ids={ids:?}");
@@ -414,7 +474,7 @@ fn main() -> ExitCode {
             let mut dp2 = rm_abi::Nv0080AllocParams::default();
             dp2.device_id = 0;
             dp2.h_client_share = gpu_root;
-            let r2 = rm_alloc(gpu_raw_fd, gpu_root, gpu_root, 0xBEEF_0002, class::NV01_DEVICE_0,
+            let r2 = rm_alloc(gpu_file, gpu_root, gpu_root, 0xBEEF_0002, class::NV01_DEVICE_0,
                 &dp2 as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32);
             eprintln!("  device_alloc on GPU fd(device_id=0): status=0x{:x}", r2.status);
         } else {
@@ -432,11 +492,14 @@ fn main() -> ExitCode {
     {
         const CARD_INFO_ENTRY: usize = 72;
         const MAX_CARDS: usize = 8;
-        let total_size = CARD_INFO_ENTRY * MAX_CARDS;
-        let mut ci_buf = vec![0u8; total_size];
-        let ci_cmd: u64 = iowr(NV_IOCTL_MAGIC, 0xC8, total_size);
-        let rc = unsafe { libc::ioctl(fd, ci_cmd, ci_buf.as_mut_ptr()) };
-        let errno = if rc < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(0) } else { 0 };
+        const CARD_INFO_OP: Opcode = iowr(NV_IOCTL_MAGIC, 0xC8, CARD_INFO_ENTRY * MAX_CARDS);
+        let mut ci_buf = vec![0u8; CARD_INFO_ENTRY * MAX_CARDS];
+        // SAFETY: ci_buf is correctly sized for nv_ioctl_card_info; fd is valid.
+        let ioctl = RmRawIoctl::<{ CARD_INFO_OP }> { ptr: ci_buf.as_mut_ptr() };
+        let (rc, errno) = match unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+            Ok(v) => (v, 0),
+            Err(e) => (-1, e.raw_os_error()),
+        };
         eprintln!("\n[Diag] NV_ESC_CARD_INFO: rc={rc} errno={errno}");
         for i in 0..MAX_CARDS {
             let off = i * CARD_INFO_ENTRY;
@@ -576,12 +639,12 @@ fn main() -> ExitCode {
     if gpu_id != 0 {
         eprintln!("\n[Phase 0b] NV_ESC_ATTACH_GPUS_TO_FD: gpu_id=0x{gpu_id:x}...");
         let mut attach_buf = [gpu_id];
-        let attach_cmd: u64 = iowr(NV_IOCTL_MAGIC, 0xD4, size_of::<[u32; 1]>());
-        let rc = unsafe { libc::ioctl(fd, attach_cmd, attach_buf.as_mut_ptr()) };
-        let errno = if rc < 0 {
-            std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
-        } else {
-            0
+        const ATTACH_OP: Opcode = iowr(NV_IOCTL_MAGIC, 0xD4, size_of::<[u32; 1]>());
+        // SAFETY: attach_buf is [u32; 1] matching kernel ABI; fd is valid.
+        let ioctl = RmRawIoctl::<{ ATTACH_OP }> { ptr: attach_buf.as_mut_ptr().cast() };
+        let (rc, errno) = match unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+            Ok(v) => (v, 0),
+            Err(e) => (-1, e.raw_os_error()),
         };
         eprintln!("  ATTACH_GPUS_TO_FD: rc={rc} errno={errno}");
         let ok = rc == 0;

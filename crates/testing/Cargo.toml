@@ -16,6 +16,7 @@ readme = "README.md"
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool", features = ["test-mocks"] }
+toadstool-common = { path = "../core/common" }
 hw-learn = { path = "../core/hw-learn" }
 
 # Testing framework

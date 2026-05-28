@@ -105,6 +105,7 @@ mod wasm_ops; // WASM operations (loading, verification, execution)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool_common::interned_strings::socket_env;
     use uuid::Uuid;
 
     #[test]
@@ -248,7 +249,7 @@ mod tests {
         env.insert("PATH".to_string(), "/usr/bin".to_string());
         env.insert(
             "HOME".to_string(),
-            std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
+            std::env::var(socket_env::HOME).unwrap_or_else(|_| "/tmp".to_string()),
         );
 
         let config = WasiExecutionConfig {

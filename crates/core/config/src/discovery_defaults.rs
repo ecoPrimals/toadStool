@@ -25,6 +25,7 @@
 
 use std::time::Duration;
 use toadstool_common::constants::network::{DEFAULT_HOSTNAME, HTTP_PROTOCOL};
+use toadstool_common::interned_strings::socket_env;
 
 const DISCOVERY_TIMEOUT_SECS: u64 = 5;
 const DISCOVERY_REFRESH_SECS: u64 = 30;
@@ -171,11 +172,11 @@ impl FallbackEndpoints {
     /// `TOADSTOOL_DISCOVERY_FALLBACK_ENABLED` (default true).
     #[must_use]
     pub fn from_env() -> Self {
-        let localhost_base_port = std::env::var("TOADSTOOL_DISCOVERY_FALLBACK_PORT")
+        let localhost_base_port = std::env::var(socket_env::TOADSTOOL_DISCOVERY_FALLBACK_PORT)
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::ports::DISCOVERY_LOCALHOST_FALLBACK_BASE);
-        let enable_localhost_fallback = std::env::var("TOADSTOOL_DISCOVERY_FALLBACK_ENABLED")
+        let enable_localhost_fallback = std::env::var(socket_env::TOADSTOOL_DISCOVERY_FALLBACK_ENABLED)
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {
                 "true" | "1" | "yes" | "on" => Some(true),

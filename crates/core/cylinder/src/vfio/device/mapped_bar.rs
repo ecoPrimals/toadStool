@@ -200,6 +200,7 @@ impl MappedBar {
                 )))
             })?;
 
+        // SAFETY: mmap of a sysfs PCI resource file with read-write protection.
         let raw = unsafe {
             rustix::mm::mmap(
                 std::ptr::null_mut(),
@@ -224,6 +225,7 @@ impl MappedBar {
 
         // Leak the file descriptor — the mmap keeps the mapping alive.
         std::mem::forget(file);
+        // SAFETY: `raw`/`size` come from the successful `mmap` above.
         let region = unsafe { MmioRegion::new(raw.cast::<u8>(), size) };
         Ok(Self { region })
     }

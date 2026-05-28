@@ -287,7 +287,9 @@ pub async fn run_server_main(
     // Exp 229: catalyst handoff watchdog — monitors handoff liveness and
     // performs emergency interrupt quench + process kill if the pipeline
     // becomes unresponsive (diesel engine safety net).
-    crate::background::catalyst_watchdog::start_watchdog_thread();
+    if let Err(e) = crate::background::catalyst_watchdog::start_watchdog_thread() {
+        error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
+    }
 
     // PG-62: discovery registration and biomeOS scan run AFTER listeners are
     // spawned so that health.liveness is reachable during initialization.

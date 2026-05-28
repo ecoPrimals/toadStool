@@ -5,7 +5,7 @@ use super::UnifiedBuffer;
 use crate::unified_memory::{
     backend::{BackendAllocation, UnifiedMemoryBackend},
     backend_dispatch::UnifiedMemoryBackendDispatch,
-    types::{BufferId, SyncState, UnifiedBufferMetadata, UnifiedMemoryStats},
+    types::{BufferError, BufferId, SyncState, UnifiedBufferMetadata, UnifiedMemoryStats},
 };
 use std::collections::HashMap;
 use std::ptr::NonNull;
@@ -15,6 +15,25 @@ use std::sync::{
 };
 
 impl UnifiedBuffer {
+    /// Validate buffer construction parameters.
+    pub(crate) fn validate_creation_params(
+        size: usize,
+        cpu_ptr: *mut u8,
+    ) -> Result<(), BufferError> {
+        if cpu_ptr.is_null() {
+            return Err(BufferError::NullCpuPointer);
+        }
+        if (cpu_ptr as usize) < 4096 {
+            return Err(BufferError::NullPagePointer {
+                ptr: cpu_ptr as usize,
+            });
+        }
+        if size == 0 {
+            return Err(BufferError::ZeroSize);
+        }
+        Ok(())
+    }
+
     /// Create new unified buffer (internal use only)
     #[expect(
         clippy::too_many_arguments,
@@ -30,7 +49,7 @@ impl UnifiedBuffer {
         allocations: Arc<RwLock<HashMap<BufferId, UnifiedBufferMetadata>>>,
         total_allocated: Arc<AtomicU64>,
         metrics: Arc<RwLock<UnifiedMemoryStats>>,
-    ) -> Self {
+    ) -> Result<Self, BufferError> {
         tracing::debug!(
             "Creating UnifiedBuffer {} with size={}, cpu_ptr={:#x}, device_ptr={:#x}",
             id,
@@ -39,24 +58,11 @@ impl UnifiedBuffer {
             device_ptr as usize
         );
 
-        assert!(
-            !cpu_ptr.is_null(),
-            "CPU pointer cannot be null at buffer creation"
-        );
-        assert!(
-            cpu_ptr as usize >= 4096,
-            "CPU pointer in NULL page at buffer creation"
-        );
-        assert!(size > 0, "Buffer size cannot be zero");
+        Self::validate_creation_params(size, cpu_ptr)?;
 
-        #[expect(
-            clippy::expect_used,
-            reason = "infallible: assert above guarantees cpu_ptr >= 4096"
-        )]
-        let cpu_ptr_nonnull =
-            NonNull::new(cpu_ptr).expect("CPU pointer cannot be null at buffer creation");
+        let cpu_ptr_nonnull = NonNull::new(cpu_ptr).ok_or(BufferError::NullCpuPointer)?;
 
-        Self {
+        Ok(Self {
             id,
             size,
             cpu_ptr: cpu_ptr_nonnull,
@@ -67,7 +73,7 @@ impl UnifiedBuffer {
             allocations,
             total_allocated,
             metrics,
-        }
+        })
     }
 
     /// Get buffer ID

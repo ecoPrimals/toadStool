@@ -25,6 +25,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use toadstool_common::interned_strings::socket_env;
 
 // Domain modules
 pub mod application;
@@ -138,15 +139,15 @@ impl ToadStoolConfig {
         let mut config = Self::default();
 
         // Override with environment variables
-        if let Ok(env) = std::env::var("TOADSTOOL_ENVIRONMENT") {
+        if let Ok(env) = std::env::var(socket_env::TOADSTOOL_ENVIRONMENT) {
             config.app.environment = env;
         }
 
-        if let Ok(log_level) = std::env::var("TOADSTOOL_LOG_LEVEL") {
+        if let Ok(log_level) = std::env::var(socket_env::TOADSTOOL_LOG_LEVEL) {
             config.logging.level = log_level;
         }
 
-        if let Ok(bind_address) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
+        if let Ok(bind_address) = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS) {
             config.network.bind_address = bind_address.parse()?;
         }
 
@@ -154,8 +155,8 @@ impl ToadStoolConfig {
             deprecated,
             reason = "legacy endpoint env-var override during migration"
         )]
-        if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
+        if let Ok(coordination) = std::env::var(socket_env::TOADSTOOL_COORDINATION_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_SONGBIRD_ENDPOINT))
         {
             config.network.endpoints.coordination = coordination;
         }

@@ -4,6 +4,7 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::PRIMAL_NAME;
 
 use super::IpcEndpoint;
@@ -49,7 +50,7 @@ impl super::DisplayClient {
         paths.push(platform_paths.toadstool_socket_dir().join("display.sock"));
 
         // Secondary: HOME/.local/share
-        if let Ok(home) = std::env::var("HOME") {
+        if let Ok(home) = std::env::var(socket_env::HOME) {
             let mut path = PathBuf::from(home);
             path.push(".local");
             path.push("share");
@@ -99,7 +100,7 @@ impl super::DisplayClient {
         paths.push(platform_paths.runtime_dir().join("toadstool-ipc-port"));
 
         // Secondary: HOME/.local/share
-        if let Ok(home) = std::env::var("HOME") {
+        if let Ok(home) = std::env::var(socket_env::HOME) {
             let mut path = PathBuf::from(home);
             path.push(".local");
             path.push("share");

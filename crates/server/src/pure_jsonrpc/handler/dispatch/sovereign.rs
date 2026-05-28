@@ -338,7 +338,7 @@ impl DispatchHandler {
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
         use crate::pure_jsonrpc::types::JsonRpcError;
-        use toadstool_cylinder::vfio::sovereign_handoff::{HandoffConfig, execute_handoff};
+        use toadstool_cylinder::vfio::sovereign_handoff::HandoffConfig;
 
         let bdf = params
             .and_then(|p| p.get("bdf"))
@@ -521,7 +521,7 @@ impl DispatchHandler {
             toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_heartbeat(
                 &config,
                 None,
-                || crate::background::catalyst_watchdog::heartbeat(),
+                crate::background::catalyst_watchdog::heartbeat,
             )
         });
 

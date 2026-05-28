@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use toadstool_common::constants::network::{BIND_ALL_IPV4, DEFAULT_HOSTNAME};
+use toadstool_common::interned_strings::socket_env;
 
 use crate::ports;
 
@@ -256,8 +257,8 @@ impl EndpointBuilder {
     fn build_url(&self, port: u16) -> String {
         let host = match self.config.bind_mode {
             BindMode::Localhost => DEFAULT_HOSTNAME.to_string(),
-            BindMode::AllInterfaces => std::env::var("HOSTNAME")
-                .or_else(|_| std::env::var("HOST"))
+            BindMode::AllInterfaces => std::env::var(socket_env::HOSTNAME)
+                .or_else(|_| std::env::var(socket_env::HOST))
                 .unwrap_or_else(|_| BIND_ALL_IPV4.to_string()),
             BindMode::Specific => match self.config.listen_address {
                 IpAddr::V4(addr) => {

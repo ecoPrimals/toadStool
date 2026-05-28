@@ -8,6 +8,7 @@
 //! - TLS/SSL configuration
 
 use serde::{Deserialize, Serialize};
+use toadstool_common::interned_strings::socket_env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
@@ -122,19 +123,19 @@ impl Default for EndpointConfig {
         // with port from `ports::capability_fallback::COORDINATION` (8080). `apply_env_overrides` may still set
         // `TOADSTOOL_COORDINATION_ENDPOINT` / `TOADSTOOL_SONGBIRD_ENDPOINT` afterward.
         let coordination =
-            std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
+            std::env::var(socket_env::TOADSTOOL_COORDINATION_SERVICE_URL).unwrap_or_else(|_| {
                 let port = crate::ports::capability_fallback::COORDINATION;
                 format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
             });
-        let security = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").unwrap_or_else(|_| {
+        let security = std::env::var(socket_env::TOADSTOOL_CRYPTO_SERVICE_URL).unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::SECURITY;
             format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
         });
-        let storage = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").unwrap_or_else(|_| {
+        let storage = std::env::var(socket_env::TOADSTOOL_STORAGE_SERVICE_URL).unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::STORAGE;
             format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
         });
-        let ai_processing = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
+        let ai_processing = std::env::var(socket_env::TOADSTOOL_AI_SERVICE_URL).unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::PLATFORM;
             format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
         });

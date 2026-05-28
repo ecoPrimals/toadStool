@@ -6,6 +6,7 @@ use std::path::Path;
 use tokio::fs;
 use tracing::info;
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::platform_paths::Platform;
 
 use crate::ToadStoolError;
@@ -21,7 +22,7 @@ pub async fn add_to_path(
         Platform::Linux | Platform::MacOS => {
             let shell_profile = if Path::new(&format!(
                 "{}/.zshrc",
-                std::env::var("HOME").unwrap_or_default()
+                std::env::var(socket_env::HOME).unwrap_or_default()
             ))
             .exists()
             {
@@ -32,7 +33,7 @@ pub async fn add_to_path(
 
             let profile_path = format!(
                 "{}/{}",
-                std::env::var("HOME").unwrap_or_default(),
+                std::env::var(socket_env::HOME).unwrap_or_default(),
                 shell_profile
             );
             let path_export = format!(
@@ -63,7 +64,7 @@ pub async fn add_to_path(
 pub fn has_gui(platform: Platform) -> bool {
     match platform {
         Platform::Linux => {
-            std::env::var("DISPLAY").is_ok() || std::env::var("WAYLAND_DISPLAY").is_ok()
+            std::env::var(socket_env::DISPLAY).is_ok() || std::env::var(socket_env::WAYLAND_DISPLAY).is_ok()
         }
         Platform::MacOS | Platform::Windows => true,
         Platform::Android | Platform::Wasm | Platform::Unknown => false,
@@ -79,7 +80,7 @@ pub async fn create_desktop_shortcuts(
 
     match platform {
         Platform::Linux => {
-            let desktop_dir = format!("{}/Desktop", std::env::var("HOME").unwrap_or_default());
+            let desktop_dir = format!("{}/Desktop", std::env::var(socket_env::HOME).unwrap_or_default());
             if Path::new(&desktop_dir).exists() {
                 let desktop_file = format!(
                     r"[Desktop Entry]

@@ -407,6 +407,8 @@ unsafe impl<T> rustix::ioctl::Ioctl for DrmIoctlCmd<'_, T> {
         std::ptr::from_mut(self.arg).cast()
     }
 
+    /// # Safety
+    /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
         _output: rustix::ioctl::IoctlOutput,
         _ptr: *mut std::ffi::c_void,

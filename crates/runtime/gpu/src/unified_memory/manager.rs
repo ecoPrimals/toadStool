@@ -337,6 +337,17 @@ impl UniversalUnifiedMemory {
         // Get device pointer
         let device_ptr = self.backend.get_device_ptr(&allocation);
 
+        if let Err(e) = UnifiedBuffer::validate_creation_params(size, cpu_ptr) {
+            if let Err(free_err) = self.backend.free_unified(allocation).await {
+                tracing::error!(
+                    "Failed to roll back invalid buffer allocation for {}: {}",
+                    id,
+                    free_err
+                );
+            }
+            return Err(ToadStoolError::runtime(e.to_string()));
+        }
+
         // Track allocation
         let metadata = UnifiedBufferMetadata::new(id, size, flags);
         self.allocations
@@ -378,7 +389,7 @@ impl UniversalUnifiedMemory {
 
         tracing::debug!("Allocated buffer {} ({} bytes)", id, size);
 
-        Ok(UnifiedBuffer::new(
+        UnifiedBuffer::new(
             id,
             size,
             cpu_ptr,
@@ -388,7 +399,8 @@ impl UniversalUnifiedMemory {
             Arc::clone(&self.allocations),
             Arc::clone(&self.total_allocated),
             Arc::clone(&self.metrics),
-        ))
+        )
+        .map_err(|e| ToadStoolError::runtime(e.to_string()))
     }
 
     /// Get backend name

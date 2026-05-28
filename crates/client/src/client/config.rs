@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 use std::time::Duration;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_config::defaults;
 
 /// ToadStool client configuration
@@ -66,7 +67,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             // `TOADSTOOL_SERVER_URL` overrides; default base is loopback + `defaults::network::API_PORT` (0 = OS-assigned).
-            base_url: std::env::var("TOADSTOOL_SERVER_URL").unwrap_or_else(|_| {
+            base_url: std::env::var(socket_env::TOADSTOOL_SERVER_URL).unwrap_or_else(|_| {
                 format!(
                     "http://{}:{}",
                     defaults::network::LOCALHOST,
@@ -74,17 +75,17 @@ impl Default for ClientConfig {
                 )
             }),
             request_timeout: Duration::from_millis(
-                std::env::var("TOADSTOOL_REQUEST_TIMEOUT_MS")
+                std::env::var(socket_env::TOADSTOOL_REQUEST_TIMEOUT_MS)
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(defaults::timeouts::REQUEST_MS),
             ),
-            max_retries: std::env::var("TOADSTOOL_MAX_RETRIES")
+            max_retries: std::env::var(socket_env::TOADSTOOL_MAX_RETRIES)
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(defaults::retries::MAX_ATTEMPTS),
             retry_backoff: Duration::from_millis(
-                std::env::var("TOADSTOOL_RETRY_BACKOFF_MS")
+                std::env::var(socket_env::TOADSTOOL_RETRY_BACKOFF_MS)
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(defaults::retries::BACKOFF_MS),

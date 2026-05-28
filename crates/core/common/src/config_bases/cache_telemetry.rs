@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+use crate::interned_strings::socket_env;
+
 /// Base cache configuration
 ///
 /// Provides standard caching parameters that can be used across different
@@ -93,7 +95,7 @@ impl Default for TelemetryConfig {
     fn default() -> Self {
         // Sovereignty principle: all data collection is opt-in, never opt-out.
         // Operators explicitly enable telemetry via config or TOADSTOOL_TELEMETRY=1.
-        let opt_in = std::env::var("TOADSTOOL_TELEMETRY")
+        let opt_in = std::env::var(socket_env::TOADSTOOL_TELEMETRY)
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
         Self {

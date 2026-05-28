@@ -13,7 +13,7 @@ categories = ["hardware-support", "science"]
 toadstool-common = { path = "../common" }
 hw-learn = { path = "../hw-learn" }
 toadstool-hw-safe = { path = "../hw-safe" }
-rustix = { version = "1.1", features = ["mm", "event", "time"] }
+rustix = { workspace = true, features = ["mm", "event", "time"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

@@ -20,6 +20,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+use toadstool_common::interned_strings::socket_env;
+
 pub mod unix;
 
 #[cfg(target_os = "linux")]
@@ -162,7 +164,7 @@ fn is_android() -> bool {
     }
 
     // Check ANDROID_ROOT environment variable
-    if std::env::var("ANDROID_ROOT").is_ok() {
+    if std::env::var(socket_env::ANDROID_ROOT).is_ok() {
         return true;
     }
 
@@ -177,13 +179,13 @@ fn is_android() -> bool {
 /// 3. `BIOMEOS_RUNTIME_DIR` env override
 /// 4. `/tmp/biomeos-runtime` (last resort)
 fn get_runtime_dir() -> String {
-    if let Ok(dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         return dir;
     }
     if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
         return format!("/run/user/{uid}");
     }
-    std::env::var("BIOMEOS_RUNTIME_DIR").unwrap_or_else(|_| "/tmp/biomeos-runtime".to_string())
+    std::env::var(socket_env::BIOMEOS_RUNTIME_DIR).unwrap_or_else(|_| "/tmp/biomeos-runtime".to_string())
 }
 
 // ============================================================================

@@ -11,6 +11,7 @@ use tokio::net::TcpStream;
 use tracing::info;
 
 use crate::primal_identity::ServiceEndpoint;
+use crate::interned_strings::socket_env;
 
 use super::config::{ConfigFile, capability_from_str};
 use super::discovery_config::discover_from_config;
@@ -20,7 +21,7 @@ use super::types::{DiscoveredService, DiscoveryError, DiscoveryResult};
 pub async fn discover_from_registry(endpoint: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
     let resolved = if !endpoint.is_empty() {
         endpoint.to_string()
-    } else if let Ok(env_ep) = std::env::var("TOADSTOOL_REGISTRY_ENDPOINT") {
+    } else if let Ok(env_ep) = std::env::var(socket_env::TOADSTOOL_REGISTRY_ENDPOINT) {
         env_ep
     } else {
         return Err(DiscoveryError::MethodUnavailable {

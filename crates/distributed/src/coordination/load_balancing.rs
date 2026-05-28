@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool::error::ToadStoolResult;
 use tracing::debug;
 
@@ -34,8 +35,8 @@ impl CoordinationLoadBalancer {
     }
 
     fn self_node_id(&self) -> String {
-        std::env::var("TOADSTOOL_GATE_ID")
-            .or_else(|_| std::env::var("HOSTNAME"))
+        std::env::var(socket_env::TOADSTOOL_GATE_ID)
+            .or_else(|_| std::env::var(socket_env::HOSTNAME))
             .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.to_string())
     }
 

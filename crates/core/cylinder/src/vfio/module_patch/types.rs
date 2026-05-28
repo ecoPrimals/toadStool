@@ -37,11 +37,13 @@ pub enum PatchStrategy {
     },
 }
 
-impl PatchStrategy {
+impl std::str::FromStr for PatchStrategy {
+    type Err = String;
+
     /// Parse from string representation used in catalyst recipe TOML files.
     /// Formats: "RetAtEntry", "Ret1AtEntry", "RetAfterFtrace",
     /// "NopCallAt(0x7f)", "PatchByteAt(0x7b, 0xc3, 0x00)".
-    pub fn from_str(s: &str) -> Result<Self, String> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
         if s == "RetAtEntry" {
             return Ok(Self::RetAtEntry);

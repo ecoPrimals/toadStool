@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
+use crate::interned_strings::socket_env;
+
 /// Failure loading the family seed for BTSP.
 #[derive(Debug, Error)]
 pub enum BtspFamilySeedError {
@@ -30,7 +32,7 @@ fn read_seed_file_as_string(path: &std::path::Path) -> Option<String> {
 }
 
 fn socket_dir_family_seed_path() -> Option<PathBuf> {
-    let dir = std::env::var("BIOMEOS_SOCKET_DIR").ok()?;
+    let dir = std::env::var(socket_env::BIOMEOS_SOCKET_DIR).ok()?;
     if dir.is_empty() {
         return None;
     }
@@ -38,7 +40,7 @@ fn socket_dir_family_seed_path() -> Option<PathBuf> {
 }
 
 fn config_family_seed_path() -> PathBuf {
-    if let Ok(home) = std::env::var("HOME") {
+    if let Ok(home) = std::env::var(socket_env::HOME) {
         return PathBuf::from(home).join(".config/biomeos/.family.seed");
     }
     PathBuf::from(".config/biomeos/.family.seed")
@@ -55,13 +57,14 @@ fn config_family_seed_path() -> PathBuf {
 /// `btsp.session.create` without hex-decoding or base64 re-encoding.
 /// BearDog owns the encoding interpretation.
 pub fn load_family_seed_for_btsp() -> Result<String, BtspFamilySeedError> {
-    if let Ok(v) = std::env::var("FAMILY_SEED") {
+    if let Ok(v) = std::env::var(socket_env::FAMILY_SEED) {
         let trimmed = v.trim().to_string();
         if !trimmed.is_empty() {
             return Ok(trimmed);
         }
     }
-    if let Ok(v) = std::env::var("BEARDOG_FAMILY_SEED") {
+    #[expect(deprecated, reason = "legacy env var fallback during migration")]
+    if let Ok(v) = std::env::var(socket_env::BEARDOG_FAMILY_SEED) {
         let trimmed = v.trim().to_string();
         if !trimmed.is_empty() {
             tracing::warn!("BEARDOG_FAMILY_SEED is deprecated — use FAMILY_SEED");

@@ -387,10 +387,8 @@ pub fn prepare_anchor_release(bdf: &str, suppress_sbr: bool) {
         if let Err(e) = suppress_bus_reset(bdf) {
             tracing::error!(bdf, error = %e, "failed to suppress bus reset — SBR may destroy warm state");
         }
-    } else {
-        if let Err(e) = unsuppress_bus_reset_for(bdf) {
-            tracing::error!(bdf, error = %e, "failed to unsuppress bus reset for catalyst SBR");
-        }
+    } else if let Err(e) = unsuppress_bus_reset_for(bdf) {
+        tracing::error!(bdf, error = %e, "failed to unsuppress bus reset for catalyst SBR");
     }
 }
 

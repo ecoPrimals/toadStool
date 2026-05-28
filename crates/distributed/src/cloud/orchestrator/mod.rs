@@ -9,6 +9,8 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use toadstool_common::interned_strings::socket_env;
+
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 use crate::{ResourceRequirements, UniversalJob, UniversalJobType};
@@ -265,12 +267,12 @@ impl<P: CloudProviderInterface> UniversalCloudOrchestrator<P> {
     ) -> ToadStoolResult<CloudDeploymentResult> {
         let coordination_endpoint = if let Some(ref url) = self.federation_endpoint {
             url.clone()
-        } else if let Ok(url) = std::env::var("TOADSTOOL_FEDERATION_ENDPOINT") {
+        } else if let Ok(url) = std::env::var(socket_env::TOADSTOOL_FEDERATION_ENDPOINT) {
             url
         } else {
             let synthesized = format!(
                 "https://federation.{}:{}",
-                std::env::var("TOADSTOOL_DOMAIN").unwrap_or_else(|_| "toadstool.local".to_string()),
+                std::env::var(socket_env::TOADSTOOL_DOMAIN).unwrap_or_else(|_| "toadstool.local".to_string()),
                 toadstool_config::defaults::network::FEDERATION_PORT
             );
             warn!(

@@ -18,6 +18,7 @@ bytes = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
+toadstool-common = { path = "../../core/common" }
 
 # Safe byte casting (replaces unsafe f32<->u8 conversions)
 bytemuck = { version = "1", features = ["derive"] }
@@ -31,7 +32,7 @@ bytemuck = { version = "1", features = ["derive"] }
 # - mmap/munmap/mlock/munlock: rustix (pure Rust)
 # - VFIO ioctls: rustix::ioctl (pure Rust, no C deps)
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.1", features = ["fs", "mm"] }
+rustix = { workspace = true, features = ["fs", "mm"] }
 toadstool-hw-safe = { path = "../../core/hw-safe" }
 
 [dev-dependencies]

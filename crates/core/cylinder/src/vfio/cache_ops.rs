@@ -30,8 +30,7 @@ pub(crate) unsafe fn cache_line_flush(addr: *const u8) {
 /// No-op on non-x86_64 (cache flush not needed for coherent platforms).
 ///
 /// # Safety
-///
-/// Same contract as x86_64 variant — address must be valid mapped memory.
+/// Pointer must be valid and aligned to a cache line.
 #[cfg(not(target_arch = "x86_64"))]
 #[inline]
 #[expect(dead_code, reason = "platform-specific stub; not used on non-x86_64")]

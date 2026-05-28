@@ -4,6 +4,7 @@
 //! This module provides pure Rust implementations for setting up Akida NPU hardware,
 //! replacing shell scripts with compiled code that's portable across systems.
 
+use toadstool_common::interned_strings::socket_env;
 use crate::error::{AkidaError, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -71,7 +72,7 @@ impl NpuSetup {
         let mut search_paths = Vec::new();
 
         // 1. Check AKIDA_DRIVER_PATH environment variable (highest priority)
-        if let Ok(custom_path) = std::env::var("AKIDA_DRIVER_PATH") {
+        if let Ok(custom_path) = std::env::var(socket_env::AKIDA_DRIVER_PATH) {
             search_paths.push(PathBuf::from(custom_path));
         }
 

@@ -25,6 +25,7 @@
 use crate::error::{ToadStoolError, ToadStoolResult};
 use std::path::PathBuf;
 use std::time::Duration;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::timeouts;
 use tokio::process::Command;
 use tracing::info;
@@ -132,10 +133,10 @@ fn get_toadstool_socket_paths() -> Vec<PathBuf> {
     paths.push(toadstool_common::primal_sockets::get_toadstool_socket_path());
 
     // 2. Display-specific paths (XDG-compliant)
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         paths.push(PathBuf::from(&runtime_dir).join("toadstool/display.sock"));
     }
-    if let Ok(home) = std::env::var("HOME") {
+    if let Ok(home) = std::env::var(socket_env::HOME) {
         paths.push(PathBuf::from(&home).join(".local/share/toadstool/display.sock"));
     }
     paths.push(std::env::temp_dir().join("toadstool/display.sock"));
@@ -150,12 +151,12 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
     // 1. XDG_RUNTIME_DIR (preferred)
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         paths.push(PathBuf::from(runtime_dir).join("toadstool-ipc-port"));
     }
 
     // 2. HOME/.local/share (secondary)
-    if let Ok(home) = std::env::var("HOME") {
+    if let Ok(home) = std::env::var(socket_env::HOME) {
         paths.push(PathBuf::from(home).join(".local/share/toadstool-ipc-port"));
     }
 

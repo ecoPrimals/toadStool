@@ -42,12 +42,46 @@ impl CpuComputeResource {
             .map(std::num::NonZero::get)
             .unwrap_or(1);
 
-        let thread_pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(num_cores)
-            .thread_name(|i| format!("toadstool-cpu-{i}"))
-            .build()
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to create thread pool: {e}")))?;
+        let thread_pool = Self::build_thread_pool(num_cores, "toadstool-cpu")?;
+        Ok(Self::from_thread_pool(num_cores, thread_pool))
+    }
 
+    /// Create a degraded single-threaded CPU compute resource.
+    ///
+    /// Falls back to a current-thread Rayon pool if spawning a worker thread fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns when neither a single-threaded nor current-thread pool can be constructed.
+    pub fn new_fallback() -> ToadStoolResult<Self> {
+        let thread_pool = Self::build_thread_pool(1, "toadstool-cpu-fallback")
+            .or_else(|_| Self::build_current_thread_pool())?;
+        Ok(Self::from_thread_pool(1, thread_pool))
+    }
+
+    fn build_thread_pool(num_threads: usize, name_prefix: &str) -> ToadStoolResult<rayon::ThreadPool> {
+        let prefix = name_prefix.to_string();
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .thread_name(move |i| format!("{prefix}-{i}"))
+            .build()
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to create thread pool: {e}")))
+    }
+
+    fn build_current_thread_pool() -> ToadStoolResult<rayon::ThreadPool> {
+        rayon::ThreadPoolBuilder::new()
+            .use_current_thread()
+            .build()
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to create current-thread pool: {e}"))
+            })
+    }
+
+    fn from_thread_pool(num_cores: usize, thread_pool: rayon::ThreadPool) -> Self {
+        Self::from_thread_pool_arc(num_cores, Arc::new(thread_pool))
+    }
+
+    fn from_thread_pool_arc(num_cores: usize, thread_pool: Arc<rayon::ThreadPool>) -> Self {
         let capabilities = Self::detect_cpu_capabilities(num_cores);
 
         tracing::info!(
@@ -56,12 +90,27 @@ impl CpuComputeResource {
             capabilities.memory.total_bytes / (1024 * 1024 * 1024)
         );
 
-        Ok(Self {
+        Self {
             num_cores,
             capabilities,
-            thread_pool: Arc::new(thread_pool),
+            thread_pool,
             utilization: Arc::new(RwLock::new(0.0)),
-        })
+        }
+    }
+
+    /// Process-wide degraded pool used only when all runtime construction paths fail.
+    fn degraded_pool() -> Arc<rayon::ThreadPool> {
+        static DEGRADED_CPU_POOL: std::sync::LazyLock<Arc<rayon::ThreadPool>> =
+            std::sync::LazyLock::new(|| {
+                Arc::new(
+                    rayon::ThreadPoolBuilder::new()
+                        .use_current_thread()
+                        .build()
+                        .expect("degraded CPU thread pool initialization failed"),
+                )
+            });
+
+        Arc::clone(&DEGRADED_CPU_POOL)
     }
 
     /// Detect CPU capabilities
@@ -552,35 +601,20 @@ impl ComputeContext for ComputeContextDispatch {
 
 impl Default for CpuComputeResource {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|e| {
-            tracing::error!(
-                "Failed to create CPU compute resource: {}, using single-threaded fallback",
-                e
-            );
-            // Fallback to minimal single-threaded resource
-            let num_cores = 1;
-
-            // JUSTIFICATION: This is Default::default() fallback for a critical system resource.
-            // If we cannot create even a single-threaded thread pool, the system is fundamentally
-            // broken and cannot execute compute tasks. Panicking here is appropriate as it's
-            // a catastrophic system failure, not a recoverable error.
-            #[expect(
-                clippy::expect_used,
-                reason = "catastrophic: even single-threaded rayon pool creation failed"
-            )]
-            let thread_pool = rayon::ThreadPoolBuilder::new()
-                .num_threads(1)
-                .thread_name(|_| "toadstool-cpu-fallback".to_string())
-                .build()
-                .expect("CRITICAL: Even single-threaded pool creation failed - system unstable");
-
-            Self {
-                num_cores,
-                capabilities: Self::detect_cpu_capabilities(num_cores),
-                thread_pool: Arc::new(thread_pool),
-                utilization: Arc::new(RwLock::new(0.0)),
-            }
-        })
+        Self::new()
+            .or_else(|primary| {
+                tracing::error!(
+                    "Failed to create CPU compute resource: {primary}, using fallback"
+                );
+                Self::new_fallback()
+            })
+            .unwrap_or_else(|fallback| {
+                tracing::error!(
+                    error = %fallback,
+                    "CPU compute resource fallback failed; using degraded pool"
+                );
+                Self::from_thread_pool_arc(1, Self::degraded_pool())
+            })
     }
 }
 

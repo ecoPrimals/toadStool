@@ -124,9 +124,11 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
 
     match map {
         Ok(ptr) => {
+            let base = ptr.cast::<u8>();
+            // SAFETY: all offsets are within the 0x1000 mapped BAR0 page.
             let old_en = unsafe {
                 std::ptr::read_volatile(
-                    (ptr as *const u8).add(profile.intr_en_readable as usize) as *const u32,
+                    base.add(profile.intr_en_readable as usize).cast::<u32>(),
                 )
             };
 
@@ -134,23 +136,26 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
             let disable_val = profile.disable_value();
             unsafe {
                 std::ptr::write_volatile(
-                    (ptr as *mut u8).add(disable_off) as *mut u32,
+                    base.add(disable_off).cast::<u32>(),
                     disable_val,
                 );
             }
 
+            // SAFETY: offset is within the 0x1000 mapped BAR0 page.
             let new_en = unsafe {
                 std::ptr::read_volatile(
-                    (ptr as *const u8).add(profile.intr_en_readable as usize) as *const u32,
+                    base.add(profile.intr_en_readable as usize).cast::<u32>(),
                 )
             };
 
+            // SAFETY: offset is within the 0x1000 mapped BAR0 page.
             let pending = unsafe {
                 std::ptr::read_volatile(
-                    (ptr as *const u8).add(profile.intr_pending as usize) as *const u32,
+                    base.add(profile.intr_pending as usize).cast::<u32>(),
                 )
             };
 
+            // SAFETY: unmapping the 0x1000 BAR0 page mapped above.
             let _ = unsafe { rustix::mm::munmap(ptr, 0x1000) };
 
             tracing::info!(

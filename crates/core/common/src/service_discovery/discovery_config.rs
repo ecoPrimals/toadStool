@@ -5,6 +5,7 @@ use std::time::SystemTime;
 
 use tracing::{info, warn};
 
+use crate::interned_strings::socket_env;
 use crate::primal_identity::ServiceEndpoint;
 
 use super::config::{ConfigFile, capability_from_str};
@@ -15,13 +16,13 @@ use super::types::{DiscoveredService, DiscoveryError, DiscoveryResult};
 pub fn resolve_config_path(path: &str) -> String {
     if !path.is_empty() {
         path.to_string()
-    } else if let Ok(p) = std::env::var("TOADSTOOL_DISCOVERY_CONFIG") {
+    } else if let Ok(p) = std::env::var(socket_env::TOADSTOOL_DISCOVERY_CONFIG) {
         p
-    } else if let Ok(runtime) = std::env::var("BIOMEOS_RUNTIME_DIR") {
+    } else if let Ok(runtime) = std::env::var(socket_env::BIOMEOS_RUNTIME_DIR) {
         format!("{runtime}/discovery.json")
-    } else if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+    } else if let Ok(xdg) = std::env::var(socket_env::XDG_CONFIG_HOME) {
         format!("{xdg}/biomeos/discovery.json")
-    } else if let Ok(home) = std::env::var("HOME") {
+    } else if let Ok(home) = std::env::var(socket_env::HOME) {
         format!("{home}/.config/biomeos/discovery.json")
     } else {
         "/etc/biomeos/discovery.json".to_string()

@@ -3,6 +3,8 @@
 //!
 //! Discovers Unix socket paths by capability rather than by primal name.
 
+use crate::interned_strings::socket_env;
+
 /// Discover a service by capability rather than by primal name.
 ///
 /// Primals only have self-knowledge and discover other services at runtime.
@@ -16,7 +18,8 @@
 pub fn discover_service_socket_by_capability(capability: &str) -> Option<String> {
     let env_key = format!("{}_SOCKET", capability.to_uppercase().replace('-', "_"));
     std::env::var(&env_key).ok().or_else(|| {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        let runtime_dir =
+            std::env::var(socket_env::XDG_RUNTIME_DIR).unwrap_or_else(|_| "/tmp".to_string());
         let socket_path = format!("{runtime_dir}/{capability}.sock");
         if std::path::Path::new(&socket_path).exists() {
             Some(socket_path)

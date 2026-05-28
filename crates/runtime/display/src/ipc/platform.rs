@@ -4,6 +4,7 @@
 //! Handles platform constraints (`SELinux`, Unix socket support) and
 //! capability-based discovery (socket paths, TCP fallback discovery files).
 
+use toadstool_common::interned_strings::socket_env;
 use crate::DisplayError;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -15,7 +16,7 @@ use std::path::PathBuf;
 #[must_use]
 pub fn discover_socket_path() -> PathBuf {
     let base =
-        std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| std::env::temp_dir(), PathBuf::from);
+        std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(|_| std::env::temp_dir(), PathBuf::from);
 
     let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     base.join("ecoPrimals")
@@ -59,8 +60,8 @@ pub fn is_selinux_enforcing() -> bool {
 /// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, `HOME/.local/share`, then the system temp directory.
 pub fn write_tcp_discovery_file(addr: &SocketAddr) {
     let discovery_dirs: Vec<Option<String>> = vec![
-        std::env::var("XDG_RUNTIME_DIR").ok(),
-        std::env::var("HOME")
+        std::env::var(socket_env::XDG_RUNTIME_DIR).ok(),
+        std::env::var(socket_env::HOME)
             .ok()
             .map(|h| format!("{h}/.local/share")),
         Some(std::env::temp_dir().to_string_lossy().into_owned()),

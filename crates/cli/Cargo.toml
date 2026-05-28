@@ -122,7 +122,7 @@ http-body-util = "0.1"
 [target.'cfg(unix)'.dev-dependencies]
 # EVOLVED: libc replaced with rustix (Feb 16, 2026) - ecoBin compliant, safer API
 # EVOLVED: 0.38 → 1.1 (Apr 11, 2026) — align with workspace-wide rustix 1.x
-rustix = { version = "1.1", features = ["process"] }
+rustix = { workspace = true, features = ["process"] }
 
 [features]
 default = ["full"]

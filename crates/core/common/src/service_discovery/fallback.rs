@@ -12,6 +12,7 @@ use std::time::SystemTime;
 use tracing::warn;
 
 use crate::constants::PRIMAL_NAME;
+use crate::interned_strings::socket_env;
 use crate::primal_identity::{
     Capability, ComputeCapability, CoordinationCapability, ServiceEndpoint, StorageCapability,
 };
@@ -133,7 +134,7 @@ pub fn localhost_capability_fallback(capability: &Capability) -> Vec<DiscoveredS
         capability,
         Capability::Compute(ComputeCapability::NativeExecution)
     ) {
-        let port: u16 = std::env::var("TOADSTOOL_LOCAL_PORT")
+        let port: u16 = std::env::var(socket_env::TOADSTOOL_LOCAL_PORT)
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);

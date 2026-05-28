@@ -100,7 +100,9 @@ impl HandoffExclusionGuard {
     /// Exclude `bdfs` from keepalive config reads. Include both the target
     /// GPU and its IOMMU siblings (e.g. the HD Audio function).
     pub fn new(bdfs: Vec<String>) -> Self {
-        let mut excl = EXCLUDED_BDFS.lock().unwrap_or_else(|e| e.into_inner());
+        let mut excl = EXCLUDED_BDFS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         for bdf in &bdfs {
             excl.insert(bdf.clone());
         }
@@ -114,7 +116,9 @@ impl HandoffExclusionGuard {
 
 impl Drop for HandoffExclusionGuard {
     fn drop(&mut self) {
-        let mut excl = EXCLUDED_BDFS.lock().unwrap_or_else(|e| e.into_inner());
+        let mut excl = EXCLUDED_BDFS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         for bdf in &self.bdfs {
             excl.remove(bdf);
         }
@@ -127,11 +131,15 @@ impl Drop for HandoffExclusionGuard {
 
 /// Check if a BDF is currently excluded from keepalive reads.
 fn is_excluded(bdf: &str) -> bool {
-    EXCLUDED_BDFS.lock().unwrap_or_else(|e| e.into_inner()).contains(bdf)
+    EXCLUDED_BDFS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .contains(bdf)
 }
 
 /// Exclude a single BDF from keepalive reads and return an RAII guard.
 /// Convenience wrapper for `HandoffExclusionGuard::new` with one BDF.
+#[allow(dead_code)] // single-BDF convenience for future handoff call sites
 pub fn exclude_bdf(bdf: &str) -> HandoffExclusionGuard {
     HandoffExclusionGuard::new(vec![bdf.to_string()])
 }

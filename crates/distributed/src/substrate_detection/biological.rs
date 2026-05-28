@@ -3,6 +3,7 @@
 
 use super::probe;
 use super::types::PlatformType;
+use toadstool_common::interned_strings::socket_env;
 use toadstool::ToadStoolResult;
 
 const BIO_TOOLS: &[(&str, &str)] = &[
@@ -38,7 +39,7 @@ pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
         });
     }
 
-    if std::env::var("TWIST_BIOSCIENCE_API_KEY").is_ok() {
+    if std::env::var(socket_env::TWIST_BIOSCIENCE_API_KEY).is_ok() {
         platforms.push(PlatformType::BiologicalComputing {
             platform: "Twist Bioscience DNA Synthesis".to_string(),
             simulation: false,

@@ -3,6 +3,7 @@
 
 use super::probe;
 use super::types::PlatformType;
+use toadstool_common::interned_strings::socket_env;
 use toadstool::ToadStoolResult;
 
 const QUANTUM_FRAMEWORKS: &[(&str, &str)] = &[
@@ -30,13 +31,13 @@ pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
         }
     }
 
-    if std::env::var("IBM_QUANTUM_TOKEN").is_ok() {
+    if std::env::var(socket_env::IBM_QUANTUM_TOKEN).is_ok() {
         platforms.push(PlatformType::Quantum {
             framework: "IBM Quantum Network".to_string(),
             simulator: false,
         });
     }
-    if std::env::var("RIGETTI_QCS_TOKEN").is_ok() {
+    if std::env::var(socket_env::RIGETTI_QCS_TOKEN).is_ok() {
         platforms.push(PlatformType::Quantum {
             framework: "Rigetti QCS".to_string(),
             simulator: false,

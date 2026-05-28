@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
+use toadstool_common::interned_strings::socket_env;
 use toadstool::security::{IsolationLevel, SecurityContext};
 use toadstool::workload::WorkloadSpec;
 
@@ -42,10 +43,10 @@ impl Default for SandboxConfig {
         let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
 
         // Platform-agnostic path resolution (ecoBin v2.0 compliant)
-        let sandbox_root = std::env::var("XDG_DATA_HOME")
+        let sandbox_root = std::env::var(socket_env::XDG_DATA_HOME)
             .map(PathBuf::from)
             .unwrap_or_else(|_| {
-                std::env::var("HOME")
+                std::env::var(socket_env::HOME)
                     .map(|h| PathBuf::from(h).join(".local/share"))
                     .unwrap_or_else(|_| std::env::temp_dir())
             })

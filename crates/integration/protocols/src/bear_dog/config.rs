@@ -6,6 +6,7 @@
 //!   2. `BEARDOG_SOCKET` env var (legacy identity-based fallback)
 //!   3. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability-domain socket)
 
+use toadstool_common::interned_strings::socket_env;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
@@ -31,11 +32,12 @@ pub struct SecurityConfig {
 }
 
 impl Default for SecurityConfig {
+    #[expect(deprecated, reason = "reads legacy BEARDOG_SOCKET as backward-compat fallback")]
     fn default() -> Self {
-        let socket_path = std::env::var("BIOMEOS_CRYPTO_SOCKET")
-            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+        let socket_path = std::env::var(socket_env::BIOMEOS_CRYPTO_SOCKET)
+            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_SOCKET_ENV))
             .unwrap_or_else(|_| {
-                let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+                let runtime_dir = std::env::var(socket_env::XDG_RUNTIME_DIR)
                     .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
                 format!("{runtime_dir}/biomeos/{CAPABILITY_SOCKET_FILENAME}")
             });

@@ -6,6 +6,8 @@
 
 use crate::cloud_provider_trait::{CloudProvider, WorkloadLocation};
 
+use toadstool_common::interned_strings::socket_env;
+
 use super::MigrationCoordinator;
 use crate::ToadStoolResult;
 use tracing::info;
@@ -34,9 +36,9 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
             }
             Some(WorkloadLocation::Cloud { .. }) => {
                 info!("📥 Migrating {} to local", workload_id);
-                let hostname = std::env::var("HOSTNAME")
-                    .or_else(|_| std::env::var("HOST"))
-                    .or_else(|_| std::env::var("COMPUTERNAME"))
+                let hostname = std::env::var(socket_env::HOSTNAME)
+                    .or_else(|_| std::env::var(socket_env::HOST))
+                    .or_else(|_| std::env::var(socket_env::COMPUTERNAME))
                     .unwrap_or_else(|_| format!("node-{}", uuid::Uuid::new_v4()));
                 WorkloadLocation::Local { hostname }
             }

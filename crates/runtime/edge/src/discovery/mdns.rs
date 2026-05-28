@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info};
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool::error::ToadStoolResult;
 
 use crate::platforms::*;
@@ -107,9 +108,9 @@ impl MDNSDiscovery {
     async fn discover_via_edge_registry(
         &self,
     ) -> ToadStoolResult<Option<Vec<Arc<dyn EdgeDevice>>>> {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+        let runtime_dir = std::env::var(socket_env::XDG_RUNTIME_DIR)
             .ok()
-            .or_else(|| std::env::var("BIOMEOS_RUNTIME_DIR").ok())
+            .or_else(|| std::env::var(socket_env::BIOMEOS_RUNTIME_DIR).ok())
             .unwrap_or_else(|| {
                 std::env::temp_dir()
                     .join("toadstool-runtime")

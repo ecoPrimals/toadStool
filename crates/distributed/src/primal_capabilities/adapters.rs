@@ -3,6 +3,7 @@
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::capabilities;
 // No longer using reqwest - using unix sockets (pure Rust!)
@@ -128,7 +129,7 @@ impl CoordinationAdapter {
 
     /// Create a coordination adapter from explicit configuration (path override supported).
     pub fn from_config(config: CoordinationAdapterConfig) -> Result<Self, DistributedError> {
-        let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT")
+        let toadstool_endpoint = std::env::var(socket_env::TOADSTOOL_ENDPOINT)
             .map_err(|_| DistributedError::ToadstoolEndpointNotSet)?;
         Self::build(
             config.coordination_endpoint,

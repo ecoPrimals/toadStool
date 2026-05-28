@@ -7,6 +7,7 @@
 //! hardware is found — this is the normal case on most machines.
 
 use super::types::PlatformType;
+use toadstool_common::interned_strings::socket_env;
 use toadstool::ToadStoolResult;
 
 /// Detect experimental platforms by probing for hardware indicators.
@@ -34,8 +35,8 @@ pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
 }
 
 fn probe_fpga() -> Option<PlatformType> {
-    let has_xrt = std::env::var("XILINX_XRT").is_ok();
-    let has_quartus = std::env::var("QUARTUS_ROOTDIR").is_ok();
+    let has_xrt = std::env::var(socket_env::XILINX_XRT).is_ok();
+    let has_quartus = std::env::var(socket_env::QUARTUS_ROOTDIR).is_ok();
     let has_xclmgmt = std::path::Path::new("/dev/xclmgmt0").exists();
 
     if has_xrt || has_xclmgmt {
@@ -55,8 +56,8 @@ fn probe_fpga() -> Option<PlatformType> {
 
 fn probe_neuromorphic() -> Option<PlatformType> {
     let has_akida_vfio = std::path::Path::new("/sys/bus/pci/drivers/vfio-pci").exists()
-        && std::env::var("AKIDA_DEVICE_ID").is_ok();
-    let has_spinnaker = std::env::var("SPINNAKER_ROOT").is_ok();
+        && std::env::var(socket_env::AKIDA_DEVICE_ID).is_ok();
+    let has_spinnaker = std::env::var(socket_env::SPINNAKER_ROOT).is_ok();
 
     if has_akida_vfio {
         Some(PlatformType::Other {
@@ -74,8 +75,8 @@ fn probe_neuromorphic() -> Option<PlatformType> {
 }
 
 fn probe_quantum_sim() -> Option<PlatformType> {
-    let has_qiskit = std::env::var("QISKIT_HOME").is_ok();
-    let has_cirq = std::env::var("CIRQ_HOME").is_ok();
+    let has_qiskit = std::env::var(socket_env::QISKIT_HOME).is_ok();
+    let has_cirq = std::env::var(socket_env::CIRQ_HOME).is_ok();
 
     if has_qiskit || has_cirq {
         let runtime = if has_qiskit { "qiskit" } else { "cirq" };

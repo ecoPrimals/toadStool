@@ -4,14 +4,15 @@ use tracing::info;
 
 use super::super::types::{Terminal3270, Terminal3270Attributes, Terminal5250};
 
+use toadstool_common::interned_strings::socket_env;
 use crate::{AuthenticationSettings, ConnectionSettings, ToadStoolResult};
 
 impl Default for Terminal3270 {
     fn default() -> Self {
         Self {
             connection: ConnectionSettings {
-                host: std::env::var("TOADSTOOL_MAINFRAME_3270_HOST").unwrap_or_else(|_| {
-                    std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| {
+                host: std::env::var(socket_env::TOADSTOOL_MAINFRAME_3270_HOST).unwrap_or_else(|_| {
+                    std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS).unwrap_or_else(|_| {
                         toadstool_common::constants::network::LOCALHOST_IPV4.to_string()
                     })
                 }),
@@ -75,8 +76,8 @@ impl Default for Terminal5250 {
     fn default() -> Self {
         Self {
             connection: ConnectionSettings {
-                host: std::env::var("TOADSTOOL_MAINFRAME_5250_HOST").unwrap_or_else(|_| {
-                    std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| {
+                host: std::env::var(socket_env::TOADSTOOL_MAINFRAME_5250_HOST).unwrap_or_else(|_| {
+                    std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS).unwrap_or_else(|_| {
                         toadstool_common::constants::network::LOCALHOST_IPV4.to_string()
                     })
                 }),

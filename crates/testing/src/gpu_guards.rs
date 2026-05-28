@@ -36,6 +36,8 @@
 //! driver issue that poisons wgpu devices on failed f64 transcendental
 //! compilation also causes SIGSEGV during device teardown in tests.
 
+use toadstool_common::interned_strings::socket_env;
+
 /// Returns `true` if the current system is safe for wgpu device creation/teardown.
 ///
 /// Checks:
@@ -47,11 +49,11 @@
 /// Unsafe drivers: `nvidia` (proprietary)
 #[must_use]
 pub fn is_wgpu_safe() -> bool {
-    if let Ok(val) = std::env::var("TOADSTOOL_WGPU_SAFE") {
+    if let Ok(val) = std::env::var(socket_env::TOADSTOOL_WGPU_SAFE) {
         return val == "1" || val.eq_ignore_ascii_case("true");
     }
 
-    if let Ok(adapter) = std::env::var("TOADSTOOL_GPU_ADAPTER") {
+    if let Ok(adapter) = std::env::var(socket_env::TOADSTOOL_GPU_ADAPTER) {
         let lower = adapter.to_lowercase();
         if lower.contains("nvidia") && !lower.contains("nvk") && !lower.contains("nouveau") {
             return false;
@@ -69,7 +71,7 @@ pub fn is_wgpu_safe() -> bool {
 /// pure compute through DRM render nodes without an HDMI stub or display server.
 #[must_use]
 pub fn is_headless() -> bool {
-    std::env::var("TOADSTOOL_HEADLESS")
+    std::env::var(socket_env::TOADSTOOL_HEADLESS)
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false)
 }

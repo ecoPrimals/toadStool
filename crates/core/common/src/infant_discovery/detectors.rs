@@ -28,6 +28,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::constants::platform_paths::procfs;
+use crate::interned_strings::socket_env;
 
 use super::capabilities::{
     DetectedSubstrate, DiscoveryError, SubstrateCapability, SubstrateDetector, SubstrateType,
@@ -53,7 +54,7 @@ impl HardwareEnvironment {
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            hostname: std::env::var("HOSTNAME").ok(),
+            hostname: std::env::var(socket_env::HOSTNAME).ok(),
         }
     }
 }
@@ -107,12 +108,12 @@ impl SubstrateDetector for BareMetalDetector {
             metadata.insert("deployment".to_string(), deployment_type.to_string());
 
             // Add hostname for identification
-            if let Ok(hostname) = std::env::var("HOSTNAME") {
+            if let Ok(hostname) = std::env::var(socket_env::HOSTNAME) {
                 metadata.insert("hostname".to_string(), hostname);
             }
 
             // Add OS information
-            if let Ok(os) = std::env::var("OS") {
+            if let Ok(os) = std::env::var(socket_env::OS) {
                 metadata.insert("os".to_string(), os);
             }
 

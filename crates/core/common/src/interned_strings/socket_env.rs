@@ -398,3 +398,121 @@ pub const FUNCTIONS_WORKER_RUNTIME: &str = "FUNCTIONS_WORKER_RUNTIME";
 pub const AZURE_VM_SIZE: &str = "AZURE_VM_SIZE";
 pub const AZURE_LOCATION: &str = "AZURE_LOCATION";
 pub const AZURE_REGION: &str = "AZURE_REGION";
+
+// ── Environment / runtime mode ──────────────────────────────────────────
+pub const TOADSTOOL_ENVIRONMENT: &str = "TOADSTOOL_ENVIRONMENT";
+pub const ENVIRONMENT: &str = "ENVIRONMENT";
+pub const ENV: &str = "ENV";
+pub const HOST: &str = "HOST";
+pub const DISPLAY: &str = "DISPLAY";
+pub const WAYLAND_DISPLAY: &str = "WAYLAND_DISPLAY";
+
+// ── Discovery infrastructure ────────────────────────────────────────────
+pub const TOADSTOOL_DISCOVERY_CONFIG: &str = "TOADSTOOL_DISCOVERY_CONFIG";
+pub const TOADSTOOL_DISCOVERY_FALLBACK_PORT: &str = "TOADSTOOL_DISCOVERY_FALLBACK_PORT";
+pub const TOADSTOOL_DISCOVERY_FALLBACK_ENABLED: &str = "TOADSTOOL_DISCOVERY_FALLBACK_ENABLED";
+pub const TOADSTOOL_SERVICE_DIR: &str = "TOADSTOOL_SERVICE_DIR";
+pub const TOADSTOOL_REGISTRY_ENDPOINT: &str = "TOADSTOOL_REGISTRY_ENDPOINT";
+pub const BIOMEOS_RUNTIME_DIR: &str = "BIOMEOS_RUNTIME_DIR";
+
+// ── Service URLs (capability-based, not primal-named) ────────────────
+pub const TOADSTOOL_COORDINATION_SERVICE_URL: &str = "TOADSTOOL_COORDINATION_SERVICE_URL";
+pub const TOADSTOOL_CRYPTO_SERVICE_URL: &str = "TOADSTOOL_CRYPTO_SERVICE_URL";
+pub const TOADSTOOL_STORAGE_SERVICE_URL: &str = "TOADSTOOL_STORAGE_SERVICE_URL";
+pub const TOADSTOOL_AI_SERVICE_URL: &str = "TOADSTOOL_AI_SERVICE_URL";
+pub const TOADSTOOL_COORDINATOR: &str = "TOADSTOOL_COORDINATOR";
+pub const TOADSTOOL_STORAGE: &str = "TOADSTOOL_STORAGE";
+pub const TOADSTOOL_SERVICES: &str = "TOADSTOOL_SERVICES";
+
+// ── K8s / container orchestration (external env vars) ─────────────────
+pub const KUBERNETES_SERVICE_HOST: &str = "KUBERNETES_SERVICE_HOST";
+pub const POD_NAMESPACE: &str = "POD_NAMESPACE";
+pub const COMPOSE_PROJECT_NAME: &str = "COMPOSE_PROJECT_NAME";
+pub const CONSUL_HTTP_ADDR: &str = "CONSUL_HTTP_ADDR";
+pub const ETCD_ENDPOINTS: &str = "ETCD_ENDPOINTS";
+
+// ── Monitoring / observability ──────────────────────────────────────────
+pub const TOADSTOOL_TELEMETRY: &str = "TOADSTOOL_TELEMETRY";
+pub const TOADSTOOL_PROMETHEUS_PORT: &str = "TOADSTOOL_PROMETHEUS_PORT";
+pub const PROMETHEUS_PORT: &str = "PROMETHEUS_PORT";
+pub const TOADSTOOL_PROMETHEUS_HOST: &str = "TOADSTOOL_PROMETHEUS_HOST";
+pub const PROMETHEUS_HOST: &str = "PROMETHEUS_HOST";
+pub const TOADSTOOL_JAEGER_ENDPOINT: &str = "TOADSTOOL_JAEGER_ENDPOINT";
+pub const TOADSTOOL_AUDIT_LOG_PATH: &str = "TOADSTOOL_AUDIT_LOG_PATH";
+
+// ── TLS / certificate paths ────────────────────────────────────────────
+pub const TOADSTOOL_CA_CERT: &str = "TOADSTOOL_CA_CERT";
+pub const TOADSTOOL_SERVICE_CERT: &str = "TOADSTOOL_SERVICE_CERT";
+pub const TOADSTOOL_SERVICE_KEY: &str = "TOADSTOOL_SERVICE_KEY";
+
+// ── Client configuration ───────────────────────────────────────────────
+pub const TOADSTOOL_SERVER_URL: &str = "TOADSTOOL_SERVER_URL";
+pub const TOADSTOOL_REQUEST_TIMEOUT_MS: &str = "TOADSTOOL_REQUEST_TIMEOUT_MS";
+pub const TOADSTOOL_MAX_RETRIES: &str = "TOADSTOOL_MAX_RETRIES";
+pub const TOADSTOOL_RETRY_BACKOFF_MS: &str = "TOADSTOOL_RETRY_BACKOFF_MS";
+
+// ── Discovery / auto-config ────────────────────────────────────────────
+pub const TOADSTOOL_SKIP_DISCOVERY: &str = "TOADSTOOL_SKIP_DISCOVERY";
+pub const TOADSTOOL_DISCOVERY_BIND_ADDR: &str = "TOADSTOOL_DISCOVERY_BIND_ADDR";
+pub const TOADSTOOL_DISCOVERY_HTTP_PORT: &str = "TOADSTOOL_DISCOVERY_HTTP_PORT";
+pub const TOADSTOOL_SCAN_SUBNET: &str = "TOADSTOOL_SCAN_SUBNET";
+pub const TOADSTOOL_AUTO_DISCOVER: &str = "TOADSTOOL_AUTO_DISCOVER";
+pub const TOADSTOOL_SIDECAR_IMAGE: &str = "TOADSTOOL_SIDECAR_IMAGE";
+pub const TOADSTOOL_CREDENTIALS: &str = "TOADSTOOL_CREDENTIALS";
+pub const SERVICE_REGISTRY_URL: &str = "SERVICE_REGISTRY_URL";
+
+// ── IPC / biomeOS ──────────────────────────────────────────────────────
+pub const BIOMEOS_IPC_PORT: &str = "BIOMEOS_IPC_PORT";
+pub const TOADSTOOL_ENDPOINT: &str = "TOADSTOOL_ENDPOINT";
+pub const TOADSTOOL_FEDERATION_ENDPOINT: &str = "TOADSTOOL_FEDERATION_ENDPOINT";
+pub const TOADSTOOL_CRYPTO_PERMISSIONS_STORE: &str = "TOADSTOOL_CRYPTO_PERMISSIONS_STORE";
+pub const DBUS_SESSION_BUS_ADDRESS: &str = "DBUS_SESSION_BUS_ADDRESS";
+
+// ── Profiler configuration ─────────────────────────────────────────────
+pub const TOADSTOOL_PROFILER_WARMUP: &str = "TOADSTOOL_PROFILER_WARMUP";
+pub const TOADSTOOL_PROFILER_BENCH_ITERS: &str = "TOADSTOOL_PROFILER_BENCH_ITERS";
+pub const TOADSTOOL_PROFILER_TIMEOUT_MS: &str = "TOADSTOOL_PROFILER_TIMEOUT_MS";
+pub const TOADSTOOL_PROFILER_PARALLEL: &str = "TOADSTOOL_PROFILER_PARALLEL";
+pub const TOADSTOOL_PROFILER_DETAILED: &str = "TOADSTOOL_PROFILER_DETAILED";
+pub const TOADSTOOL_PROFILER_OUTPUT: &str = "TOADSTOOL_PROFILER_OUTPUT";
+
+// ── Substrate detection ────────────────────────────────────────────────
+pub const TOADSTOOL_SUBSTRATE_PREFERRED: &str = "TOADSTOOL_SUBSTRATE_PREFERRED";
+pub const TOADSTOOL_POWER_BUDGET: &str = "TOADSTOOL_POWER_BUDGET";
+pub const TOADSTOOL_PERFORMANCE_TARGET: &str = "TOADSTOOL_PERFORMANCE_TARGET";
+pub const BIND_ADDRESS: &str = "BIND_ADDRESS";
+pub const PRIMAL_CAPABILITIES_PATH: &str = "PRIMAL_CAPABILITIES_PATH";
+
+// ── Auth ────────────────────────────────────────────────────────────────
+pub const TOADSTOOL_AUTH_AUDIENCE: &str = "TOADSTOOL_AUTH_AUDIENCE";
+
+// ── Ember / hardware-vendor lifecycle ──────────────────────────────────
+pub const TOADSTOOL_INTEL_SETTLE_SECS: &str = "TOADSTOOL_INTEL_SETTLE_SECS";
+
+// ── GPU testing ─────────────────────────────────────────────────────────
+pub const TOADSTOOL_WGPU_SAFE: &str = "TOADSTOOL_WGPU_SAFE";
+
+// ── Cross-platform ─────────────────────────────────────────────────────
+pub const COMPUTERNAME: &str = "COMPUTERNAME";
+pub const ANDROID_ROOT: &str = "ANDROID_ROOT";
+pub const OS: &str = "OS";
+
+// ── Mainframe terminal ─────────────────────────────────────────────────
+pub const TOADSTOOL_MAINFRAME_3270_HOST: &str = "TOADSTOOL_MAINFRAME_3270_HOST";
+pub const TOADSTOOL_MAINFRAME_5250_HOST: &str = "TOADSTOOL_MAINFRAME_5250_HOST";
+
+// ── External SDK / third-party substrate detection ─────────────────────
+pub const XILINX_XRT: &str = "XILINX_XRT";
+pub const QUARTUS_ROOTDIR: &str = "QUARTUS_ROOTDIR";
+pub const AKIDA_DEVICE_ID: &str = "AKIDA_DEVICE_ID";
+pub const AKIDA_DRIVER_PATH: &str = "AKIDA_DRIVER_PATH";
+pub const SPINNAKER_ROOT: &str = "SPINNAKER_ROOT";
+pub const QISKIT_HOME: &str = "QISKIT_HOME";
+pub const CIRQ_HOME: &str = "CIRQ_HOME";
+pub const IBM_QUANTUM_TOKEN: &str = "IBM_QUANTUM_TOKEN";
+pub const RIGETTI_QCS_TOKEN: &str = "RIGETTI_QCS_TOKEN";
+pub const TWIST_BIOSCIENCE_API_KEY: &str = "TWIST_BIOSCIENCE_API_KEY";
+
+// ── Deprecated legacy ────────────────────────────────────────────────
+#[deprecated(since = "0.5.0", note = "use FAMILY_SEED")]
+pub const BEARDOG_FAMILY_SEED: &str = "BEARDOG_FAMILY_SEED";

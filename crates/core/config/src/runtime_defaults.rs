@@ -11,6 +11,7 @@ pub mod validation;
 use std::path::Path;
 
 use tracing::{info, warn};
+use toadstool_common::interned_strings::socket_env;
 
 use crate::ToadStoolConfig;
 
@@ -79,10 +80,10 @@ impl ToadStoolConfig {
     #[must_use = "Configuration should be used or it will be dropped"]
     pub fn for_current_environment() -> Self {
         // Try multiple environment variable names in priority order
-        let environment = std::env::var("TOADSTOOL_ENVIRONMENT")
-            .or_else(|_| std::env::var("TOADSTOOL_ENV"))
-            .or_else(|_| std::env::var("ENVIRONMENT"))
-            .or_else(|_| std::env::var("ENV"))
+        let environment = std::env::var(socket_env::TOADSTOOL_ENVIRONMENT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_ENV))
+            .or_else(|_| std::env::var(socket_env::ENVIRONMENT))
+            .or_else(|_| std::env::var(socket_env::ENV))
             .unwrap_or_else(|_| {
                 // Default to development environment if no variable set
                 info!("No environment variable set, defaulting to 'development'");

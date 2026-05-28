@@ -104,7 +104,7 @@ impl PatchSet {
                 .and_then(|v| v.as_str())
                 .ok_or("patch missing 'strategy'")?;
 
-            let strategy = super::types::PatchStrategy::from_str(strategy_str)
+            let strategy: super::types::PatchStrategy = strategy_str.parse()
                 .map_err(|e| format!("invalid strategy '{strategy_str}': {e}"))?;
 
             targets.push(super::types::PatchTarget { symbol, strategy });

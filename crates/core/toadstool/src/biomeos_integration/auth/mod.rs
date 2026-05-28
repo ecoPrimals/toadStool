@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use toadstool_common::constants::primal_identity::{PRIMAL_NAME, audience};
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
+use toadstool_common::interned_strings::socket_env;
 
 use super::auth_backend::{AuthBackend, AuthBackendDispatch};
 use crate::ToadStoolResult;
@@ -70,7 +71,7 @@ impl Default for AuthManagerConfig {
 /// Falls back to self + platform audience when the variable is absent.
 /// ToadStool only knows itself; external peers are discovered at runtime.
 fn default_token_audience() -> Vec<String> {
-    if let Ok(val) = std::env::var("TOADSTOOL_AUTH_AUDIENCE") {
+    if let Ok(val) = std::env::var(socket_env::TOADSTOOL_AUTH_AUDIENCE) {
         let list: Vec<String> = val
             .split(',')
             .map(str::trim)

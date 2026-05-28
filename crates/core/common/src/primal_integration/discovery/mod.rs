@@ -6,6 +6,7 @@
 use tracing::{debug, info, warn};
 
 use crate::constants::discovery_ports::DISCOVERY_HTTP_FALLBACK;
+use crate::interned_strings::socket_env;
 
 use super::{DiscoveryError, DiscoveryResult, PrimalEndpoint};
 
@@ -22,7 +23,7 @@ pub use backends::{
 /// Port for capability-based service discovery (K8s, Docker Compose).
 /// Overridable via `TOADSTOOL_DISCOVERY_HTTP_PORT` environment variable.
 pub fn discovery_http_port() -> u16 {
-    std::env::var("TOADSTOOL_DISCOVERY_HTTP_PORT")
+    std::env::var(socket_env::TOADSTOOL_DISCOVERY_HTTP_PORT)
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(DISCOVERY_HTTP_FALLBACK)

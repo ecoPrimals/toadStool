@@ -8,6 +8,13 @@
 //!   sovereign_pmu_boot <resource0> <pmu_imem.bin> <pmu_dmem.bin> [--dry-run]
 
 #![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
+#![allow(
+    unused_variables, unused_assignments,
+    clippy::unreadable_literal, clippy::borrow_as_ptr,
+    clippy::manual_div_ceil, clippy::map_unwrap_or,
+    clippy::needless_pass_by_value, clippy::cast_lossless,
+    clippy::explicit_iter_loop, clippy::unnecessary_unwrap,
+)]
 
 use toadstool_cylinder::nv::registers::{falcon, gpc, pgraph, pbus, pmc, pmu, pramin};
 use std::io;
@@ -30,7 +37,13 @@ struct Bar0 {
 }
 
 impl Bar0 {
+    /// # Safety
+    /// `fd` must be an open file descriptor to a PCI BAR0 resource file and
+    /// `size` must not exceed the device BAR region. Caller ensures exclusive
+    /// access to the mapped region (single-threaded diagnostic binary).
     unsafe fn map(fd: std::os::fd::BorrowedFd, size: usize) -> io::Result<Self> {
+        // SAFETY: fd is a valid sysfs resource0 file; size is BAR0_SIZE (16 MiB)
+        // matching GPU BAR0; MAP_SHARED is required for MMIO coherency.
         let ptr = unsafe {
             rustix::mm::mmap(
                 std::ptr::null_mut(),
@@ -49,16 +62,22 @@ impl Bar0 {
     }
 
     fn r32(&self, offset: u32) -> u32 {
+        // SAFETY: offset is validated by caller to be within BAR0_SIZE; volatile
+        // read is required for MMIO register semantics (no reordering/elision).
         unsafe { std::ptr::read_volatile(self.ptr.add(offset as usize / 4)) }
     }
 
     fn w32(&self, offset: u32, val: u32) {
+        // SAFETY: offset is validated by caller to be within BAR0_SIZE; volatile
+        // write is required for MMIO register semantics.
         unsafe { std::ptr::write_volatile(self.ptr.add(offset as usize / 4), val) }
     }
 }
 
 impl Drop for Bar0 {
     fn drop(&mut self) {
+        // SAFETY: ptr and len were set by a successful mmap in Self::map;
+        // Drop runs exactly once.
         unsafe {
             let _ = rustix::mm::munmap(self.ptr.cast(), self.len);
         }
@@ -141,6 +160,7 @@ fn main() -> ExitCode {
         }
     };
 
+    // SAFETY: BAR0 resource0 is a valid MMIO region for this GPU BDF.
     let bar0 = unsafe {
         match Bar0::map(file.as_fd(), BAR0_SIZE) {
             Ok(b) => b,

@@ -15,6 +15,7 @@ use tracing::{debug, info};
 use url::Url;
 use uuid::Uuid;
 
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 
 use super::config::ClientConfig;
@@ -49,7 +50,7 @@ pub(crate) fn resolve_socket_path(base_url: &str) -> PathBuf {
 
     // HTTP URL: use JSON-RPC socket (local daemon)
     // Env override for testing
-    if let Ok(s) = std::env::var("TOADSTOOL_SOCKET") {
+    if let Ok(s) = std::env::var(socket_env::TOADSTOOL_SOCKET) {
         return PathBuf::from(s);
     }
     // Default: domain-based socket per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1

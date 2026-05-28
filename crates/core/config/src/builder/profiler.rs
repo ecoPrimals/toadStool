@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use toadstool_common::interned_strings::socket_env;
+
 use super::{ConfigError, Result, ToadStoolConfigTrait};
 
 /// Profiler configuration
@@ -61,22 +63,22 @@ impl ToadStoolConfigTrait for ProfilerConfig {
         use std::env;
 
         Ok(Self {
-            warmup_iterations: env::var("TOADSTOOL_PROFILER_WARMUP")
+            warmup_iterations: env::var(socket_env::TOADSTOOL_PROFILER_WARMUP)
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(10),
-            benchmark_iterations: env::var("TOADSTOOL_PROFILER_BENCH_ITERS")
+            benchmark_iterations: env::var(socket_env::TOADSTOOL_PROFILER_BENCH_ITERS)
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(100),
-            timeout_ms: env::var("TOADSTOOL_PROFILER_TIMEOUT_MS")
+            timeout_ms: env::var(socket_env::TOADSTOOL_PROFILER_TIMEOUT_MS)
                 .ok()
                 .and_then(|s| s.parse().ok()),
-            parallel: env::var("TOADSTOOL_PROFILER_PARALLEL")
+            parallel: env::var(socket_env::TOADSTOOL_PROFILER_PARALLEL)
                 .is_ok_and(|s| s == "true" || s == "1"),
-            detailed_metrics: env::var("TOADSTOOL_PROFILER_DETAILED")
+            detailed_metrics: env::var(socket_env::TOADSTOOL_PROFILER_DETAILED)
                 .is_ok_and(|s| s == "true" || s == "1"),
-            output_format: env::var("TOADSTOOL_PROFILER_OUTPUT")
+            output_format: env::var(socket_env::TOADSTOOL_PROFILER_OUTPUT)
                 .ok()
                 .and_then(|s| match s.to_lowercase().as_str() {
                     "json" => Some(OutputFormat::Json),

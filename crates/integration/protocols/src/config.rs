@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use crate::types::{MessageFormat, TransportType};
 use toadstool_common::auth::ServiceAuthConfig;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
 
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
@@ -114,10 +115,10 @@ pub fn sample_consul_registry_url() -> String {
 /// Priority: `SERVICE_REGISTRY_URL` → `CONSUL_HTTP_ADDR` (no deployment default; set env in integration tests).
 #[must_use]
 pub fn service_registry_url() -> String {
-    if let Ok(url) = std::env::var("SERVICE_REGISTRY_URL") {
+    if let Ok(url) = std::env::var(socket_env::SERVICE_REGISTRY_URL) {
         return url;
     }
-    if let Ok(addr) = std::env::var("CONSUL_HTTP_ADDR") {
+    if let Ok(addr) = std::env::var(socket_env::CONSUL_HTTP_ADDR) {
         if addr.starts_with("http://") || addr.starts_with("https://") {
             return addr;
         }

@@ -24,7 +24,7 @@ pub(crate) mod pcie_keepalive;
 mod resource;
 mod statistics;
 
-use tracing::info;
+use tracing::{error, info};
 
 use toadstool::RuntimeEngine;
 
@@ -79,7 +79,9 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
     // Start catalyst handoff watchdog — OS thread (not tokio) that monitors
     // handoff liveness and performs emergency interrupt quench + process kill
     // if the pipeline becomes unresponsive (Exp 229 diesel engine safety net)
-    catalyst_watchdog::start_watchdog_thread();
+    if let Err(e) = catalyst_watchdog::start_watchdog_thread() {
+        error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
+    }
 
     info!("Background services started");
 

@@ -1,12 +1,32 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S280
+**Date**: May 2026 — S282
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S282 (Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization)**:
+Closed all 28 unsafe SAFETY documentation gaps (12 files). Evolved 4
+production panic paths to Result propagation (watchdog, Akida MMIO, Rayon
+pool, unified buffer). Migrated remaining 110 raw env::var sites to
+socket_env constants across 46 files (+56 new constants). Fixed 8
+pre-existing clippy errors in cylinder lib + 13 in server. Evolved
+`PatchStrategy::from_str` to idiomatic `impl FromStr`. Migrated last
+`libc::mmap`/`munmap` to `rustix::mm`. Zero libc, zero unsafe without
+SAFETY, zero production panics in lib, ~97% env centralized, 178 lib
+tests, zero clippy across full workspace.
+
+**S281 (Deep Debt Evolution IV: libc Elimination + Workspace Consolidation)**:
+Eliminated `libc` dependency from cylinder — last direct C binding on core
+hardware path. `rm_trigger` evolved to `rustix::ioctl` with typed `RmIoctl`
+adapter. Fixed P0 production panic in `bar_cartography.rs`. Added SAFETY
+comments to all 3 diagnostic bins. Consolidated `rustix` to workspace dep
+across 10 crates. Expanded `socket_env.rs` with +33 constants; migrated 47
+more raw env sites (64%→76% centralized). Zero libc in workspace. 9,156
+lib tests, zero clippy.
 
 **S280 (Wave 59 Env Centralization + Clippy Allow Evolution)**:
 primalSpring Wave 59 response. Deleted orphan `env_overrides.rs` (342L

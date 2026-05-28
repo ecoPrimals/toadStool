@@ -30,6 +30,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::constants::PRIMAL_NAME;
+use crate::interned_strings::socket_env;
 
 /// Opaque wrapper around a secret value.
 ///
@@ -192,12 +193,12 @@ pub async fn resolve_credential(name: &str) -> Result<SecretString, CredentialEr
 /// `$TOADSTOOL_CREDENTIALS` > `$XDG_CONFIG_HOME/toadstool/credentials`
 /// > `$HOME/.config/toadstool/credentials`.
 fn credentials_file_path() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("TOADSTOOL_CREDENTIALS") {
+    if let Ok(p) = std::env::var(socket_env::TOADSTOOL_CREDENTIALS) {
         return Some(PathBuf::from(p));
     }
-    let config_dir = std::env::var("XDG_CONFIG_HOME")
+    let config_dir = std::env::var(socket_env::XDG_CONFIG_HOME)
         .map(PathBuf::from)
-        .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".config")))
+        .or_else(|_| std::env::var(socket_env::HOME).map(|h| PathBuf::from(h).join(".config")))
         .ok()?;
     Some(config_dir.join(PRIMAL_NAME).join("credentials"))
 }
