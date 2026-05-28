@@ -80,17 +80,19 @@ pub(super) fn vendor_name(id: u16) -> &'static str {
 }
 
 pub(super) fn dirs_for_store() -> PathBuf {
-    if let Ok(dir) = std::env::var("TOADSTOOL_HW_LEARN_STORE") {
+    use toadstool_common::interned_strings::socket_env;
+
+    if let Ok(dir) = std::env::var(socket_env::TOADSTOOL_HW_LEARN_STORE) {
         return PathBuf::from(dir);
     }
 
-    if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
+    if let Ok(xdg) = std::env::var(socket_env::XDG_DATA_HOME) {
         return PathBuf::from(xdg)
             .join("toadstool")
             .join("hw-learn-recipes");
     }
 
-    if let Ok(home) = std::env::var("HOME") {
+    if let Ok(home) = std::env::var(socket_env::HOME) {
         return PathBuf::from(home)
             .join(".local")
             .join("share")

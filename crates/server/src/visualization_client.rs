@@ -93,7 +93,7 @@ impl VisualizationClient {
     /// (`biomeos/shader.sock`), Tier 3 (`ecoPrimals/shader_compile.sock`, then `shader*.sock` scan).
     fn discover_blocking() -> Option<UnixJsonRpcClient> {
         // Tier 0: Explicit override (first check in this fallback chain)
-        if let Ok(addr) = std::env::var("TOADSTOOL_SHADER_COMPILER_ADDR") {
+        if let Ok(addr) = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SHADER_COMPILER_ADDR) {
             let path = PathBuf::from(&addr);
             if path.exists() {
                 debug!(path = %path.display(), "shader compiler discovered via TOADSTOOL_SHADER_COMPILER_ADDR");
@@ -101,7 +101,7 @@ impl VisualizationClient {
             }
         }
 
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").ok()?;
+        let runtime_dir = std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR).ok()?;
         let runtime = PathBuf::from(&runtime_dir);
         let biomeos = runtime.join("biomeos");
 

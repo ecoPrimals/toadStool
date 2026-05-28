@@ -9,10 +9,23 @@
 //! `LEGACY_*_SOCKET_ENV` names are identity-based fallbacks only; see
 //! `capabilities::*` and capability discovery in the wateringHole standards.
 
+// POSIX / XDG Base Directory Specification.
 pub const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";
+pub const XDG_DATA_HOME: &str = "XDG_DATA_HOME";
+pub const XDG_CACHE_HOME: &str = "XDG_CACHE_HOME";
+pub const XDG_CONFIG_HOME: &str = "XDG_CONFIG_HOME";
 pub const USER: &str = "USER";
 /// Standard home directory path (shell / POSIX).
 pub const HOME: &str = "HOME";
+pub const HOSTNAME: &str = "HOSTNAME";
+pub const TMPDIR: &str = "TMPDIR";
+pub const TMP: &str = "TMP";
+pub const TEMP: &str = "TEMP";
+
+// Windows equivalents for cross-platform path resolution.
+pub const USERPROFILE: &str = "USERPROFILE";
+pub const USERNAME: &str = "USERNAME";
+pub const APPDATA: &str = "APPDATA";
 
 pub const TOADSTOOL_FAMILY_ID: &str = "TOADSTOOL_FAMILY_ID";
 pub const TOADSTOOL_FAMILY: &str = "TOADSTOOL_FAMILY";
@@ -98,6 +111,19 @@ pub const LEGACY_NESTGATE_ENDPOINT: &str = "NESTGATE_ENDPOINT";
 
 pub const TOADSTOOL_AI_ENDPOINT: &str = "TOADSTOOL_AI_ENDPOINT";
 pub const TOADSTOOL_INTELLIGENCE_ENDPOINT: &str = "TOADSTOOL_INTELLIGENCE_ENDPOINT";
+
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_ENDPOINT`.
+#[deprecated(note = "use TOADSTOOL_COORDINATION_ENDPOINT")]
+pub const TOADSTOOL_SONGBIRD_ENDPOINT: &str = "TOADSTOOL_SONGBIRD_ENDPOINT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_SECURITY_ENDPOINT`.
+#[deprecated(note = "use TOADSTOOL_SECURITY_ENDPOINT")]
+pub const TOADSTOOL_BEARDOG_ENDPOINT: &str = "TOADSTOOL_BEARDOG_ENDPOINT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_STORAGE_ENDPOINT`.
+#[deprecated(note = "use TOADSTOOL_STORAGE_ENDPOINT")]
+pub const TOADSTOOL_NESTGATE_ENDPOINT: &str = "TOADSTOOL_NESTGATE_ENDPOINT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_AI_ENDPOINT`.
+#[deprecated(note = "use TOADSTOOL_AI_ENDPOINT")]
+pub const TOADSTOOL_SQUIRREL_ENDPOINT: &str = "TOADSTOOL_SQUIRREL_ENDPOINT";
 pub const AI_PROCESSING_ENDPOINT: &str = "AI_PROCESSING_ENDPOINT";
 pub const TOADSTOOL_AI_PROCESSING_ENDPOINT: &str = "TOADSTOOL_AI_PROCESSING_ENDPOINT";
 pub const INTELLIGENCE_URL: &str = "INTELLIGENCE_URL";
@@ -260,6 +286,12 @@ pub const TOADSTOOL_INTELLIGENCE_PROVIDER: &str = "TOADSTOOL_INTELLIGENCE_PROVID
 
 /// Comma-separated wgpu adapter selector (index, name substring, or `auto`).
 pub const TOADSTOOL_GPU_ADAPTER: &str = "TOADSTOOL_GPU_ADAPTER";
+/// Override directory for hw-learn recipe persistence.
+pub const TOADSTOOL_HW_LEARN_STORE: &str = "TOADSTOOL_HW_LEARN_STORE";
+/// Explicit shader compiler UDS path override.
+pub const TOADSTOOL_SHADER_COMPILER_ADDR: &str = "TOADSTOOL_SHADER_COMPILER_ADDR";
+/// Set `1` or `true` to restrict GPU backends to Vulkan (no display server probe).
+pub const TOADSTOOL_HEADLESS: &str = "TOADSTOOL_HEADLESS";
 
 /// Display IPC: full `host:port` TCP endpoint override.
 pub const TOADSTOOL_DISPLAY_IPC_ADDR: &str = "TOADSTOOL_DISPLAY_IPC_ADDR";
@@ -268,6 +300,81 @@ pub const TOADSTOOL_DISPLAY_IPC_PORT: &str = "TOADSTOOL_DISPLAY_IPC_PORT";
 
 /// Localhost discovery: HTTP port for native compute when no service registry is available.
 pub const TOADSTOOL_LOCAL_PORT: &str = "TOADSTOOL_LOCAL_PORT";
+
+// systemd socket activation / notification.
+pub const NOTIFY_SOCKET: &str = "NOTIFY_SOCKET";
+pub const LISTEN_FDS: &str = "LISTEN_FDS";
+pub const LISTEN_PID: &str = "LISTEN_PID";
+pub const LISTEN_FDNAMES: &str = "LISTEN_FDNAMES";
+
+// Server identity (unibin).
+pub const TOADSTOOL_GATE_ID: &str = "TOADSTOOL_GATE_ID";
+pub const TOADSTOOL_AUTH_MODE: &str = "TOADSTOOL_AUTH_MODE";
+pub const TOADSTOOL_DEPLOYMENT_MODEL: &str = "TOADSTOOL_DEPLOYMENT_MODEL";
+
+// Domain discovery (DNS-based fallback naming).
+pub const COMPUTE_DOMAIN: &str = "COMPUTE_DOMAIN";
+pub const TOADSTOOL_DOMAIN: &str = "TOADSTOOL_DOMAIN";
+pub const COORDINATION_DOMAIN: &str = "COORDINATION_DOMAIN";
+pub const SECURITY_DOMAIN: &str = "SECURITY_DOMAIN";
+pub const STORAGE_DOMAIN: &str = "STORAGE_DOMAIN";
+pub const AI_PROCESSING_DOMAIN: &str = "AI_PROCESSING_DOMAIN";
+pub const BIOMEOS_DOMAIN: &str = "BIOMEOS_DOMAIN";
+/// **Deprecated** (identity-based). Prefer `COORDINATION_DOMAIN`.
+#[deprecated(note = "use COORDINATION_DOMAIN")]
+pub const SONGBIRD_DOMAIN: &str = "SONGBIRD_DOMAIN";
+/// **Deprecated** (identity-based). Prefer `SECURITY_DOMAIN`.
+#[deprecated(note = "use SECURITY_DOMAIN")]
+pub const BEARDOG_DOMAIN: &str = "BEARDOG_DOMAIN";
+/// **Deprecated** (identity-based). Prefer `STORAGE_DOMAIN`.
+#[deprecated(note = "use STORAGE_DOMAIN")]
+pub const NESTGATE_DOMAIN: &str = "NESTGATE_DOMAIN";
+/// **Deprecated** (identity-based). Prefer `AI_PROCESSING_DOMAIN`.
+#[deprecated(note = "use AI_PROCESSING_DOMAIN")]
+pub const SQUIRREL_DOMAIN: &str = "SQUIRREL_DOMAIN";
+
+// DNS and server config.
+pub const TOADSTOOL_DNS_SERVERS: &str = "TOADSTOOL_DNS_SERVERS";
+pub const TOADSTOOL_DNS_SEARCH_DOMAINS: &str = "TOADSTOOL_DNS_SEARCH_DOMAINS";
+pub const TOADSTOOL_TEMP_DIR: &str = "TOADSTOOL_TEMP_DIR";
+pub const TOADSTOOL_SECURITY_WARNING_ACKNOWLEDGED: &str = "TOADSTOOL_SECURITY_WARNING_ACKNOWLEDGED";
+
+// Crypto provider public key discovery (capability-based, then legacy identity fallback).
+pub const CRYPTO_PROVIDER_PUBLIC_KEY: &str = "CRYPTO_PROVIDER_PUBLIC_KEY";
+pub const STORAGE_PROVIDER_PUBLIC_KEY: &str = "STORAGE_PROVIDER_PUBLIC_KEY";
+pub const DISCOVERY_PROVIDER_PUBLIC_KEY: &str = "DISCOVERY_PROVIDER_PUBLIC_KEY";
+/// **Deprecated** (identity-based). Prefer `CRYPTO_PROVIDER_PUBLIC_KEY`.
+#[deprecated(note = "use CRYPTO_PROVIDER_PUBLIC_KEY")]
+pub const BEARDOG_PUBLIC_KEY: &str = "BEARDOG_PUBLIC_KEY";
+/// **Deprecated** (identity-based). Prefer `STORAGE_PROVIDER_PUBLIC_KEY`.
+#[deprecated(note = "use STORAGE_PROVIDER_PUBLIC_KEY")]
+pub const NESTGATE_PUBLIC_KEY: &str = "NESTGATE_PUBLIC_KEY";
+/// **Deprecated** (identity-based). Prefer `DISCOVERY_PROVIDER_PUBLIC_KEY`.
+#[deprecated(note = "use DISCOVERY_PROVIDER_PUBLIC_KEY")]
+pub const SONGBIRD_PUBLIC_KEY: &str = "SONGBIRD_PUBLIC_KEY";
+
+// Cylinder hardware paths and ember lifecycle.
+pub const TOADSTOOL_EMBER_GATE: &str = "TOADSTOOL_EMBER_GATE";
+pub const TOADSTOOL_DRI_RENDER_PREFIX: &str = "TOADSTOOL_DRI_RENDER_PREFIX";
+pub const TOADSTOOL_EMBER_SOCKET: &str = "TOADSTOOL_EMBER_SOCKET";
+pub const BIOMEOS_ECOSYSTEM_NAMESPACE: &str = "BIOMEOS_ECOSYSTEM_NAMESPACE";
+/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_EMBER_GATE`.
+#[deprecated(note = "use TOADSTOOL_EMBER_GATE")]
+pub const CORALREEF_EMBER_GATE: &str = "CORALREEF_EMBER_GATE";
+/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_DATA_DIR`.
+#[deprecated(note = "use TOADSTOOL_DATA_DIR")]
+pub const CORALREEF_DATA_DIR: &str = "CORALREEF_DATA_DIR";
+/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_DRI_RENDER_PREFIX`.
+#[deprecated(note = "use TOADSTOOL_DRI_RENDER_PREFIX")]
+pub const CORALREEF_DRI_RENDER_PREFIX: &str = "CORALREEF_DRI_RENDER_PREFIX";
+/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_EMBER_SOCKET`.
+#[deprecated(note = "use TOADSTOOL_EMBER_SOCKET")]
+pub const CORALREEF_EMBER_SOCKET: &str = "CORALREEF_EMBER_SOCKET";
+
+// Vulkan / GPU tooling.
+pub const VK_ICD_FILENAMES: &str = "VK_ICD_FILENAMES";
+/// CI environment detection (GitHub Actions, etc.).
+pub const CI: &str = "CI";
 
 // Cloud / deployment layer hints (AWS, GCP, Azure — used by environment detection).
 pub const AWS_EXECUTION_ENV: &str = "AWS_EXECUTION_ENV";

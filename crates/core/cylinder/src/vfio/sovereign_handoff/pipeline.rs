@@ -1299,10 +1299,7 @@ pub fn execute_handoff(
 
                 let snapshot_path = format!(
                     "/tmp/toadstool-catalyst-{}.json",
-                    {
-                        #[allow(clippy::collapsible_str_replace)]
-                        config.bdf.replace(':', "-").replace('.', "-")
-                    }
+                    config.bdf.replace([':', '.'], "-")
                 );
                 if let Ok(json) = full_snapshot.to_json() {
                     if let Err(e) = std::fs::write(&snapshot_path, &json) {
@@ -1323,10 +1320,7 @@ pub fn execute_handoff(
                 );
                 let replay_path = format!(
                     "/tmp/toadstool-catalyst-replay-{}.json",
-                    {
-                        #[allow(clippy::collapsible_str_replace)]
-                        config.bdf.replace(':', "-").replace('.', "-")
-                    }
+                    config.bdf.replace([':', '.'], "-")
                 );
                 if let Ok(json) = replay.to_json() {
                     if let Err(e) = std::fs::write(&replay_path, &json) {

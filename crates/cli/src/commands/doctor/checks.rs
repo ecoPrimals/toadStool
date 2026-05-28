@@ -79,7 +79,7 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
 async fn check_gpu_available() -> bool {
     #[cfg(target_os = "linux")]
     {
-        Path::new("/usr/share/vulkan/icd.d").exists() || std::env::var("VK_ICD_FILENAMES").is_ok()
+        Path::new("/usr/share/vulkan/icd.d").exists() || std::env::var(toadstool_common::interned_strings::socket_env::VK_ICD_FILENAMES).is_ok()
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -157,7 +157,7 @@ pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
 pub(crate) async fn check_config_health() -> ConfigReport {
     let issues = vec![];
 
-    let home = std::env::var("HOME").ok();
+    let home = std::env::var(toadstool_common::interned_strings::socket_env::HOME).ok();
     let config_paths: Vec<PathBuf> = vec![
         PathBuf::from("toadstool.toml"),
         PathBuf::from(".toadstool/config.toml"),

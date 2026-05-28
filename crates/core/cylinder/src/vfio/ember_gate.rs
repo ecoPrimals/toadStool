@@ -119,10 +119,13 @@ pub fn check_channel(bdf: &str) -> Result<(), ChannelError> {
 }
 
 fn is_gate_disabled() -> bool {
-    let val = std::env::var("TOADSTOOL_EMBER_GATE")
+    use toadstool_common::interned_strings::socket_env;
+
+    #[expect(deprecated, reason = "legacy env-var fallback for migration")]
+    let val = std::env::var(socket_env::TOADSTOOL_EMBER_GATE)
         .ok()
         .or_else(|| {
-            let v = std::env::var("CORALREEF_EMBER_GATE").ok();
+            let v = std::env::var(socket_env::CORALREEF_EMBER_GATE).ok();
             if v.is_some() {
                 tracing::warn!("deprecated env var CORALREEF_EMBER_GATE — migrate to TOADSTOOL_EMBER_GATE");
             }

@@ -5,7 +5,8 @@ use std::path::PathBuf;
 
 /// Runtime base directory: `XDG_RUNTIME_DIR` or platform temp dir.
 pub(super) fn runtime_base_dir() -> PathBuf {
-    std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| std::env::temp_dir(), PathBuf::from)
+    std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR)
+        .map_or_else(|_| std::env::temp_dir(), PathBuf::from)
 }
 
 /// Get discovery directory (canonical path)

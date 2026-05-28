@@ -255,7 +255,7 @@ impl ToadStoolTarpcServer {
             .map_err(|e| ServerError::Network(e.to_string()))?;
         info!("✅ tarpc server listening on TCP: {}", local_addr);
 
-        let idle_secs = std::env::var("TOADSTOOL_TCP_IDLE_TIMEOUT_SECS")
+        let idle_secs = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_TCP_IDLE_TIMEOUT_SECS)
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS);

@@ -26,7 +26,7 @@ pub(crate) fn sd_notify(msg: &str) -> std::io::Result<()> {
 
 /// Send an `sd_notify` message with file descriptors via `SCM_RIGHTS`.
 fn sd_notify_with_fds(msg: &str, fds: &[BorrowedFd<'_>]) -> std::io::Result<()> {
-    let socket_path = std::env::var("NOTIFY_SOCKET")
+    let socket_path = std::env::var(toadstool_common::interned_strings::socket_env::NOTIFY_SOCKET)
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::NotFound, "NOTIFY_SOCKET not set"))?;
 
     let addr = if let Some(abstract_name) = socket_path.strip_prefix('@') {
@@ -161,12 +161,14 @@ pub(crate) fn store_anchors(anchors: &HashMap<String, VfioAnchor>) -> usize {
 /// Called on startup to recover anchors that were stored during the
 /// previous daemon's SIGTERM handler.
 pub(crate) fn retrieve_anchors() -> HashMap<String, VfioAnchor> {
-    let listen_fds: usize = std::env::var("LISTEN_FDS")
+    use toadstool_common::interned_strings::socket_env;
+
+    let listen_fds: usize = std::env::var(socket_env::LISTEN_FDS)
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
 
-    let listen_pid: u32 = std::env::var("LISTEN_PID")
+    let listen_pid: u32 = std::env::var(socket_env::LISTEN_PID)
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
@@ -175,7 +177,7 @@ pub(crate) fn retrieve_anchors() -> HashMap<String, VfioAnchor> {
         return HashMap::new();
     }
 
-    let names: Vec<String> = std::env::var("LISTEN_FDNAMES")
+    let names: Vec<String> = std::env::var(socket_env::LISTEN_FDNAMES)
         .ok()
         .map(|s| s.split(':').map(String::from).collect())
         .unwrap_or_default();

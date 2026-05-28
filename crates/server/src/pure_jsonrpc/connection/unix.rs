@@ -585,7 +585,7 @@ async fn handle_encrypted_session(
 /// Reads from `FAMILY_SEED` env var, or falls back to reading
 /// `.family.seed` from the biomeOS config directory.
 fn resolve_family_seed() -> ServerResult<Vec<u8>> {
-    if let Ok(seed) = std::env::var("FAMILY_SEED") {
+    if let Ok(seed) = std::env::var(toadstool_common::interned_strings::socket_env::FAMILY_SEED) {
         return Ok(seed.into_bytes());
     }
 

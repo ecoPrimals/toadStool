@@ -23,6 +23,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use toadstool::semantic_methods::SemanticMethodRegistry;
+use toadstool_common::interned_strings::socket_env;
 use tracing::{debug, error, info};
 
 use super::types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
@@ -78,12 +79,12 @@ impl JsonRpcHandler {
         error_count: Option<Arc<AtomicU64>>,
         ready: Arc<AtomicBool>,
     ) -> Self {
-        let local_gate_id = std::env::var("TOADSTOOL_GATE_ID")
-            .or_else(|_| std::env::var("HOSTNAME"))
+        let local_gate_id = std::env::var(socket_env::TOADSTOOL_GATE_ID)
+            .or_else(|_| std::env::var(socket_env::HOSTNAME))
             .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
             .unwrap_or_else(|_| String::from("local"));
 
-        let gate = match std::env::var("TOADSTOOL_AUTH_MODE")
+        let gate = match std::env::var(socket_env::TOADSTOOL_AUTH_MODE)
             .unwrap_or_default()
             .to_ascii_lowercase()
             .as_str()
@@ -112,7 +113,7 @@ impl JsonRpcHandler {
         // Build resource orchestrator for multi-tenant GPU scheduling.
         // Deployment model from TOADSTOOL_DEPLOYMENT_MODEL env:
         //   "multi" → LocalMulti, "rental" → CloudRental, else LocalDirect (no enforcement)
-        let deployment_model = match std::env::var("TOADSTOOL_DEPLOYMENT_MODEL").as_deref() {
+        let deployment_model = match std::env::var(socket_env::TOADSTOOL_DEPLOYMENT_MODEL).as_deref() {
             Ok("multi") => toadstool_runtime_orchestration::DeploymentModel::LocalMulti,
             Ok("rental") => toadstool_runtime_orchestration::DeploymentModel::CloudRental,
             _ => toadstool_runtime_orchestration::DeploymentModel::LocalDirect,

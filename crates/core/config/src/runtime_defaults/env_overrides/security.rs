@@ -17,7 +17,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
         config.security.auth.session_timeout = Duration::from_secs(timeout_secs);
     }
 
-    if let Ok(max_attempts) = std::env::var("TOADSTOOL_MAX_LOGIN_ATTEMPTS") {
+    if let Ok(max_attempts) = std::env::var(socket_env::TOADSTOOL_MAX_LOGIN_ATTEMPTS) {
         config.security.auth.max_login_attempts =
             parse::parse_u32(&max_attempts, "max login attempts")?;
     }
@@ -44,7 +44,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
         config.security.audit.enabled = parse::parse_bool(&enabled);
     }
 
-    if let Ok(log_file) = std::env::var("TOADSTOOL_AUDIT_LOG_FILE") {
+    if let Ok(log_file) = std::env::var(socket_env::TOADSTOOL_AUDIT_LOG_FILE) {
         config.security.audit.log_file = log_file;
     }
 

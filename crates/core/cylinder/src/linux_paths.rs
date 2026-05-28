@@ -81,10 +81,13 @@ pub fn kbuild_dir() -> Option<String> {
 /// Optional data directory for VBIOS dumps and similar assets.
 #[must_use]
 pub fn optional_data_dir() -> Option<String> {
-    if let Some(v) = std::env::var("TOADSTOOL_DATA_DIR").ok().filter(|s| !s.is_empty()) {
+    use toadstool_common::interned_strings::socket_env;
+
+    if let Some(v) = std::env::var(socket_env::TOADSTOOL_DATA_DIR).ok().filter(|s| !s.is_empty()) {
         return Some(v);
     }
-    if let Some(v) = std::env::var("CORALREEF_DATA_DIR").ok().filter(|s| !s.is_empty()) {
+    #[expect(deprecated, reason = "legacy env-var fallback for migration")]
+    if let Some(v) = std::env::var(socket_env::CORALREEF_DATA_DIR).ok().filter(|s| !s.is_empty()) {
         tracing::warn!("deprecated env var CORALREEF_DATA_DIR — migrate to TOADSTOOL_DATA_DIR");
         return Some(v);
     }

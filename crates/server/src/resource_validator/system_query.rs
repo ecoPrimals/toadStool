@@ -122,7 +122,7 @@ async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
 /// GL/GLES backends that probe for a display server. Otherwise uses all backends.
 #[cfg(feature = "gpu-discovery")]
 fn select_backends() -> wgpu::Backends {
-    match std::env::var("TOADSTOOL_HEADLESS") {
+    match std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_HEADLESS) {
         Ok(v) if v == "1" || v.eq_ignore_ascii_case("true") => wgpu::Backends::VULKAN,
         _ => wgpu::Backends::all(),
     }

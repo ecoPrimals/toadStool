@@ -200,14 +200,19 @@ pub(crate) async fn identity_get(
 /// Returns the primal's identity, capabilities, socket path, cost hints,
 /// and latency estimates so biomeOS Neural API can build routing weights
 /// and utilization tracking. Wire format per Wave 42/43 Neural API standard.
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
 pub(crate) async fn primal_announce(
     version: &str,
     semantic_registry: &SemanticMethodRegistry,
 ) -> JsonRpcResult {
+    use toadstool_common::interned_strings::socket_env;
+
     let methods = all_callable_methods(semantic_registry);
     let socket_name = format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN);
-    let socket = std::env::var("XDG_RUNTIME_DIR").map_or_else(
+    let socket = std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(
         |_| format!("/tmp/biomeos/{socket_name}"),
         |d| format!("{d}/biomeos/{socket_name}"),
     );

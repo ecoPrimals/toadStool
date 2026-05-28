@@ -1,12 +1,24 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S279
+**Date**: May 2026 — S280
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S280 (Wave 59 Env Centralization + Clippy Allow Evolution)**:
+primalSpring Wave 59 response. Deleted orphan `env_overrides.rs` (342L
+dead code). Expanded `socket_env.rs` with +73 env var name constants
+(POSIX/XDG, systemd, domain discovery, crypto keys, cylinder/ember,
+DNS/server config, deprecated CORALREEF_* aliases). Migrated 117 raw
+`std::env::var("...")` sites → `socket_env::` constants across 30 files
+(43%→64% centralized). Fixed 5 P0 bare `#[allow(clippy::)]`: 2
+`collapsible_str_replace` fixed at source, 3 missing reasons added.
+All 13 remaining `#[allow(clippy::)]` have `reason =`. 258 env reads
+via constants, 148 raw remaining (deployment infra / CLI defaults).
+Zero clippy, all lib tests pass.
 
 **S279 (Deep Debt Evolution III: Panic Path Elimination + Capability Hardening)**:
 Eliminated all remaining P0/P1 production panic paths: 4 P0 unwraps in

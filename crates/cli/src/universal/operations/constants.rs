@@ -115,7 +115,7 @@ pub mod paths {
     /// 2. System temp directory (cross-platform)
     pub fn temp_dir() -> &'static PathBuf {
         TEMP_DIR.get_or_init(|| {
-            std::env::var("TOADSTOOL_TEMP_DIR")
+            std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_TEMP_DIR)
                 .ok()
                 .map(PathBuf::from)
                 .unwrap_or_else(std::env::temp_dir)

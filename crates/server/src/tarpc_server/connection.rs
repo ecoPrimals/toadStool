@@ -180,7 +180,7 @@ pub(super) async fn unix_maybe_btsp_before_tarpc(
 
 #[cfg(feature = "btsp")]
 fn resolve_family_seed_for_tarpc() -> ServerResult<Vec<u8>> {
-    if let Ok(seed) = std::env::var("FAMILY_SEED") {
+    if let Ok(seed) = std::env::var(toadstool_common::interned_strings::socket_env::FAMILY_SEED) {
         return Ok(seed.into_bytes());
     }
 

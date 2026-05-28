@@ -140,7 +140,7 @@ pub fn create_basic_template() -> TemplateComponents {
     let networking = BiomeNetworking {
         mode: "bridge".to_string(),
         // Empty: inherit from the host or configure per-deployment via TOADSTOOL_DNS_SERVERS.
-        dns_servers: std::env::var("TOADSTOOL_DNS_SERVERS")
+        dns_servers: std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_DNS_SERVERS)
             .ok()
             .map(|v| v.split(',').map(str::trim).map(String::from).collect())
             .unwrap_or_default(),

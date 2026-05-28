@@ -69,7 +69,7 @@ pub fn init_enhanced_logging(verbose: bool) -> Result<()> {
         .with_timer(tracing_subscriber::fmt::time::SystemTime)
         .with_ansi(std::io::stderr().is_terminal());
 
-    if std::env::var("CI").is_ok() || !std::io::stderr().is_terminal() {
+    if std::env::var(toadstool_common::interned_strings::socket_env::CI).is_ok() || !std::io::stderr().is_terminal() {
         subscriber.json().init();
     } else {
         subscriber.init();

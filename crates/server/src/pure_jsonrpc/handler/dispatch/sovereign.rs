@@ -756,7 +756,7 @@ impl DispatchHandler {
         &self,
     ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
         let anchors = self.anchor_store.lock().await;
-        let fd_store_capable = std::env::var("NOTIFY_SOCKET").is_ok();
+        let fd_store_capable = std::env::var(toadstool_common::interned_strings::socket_env::NOTIFY_SOCKET).is_ok();
 
         let mut devices = serde_json::Map::new();
 

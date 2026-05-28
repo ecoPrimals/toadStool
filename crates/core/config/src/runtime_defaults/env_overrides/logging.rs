@@ -19,7 +19,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
         config.logging.format = log_format;
     }
 
-    if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_COLORS") {
+    if let Ok(enabled) = std::env::var(socket_env::TOADSTOOL_LOG_COLORS) {
         config.logging.enable_colors = parse::parse_bool(&enabled);
     }
 
@@ -27,7 +27,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
         config.logging.enable_timestamps = parse::parse_bool(&enabled);
     }
 
-    if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_THREAD_IDS") {
+    if let Ok(enabled) = std::env::var(socket_env::TOADSTOOL_LOG_THREAD_IDS) {
         config.logging.enable_thread_ids = parse::parse_bool(&enabled);
     }
 

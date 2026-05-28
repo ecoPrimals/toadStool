@@ -62,26 +62,29 @@ impl ServiceDomainsConfig {
     /// legacy primal-name env vars (`SONGBIRD_DOMAIN`, etc.) are accepted as
     /// fallbacks for backward compatibility.
     pub fn from_env() -> Self {
-        let base_domain =
-            std::env::var("TOADSTOOL_BASE_DOMAIN").unwrap_or_else(|_| "primal.local".to_string());
+        use toadstool_common::interned_strings::socket_env;
 
+        let base_domain =
+            std::env::var(socket_env::TOADSTOOL_BASE_DOMAIN).unwrap_or_else(|_| "primal.local".to_string());
+
+        #[expect(deprecated, reason = "legacy domain env-vars kept for migration")]
         Self {
-            compute: std::env::var("COMPUTE_DOMAIN")
-                .or_else(|_| std::env::var("TOADSTOOL_DOMAIN"))
+            compute: std::env::var(socket_env::COMPUTE_DOMAIN)
+                .or_else(|_| std::env::var(socket_env::TOADSTOOL_DOMAIN))
                 .unwrap_or_else(|_| format!("compute.{base_domain}")),
-            coordination: std::env::var("COORDINATION_DOMAIN")
-                .or_else(|_| std::env::var("SONGBIRD_DOMAIN"))
+            coordination: std::env::var(socket_env::COORDINATION_DOMAIN)
+                .or_else(|_| std::env::var(socket_env::SONGBIRD_DOMAIN))
                 .unwrap_or_else(|_| format!("coordination.{base_domain}")),
-            security: std::env::var("SECURITY_DOMAIN")
-                .or_else(|_| std::env::var("BEARDOG_DOMAIN"))
+            security: std::env::var(socket_env::SECURITY_DOMAIN)
+                .or_else(|_| std::env::var(socket_env::BEARDOG_DOMAIN))
                 .unwrap_or_else(|_| format!("security.{base_domain}")),
-            storage: std::env::var("STORAGE_DOMAIN")
-                .or_else(|_| std::env::var("NESTGATE_DOMAIN"))
+            storage: std::env::var(socket_env::STORAGE_DOMAIN)
+                .or_else(|_| std::env::var(socket_env::NESTGATE_DOMAIN))
                 .unwrap_or_else(|_| format!("storage.{base_domain}")),
-            ai_processing: std::env::var("AI_PROCESSING_DOMAIN")
-                .or_else(|_| std::env::var("SQUIRREL_DOMAIN"))
+            ai_processing: std::env::var(socket_env::AI_PROCESSING_DOMAIN)
+                .or_else(|_| std::env::var(socket_env::SQUIRREL_DOMAIN))
                 .unwrap_or_else(|_| format!("ai.{base_domain}")),
-            biomeos: std::env::var("BIOMEOS_DOMAIN")
+            biomeos: std::env::var(socket_env::BIOMEOS_DOMAIN)
                 .unwrap_or_else(|_| format!("biomeos.{base_domain}")),
         }
     }

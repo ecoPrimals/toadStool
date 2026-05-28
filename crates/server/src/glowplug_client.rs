@@ -229,7 +229,7 @@ impl GlowPlugClient {
 ///
 /// Priority: `TOADSTOOL_RUN_DIR` env → `/run/toadstool`.
 pub fn run_dir() -> std::path::PathBuf {
-    std::env::var("TOADSTOOL_RUN_DIR")
+    std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_RUN_DIR)
         .map_or_else(|_| std::path::PathBuf::from("/run/toadstool"), std::path::PathBuf::from)
 }
 

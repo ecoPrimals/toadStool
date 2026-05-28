@@ -27,10 +27,12 @@ const MAX_RESPONSE: usize = 4096;
 /// `{XDG_RUNTIME_DIR}/{namespace}/toadstool-ember-{family}.sock`.
 fn default_ember_socket_path_without_env_override() -> String {
     use std::path::PathBuf;
+    use toadstool_common::interned_strings::socket_env;
+
     let base =
-        std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| std::env::temp_dir(), PathBuf::from);
-    let ns = std::env::var("BIOMEOS_ECOSYSTEM_NAMESPACE").unwrap_or_else(|_| "biomeos".into());
-    let family = std::env::var("BIOMEOS_FAMILY_ID").unwrap_or_else(|_| "default".into());
+        std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(|_| std::env::temp_dir(), PathBuf::from);
+    let ns = std::env::var(socket_env::BIOMEOS_ECOSYSTEM_NAMESPACE).unwrap_or_else(|_| "biomeos".into());
+    let family = std::env::var(socket_env::BIOMEOS_FAMILY_ID).unwrap_or_else(|_| "default".into());
     base.join(ns)
         .join(format!("toadstool-ember-{family}.sock"))
         .display()
@@ -41,10 +43,13 @@ fn default_ember_socket_path_without_env_override() -> String {
 ///
 /// Priority: `TOADSTOOL_EMBER_SOCKET` → `CORALREEF_EMBER_SOCKET` (deprecated) → default path.
 pub(super) fn default_socket() -> String {
-    if let Some(v) = std::env::var("TOADSTOOL_EMBER_SOCKET").ok().filter(|s| !s.is_empty()) {
+    use toadstool_common::interned_strings::socket_env;
+
+    if let Some(v) = std::env::var(socket_env::TOADSTOOL_EMBER_SOCKET).ok().filter(|s| !s.is_empty()) {
         return v;
     }
-    if let Some(v) = std::env::var("CORALREEF_EMBER_SOCKET").ok().filter(|s| !s.is_empty()) {
+    #[expect(deprecated, reason = "legacy env-var fallback for migration")]
+    if let Some(v) = std::env::var(socket_env::CORALREEF_EMBER_SOCKET).ok().filter(|s| !s.is_empty()) {
         tracing::warn!("deprecated env var CORALREEF_EMBER_SOCKET — migrate to TOADSTOOL_EMBER_SOCKET");
         return v;
     }

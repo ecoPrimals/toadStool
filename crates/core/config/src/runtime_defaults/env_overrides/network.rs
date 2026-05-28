@@ -23,45 +23,42 @@ use std::time::Duration;
 use toadstool_common::interned_strings::socket_env;
 
 pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
-    // TOADSTOOL_BIND_ADDRESS: full "host:port" (e.g. 0.0.0.0:9000, 127.0.0.1:3000)
-    if let Ok(bind_address) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
+    if let Ok(bind_address) = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS) {
         config.network.bind_address = bind_address
             .parse()
             .map_err(|e| ConfigError::Invalid(format!("Invalid bind address: {e}")))?;
     }
 
-    // TOADSTOOL_PORT: override port only
-    if let Ok(port) = std::env::var("TOADSTOOL_PORT") {
+    if let Ok(port) = std::env::var(socket_env::TOADSTOOL_PORT) {
         let port = parse::parse_u16(&port, "port")?;
         config.network.bind_address.set_port(port);
     }
 
-    // Legacy endpoint overrides (deprecated - use capability-based discovery)
     #[expect(
         deprecated,
         reason = "legacy endpoint env-vars kept for migration; use capability-based discovery"
     )]
     {
-        if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
+        if let Ok(coordination) = std::env::var(socket_env::TOADSTOOL_COORDINATION_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_SONGBIRD_ENDPOINT))
         {
             config.network.endpoints.coordination = coordination;
         }
 
-        if let Ok(security) = std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_ENDPOINT"))
+        if let Ok(security) = std::env::var(socket_env::TOADSTOOL_SECURITY_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_BEARDOG_ENDPOINT))
         {
             config.network.endpoints.security = security;
         }
 
-        if let Ok(storage) = std::env::var("TOADSTOOL_STORAGE_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_NESTGATE_ENDPOINT"))
+        if let Ok(storage) = std::env::var(socket_env::TOADSTOOL_STORAGE_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_NESTGATE_ENDPOINT))
         {
             config.network.endpoints.storage = storage;
         }
 
-        if let Ok(ai) = std::env::var("TOADSTOOL_AI_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT"))
+        if let Ok(ai) = std::env::var(socket_env::TOADSTOOL_AI_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_SQUIRREL_ENDPOINT))
         {
             config.network.endpoints.ai_processing = ai;
         }

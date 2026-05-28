@@ -116,7 +116,7 @@ impl ZeroConfigDeployment {
 
         // ✅ DEEP DEBT: Check for security CAPABILITY, not specific primal
         let security_provider_available = self.ecosystem_services.security.is_some()
-            || std::env::var("TOADSTOOL_SECURITY_PROVIDER").is_ok();
+            || std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SECURITY_PROVIDER).is_ok();
 
         Ok(SecurityConfig {
             level: "standard".to_string(),
@@ -136,7 +136,7 @@ impl ZeroConfigDeployment {
 
         // ✅ DEEP DEBT: Check for coordination CAPABILITY, not specific primal
         let coordination_provider_available = self.ecosystem_services.coordination.is_some()
-            || std::env::var("TOADSTOOL_COORDINATION_PROVIDER").is_ok();
+            || std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_COORDINATION_PROVIDER).is_ok();
 
         let host_port = toadstool_config::config_utils::ConfigUtils::get_toadstool_port();
 
@@ -149,7 +149,7 @@ impl ZeroConfigDeployment {
             }],
             // Discover DNS servers from TOADSTOOL_DNS_SERVERS env var or inherit
             // from the host. Never assume specific public resolvers.
-            dns_servers: std::env::var("TOADSTOOL_DNS_SERVERS")
+            dns_servers: std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_DNS_SERVERS)
                 .ok()
                 .map(|v| v.split(',').map(str::trim).map(String::from).collect())
                 .unwrap_or_default(),
@@ -167,7 +167,7 @@ impl ZeroConfigDeployment {
 
         // ✅ DEEP DEBT: Check for storage CAPABILITY, not specific primal
         let storage_provider_available = self.ecosystem_services.storage.is_some()
-            || std::env::var("TOADSTOOL_STORAGE_PROVIDER").is_ok();
+            || std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_STORAGE_PROVIDER).is_ok();
 
         Ok(StorageConfig {
             backend: "local".to_string(),

@@ -47,9 +47,9 @@ use toadstool_common::interned_strings::socket_env;
 #[must_use]
 pub fn resolve_family_id(family_id_override: Option<String>) -> String {
     family_id_override
-        .or_else(|| std::env::var("TOADSTOOL_FAMILY_ID").ok())
-        .or_else(|| std::env::var("TOADSTOOL_FAMILY").ok())
-        .or_else(|| std::env::var("BIOMEOS_FAMILY_ID").ok())
+        .or_else(|| std::env::var(socket_env::TOADSTOOL_FAMILY_ID).ok())
+        .or_else(|| std::env::var(socket_env::TOADSTOOL_FAMILY).ok())
+        .or_else(|| std::env::var(socket_env::BIOMEOS_FAMILY_ID).ok())
         .unwrap_or_else(|| {
             warn!("No family ID (CLI or env) set, using 'default'");
             warn!("For multi-instance support, use --family-id=nat0 or set one of:");

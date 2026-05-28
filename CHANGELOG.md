@@ -5,7 +5,27 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 27, 2026 (Sessions 43-279)
+## [Unreleased] - May 28, 2026 (Sessions 43-280)
+
+### Session S280 (May 28, 2026) — Wave 59 Env Centralization + Clippy Allow Evolution
+
+primalSpring Wave 59 audit response: env var centralization (~200 raw sites), clippy allow cleanup. Deleted orphan `env_overrides.rs` (342L dead code), expanded `socket_env.rs` registry (+73 constants across 7 categories: POSIX/XDG, systemd, domain discovery, crypto provider keys, cylinder/ember lifecycle, DNS/server config, legacy deprecated aliases), migrated 117 raw `std::env::var("...")` sites to `socket_env::` constants across 30 files (43%→64% centralized). Fixed 5 P0 bare `#[allow(clippy::)]` (added reasons or fixed underlying lint: 2 `collapsible_str_replace` fixed at source in pipeline.rs). Added `toadstool-common` dep to cylinder for env constant sharing.
+
+- DELETED: orphan `core/config/src/env_overrides.rs` — 342 lines, 70 raw literals, not `mod`'d, superseded by `runtime_defaults/env_overrides/` split
+- EXPANDED: `socket_env.rs` — +73 env var name constants: POSIX (XDG_DATA_HOME, XDG_CACHE_HOME, XDG_CONFIG_HOME, TMPDIR, TMP, TEMP, USERPROFILE, USERNAME, APPDATA, HOSTNAME), systemd (NOTIFY_SOCKET, LISTEN_FDS, LISTEN_PID, LISTEN_FDNAMES), server identity (TOADSTOOL_GATE_ID, AUTH_MODE, DEPLOYMENT_MODEL), domain discovery (COMPUTE_DOMAIN, COORDINATION_DOMAIN, SECURITY_DOMAIN, STORAGE_DOMAIN, AI_PROCESSING_DOMAIN, BIOMEOS_DOMAIN + deprecated aliases), crypto provider keys, cylinder/ember (TOADSTOOL_EMBER_GATE/SOCKET/DRI_RENDER_PREFIX + deprecated CORALREEF_* aliases), DNS/config (DNS_SERVERS, DNS_SEARCH_DOMAINS, TEMP_DIR, HEADLESS, HW_LEARN_STORE, SHADER_COMPILER_ADDR, CI, VK_ICD_FILENAMES, SECURITY_WARNING_ACKNOWLEDGED)
+- MIGRATED: `env_overrides/network.rs` — 10 raw literals → socket_env constants (TOADSTOOL_BIND_ADDRESS, PORT, all 4 endpoint + 4 legacy endpoint pairs)
+- MIGRATED: `env_overrides/security.rs` — 2 raw literals → socket_env (MAX_LOGIN_ATTEMPTS, AUDIT_LOG_FILE)
+- MIGRATED: `env_overrides/logging.rs` — 2 raw literals → socket_env (LOG_COLORS, LOG_THREAD_IDS)
+- MIGRATED: `platform_paths/env.rs` — 11 raw literals → socket_env (all XDG/HOME/USER/TMPDIR/USERPROFILE/USERNAME)
+- MIGRATED: `identity.rs` — raw `XDG_RUNTIME_DIR` → socket_env + bare `#[allow]` → `#[allow(... reason)]`
+- MIGRATED: server crate — 25 raw literals across handler/mod.rs, systemd_fdstore.rs, unibin/mod.rs, tarpc_server, glowplug_client, visualization_client, capabilities/paths, config/mod, connection/unix
+- MIGRATED: cylinder crate — 12 raw literals across ember_gate.rs, ember_client.rs, linux_paths.rs, drm.rs (all with `#[expect(deprecated)]` guards on CORALREEF_* fallbacks)
+- MIGRATED: CLI crate — 30 raw literals across dns_discovery.rs, crypto.rs, doctor/checks.rs, main.rs, zero_config (configuration.rs, deployment.rs), templates, setup.rs, operations/constants.rs
+- FIXED: `pipeline.rs` — 2 `#[allow(clippy::collapsible_str_replace)]` → fixed at source with `replace([':', '.'], "-")`
+- FIXED: `rollback.rs` — 2 bare `#[allow(clippy::too_many_arguments)]` → added `reason`
+- FIXED: `identity.rs` — bare `#[allow(clippy::unused_async)]` → added `reason`
+- ADDED: `toadstool-common` dependency to cylinder Cargo.toml for env constant access
+- METRICS: 258 env reads via socket_env:: constants (64%), 148 raw remaining (deployment infra, CLI defaults), 0 bare `#[allow(clippy::)]` in production. All 13 remaining allows have `reason`. All lib tests pass, 0 clippy warnings.
 
 ### Session S279 (May 27, 2026) — Deep Debt Evolution III: Panic Path Elimination + Capability Hardening
 

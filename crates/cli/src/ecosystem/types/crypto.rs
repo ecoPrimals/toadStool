@@ -82,24 +82,28 @@ impl Default for CryptoVerificationContext {
 
         let mut trusted_keys = HashMap::new();
 
-        // Capability-based env vars first, legacy env names for backward compat
-        if let Ok(key) = std::env::var("CRYPTO_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
-        } else if let Ok(key) = std::env::var("BEARDOG_PUBLIC_KEY") {
-            warn!("BEARDOG_PUBLIC_KEY is deprecated — use CRYPTO_PROVIDER_PUBLIC_KEY");
-            trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
-        }
-        if let Ok(key) = std::env::var("STORAGE_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::STORAGE.to_string(), key);
-        } else if let Ok(key) = std::env::var("NESTGATE_PUBLIC_KEY") {
-            warn!("NESTGATE_PUBLIC_KEY is deprecated — use STORAGE_PROVIDER_PUBLIC_KEY");
-            trusted_keys.insert(capabilities::STORAGE.to_string(), key);
-        }
-        if let Ok(key) = std::env::var("DISCOVERY_PROVIDER_PUBLIC_KEY") {
-            trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
-        } else if let Ok(key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
-            warn!("SONGBIRD_PUBLIC_KEY is deprecated — use DISCOVERY_PROVIDER_PUBLIC_KEY");
-            trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
+        use toadstool_common::interned_strings::socket_env;
+
+        #[expect(deprecated, reason = "legacy public-key env-vars kept for migration")]
+        {
+            if let Ok(key) = std::env::var(socket_env::CRYPTO_PROVIDER_PUBLIC_KEY) {
+                trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
+            } else if let Ok(key) = std::env::var(socket_env::BEARDOG_PUBLIC_KEY) {
+                warn!("BEARDOG_PUBLIC_KEY is deprecated — use CRYPTO_PROVIDER_PUBLIC_KEY");
+                trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
+            }
+            if let Ok(key) = std::env::var(socket_env::STORAGE_PROVIDER_PUBLIC_KEY) {
+                trusted_keys.insert(capabilities::STORAGE.to_string(), key);
+            } else if let Ok(key) = std::env::var(socket_env::NESTGATE_PUBLIC_KEY) {
+                warn!("NESTGATE_PUBLIC_KEY is deprecated — use STORAGE_PROVIDER_PUBLIC_KEY");
+                trusted_keys.insert(capabilities::STORAGE.to_string(), key);
+            }
+            if let Ok(key) = std::env::var(socket_env::DISCOVERY_PROVIDER_PUBLIC_KEY) {
+                trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
+            } else if let Ok(key) = std::env::var(socket_env::SONGBIRD_PUBLIC_KEY) {
+                warn!("SONGBIRD_PUBLIC_KEY is deprecated — use DISCOVERY_PROVIDER_PUBLIC_KEY");
+                trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
+            }
         }
 
         Self {

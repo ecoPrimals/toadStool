@@ -32,7 +32,7 @@ pub(crate) fn halt_result(
                       needs_device_rollback, false)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, reason = "WIP upstream — parameter struct refactor pending")]
 pub(crate) fn halt_result_poisoned(
     bdf: &str,
     halted_at: &str,
@@ -50,7 +50,11 @@ pub(crate) fn halt_result_poisoned(
                       needs_device_rollback, true)
 }
 
-#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+#[allow(
+    clippy::too_many_arguments,
+    clippy::fn_params_excessive_bools,
+    reason = "WIP upstream — parameter struct refactor pending"
+)]
 pub(crate) fn halt_result_inner(
     bdf: &str,
     halted_at: &str,

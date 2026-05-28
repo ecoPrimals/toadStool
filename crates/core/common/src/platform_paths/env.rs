@@ -52,20 +52,22 @@ impl PathEnv {
     /// Capture current environment (production use)
     #[must_use]
     pub fn from_env() -> Self {
+        use crate::interned_strings::socket_env;
+
         Self {
-            xdg_runtime_dir: std::env::var("XDG_RUNTIME_DIR").ok(),
-            xdg_data_home: std::env::var("XDG_DATA_HOME").ok(),
-            xdg_cache_home: std::env::var("XDG_CACHE_HOME").ok(),
-            xdg_config_home: std::env::var("XDG_CONFIG_HOME").ok(),
-            home: std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
+            xdg_runtime_dir: std::env::var(socket_env::XDG_RUNTIME_DIR).ok(),
+            xdg_data_home: std::env::var(socket_env::XDG_DATA_HOME).ok(),
+            xdg_cache_home: std::env::var(socket_env::XDG_CACHE_HOME).ok(),
+            xdg_config_home: std::env::var(socket_env::XDG_CONFIG_HOME).ok(),
+            home: std::env::var(socket_env::HOME)
+                .or_else(|_| std::env::var(socket_env::USERPROFILE))
                 .ok(),
-            user: std::env::var("USER")
-                .or_else(|_| std::env::var("USERNAME"))
+            user: std::env::var(socket_env::USER)
+                .or_else(|_| std::env::var(socket_env::USERNAME))
                 .ok(),
-            tmpdir: std::env::var("TMPDIR")
-                .or_else(|_| std::env::var("TMP"))
-                .or_else(|_| std::env::var("TEMP"))
+            tmpdir: std::env::var(socket_env::TMPDIR)
+                .or_else(|_| std::env::var(socket_env::TMP))
+                .or_else(|_| std::env::var(socket_env::TEMP))
                 .ok(),
             platform: Platform::detect(),
         }
