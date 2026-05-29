@@ -204,7 +204,9 @@ enum SocketStatus {
 }
 
 fn verify_capability_socket(capability: &str) -> SocketStatus {
-    let runtime_dir = std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR).unwrap_or_else(|_| "/tmp".into());
+    let runtime_dir = std::env::var(toadstool_common::interned_strings::socket_env::BIOMEOS_SOCKET_DIR)
+        .or_else(|_| std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR))
+        .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
     let socket_path = std::path::PathBuf::from(&runtime_dir)
         .join("biomeos")
         .join(format!("{capability}.sock"));

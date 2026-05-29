@@ -13,13 +13,16 @@ use crate::interned_strings::socket_env;
 ///
 /// Discovery order:
 /// 1. `{CAPABILITY}_SOCKET` environment variable (e.g., `SECURITY_SOCKET`)
-/// 2. XDG runtime directory: `$XDG_RUNTIME_DIR/{capability}.sock` (or `/tmp` fallback)
+/// 2. `$BIOMEOS_SOCKET_DIR/{capability}.sock`
+/// 3. `$XDG_RUNTIME_DIR/{capability}.sock`
+/// 4. `{temp_dir}/{capability}.sock` (fallback)
 #[must_use]
 pub fn discover_service_socket_by_capability(capability: &str) -> Option<String> {
     let env_key = format!("{}_SOCKET", capability.to_uppercase().replace('-', "_"));
     std::env::var(&env_key).ok().or_else(|| {
-        let runtime_dir =
-            std::env::var(socket_env::XDG_RUNTIME_DIR).unwrap_or_else(|_| "/tmp".to_string());
+        let runtime_dir = std::env::var(socket_env::BIOMEOS_SOCKET_DIR)
+            .or_else(|_| std::env::var(socket_env::XDG_RUNTIME_DIR))
+            .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
         let socket_path = format!("{runtime_dir}/{capability}.sock");
         if std::path::Path::new(&socket_path).exists() {
             Some(socket_path)

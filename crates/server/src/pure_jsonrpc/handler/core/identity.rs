@@ -212,10 +212,14 @@ pub(crate) async fn primal_announce(
 
     let methods = all_callable_methods(semantic_registry);
     let socket_name = format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN);
-    let socket = std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(
-        |_| format!("/tmp/biomeos/{socket_name}"),
-        |d| format!("{d}/biomeos/{socket_name}"),
-    );
+    let socket = if let Ok(dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
+        format!("{dir}/{socket_name}")
+    } else {
+        std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(
+            |_| std::env::temp_dir().join("biomeos").join(&socket_name).to_string_lossy().into_owned(),
+            |d| format!("{d}/biomeos/{socket_name}"),
+        )
+    };
 
     Ok(serde_json::json!({
         "primal": PRIMAL_NAME,

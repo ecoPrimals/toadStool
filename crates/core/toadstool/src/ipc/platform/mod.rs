@@ -177,7 +177,7 @@ fn is_android() -> bool {
 /// 1. `XDG_RUNTIME_DIR` (standard)
 /// 2. `/run/user/{uid}` via pure-Rust UID detection
 /// 3. `BIOMEOS_RUNTIME_DIR` env override
-/// 4. `/tmp/biomeos-runtime` (last resort)
+/// 4. `{temp_dir}/biomeos-runtime` (last resort)
 fn get_runtime_dir() -> String {
     if let Ok(dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         return dir;
@@ -185,7 +185,8 @@ fn get_runtime_dir() -> String {
     if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
         return format!("/run/user/{uid}");
     }
-    std::env::var(socket_env::BIOMEOS_RUNTIME_DIR).unwrap_or_else(|_| "/tmp/biomeos-runtime".to_string())
+    std::env::var(socket_env::BIOMEOS_RUNTIME_DIR)
+        .unwrap_or_else(|_| std::env::temp_dir().join("biomeos-runtime").to_string_lossy().into_owned())
 }
 
 // ============================================================================
