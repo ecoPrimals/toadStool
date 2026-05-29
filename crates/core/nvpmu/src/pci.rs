@@ -8,8 +8,7 @@ use crate::error::{NvPmuError, Result};
 use crate::firmware::FirmwareInventory;
 use crate::hwmon::HwmonSensors;
 use std::path::{Path, PathBuf};
-
-const NVIDIA_VENDOR_ID: u16 = 0x10de;
+use toadstool_common::pci::vendors::NVIDIA_VENDOR_ID;
 const PCI_CLASS_VGA: u32 = 0x0003_0000;
 const PCI_CLASS_3D: u32 = 0x0003_0200;
 const PCI_CLASS_MASK: u32 = 0x00FF_FF00;

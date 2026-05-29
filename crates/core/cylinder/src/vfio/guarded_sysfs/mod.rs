@@ -113,13 +113,15 @@ mod proc_scan;
 mod tests;
 
 pub use driver_ops::{
-    disable_flr, handoff_rollback, iommu_group_siblings, pin_bridge_hierarchy,
-    prepare_anchor_release, read_current_driver, rebind_siblings_to_vfio, restore_flr,
-    sysfs_read_guarded, sysfs_unbind_fire_and_poll, sysfs_write, sysfs_write_guarded,
+    disable_flr, iommu_group_siblings, pin_bridge_hierarchy, prepare_anchor_release,
+    read_current_driver, sysfs_write, sysfs_write_guarded,
+};
+pub(crate) use driver_ops::{
+    handoff_rollback, rebind_siblings_to_vfio, restore_flr, sysfs_unbind_fire_and_poll,
     unbind_iommu_siblings,
 };
 pub use kmod_build::{
     KmodBuilder, insmod_guarded, insmod_guarded_with_params, kmod_guarded, restore_bus_reset,
     rmmod_guarded, suppress_bus_reset, unsuppress_bus_reset_for,
 };
-pub use proc_scan::{iommu_group_ready, is_module_stuck, release_bar0_fds};
+pub use proc_scan::{ModuleSnapshot, iommu_group_ready, is_module_stuck, module_snapshot, release_bar0_fds};

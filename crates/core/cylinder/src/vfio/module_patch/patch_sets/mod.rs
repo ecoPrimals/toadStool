@@ -2,7 +2,7 @@
 mod nouveau;
 mod nvidia;
 
-use super::types::PatchSet;
+use super::types::{PatchError, PatchSet};
 
 impl PatchSet {
     /// Look up a predefined patch set by name.
@@ -69,18 +69,21 @@ impl PatchSet {
     /// `infra/catalysts/recipes/gv100_nvidia470.toml`. Each entry has
     /// `symbol` and `strategy` (string format). Enables new GPU+driver
     /// combos without recompiling cylinder.
-    pub fn from_recipe_toml(toml_str: &str) -> Result<Self, String> {
-        let doc: toml::Value = toml::from_str(toml_str)
-            .map_err(|e| format!("TOML parse error: {e}"))?;
+    pub fn from_recipe_toml(toml_str: &str) -> Result<Self, PatchError> {
+        let doc: toml::Value = toml::from_str(toml_str)?;
 
-        let catalyst = doc.get("catalyst").ok_or("missing [catalyst] section")?;
+        let catalyst = doc
+            .get("catalyst")
+            .ok_or(PatchError::RecipeMissingSection("[catalyst]"))?;
         let name = catalyst
             .get("name")
             .and_then(|v| v.as_str())
             .unwrap_or("recipe")
             .to_string();
 
-        let source = doc.get("source").ok_or("missing [source] section")?;
+        let source = doc
+            .get("source")
+            .ok_or(PatchError::RecipeMissingSection("[source]"))?;
         let module_name = source
             .get("dkms_module")
             .and_then(|v| v.as_str())
@@ -90,22 +93,26 @@ impl PatchSet {
         let patches = doc
             .get("patches")
             .and_then(|v| v.as_array())
-            .ok_or("missing [[patches]] array")?;
+            .ok_or(PatchError::RecipeMissingSection("[[patches]]"))?;
 
         let mut targets = Vec::new();
         for patch in patches {
             let symbol = patch
                 .get("symbol")
                 .and_then(|v| v.as_str())
-                .ok_or("patch missing 'symbol'")?
+                .ok_or(PatchError::RecipeInvalidPatch("patch missing 'symbol'"))?
                 .to_string();
             let strategy_str = patch
                 .get("strategy")
                 .and_then(|v| v.as_str())
-                .ok_or("patch missing 'strategy'")?;
+                .ok_or(PatchError::RecipeInvalidPatch("patch missing 'strategy'"))?;
 
-            let strategy: super::types::PatchStrategy = strategy_str.parse()
-                .map_err(|e| format!("invalid strategy '{strategy_str}': {e}"))?;
+            let strategy: super::types::PatchStrategy = strategy_str.parse().map_err(|e: String| {
+                PatchError::InvalidPatchStrategy {
+                    raw: strategy_str.to_string(),
+                    detail: e,
+                }
+            })?;
 
             targets.push(super::types::PatchTarget { symbol, strategy });
         }

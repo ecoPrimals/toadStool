@@ -3,6 +3,8 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
+use super::errors::HandoffError;
+
 /// Per-BDF handoff concurrency guard. Only one handoff per device at a time.
 pub(crate) static HANDOFF_LOCKS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
@@ -14,11 +16,15 @@ pub(crate) struct HandoffGuard {
 }
 
 impl HandoffGuard {
-    pub(crate) fn acquire(bdf: &str) -> Result<Self, String> {
-        let mut guard = HANDOFF_LOCKS.lock().map_err(|e| format!("lock poisoned: {e}"))?;
+    pub(crate) fn acquire(bdf: &str) -> Result<Self, HandoffError> {
+        let mut guard = HANDOFF_LOCKS
+            .lock()
+            .map_err(|e| HandoffError::LockPoisoned(e.to_string()))?;
         let set = guard.get_or_insert_with(HashSet::new);
         if !set.insert(bdf.to_string()) {
-            return Err(format!("handoff already in progress for {bdf}"));
+            return Err(HandoffError::HandoffInProgress {
+                bdf: bdf.to_string(),
+            });
         }
         Ok(Self { bdf: bdf.to_string() })
     }

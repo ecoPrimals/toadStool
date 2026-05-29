@@ -4,13 +4,12 @@
 use super::types::{GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, is_nvidia_ada_lovelace};
 use crate::types::*;
 use std::sync::Arc;
+use toadstool_common::pci::vendors::{
+    AMD_VENDOR_ID, INTEL_VENDOR_ID, NVIDIA_VENDOR_ID,
+};
 use toadstool_core::silicon::{RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen};
 
 use super::WgpuComputeUnit;
-
-const NVIDIA_VENDOR_ID: u32 = 0x10de;
-const AMD_VENDOR_ID: u32 = 0x1002;
-const INTEL_VENDOR_ID: u32 = 0x8086;
 
 /// Probe silicon capabilities from wgpu adapter info.
 ///
@@ -23,9 +22,9 @@ pub(crate) fn probe_silicon_capabilities(
 ) -> SiliconCapabilities {
     let name_lower = info.name.to_lowercase();
     let is_discrete = matches!(device_type, GpuDeviceType::Discrete);
-    let is_nvidia = info.vendor == NVIDIA_VENDOR_ID;
-    let is_amd = info.vendor == AMD_VENDOR_ID;
-    let is_intel = info.vendor == INTEL_VENDOR_ID;
+    let is_nvidia = info.vendor == u32::from(NVIDIA_VENDOR_ID);
+    let is_amd = info.vendor == u32::from(AMD_VENDOR_ID);
+    let is_intel = info.vendor == u32::from(INTEL_VENDOR_ID);
 
     let tensor_cores = if is_nvidia {
         detect_nvidia_tensor_gen(&name_lower)

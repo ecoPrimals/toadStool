@@ -34,8 +34,8 @@ use toadstool_common::constants::platform_paths::procfs;
 #[cfg(test)]
 use crate::rpc_types::{AvailableResources, ComputeUnit, ExecutionMetrics};
 use crate::rpc_types::{
-    ComputeCapabilities, HealthStatus, ToadStoolComputeRpc, WorkloadResult, WorkloadStatus,
-    WorkloadSubmission,
+    ComputeCapabilities, HealthStatus, ServiceError, ToadStoolComputeRpc, WorkloadResult,
+    WorkloadStatus, WorkloadSubmission,
 };
 
 /// tarpc server state
@@ -296,7 +296,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         self,
         _context: Context,
         submission: WorkloadSubmission,
-    ) -> Result<WorkloadResult, String> {
+    ) -> Result<WorkloadResult, ServiceError> {
         info!("Submitting workload: {}", submission.workload_id.as_ref());
 
         // Execute via real executor (not mock)
@@ -321,15 +321,15 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         self,
         _context: Context,
         workload_id: String,
-    ) -> Result<WorkloadResult, String> {
+    ) -> Result<WorkloadResult, ServiceError> {
         let workloads = self.workloads.read().await;
         workloads.get(workload_id.as_str()).cloned().ok_or_else(|| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
-            format!("Workload not found: {workload_id}")
+            ServiceError::WorkloadNotFound { workload_id }
         })
     }
 
-    async fn cancel_workload(self, _context: Context, workload_id: String) -> Result<(), String> {
+    async fn cancel_workload(self, _context: Context, workload_id: String) -> Result<(), ServiceError> {
         self.executor.cancel(&workload_id).await.inspect_err(|_| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
         })?;
@@ -347,7 +347,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         self,
         _context: Context,
         _filter: Option<std::collections::HashMap<String, String>>,
-    ) -> Result<Vec<WorkloadResult>, String> {
+    ) -> Result<Vec<WorkloadResult>, ServiceError> {
         let workloads = self.workloads.read().await;
         Ok(workloads.values().cloned().collect())
     }
@@ -356,14 +356,14 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
     ///
     /// Following the principle: "Primal code only has self knowledge
     /// and discovers other primals at runtime"
-    async fn query_capabilities(self, _context: Context) -> Result<ComputeCapabilities, String> {
+    async fn query_capabilities(self, _context: Context) -> Result<ComputeCapabilities, ServiceError> {
         // Query OUR capabilities only (not other primals)
         self.executor.query_capabilities().await.inspect_err(|_| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
         })
     }
 
-    async fn health_check(self, _context: Context) -> Result<HealthStatus, String> {
+    async fn health_check(self, _context: Context) -> Result<HealthStatus, ServiceError> {
         let uptime = self.start_time.elapsed();
         let workloads = self.workloads.read().await;
         let active_count = workloads

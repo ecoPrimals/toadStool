@@ -166,7 +166,7 @@ fn pci_base_subclass(class_reg: u32) -> u16 {
 }
 
 fn read_config_u16(bdf: &str, offset: u64) -> Option<u16> {
-    let path = format!("/sys/bus/pci/devices/{bdf}/config");
+    let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
     let mut f = std::fs::File::open(&path).ok()?;
     f.seek(SeekFrom::Start(offset)).ok()?;
     let mut buf = [0u8; 2];
@@ -175,7 +175,7 @@ fn read_config_u16(bdf: &str, offset: u64) -> Option<u16> {
 }
 
 fn read_config_u32(bdf: &str, offset: u64) -> Option<u32> {
-    let path = format!("/sys/bus/pci/devices/{bdf}/config");
+    let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
     let mut f = std::fs::File::open(&path).ok()?;
     f.seek(SeekFrom::Start(offset)).ok()?;
     let mut buf = [0u8; 4];
@@ -185,7 +185,7 @@ fn read_config_u32(bdf: &str, offset: u64) -> Option<u32> {
 
 fn discover_plx_bridges() -> Vec<String> {
     let mut bridges = Vec::new();
-    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
         return bridges;
     };
 
@@ -215,7 +215,7 @@ fn discover_plx_bridges() -> Vec<String> {
 /// returning 0xFFFF during early boot).
 fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
     let mut bridges = Vec::new();
-    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
         return bridges;
     };
 
@@ -232,7 +232,7 @@ fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
             if class != 0xFFFF_FFFF {
                 continue;
             }
-            let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
+            let override_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "driver_override");
             let Ok(drv) = std::fs::read_to_string(&override_path) else {
                 continue;
             };
@@ -242,7 +242,7 @@ fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
             info!(bdf, "found vfio-pci device with dead config space — checking ancestry for PLX");
         }
 
-        let link = format!("/sys/bus/pci/devices/{bdf}");
+        let link = toadstool_cylinder::linux_paths::sysfs_pci_device_path(&bdf);
         let Ok(canonical) = std::fs::canonicalize(&link) else {
             continue;
         };
@@ -295,7 +295,7 @@ fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
 
 fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
     let mut gpus = Vec::new();
-    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
         return gpus;
     };
 
@@ -310,7 +310,7 @@ fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
             continue;
         }
 
-        let link = format!("/sys/bus/pci/devices/{bdf}");
+        let link = toadstool_cylinder::linux_paths::sysfs_pci_device_path(&bdf);
         let Ok(canonical) = std::fs::canonicalize(&link) else {
             continue;
         };
@@ -328,7 +328,7 @@ fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
 
 fn discover_gpu_bridges() -> Vec<String> {
     let mut bridges = Vec::new();
-    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
         return bridges;
     };
 
@@ -364,8 +364,8 @@ fn pin_hierarchy_for_gpus(gpu_bdfs: &[String]) -> usize {
 /// discoverable PLX switch.
 fn discover_vfio_gpus() -> Vec<String> {
     let mut gpus = Vec::new();
-    let driver_dir = "/sys/bus/pci/drivers/vfio-pci";
-    let Ok(entries) = std::fs::read_dir(driver_dir) else {
+    let driver_dir = toadstool_cylinder::linux_paths::sysfs_join(&["bus", "pci", "drivers", "vfio-pci"]);
+    let Ok(entries) = std::fs::read_dir(&driver_dir) else {
         return gpus;
     };
 

@@ -166,7 +166,7 @@ pub fn sysfs_write_guarded(
 /// the same fork isolation as [`sysfs_write_guarded`] but for reads.
 ///
 /// Returns the file contents as a trimmed string on success.
-pub fn sysfs_read_guarded(
+pub(crate) fn sysfs_read_guarded(
     path: &str,
     timeout: Duration,
 ) -> Result<String, GuardedSysfsError> {
@@ -231,7 +231,7 @@ pub fn sysfs_read_guarded(
 /// This keeps ember responsive during the entire teardown.
 ///
 /// Phase 3: pure Rust fork+write — no `/bin/sh`.
-pub fn sysfs_unbind_fire_and_poll(
+pub(crate) fn sysfs_unbind_fire_and_poll(
     bdf: &str,
     driver: &str,
     deadline: Duration,
@@ -344,7 +344,7 @@ pub fn disable_flr(bdf: &str) {
 }
 
 /// Re-enable default reset methods after a swap is complete.
-pub fn restore_flr(bdf: &str) {
+pub(crate) fn restore_flr(bdf: &str) {
     let reset_path = crate::linux_paths::sysfs_pci_device_file(bdf, "reset_method");
     if Path::new(&reset_path).exists() {
         match std::fs::write(&reset_path, "flr,bus") {
@@ -413,7 +413,7 @@ pub fn iommu_group_siblings(bdf: &str) -> Vec<String> {
 /// Unbind all IOMMU group siblings from their current drivers.
 ///
 /// Returns the list of (sibling_bdf, previous_driver) pairs for rollback.
-pub fn unbind_iommu_siblings(bdf: &str) -> Vec<(String, Option<String>)> {
+pub(crate) fn unbind_iommu_siblings(bdf: &str) -> Vec<(String, Option<String>)> {
     let siblings = iommu_group_siblings(bdf);
     let mut results = Vec::new();
     for sibling in &siblings {
@@ -433,7 +433,7 @@ pub fn unbind_iommu_siblings(bdf: &str) -> Vec<(String, Option<String>)> {
 }
 
 /// Rebind IOMMU group siblings to vfio-pci after the handoff completes.
-pub fn rebind_siblings_to_vfio(siblings: &[(String, Option<String>)]) {
+pub(crate) fn rebind_siblings_to_vfio(siblings: &[(String, Option<String>)]) {
     for (sibling, _) in siblings {
         let override_path = crate::linux_paths::sysfs_pci_device_file(sibling, "driver_override");
         let _ = sysfs_write(&override_path, "vfio-pci");
@@ -461,7 +461,7 @@ pub fn rebind_siblings_to_vfio(siblings: &[(String, Option<String>)]) {
 /// operations on the **target device** are skipped because they would
 /// cascade the D-state to ember's own thread. Only sibling rebinding
 /// is attempted. The device is effectively sacrificed until reboot.
-pub fn handoff_rollback(
+pub(crate) fn handoff_rollback(
     bdf: &str,
     module_name: Option<&str>,
     siblings: &[(String, Option<String>)],

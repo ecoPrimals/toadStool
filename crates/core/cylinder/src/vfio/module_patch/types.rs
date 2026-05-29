@@ -37,6 +37,7 @@ pub enum PatchStrategy {
     },
 }
 
+<<<<<<< HEAD
 impl std::str::FromStr for PatchStrategy {
     type Err = String;
 
@@ -157,7 +158,132 @@ pub enum PatchError {
         total: usize,
         min_required: usize,
     },
+
+    #[error("unrecognized patch strategy: '{0}'")]
+    UnrecognizedPatchStrategy(String),
+
+    #[error("failed to parse patch strategy '{raw}': {detail}")]
+    InvalidPatchStrategy { raw: String, detail: String },
+
+    #[error("PatchByteAt expects 3 args, got {got}")]
+    PatchByteAtArgCount { got: usize },
+
+    #[error("invalid integer in patch strategy: {0}")]
+    ParseInt(#[from] std::num::ParseIntError),
+
+    #[error("TOML recipe parse error: {0}")]
+    RecipeTomlParse(#[from] toml::de::Error),
+
+    #[error("recipe missing {0} section")]
+    RecipeMissingSection(&'static str),
+
+    #[error("invalid recipe patch entry: {0}")]
+    RecipeInvalidPatch(&'static str),
+
+    #[error("invalid ELF: {0}")]
+    InvalidElf(&'static str),
+
+    #[error("truncated ELF section header {index}")]
+    TruncatedElfSectionHeader { index: usize },
+
+    #[error("invalid ELF section string table")]
+    InvalidElfSectionStringTable,
 }
+
+impl PatchStrategy {
+    /// Parse from string representation used in catalyst recipe TOML files.
+    /// Formats: "RetAtEntry", "Ret1AtEntry", "RetAfterFtrace",
+    /// "NopCallAt(0x7f)", "PatchByteAt(0x7b, 0xc3, 0x00)".
+    pub fn from_str(s: &str) -> Result<Self, PatchError> {
+        let s = s.trim();
+        if s == "RetAtEntry" {
+            return Ok(Self::RetAtEntry);
+        }
+        if s == "Ret1AtEntry" {
+            return Ok(Self::Ret1AtEntry);
+        }
+        if s == "RetAfterFtrace" {
+            return Ok(Self::RetAfterFtrace);
+        }
+        if let Some(inner) = s.strip_prefix("NopCallAt(").and_then(|s| s.strip_suffix(')')) {
+            let offset = parse_usize_hex_or_dec(inner.trim())
+                .map_err(|e| PatchError::InvalidPatchStrategy {
+                    raw: s.to_string(),
+                    detail: format!("NopCallAt offset: {e}"),
+                })?;
+            return Ok(Self::NopCallAt(offset));
+        }
+        if let Some(inner) = s.strip_prefix("PatchByteAt(").and_then(|s| s.strip_suffix(')')) {
+            let parts: Vec<&str> = inner.split(',').map(|p| p.trim()).collect();
+            if parts.len() != 3 {
+                return Err(PatchError::PatchByteAtArgCount { got: parts.len() });
+            }
+            let fn_offset = parse_usize_hex_or_dec(parts[0]).map_err(|e| {
+                PatchError::InvalidPatchStrategy {
+                    raw: s.to_string(),
+                    detail: format!("PatchByteAt fn_offset: {e}"),
+                }
+            })?;
+            let expected = parse_u8_hex_or_dec(parts[1]).map_err(|e| {
+                PatchError::InvalidPatchStrategy {
+                    raw: s.to_string(),
+                    detail: format!("PatchByteAt expected: {e}"),
+                }
+            })?;
+            let replacement = parse_u8_hex_or_dec(parts[2]).map_err(|e| {
+                PatchError::InvalidPatchStrategy {
+                    raw: s.to_string(),
+                    detail: format!("PatchByteAt replacement: {e}"),
+                }
+            })?;
+            return Ok(Self::PatchByteAt { fn_offset, expected, replacement });
+        }
+        Err(PatchError::UnrecognizedPatchStrategy(s.to_string()))
+    }
+}
+
+fn parse_usize_hex_or_dec(s: &str) -> Result<usize, PatchError> {
+    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        usize::from_str_radix(hex, 16).map_err(PatchError::ParseInt)
+    } else {
+        s.parse().map_err(PatchError::ParseInt)
+    }
+}
+
+fn parse_u8_hex_or_dec(s: &str) -> Result<u8, PatchError> {
+    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        u8::from_str_radix(hex, 16).map_err(PatchError::ParseInt)
+    } else {
+        s.parse().map_err(PatchError::ParseInt)
+    }
+}
+
+/// A single function to patch in a kernel module.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchTarget {
+    /// Function symbol name (e.g., `gf100_gr_fini`).
+    pub symbol: String,
+    /// Patching strategy.
+    pub strategy: PatchStrategy,
+}
+
+/// A named collection of patch targets for a specific warm handoff strategy.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatchSet {
+    /// Human-readable name (e.g., "volta_warm_handoff").
+    pub name: String,
+    /// Module name this patch set applies to (e.g., "nouveau").
+    pub module_name: String,
+    /// Functions to patch.
+    pub targets: Vec<PatchTarget>,
+    /// Minimum patches that must succeed for the module to be considered
+    /// usable. Defaults to 1 — loading an entirely unpatched copy is
+    /// almost certainly wrong.
+    #[serde(default = "default_min_applied")]
+    pub min_applied: usize,
+}
+
+pub(crate) fn default_min_applied() -> usize { 1 }
 
 /// Result of patching a single function.
 #[derive(Debug, Clone, Serialize, Deserialize)]

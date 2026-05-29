@@ -32,6 +32,7 @@ pub mod infant_discovery;
 pub mod interned_strings; // NEW: Zero-allocation string constants
 pub mod modern_utils;
 pub mod os_keyring;
+pub mod pci; // Shared PCI vendor IDs and related constants
 pub mod pci_discovery; // Unified PCI sysfs scanner (GPU + NPU + any accelerator)
 pub mod platform_paths; // NEW: Platform-agnostic path resolution (ecoBin v2.0)
 // primal_capabilities module removed S203g — zero external callers, replaced by infant_discovery

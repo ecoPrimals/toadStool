@@ -9,8 +9,8 @@ use tracing::{info, warn};
 const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);
 
 use crate::rpc_types::{
-    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, WorkloadResult,
-    WorkloadStatus, WorkloadSubmission,
+    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, ServiceError,
+    WorkloadResult, WorkloadStatus, WorkloadSubmission,
 };
 
 #[cfg(any(test, feature = "test-mocks"))]
@@ -29,18 +29,18 @@ pub trait WorkloadExecutor {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_;
+    ) -> impl Future<Output = Result<WorkloadResult, ServiceError>> + Send + '_;
 
     /// Query this executor's capabilities (self-knowledge)
     fn query_capabilities(
         &self,
-    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_;
+    ) -> impl Future<Output = Result<ComputeCapabilities, ServiceError>> + Send + '_;
 
     /// Cancel running workload
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> impl Future<Output = Result<(), String>> + Send + 'a;
+    ) -> impl Future<Output = Result<(), ServiceError>> + Send + 'a;
 }
 
 /// Standalone executor for single-instance mode
@@ -143,7 +143,7 @@ impl WorkloadExecutor for StandaloneExecutor {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<WorkloadResult, ServiceError>> + Send + '_ {
         async move {
             info!(
                 "Executing workload: {} (type: {})",
@@ -230,7 +230,7 @@ impl WorkloadExecutor for StandaloneExecutor {
 
     fn query_capabilities(
         &self,
-    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<ComputeCapabilities, ServiceError>> + Send + '_ {
         let caps = self.capabilities.clone();
         async move { Ok(caps) }
     }
@@ -238,7 +238,7 @@ impl WorkloadExecutor for StandaloneExecutor {
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> impl Future<Output = Result<(), String>> + Send + 'a {
+    ) -> impl Future<Output = Result<(), ServiceError>> + Send + 'a {
         async move {
             warn!("Cancel requested for workload: {}", workload_id);
             Ok(())

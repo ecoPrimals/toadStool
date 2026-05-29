@@ -168,15 +168,14 @@ fn read_driver_name(device_path: &Path) -> Option<String> {
 }
 
 /// Well-known PCI vendor IDs used in ecoPrimals.
+///
+/// Prefer [`crate::pci::vendors`] for new code; these aliases preserve the
+/// original `pci_discovery::vendors::*` names.
 pub mod vendors {
-    /// NVIDIA Corporation (GPUs, Tegra)
-    pub const NVIDIA: u16 = 0x10de;
-    /// BrainChip Inc. (Akida NPU)
-    pub const BRAINCHIP: u16 = 0x1E7C;
-    /// Advanced Micro Devices (GPUs, CPUs)
-    pub const AMD: u16 = 0x1002;
-    /// Intel Corporation (GPUs, CPUs, FPGAs)
-    pub const INTEL: u16 = 0x8086;
+    pub use crate::pci::vendors::{
+        AMD_VENDOR_ID as AMD, BRAINCHIP_VENDOR_ID as BRAINCHIP, INTEL_VENDOR_ID as INTEL,
+        NVIDIA_VENDOR_ID as NVIDIA,
+    };
 }
 
 #[cfg(test)]

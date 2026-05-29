@@ -2,6 +2,8 @@
 
 use crate::nv::registers::{falcon, pmc, pri};
 
+use super::errors::HandoffError;
+
 /// Recover the GPU's PRI ring after PCI driver unbind.
 ///
 /// The kernel's PCI framework clears PMC_ENABLE during unbind, which disables
@@ -11,9 +13,8 @@ use crate::nv::registers::{falcon, pmc, pri};
 /// 3. Enumerates PRI ring stations
 /// 4. Starts the PRI ring
 /// 5. Verifies top-level falcon registers are accessible
-pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, String> {
-    let bar0 = crate::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
-        .map_err(|e| format!("BAR0 open failed: {e}"))?;
+pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, HandoffError> {
+    let bar0 = crate::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)?;
 
     // Read current PMC_ENABLE
     let pmc_before = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
@@ -22,8 +23,7 @@ pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, Str
     // Enable PGRAPH (bit 12) if not already set
     if !pgraph_was_on {
         let new_pmc = pmc_before | (1 << 12);
-        bar0.write_u32(pmc::ENABLE as usize, new_pmc)
-            .map_err(|e| format!("PMC_ENABLE write failed: {e}"))?;
+        bar0.write_u32(pmc::ENABLE as usize, new_pmc)?;
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
@@ -32,20 +32,17 @@ pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, Str
     // Acknowledge pending PRI ring interrupts
     let pri_intr = bar0.read_u32(pri::INTR_STATUS as usize).unwrap_or(0);
     if pri_intr != 0 {
-        bar0.write_u32(pri::COMMAND as usize, 0x2)
-            .map_err(|e| format!("PRI ring ack failed: {e}"))?;
+        bar0.write_u32(pri::COMMAND as usize, 0x2)?;
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
 
     // Enumerate PRI ring stations
-    bar0.write_u32(pri::COMMAND as usize, 0x4)
-        .map_err(|e| format!("PRI ring enumerate failed: {e}"))?;
+    bar0.write_u32(pri::COMMAND as usize, 0x4)?;
     std::thread::sleep(std::time::Duration::from_millis(50));
     let status_enum = bar0.read_u32(pri::STATUS_ENUM as usize).unwrap_or(0xFF);
 
     // Start PRI ring
-    bar0.write_u32(pri::COMMAND as usize, 0x1)
-        .map_err(|e| format!("PRI ring start failed: {e}"))?;
+    bar0.write_u32(pri::COMMAND as usize, 0x1)?;
     std::thread::sleep(std::time::Duration::from_millis(50));
     let status_start = bar0.read_u32(pri::STATUS_ENUM as usize).unwrap_or(0xFF);
 

@@ -45,7 +45,7 @@ impl WorkloadHandler {
             .executor
             .execute(tarpc_submission)
             .await
-            .map_err(JsonRpcError::internal_error)?;
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
 
         serde_json::to_value(result)
             .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
@@ -66,7 +66,7 @@ impl WorkloadHandler {
         self.executor
             .cancel(workload_id)
             .await
-            .map_err(JsonRpcError::internal_error)?;
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
 
         Ok(serde_json::json!({"success": true}))
     }
@@ -78,7 +78,7 @@ impl WorkloadHandler {
             .executor
             .query_capabilities()
             .await
-            .map_err(JsonRpcError::internal_error)?;
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
 
         serde_json::to_value(caps)
             .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
@@ -139,7 +139,7 @@ impl WorkloadHandler {
             .executor
             .query_capabilities()
             .await
-            .map_err(JsonRpcError::internal_error)?;
+            .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
 
         let gpu_available = caps
             .compute_units

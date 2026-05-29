@@ -17,6 +17,8 @@ pub const INTR_EN_CLEAR_0: u32 = 0x0000_0180;
 pub const ENABLE: u32 = 0x0000_0200;
 /// Per-device engine enable (also exposed as PBDMA master enable on some GPUs).
 pub const DEVICE_ENABLE: u32 = 0x0000_0204;
+/// PMC clock gate disable (write 1 to disable CG for init/debug).
+pub const CLKGATE_DISABLE: u32 = 0x0000_0260;
 
 /// Per-generation interrupt register semantics.
 ///
@@ -102,7 +104,7 @@ impl InterruptProfile {
 /// Uses `unsafe` for volatile MMIO register access via sysfs resource0 mmap.
 /// The alternative (no quench) is a system-wide lockup from IRQ storm.
 pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
-    let bar0_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+    let bar0_path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
     let f = match std::fs::OpenOptions::new().read(true).write(true).open(&bar0_path) {
         Ok(f) => f,
         Err(e) => {
@@ -185,7 +187,7 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
 /// Set PCI command register bit 10 (INTx Disable) via sysfs config space.
 /// This is a PCI-spec generic operation that works across all GPU generations.
 pub fn intx_disable(bdf: &str, context: &str) {
-    let cfg_path = format!("/sys/bus/pci/devices/{bdf}/config");
+    let cfg_path = crate::linux_paths::sysfs_pci_device_file(bdf, "config");
     let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
         Ok(f) => f,
         Err(e) => {

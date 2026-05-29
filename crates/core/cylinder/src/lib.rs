@@ -85,6 +85,7 @@
 //!     /dev/dri/renderD*  /dev/vfio/* ← Linux DRM / VFIO
 //! ```
 
+pub mod bin_helpers;
 pub mod error;
 pub mod hardware;
 pub mod linux_paths;

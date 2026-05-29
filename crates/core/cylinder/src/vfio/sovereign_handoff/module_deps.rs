@@ -3,15 +3,21 @@
 use crate::vfio::guarded_sysfs;
 use crate::vfio::kmod;
 
+use super::errors::HandoffError;
+
 /// Load all dependencies for a kernel module.
 ///
 /// Resolves dependencies via `modules.dep` (pure Rust) with fallback to
 /// `modprobe --show-depends`, then loads each in order via `insmod`.
 /// This is necessary because `insmod` (used for patched modules) doesn't
 /// resolve dependencies like `modprobe` does.
-pub(crate) fn load_module_dependencies(module_name: &str) -> Result<(), String> {
-    let deps = kmod::resolve_module_dependencies(module_name)
-        .map_err(|e| format!("dependency resolution failed for {module_name}: {e}"))?;
+pub(crate) fn load_module_dependencies(module_name: &str) -> Result<(), HandoffError> {
+    let deps = kmod::resolve_module_dependencies(module_name).map_err(|source| {
+        HandoffError::ModuleDependencyResolutionFailed {
+            module: module_name.to_string(),
+            source,
+        }
+    })?;
 
     let mut loaded = 0;
 

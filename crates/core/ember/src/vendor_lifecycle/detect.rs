@@ -9,6 +9,7 @@ use super::{
     NvidiaKeplerLifecycle, NvidiaLifecycle, NvidiaOpenLifecycle, NvidiaOracleLifecycle,
 };
 
+// Canonical vendor IDs: toadstool_common::pci::vendors::{NVIDIA,AMD,INTEL,BRAINCHIP}_VENDOR_ID
 const NVIDIA_VENDOR: u16 = 0x10de;
 const AMD_VENDOR: u16 = 0x1002;
 const INTEL_VENDOR: u16 = 0x8086;

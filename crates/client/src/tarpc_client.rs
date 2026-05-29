@@ -24,7 +24,7 @@ pub enum TarpcClientError {
     Transport(#[from] tarpc::client::RpcError),
     /// Service-level error returned by the remote handler
     #[error("Service error: {0}")]
-    Service(String),
+    Service(#[from] ServiceError),
     /// Capability-based discovery failed to locate a compute service
     #[error("Discovery failed: {0}")]
     Discovery(String),
@@ -35,7 +35,7 @@ use tokio::net::{TcpStream, UnixStream};
 use tracing::{info, warn};
 
 use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, HealthStatus, ToadStoolComputeRpcClient, WorkloadResult,
+    ComputeCapabilities, HealthStatus, ServiceError, ToadStoolComputeRpcClient, WorkloadResult,
     WorkloadSubmission,
 };
 
@@ -234,9 +234,9 @@ impl ToadStoolTarpcClient {
     }
 
     /// Cancel workload
-    pub async fn cancel_workload(&self, workload_id: String) -> Result<(), TarpcClientError> {
+    pub async fn cancel_workload(&self, workload_id: &str) -> Result<(), TarpcClientError> {
         self.client
-            .cancel_workload(context::current(), workload_id)
+            .cancel_workload(context::current(), workload_id.to_string())
             .await
             .map_err(TarpcClientError::from)?
             .map_err(TarpcClientError::Service)

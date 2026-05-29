@@ -6,6 +6,73 @@ use std::path::Path;
 
 use super::GuardedSysfsError;
 
+/// Snapshot of a kernel module's state from `/proc/modules`.
+#[derive(Debug, Clone)]
+pub struct ModuleSnapshot {
+    pub name: String,
+    pub size: u64,
+    pub refcount: i64,
+    pub state: String,
+    pub address: String,
+    pub is_stuck: bool,
+    pub timestamp_ms: u64,
+}
+
+impl ModuleSnapshot {
+    pub fn is_live(&self) -> bool {
+        self.state == "Live" && self.refcount >= 0
+    }
+
+    pub fn is_zombie(&self) -> bool {
+        self.state == "Unloading" || self.refcount < 0
+    }
+}
+
+impl std::fmt::Display for ModuleSnapshot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}(size={}, ref={}, state={}, stuck={})",
+               self.name, self.size, self.refcount, self.state, self.is_stuck)
+    }
+}
+
+/// Take a point-in-time snapshot of a kernel module's state.
+///
+/// Returns `None` if the module is not loaded (not present in `/proc/modules`).
+pub fn module_snapshot(name: &str) -> Option<ModuleSnapshot> {
+    let proc_modules = format!("{}/modules", crate::linux_paths::proc_root());
+    let contents = std::fs::read_to_string(&proc_modules).ok()?;
+    parse_module_snapshot(name, &contents)
+}
+
+/// Inner parser for `module_snapshot` — testable without /proc access.
+pub(crate) fn parse_module_snapshot(name: &str, contents: &str) -> Option<ModuleSnapshot> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+
+    for line in contents.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() >= 5 && fields[0] == name {
+            let size = fields[1].parse::<u64>().unwrap_or(0);
+            let refcount = fields[2].parse::<i64>().unwrap_or(0);
+            let state = fields[4].to_string();
+            let address = fields.get(5).unwrap_or(&"0x0").to_string();
+            let is_stuck = state == "Unloading" || state == "Loading" || refcount < 0;
+            return Some(ModuleSnapshot {
+                name: name.to_string(),
+                size,
+                refcount,
+                state,
+                address,
+                is_stuck,
+                timestamp_ms: now,
+            });
+        }
+    }
+    None
+}
+
 /// Check whether a kernel module is stuck in the "Unloading" state.
 ///
 /// Parses `/proc/modules` for the named module and checks the state field.

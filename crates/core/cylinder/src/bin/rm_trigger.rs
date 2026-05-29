@@ -373,7 +373,10 @@ fn main() -> ExitCode {
     let bdf = args.windows(2)
         .find(|w| w[0] == "--bdf")
         .map(|w| w[1].as_str())
-        .unwrap_or("0000:49:00.0");
+        .unwrap_or_else(|| {
+            eprintln!("rm_trigger: --bdf <BDF> is required (e.g. --bdf 0000:49:00.0)");
+            std::process::exit(1);
+        });
 
     eprintln!("rm_trigger: major={major}, channel_mode={channel_mode}, bdf={bdf}");
     eprintln!("sizeof(Nvos21Parameters) = {}", size_of::<Nvos21Parameters>());

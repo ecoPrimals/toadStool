@@ -157,10 +157,10 @@ pub(super) fn resolve_shader_info(
     }
 }
 
-fn resource_exhausted(msg: String) -> JsonRpcError {
+fn resource_exhausted(msg: impl Into<String>) -> JsonRpcError {
     JsonRpcError {
         code: toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,
-        message: std::borrow::Cow::Owned(msg),
+        message: std::borrow::Cow::Owned(msg.into()),
         data: None,
     }
 }

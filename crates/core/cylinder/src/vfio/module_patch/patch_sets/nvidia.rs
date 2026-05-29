@@ -238,6 +238,13 @@ impl PatchSet {
                     symbol: "os_is_administrator".into(),
                     strategy: PatchStrategy::Ret1AtEntry,
                 },
+                // NOTE: cleanup_module RetAtEntry was tried (Exp 232) but causes
+                // kernel oops in irq_domain_remove/msi_device_data_release
+                // during unbind — the PCI subsystem expects the IRQ domain to
+                // be properly torn down before the driver unregisters. The
+                // zombie module (Unloading/ref=-1) is accepted as non-fatal;
+                // the preflight guard + force rmmod handle it.
+                //
                 // Change the chardev major from 195 (0xc3) to 0 (dynamic
                 // allocation) so nvsov gets its own chardev that doesn't
                 // conflict with the host nvidia-580 module.

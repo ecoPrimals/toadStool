@@ -238,8 +238,40 @@ fn errno_name(errno: i32) -> &'static str {
 
 /// Guarded `rmmod` — unload a kernel module via `delete_module(2)` in a
 /// forked child. Pure Rust, no `rmmod` binary dependency.
+///
+/// On failure, automatically retries with `O_NONBLOCK | O_TRUNC` (force
+/// removal) as a zombie-killer fallback. This handles modules stuck in
+/// cleanup due to NOP'd teardown paths.
 pub fn rmmod_guarded(name: &str, timeout: Duration) -> Result<(), GuardedSysfsError> {
+    match rmmod_with_flags(name, 0, timeout) {
+        Ok(()) => Ok(()),
+        Err(first_err) => {
+            tracing::warn!(module = name, error = %first_err,
+                           "normal rmmod failed — trying force rmmod (O_NONBLOCK|O_TRUNC)");
+            match rmmod_with_flags(name, O_NONBLOCK | O_TRUNC, timeout) {
+                Ok(()) => {
+                    tracing::info!(module = name, "force rmmod succeeded (zombie buried)");
+                    Ok(())
+                }
+                Err(force_err) => {
+                    tracing::warn!(module = name, error = %force_err,
+                                   "force rmmod also failed — module is a permanent zombie");
+                    Err(first_err)
+                }
+            }
+        }
+    }
+}
+
+const O_NONBLOCK: i32 = 0x800;
+const O_TRUNC: i32 = 0x200;
+
+/// Inner `delete_module` with configurable flags.
+fn rmmod_with_flags(name: &str, flags: i32, timeout: Duration) -> Result<(), GuardedSysfsError> {
+    let flag_desc = if flags == 0 { "normal".to_string() }
+                    else { format!("flags=0x{flags:x}") };
     tracing::info!(module = name, timeout_ms = timeout.as_millis() as u64,
+                   mode = flag_desc.as_str(),
                    "guarded rmmod (delete_module)");
 
     let name_c = CString::new(name).map_err(|_| GuardedSysfsError::KmodFailed {
@@ -266,7 +298,7 @@ pub fn rmmod_guarded(name: &str, timeout: Duration) -> Result<(), GuardedSysfsEr
         }),
         Ok(rustix::runtime::Fork::Child(_)) => {
             drop(pipe_read);
-            match rustix::system::delete_module(&name_c, 0) {
+            match rustix::system::delete_module(&name_c, flags) {
                 Ok(()) => rustix::runtime::exit_group(0),
                 Err(e) => {
                     let errno = e.raw_os_error();
@@ -287,7 +319,7 @@ pub fn rmmod_guarded(name: &str, timeout: Duration) -> Result<(), GuardedSysfsEr
                     return Err(GuardedSysfsError::KmodFailed {
                         cmd: "delete_module".into(),
                         args: name.into(),
-                        reason: format!("delete_module errno {errno} ({})",
+                        reason: format!("delete_module errno {errno} ({}) [flags=0x{flags:x}]",
                             errno_name(errno)),
                     });
                 }

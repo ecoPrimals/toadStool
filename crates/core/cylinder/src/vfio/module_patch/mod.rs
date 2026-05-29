@@ -62,7 +62,7 @@ use elf::resolve_symbol_file_offsets;
 /// rejection).
 ///
 /// Returns the path to the patched module and per-target results.
-pub fn patch_module_with_rename(
+pub(crate) fn patch_module_with_rename(
     source_ko: &Path,
     patch_set: &PatchSet,
     rename: Option<(&str, &str)>,
@@ -234,18 +234,18 @@ pub fn patch_module_with_rename(
 /// Patch a stock kernel module and write the result to a temporary file.
 ///
 /// Convenience wrapper around [`patch_module_with_rename`] without renaming.
-pub fn patch_module(source_ko: &Path, patch_set: &PatchSet) -> Result<ModulePatchResult, PatchError> {
+pub(crate) fn patch_module(source_ko: &Path, patch_set: &PatchSet) -> Result<ModulePatchResult, PatchError> {
     patch_module_with_rename(source_ko, patch_set, None)
 }
 
 /// Get the path where a patched module would be written.
 #[must_use]
-pub fn patched_module_path(module_name: &str) -> PathBuf {
+pub(crate) fn patched_module_path(module_name: &str) -> PathBuf {
     PathBuf::from(format!("/tmp/toadstool-patched-{module_name}.ko"))
 }
 
 /// Clean up a previously patched module from /tmp.
-pub fn cleanup_patched_module(module_name: &str) -> Result<(), std::io::Error> {
+pub(crate) fn cleanup_patched_module(module_name: &str) -> Result<(), std::io::Error> {
     let path = patched_module_path(module_name);
     if path.exists() {
         std::fs::remove_file(&path)?;

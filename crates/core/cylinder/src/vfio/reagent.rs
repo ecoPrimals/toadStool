@@ -27,6 +27,63 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+/// Errors from reagent capture and persistence operations.
+#[derive(Debug, thiserror::Error)]
+pub enum ReagentError {
+    #[error("Failed to create reagent dir {path}: {source}")]
+    CreateDirFailed {
+        path: String,
+        source: std::io::Error,
+    },
+
+    #[error("Failed to serialize manifest: {0}")]
+    Serialize(serde_json::Error),
+
+    #[error("Failed to write manifest: {0}")]
+    WriteManifest(std::io::Error),
+
+    #[error("Failed to read manifest {path}: {source}")]
+    ReadManifest {
+        path: String,
+        source: std::io::Error,
+    },
+
+    #[error("Failed to parse manifest: {0}")]
+    ParseManifest(serde_json::Error),
+
+    #[error("mkdir {path}: {source}")]
+    MirrorMkdirFailed {
+        path: String,
+        source: std::io::Error,
+    },
+
+    #[error("Failed to parse mmiotrace: {0}")]
+    MmiotraceParse(#[from] crate::error::ChannelError),
+
+    #[error("Failed to write recipe: {0}")]
+    WriteRecipe(std::io::Error),
+
+    #[error("Requested {len} bytes exceeds PRAMIN window size {max}")]
+    PraminSizeExceeded { len: usize, max: usize },
+
+    #[error("PRAMIN register access failed: {0}")]
+    PraminAccess(#[from] crate::error::DriverError),
+
+    #[error("{name} VRAM capture mostly zeros ({nonzero}/{total} nonzero) — firmware may not be staged at 0x{addr:x}")]
+    VramCaptureEmpty {
+        name: &'static str,
+        nonzero: usize,
+        total: usize,
+        addr: u64,
+    },
+
+    #[error("No BAR0 resource at {path}")]
+    NoBar0Resource { path: String },
+
+    #[error("mkdir firmware: {0}")]
+    CatalystMkdirFailed(std::io::Error),
+}
+
 /// Default runtime reagent storage directory.
 pub const REAGENT_STORE_DIR: &str = "/var/lib/toadstool/reagents";
 
@@ -199,16 +256,16 @@ impl ReagentManifest {
     /// Write the manifest to the reagent store directory.
     ///
     /// Creates the directory structure if it doesn't exist.
-    pub fn persist(&self) -> Result<PathBuf, String> {
+    pub fn persist(&self) -> Result<PathBuf, ReagentError> {
         let dir = self.store_path();
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("Failed to create reagent dir {}: {e}", dir.display()))?;
+        std::fs::create_dir_all(&dir).map_err(|source| ReagentError::CreateDirFailed {
+            path: dir.display().to_string(),
+            source,
+        })?;
 
         let manifest_path = dir.join("manifest.json");
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
-        std::fs::write(&manifest_path, json)
-            .map_err(|e| format!("Failed to write manifest: {e}"))?;
+        let json = serde_json::to_string_pretty(self).map_err(ReagentError::Serialize)?;
+        std::fs::write(&manifest_path, json).map_err(ReagentError::WriteManifest)?;
 
         tracing::info!(
             path = %manifest_path.display(),
@@ -220,32 +277,33 @@ impl ReagentManifest {
     }
 
     /// Load a manifest from disk.
-    pub fn load(path: &Path) -> Result<Self, String> {
-        let data = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read manifest {}: {e}", path.display()))?;
-        serde_json::from_str(&data)
-            .map_err(|e| format!("Failed to parse manifest: {e}"))
+    pub fn load(path: &Path) -> Result<Self, ReagentError> {
+        let data = std::fs::read_to_string(path).map_err(|source| ReagentError::ReadManifest {
+            path: path.display().to_string(),
+            source,
+        })?;
+        serde_json::from_str(&data).map_err(ReagentError::ParseManifest)
     }
 
     /// Mirror small JSON artifacts to a repo-side reagent directory.
     ///
     /// Large binaries (frozen .ko, full mmiotrace) are NOT copied — only
     /// manifest.json and JSON recipe files under a size threshold.
-    pub fn mirror_to_repo(&self, repo_reagents_dir: &Path) -> Result<PathBuf, String> {
+    pub fn mirror_to_repo(&self, repo_reagents_dir: &Path) -> Result<PathBuf, ReagentError> {
         const MAX_MIRROR_SIZE: u64 = 5 * 1024 * 1024; // 5 MiB threshold
 
         let dest_dir = repo_reagents_dir.join(self.dir_name());
-        std::fs::create_dir_all(&dest_dir)
-            .map_err(|e| format!("mkdir {}: {e}", dest_dir.display()))?;
+        std::fs::create_dir_all(&dest_dir).map_err(|source| ReagentError::MirrorMkdirFailed {
+            path: dest_dir.display().to_string(),
+            source,
+        })?;
         std::fs::create_dir_all(dest_dir.join("firmware")).ok();
         std::fs::create_dir_all(dest_dir.join("mmiotrace")).ok();
 
         // Write manifest
         let manifest_path = dest_dir.join("manifest.json");
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| format!("serialize: {e}"))?;
-        std::fs::write(&manifest_path, json)
-            .map_err(|e| format!("write manifest: {e}"))?;
+        let json = serde_json::to_string_pretty(self).map_err(ReagentError::Serialize)?;
+        std::fs::write(&manifest_path, json).map_err(ReagentError::WriteManifest)?;
 
         // Mirror JSON artifacts under size threshold
         let json_sources = [
@@ -338,11 +396,10 @@ pub fn catalog_linux_firmware(chip: &str) -> Vec<FirmwareBlob> {
 pub fn distill_mmiotrace_to_reagent(
     trace_path: &Path,
     output_path: &Path,
-) -> Result<MmiotraceReagentSummary, String> {
+) -> Result<MmiotraceReagentSummary, ReagentError> {
     use crate::vfio::channel::diagnostic::boot_follower::BootTrace;
 
-    let trace = BootTrace::from_mmiotrace(trace_path)
-        .map_err(|e| format!("Failed to parse mmiotrace: {e}"))?;
+    let trace = BootTrace::from_mmiotrace(trace_path)?;
 
     let total_writes = trace.writes.len();
     let total_reads = trace.reads.len();
@@ -363,14 +420,14 @@ pub fn distill_mmiotrace_to_reagent(
     let acr_steps = acr_recipe.len();
 
     // Save full recipe
-    let json = serde_json::to_string_pretty(&recipe)
-        .map_err(|e| format!("Failed to serialize recipe: {e}"))?;
+    let json = serde_json::to_string_pretty(&recipe).map_err(ReagentError::Serialize)?;
     if let Some(parent) = output_path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
+        std::fs::create_dir_all(parent).map_err(|source| ReagentError::MirrorMkdirFailed {
+            path: parent.display().to_string(),
+            source,
+        })?;
     }
-    std::fs::write(output_path, &json)
-        .map_err(|e| format!("Failed to write recipe: {e}"))?;
+    std::fs::write(output_path, &json).map_err(ReagentError::WriteRecipe)?;
 
     // Save ACR-focused subset
     let acr_output = output_path.with_file_name(
@@ -380,10 +437,8 @@ pub fn distill_mmiotrace_to_reagent(
             .unwrap_or_else(|| "acr_subset".to_owned())
             + ".json",
     );
-    let acr_json = serde_json::to_string_pretty(&acr_recipe)
-        .map_err(|e| format!("Failed to serialize ACR recipe: {e}"))?;
-    std::fs::write(&acr_output, &acr_json)
-        .map_err(|e| format!("Failed to write ACR recipe: {e}"))?;
+    let acr_json = serde_json::to_string_pretty(&acr_recipe).map_err(ReagentError::Serialize)?;
+    std::fs::write(&acr_output, &acr_json).map_err(ReagentError::WriteRecipe)?;
 
     let summary = MmiotraceReagentSummary {
         trace_path: trace_path.to_path_buf(),
@@ -436,27 +491,27 @@ pub fn read_vram_via_pramin(
     bar0: &crate::vfio::device::MappedBar,
     vram_addr: u64,
     len: usize,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, ReagentError> {
     const PRAMIN_BASE: usize = 0x70_0000;
     const PRAMIN_SIZE: usize = 0x10_0000; // 1 MiB window
     const BAR0_WINDOW_REG: usize = 0x1700;
 
     if len > PRAMIN_SIZE {
-        return Err(format!("Requested {len} bytes exceeds PRAMIN window size {PRAMIN_SIZE}"));
+        return Err(ReagentError::PraminSizeExceeded {
+            len,
+            max: PRAMIN_SIZE,
+        });
     }
 
     let page_addr = (vram_addr >> 16) as u32;
-    bar0.write_u32(BAR0_WINDOW_REG, page_addr)
-        .map_err(|e| format!("PRAMIN window write failed: {e}"))?;
+    bar0.write_u32(BAR0_WINDOW_REG, page_addr)?;
 
     let page_offset = (vram_addr & 0xFFFF) as usize;
     let mut data = Vec::with_capacity(len);
 
     for i in (0..len).step_by(4) {
         let offset = PRAMIN_BASE + page_offset + i;
-        let word = bar0
-            .read_u32(offset)
-            .map_err(|e| format!("PRAMIN read at 0x{offset:x} failed: {e}"))?;
+        let word = bar0.read_u32(offset)?;
         data.extend_from_slice(&word.to_le_bytes());
     }
 
@@ -494,7 +549,7 @@ pub mod vram_firmware_addrs {
 pub fn capture_vram_firmware(
     bar0: &crate::vfio::device::MappedBar,
     output_dir: &std::path::Path,
-) -> Vec<(String, Result<PathBuf, String>)> {
+) -> Vec<(String, Result<PathBuf, ReagentError>)> {
     use vram_firmware_addrs::*;
 
     std::fs::create_dir_all(output_dir).ok();
@@ -506,13 +561,14 @@ pub fn capture_vram_firmware(
         .and_then(|data| {
             let nonzero = data.iter().filter(|&&b| b != 0).count();
             if nonzero < FECS_CODE_SIZE / 10 {
-                return Err(format!(
-                    "FECS VRAM capture mostly zeros ({nonzero}/{FECS_CODE_SIZE} nonzero) — \
-                     firmware may not be staged at 0x{FECS_VRAM_ADDR_535:x}"
-                ));
+                return Err(ReagentError::VramCaptureEmpty {
+                    name: "FECS",
+                    nonzero,
+                    total: FECS_CODE_SIZE,
+                    addr: FECS_VRAM_ADDR_535,
+                });
             }
-            std::fs::write(&fecs_path, &data)
-                .map_err(|e| format!("write {}: {e}", fecs_path.display()))?;
+            std::fs::write(&fecs_path, &data).map_err(ReagentError::WriteRecipe)?;
             tracing::info!(
                 path = %fecs_path.display(),
                 size = data.len(),
@@ -531,13 +587,14 @@ pub fn capture_vram_firmware(
         .and_then(|data| {
             let nonzero = data.iter().filter(|&&b| b != 0).count();
             if nonzero < gpccs_size / 10 {
-                return Err(format!(
-                    "GPCCS VRAM capture mostly zeros ({nonzero}/{gpccs_size} nonzero) — \
-                     address 0x{gpccs_addr:x} may be wrong"
-                ));
+                return Err(ReagentError::VramCaptureEmpty {
+                    name: "GPCCS",
+                    nonzero,
+                    total: gpccs_size,
+                    addr: gpccs_addr,
+                });
             }
-            std::fs::write(&gpccs_path, &data)
-                .map_err(|e| format!("write {}: {e}", gpccs_path.display()))?;
+            std::fs::write(&gpccs_path, &data).map_err(ReagentError::WriteRecipe)?;
             tracing::info!(
                 path = %gpccs_path.display(),
                 size = data.len(),
@@ -658,9 +715,10 @@ pub fn execute_reagent_capture(
         "nvidia_state_probe".to_owned(),
         StrategyResult {
             success: bar0_result.is_ok(),
-            detail: bar0_result
-                .clone()
-                .unwrap_or_else(|e| format!("Failed: {e}")),
+            detail: match &bar0_result {
+                Ok(s) => s.clone(),
+                Err(e) => format!("Failed: {e}"),
+            },
             artifacts: HashMap::new(),
         },
     );
@@ -705,10 +763,10 @@ fn detect_kernel_version() -> String {
         .unwrap_or_else(|| "unknown".to_owned())
 }
 
-fn probe_nvidia_bar0_state(bdf: &str) -> Result<String, String> {
+fn probe_nvidia_bar0_state(bdf: &str) -> Result<String, ReagentError> {
     let resource_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
     if !Path::new(&resource_path).exists() {
-        return Err(format!("No BAR0 resource at {resource_path}"));
+        return Err(ReagentError::NoBar0Resource { path: resource_path });
     }
 
     let driver_path = format!("/sys/bus/pci/devices/{bdf}/driver");
@@ -724,9 +782,11 @@ fn copy_catalyst_artifacts(
     catalyst_dir: &Path,
     reagent_dir: &Path,
     manifest: &mut ReagentManifest,
-) -> Result<(), String> {
-    std::fs::create_dir_all(reagent_dir)
-        .map_err(|e| format!("mkdir {}: {e}", reagent_dir.display()))?;
+) -> Result<(), ReagentError> {
+    std::fs::create_dir_all(reagent_dir).map_err(|source| ReagentError::MirrorMkdirFailed {
+        path: reagent_dir.display().to_string(),
+        source,
+    })?;
 
     // Copy patch set recipe if available
     let recipes_dir = catalyst_dir.join("recipes");
@@ -753,7 +813,7 @@ fn copy_catalyst_artifacts(
     if fw_dir.is_dir() {
         let reagent_fw_dir = reagent_dir.join("firmware");
         std::fs::create_dir_all(&reagent_fw_dir)
-            .map_err(|e| format!("mkdir firmware: {e}"))?;
+            .map_err(ReagentError::CatalystMkdirFailed)?;
 
         if let Ok(entries) = std::fs::read_dir(&fw_dir) {
             for entry in entries.flatten() {

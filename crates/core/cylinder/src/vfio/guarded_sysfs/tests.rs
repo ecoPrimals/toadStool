@@ -111,3 +111,42 @@ fn parse_module_stuck_unknown_module_is_ok() {
 fn parse_module_stuck_empty_content() {
     assert!(!proc_scan::parse_module_stuck("nouveau", ""));
 }
+
+#[test]
+fn module_snapshot_live() {
+    let content = "nvsov 35635200 6 - Live 0xffffffffc1234000\n";
+    let snap = proc_scan::parse_module_snapshot("nvsov", content).unwrap();
+    assert_eq!(snap.name, "nvsov");
+    assert_eq!(snap.size, 35635200);
+    assert_eq!(snap.refcount, 6);
+    assert_eq!(snap.state, "Live");
+    assert!(!snap.is_stuck);
+    assert!(snap.is_live());
+    assert!(!snap.is_zombie());
+}
+
+#[test]
+fn module_snapshot_zombie() {
+    let content = "nvsov 35635200 -1 - Unloading 0x0000000000000000\n";
+    let snap = proc_scan::parse_module_snapshot("nvsov", content).unwrap();
+    assert_eq!(snap.refcount, -1);
+    assert_eq!(snap.state, "Unloading");
+    assert!(snap.is_stuck);
+    assert!(!snap.is_live());
+    assert!(snap.is_zombie());
+}
+
+#[test]
+fn module_snapshot_not_loaded() {
+    let content = "vfio_pci 65536 0 - Live 0xffffffffc5678000\n";
+    assert!(proc_scan::parse_module_snapshot("nvsov", content).is_none());
+}
+
+#[test]
+fn module_snapshot_refcount_transitions() {
+    let content = "nvsov 35635200 0 - Live 0xffffffffc1234000\n";
+    let snap = proc_scan::parse_module_snapshot("nvsov", content).unwrap();
+    assert_eq!(snap.refcount, 0);
+    assert!(snap.is_live());
+    assert!(!snap.is_zombie());
+}

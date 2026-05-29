@@ -68,58 +68,7 @@ const GPCCS_FALCON_MAILBOX0: u32 = GPCCS_BASE + falcon::MAILBOX0;
 /* VRAM address where we stage firmware (arbitrary, within first 64 MB) */
 const FW_STAGING_VRAM_BASE: u64 = 0x01000000; /* 16 MB into VRAM */
 
-struct Bar0 {
-    ptr: *mut u32,
-    len: usize,
-}
-
-impl Bar0 {
-    /// # Safety
-    /// `fd` must be an open file descriptor to a PCI BAR0 resource file and
-    /// `size` must not exceed the device BAR region. Caller ensures exclusive
-    /// access to the mapped region (single-threaded diagnostic binary).
-    unsafe fn map(fd: std::os::fd::BorrowedFd, size: usize) -> io::Result<Self> {
-        // SAFETY: fd is a valid sysfs resource0 file; size is BAR0_SIZE (16 MiB)
-        // matching GPU BAR0; MAP_SHARED is required for MMIO coherency.
-        let ptr = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                fd,
-                0,
-            )
-        }
-        .map_err(|e| io::Error::from_raw_os_error(e.raw_os_error()))?;
-        Ok(Self {
-            ptr: ptr.cast(),
-            len: size,
-        })
-    }
-
-    fn r32(&self, offset: u32) -> u32 {
-        // SAFETY: offset is validated by caller to be within BAR0_SIZE; volatile
-        // read is required for MMIO register semantics (no reordering/elision).
-        unsafe { std::ptr::read_volatile(self.ptr.add(offset as usize / 4)) }
-    }
-
-    fn w32(&self, offset: u32, val: u32) {
-        // SAFETY: offset is validated by caller to be within BAR0_SIZE; volatile
-        // write is required for MMIO register semantics.
-        unsafe { std::ptr::write_volatile(self.ptr.add(offset as usize / 4), val) }
-    }
-}
-
-impl Drop for Bar0 {
-    fn drop(&mut self) {
-        // SAFETY: ptr and len were set by a successful mmap in Self::map;
-        // Drop runs exactly once.
-        unsafe {
-            let _ = rustix::mm::munmap(self.ptr.cast(), self.len);
-        }
-    }
-}
+use toadstool_cylinder::bin_helpers::Bar0;
 
 fn load_file(path: &Path) -> Option<Vec<u8>> {
     std::fs::read(path).ok()

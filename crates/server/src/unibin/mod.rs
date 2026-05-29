@@ -291,6 +291,10 @@ pub async fn run_server_main(
         error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
     }
 
+    // Exp 232: kernel oops sentinel — monitors /dev/kmsg for crash signatures
+    // and saves triage reports before the system goes down.
+    crate::background::kernel_sentinel::start_sentinel_thread();
+
     // PG-62: discovery registration and biomeOS scan run AFTER listeners are
     // spawned so that health.liveness is reachable during initialization.
     // Callers see {"status":"starting"} until ready flag is set below.

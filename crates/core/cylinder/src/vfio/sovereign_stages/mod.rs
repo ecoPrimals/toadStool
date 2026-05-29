@@ -63,29 +63,30 @@ pub struct SovereignSnapshot {
 
 impl SovereignSnapshot {
     /// Capture a full register snapshot from BAR0 in one pass.
-    pub fn capture(bar0: &MappedBar) -> Self {
+    pub(crate) fn capture(bar0: &MappedBar) -> Self {
+        use crate::nv::registers::{ce, gpc, pgraph, pmc, pri};
         use crate::vfio::channel::registers::falcon;
 
         let r = |off: usize| bar0.read_u32(off).unwrap_or(0xDEAD_DEAD);
 
         let mut gpc_per_unit = Vec::with_capacity(6);
         let mut gpc_tpc0 = Vec::with_capacity(6);
-        for gpc in 0..6u32 {
-            gpc_per_unit.push(r(0x500000 + gpc as usize * 0x8000));
-            gpc_tpc0.push(r(0x504000 + gpc as usize * 0x8000));
+        for g in 0..6u32 {
+            gpc_per_unit.push(r(gpc::gpc_base(g) as usize));
+            gpc_tpc0.push(r(gpc::gpc_tpc0(g) as usize));
         }
 
-        let mut ce = Vec::with_capacity(6);
+        let mut ce_vals = Vec::with_capacity(6);
         for i in 0..6u32 {
-            ce.push(r(0x104000 + i as usize * 0x1000));
+            ce_vals.push(r(ce::ce_base(i) as usize));
         }
 
         SovereignSnapshot {
-            pmc_enable: r(PMC_ENABLE),
-            pmc_intr_en: r(PMC_INTR_EN_0),
-            pfifo_enable: r(0x2200),
-            pgraph_status: r(0x400700),
-            gpc_bcast: r(0x41A004),
+            pmc_enable: r(pmc::ENABLE as usize),
+            pmc_intr_en: r(pmc::INTR_EN_0 as usize),
+            pfifo_enable: r(pgraph::PFIFO_ENABLE as usize),
+            pgraph_status: r(pgraph::STATUS as usize),
+            gpc_bcast: r(gpc::BCAST_ENABLES as usize),
             fecs_cpuctl: r(falcon::FECS_BASE + falcon::CPUCTL),
             fecs_cpuctl_alias: r(falcon::FECS_BASE + falcon::CPUCTL_ALIAS),
             fecs_pc: r(falcon::FECS_BASE + falcon::PC),
@@ -95,16 +96,16 @@ impl SovereignSnapshot {
             pmu_cpuctl: r(falcon::PMU_BASE + falcon::CPUCTL),
             pmu_pc: r(falcon::PMU_BASE + falcon::PC),
             gpc_per_unit,
-            gpc_tpc0,
-            ce,
-            pbdma0_intr: r(0x040100),
-            therm_gate: r(0x020200),
-            pri_ringmaster_intr: r(0x12200C),
+            gpc_tpc0: gpc_tpc0,
+            ce: ce_vals,
+            pbdma0_intr: r(pgraph::PBDMA0_INTR as usize),
+            therm_gate: r(pgraph::THERM_GATE as usize),
+            pri_ringmaster_intr: r(pri::RINGMASTER_INTR_STATUS as usize),
         }
     }
 
     /// Produce a human-readable diff between `before` and `after` snapshots.
-    pub fn diff(before: &Self, after: &Self) -> Vec<String> {
+    pub(crate) fn diff(before: &Self, after: &Self) -> Vec<String> {
         let mut lines = Vec::new();
         macro_rules! cmp {
             ($field:ident, $name:expr) => {
@@ -280,13 +281,13 @@ pub fn sovereign_snapshot_only(
 ///
 /// Enables the PFIFO engine and disables clock gating across all accessible
 /// domains. This is the safest stage — standard init operations, fully reversible.
-pub fn experiment_stage_1(bar0: &MappedBar) -> ExperimentResult {
+pub(crate) fn experiment_stage_1(bar0: &MappedBar) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
 
     // Write PFIFO_ENABLE = 1
-    writes.push(ExperimentWrite::new(bar0, 0x2200, 0x1));
+    writes.push(ExperimentWrite::new(bar0, crate::nv::registers::pgraph::PFIFO_ENABLE as usize, 0x1));
     notes.push(format!("PFIFO_ENABLE: was {:#010x}", before.pfifo_enable));
 
     // CG sweep to disable clock gating
@@ -312,13 +313,15 @@ pub fn experiment_stage_1(bar0: &MappedBar) -> ExperimentResult {
 /// Disables PMC clock gating, ensures PGRAPH is enabled in PMC, writes GPC
 /// broadcast PGOB control registers, and polls PGRAPH_STATUS.
 /// Medium risk — writes to power gating control.
-pub fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
+pub(crate) fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
 
+    use crate::nv::registers::{gpc, pgraph, pmc as pmc_reg};
+
     // Step 1: PMC clock gate disable
-    writes.push(ExperimentWrite::new(bar0, 0x260, 0x1));
+    writes.push(ExperimentWrite::new(bar0, pmc_reg::CLKGATE_DISABLE as usize, 0x1));
     notes.push("PMC_CLKGATE_DISABLE = 1".into());
 
     // Step 2: Ensure GR engine enabled in PMC_ENABLE (bit 12)
@@ -331,18 +334,18 @@ pub fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
     }
 
     // Step 3: GPC broadcast PGOB control = 0x110
-    writes.push(ExperimentWrite::new(bar0, 0x419000, 0x0000_0110));
+    writes.push(ExperimentWrite::new(bar0, gpc::BCAST_CONTROL as usize, 0x0000_0110));
     notes.push("GPC_BCAST_PGOB_CONTROL = 0x110".into());
 
     // Step 4: Per-GPC PGOB disable (broadcast offset + 0x1028)
-    writes.push(ExperimentWrite::new(bar0, 0x41A028, 0x0));
+    writes.push(ExperimentWrite::new(bar0, gpc::BCAST_PGOB as usize, 0x0));
     notes.push("GPC_PGOB_PER_GPC = 0x0 (disable power gating)".into());
 
     // Step 5: Poll PGRAPH_STATUS for up to 100ms
     let deadline = Instant::now() + Duration::from_millis(100);
     let mut last_status = 0xDEAD_DEAD_u32;
     while Instant::now() < deadline {
-        last_status = bar0.read_u32(0x400700).unwrap_or(0xDEAD_DEAD);
+        last_status = bar0.read_u32(pgraph::STATUS as usize).unwrap_or(0xDEAD_DEAD);
         if last_status >> 16 != 0xBADF {
             break;
         }
@@ -368,22 +371,24 @@ pub fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
 ///
 /// Clears PRI faults, re-enumerates ring stations, and probes GPC per-unit
 /// and TPC registers. Low risk — standard PRI recovery.
-pub fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
+pub(crate) fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
 
+    use crate::nv::registers::{gpc, pri};
+
     // Clear PRI ringmaster interrupt status
-    let rm_intr = bar0.read_u32(0x12200C).unwrap_or(0);
+    let rm_intr = bar0.read_u32(pri::RINGMASTER_INTR_STATUS as usize).unwrap_or(0);
     if rm_intr != 0 {
-        writes.push(ExperimentWrite::new(bar0, 0x12200C, rm_intr));
+        writes.push(ExperimentWrite::new(bar0, pri::RINGMASTER_INTR_STATUS as usize, rm_intr));
         notes.push(format!("PRI_RM_INTR: cleared {rm_intr:#010x}"));
     } else {
         notes.push("PRI_RM_INTR: already clear".into());
     }
 
     // Re-enumerate ring stations
-    writes.push(ExperimentWrite::new(bar0, 0x122000, 0x4));
+    writes.push(ExperimentWrite::new(bar0, pri::RINGMASTER_COMMAND as usize, 0x4));
     notes.push("PRI_RINGMASTER_CMD: ENUMERATE".into());
     std::thread::sleep(Duration::from_millis(20));
 
@@ -398,13 +403,13 @@ pub fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
     std::thread::sleep(Duration::from_millis(50));
 
     // Probe individual GPC registers for liveness
-    for gpc in 0..6u32 {
-        let unit = bar0.read_u32(0x500000 + gpc as usize * 0x8000).unwrap_or(0xDEAD_DEAD);
-        let tpc0 = bar0.read_u32(0x504000 + gpc as usize * 0x8000).unwrap_or(0xDEAD_DEAD);
+    for g in 0..6u32 {
+        let unit = bar0.read_u32(gpc::gpc_base(g) as usize).unwrap_or(0xDEAD_DEAD);
+        let tpc0 = bar0.read_u32(gpc::gpc_tpc0(g) as usize).unwrap_or(0xDEAD_DEAD);
         let is_fault = crate::nv::pri::is_pri_fault(unit);
         if !is_fault {
             notes.push(format!(
-                "GPC{gpc}: unit={unit:#010x} tpc0={tpc0:#010x} (alive)"
+                "GPC{g}: unit={unit:#010x} tpc0={tpc0:#010x} (alive)"
             ));
         }
     }
@@ -428,21 +433,23 @@ pub fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
 /// Only proceeds if GPCs showed life in stage 2-3. Writes GPC MMU init
 /// registers and replays sw_nonctx.bin firmware blob. Higher risk — large
 /// write sequence.
-pub fn experiment_stage_4(bar0: &MappedBar) -> ExperimentResult {
+pub(crate) fn experiment_stage_4(bar0: &MappedBar) -> ExperimentResult {
     experiment_stage_4_with_chip(bar0, "gv100", 70)
 }
 
 /// Stage 4 with explicit chip/SM version parameters.
-pub fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
+pub(crate) fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
 
     notes.push(format!("chip={chip}, sm={sm}"));
 
+    use crate::nv::registers::gpc;
+
     // Pre-check: is GPC domain alive?
-    let gpc0 = bar0.read_u32(0x500000).unwrap_or(0xDEAD_DEAD);
-    let gpc_bcast = bar0.read_u32(0x41A004).unwrap_or(0);
+    let gpc0 = bar0.read_u32(gpc::gpc_base(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let gpc_bcast = bar0.read_u32(gpc::BCAST_ENABLES as usize).unwrap_or(0);
     let gpc_alive = !crate::nv::pri::is_pri_fault(gpc0)
         || (!crate::nv::pri::is_pri_fault(gpc_bcast) && gpc_bcast != 0);
 
@@ -466,12 +473,12 @@ pub fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
 
     // GPC MMU init sequence (from nouveau gf100_grctx)
     let mmu_writes: &[(usize, u32)] = &[
-        (0x418880, 0x0000_0001), // GPC_BCAST MMU_CTRL
-        (0x418890, 0x0000_0000), // GPC_BCAST MMU_PM_UNIT_MASK
-        (0x418894, 0x0000_0000), // GPC_BCAST MMU_PM_REQ_MASK
-        (0x4188B0, 0x0000_0000), // GPC_BCAST MMU_DEBUG_CTRL
-        (0x4188B4, 0xFFFF_FFFF), // GPC_BCAST MMU_DEBUG_WR
-        (0x4188B8, 0x0000_0007), // GPC_BCAST MMU_DEBUG_RD
+        (gpc::BCAST_MMU_CTRL as usize, 0x0000_0001),
+        (gpc::BCAST_MMU_PM_UNIT_MASK as usize, 0x0000_0000),
+        (gpc::BCAST_MMU_PM_REQ_MASK as usize, 0x0000_0000),
+        (gpc::BCAST_MMU_DEBUG_B0 as usize, 0x0000_0000),
+        (gpc::BCAST_MMU_DEBUG_WR as usize, 0xFFFF_FFFF),
+        (gpc::BCAST_MMU_DEBUG_RD as usize, 0x0000_0007),
     ];
 
     for &(offset, value) in mmu_writes {
@@ -489,9 +496,9 @@ pub fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
     }
 
     // Probe TPC registers after sw_nonctx broadcast writes
-    let tpc0_post = bar0.read_u32(0x504000).unwrap_or(0xDEAD_DEAD);
-    let tpc0_sm_post = bar0.read_u32(0x504200).unwrap_or(0xDEAD_DEAD);
-    let bcast_tpc_post = bar0.read_u32(0x419C04).unwrap_or(0xDEAD_DEAD);
+    let tpc0_post = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let tpc0_sm_post = bar0.read_u32(gpc::gpc_tpc0_sm(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let bcast_tpc_post = bar0.read_u32(gpc::BCAST_TPC_CTRL as usize).unwrap_or(0xDEAD_DEAD);
     notes.push(format!(
         "Post-sw_nonctx TPC probe: tpc0_ctrl={tpc0_post:#010x}, \
          tpc0_sm={tpc0_sm_post:#010x}, bcast_tpc={bcast_tpc_post:#010x}"
@@ -526,7 +533,8 @@ pub fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
 /// CPUCTL_ALIAS (0x409130). Only proceeds if GPCs are alive. Polls PC
 /// for advancement, then tries INIT_CTXSW. Medium risk — FECS may
 /// trigger falcon exception if TPCs are still gated.
-pub fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
+pub(crate) fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
+    use crate::nv::registers::gpc;
     use crate::vfio::channel::registers::falcon;
 
     let before = SovereignSnapshot::capture(bar0);
@@ -534,8 +542,8 @@ pub fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
     let mut notes = Vec::new();
 
     // Pre-check: GPCs alive?
-    let gpc0 = bar0.read_u32(0x500000).unwrap_or(0xDEAD_DEAD);
-    let gpc_bcast = bar0.read_u32(0x41A004).unwrap_or(0);
+    let gpc0 = bar0.read_u32(gpc::gpc_base(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let gpc_bcast = bar0.read_u32(gpc::BCAST_ENABLES as usize).unwrap_or(0);
     let gpc_alive = !crate::nv::pri::is_pri_fault(gpc0)
         || (!crate::nv::pri::is_pri_fault(gpc_bcast) && gpc_bcast != 0);
 
@@ -665,12 +673,12 @@ pub fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
 /// Higher risk than stages 1-5 — includes PGRAPH engine reset which
 /// may change FECS state. Use after stages 1-3 confirm GPC fabric is
 /// alive but TPCs remain PRI-faulted.
-pub fn experiment_stage_6(bar0: &MappedBar) -> ExperimentResult {
+pub(crate) fn experiment_stage_6(bar0: &MappedBar) -> ExperimentResult {
     experiment_stage_6_with_chip(bar0, "gv100", 70)
 }
 
 /// Stage 6 with explicit chip/SM version parameters.
-pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
+pub(crate) fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
     use std::time::Duration;
 
     let before = SovereignSnapshot::capture(bar0);
@@ -695,11 +703,13 @@ pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
         pri1.alive, pri1.faulted
     ));
 
+    use crate::nv::registers::{gpc, pmc as pmc_reg, pri};
+
     // PGOB ungate via GPC broadcast
     let pgob_regs: &[(usize, u32)] = &[
-        (0x000260, 0x0000_0000), // PMC_CLKGATE_DISABLE
-        (0x41A028, 0x0000_0000), // GPC_BCAST_PGOB
-        (0x419000, 0x0000_0110), // GPC_BCAST_ENGCTL
+        (pmc_reg::CLKGATE_DISABLE as usize, 0x0000_0000),
+        (gpc::BCAST_PGOB as usize, 0x0000_0000),
+        (gpc::BCAST_CONTROL as usize, 0x0000_0110),
     ];
     for &(off, val) in pgob_regs {
         writes.push(ExperimentWrite::new(bar0, off, val));
@@ -707,26 +717,26 @@ pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
     notes.push("Phase 1c: PGOB ungate broadcast writes applied".into());
 
     // Phase 2: Force PRI enumerate
-    writes.push(ExperimentWrite::new(bar0, 0x12004c, 2));
+    writes.push(ExperimentWrite::new(bar0, pri::COMMAND as usize, 2));
     std::thread::sleep(Duration::from_millis(10));
     notes.push("Phase 2: Forced PRI ringmaster enumerate".into());
 
     // Phase 3: GPC MMU init
     let mmu_writes: &[(usize, u32)] = &[
-        (0x418880, 0x0000_0001),
-        (0x418890, 0x0000_0000),
-        (0x418894, 0x0000_0000),
-        (0x4188B0, 0x0000_0000),
-        (0x4188B4, 0xFFFF_FFFF),
-        (0x4188B8, 0x0000_0007),
+        (gpc::BCAST_MMU_CTRL as usize, 0x0000_0001),
+        (gpc::BCAST_MMU_PM_UNIT_MASK as usize, 0x0000_0000),
+        (gpc::BCAST_MMU_PM_REQ_MASK as usize, 0x0000_0000),
+        (gpc::BCAST_MMU_DEBUG_B0 as usize, 0x0000_0000),
+        (gpc::BCAST_MMU_DEBUG_WR as usize, 0xFFFF_FFFF),
+        (gpc::BCAST_MMU_DEBUG_RD as usize, 0x0000_0007),
     ];
     for &(off, val) in mmu_writes {
         writes.push(ExperimentWrite::new(bar0, off, val));
     }
 
     // Extra GPC MMU writes from nouveau gm200_gr_init_gpc_mmu
-    let a4 = bar0.read_u32(0x4188a4).unwrap_or(0);
-    writes.push(ExperimentWrite::new(bar0, 0x4188a4, a4 | 0x0300_0000));
+    let a4 = bar0.read_u32(gpc::BCAST_MMU_DEBUG_CTRL as usize).unwrap_or(0);
+    writes.push(ExperimentWrite::new(bar0, gpc::BCAST_MMU_DEBUG_CTRL as usize, a4 | 0x0300_0000));
     notes.push("Phase 3: GPC MMU init + extended MMU writes".into());
 
     // Phase 4: sw_nonctx.bin replay
@@ -742,13 +752,16 @@ pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
         pri2.alive, pri2.faulted
     ));
 
+    use crate::nv::registers::ce;
+    use crate::vfio::channel::registers::falcon;
+
     // Probe TPC + CE state post-ungating
-    let tpc0 = bar0.read_u32(0x504000).unwrap_or(0xDEAD_DEAD);
-    let tpc0_sm = bar0.read_u32(0x504200).unwrap_or(0xDEAD_DEAD);
-    let ce0 = bar0.read_u32(0x104000).unwrap_or(0xDEAD_DEAD);
-    let ce4 = bar0.read_u32(0x108000).unwrap_or(0xDEAD_DEAD);
-    let fecs_pc = bar0.read_u32(0x409400).unwrap_or(0);
-    let gpc0 = bar0.read_u32(0x500000).unwrap_or(0xDEAD_DEAD);
+    let tpc0 = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let tpc0_sm = bar0.read_u32(gpc::gpc_tpc0_sm(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let ce0 = bar0.read_u32(ce::ce_base(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let ce4 = bar0.read_u32(ce::ce_base(4) as usize).unwrap_or(0xDEAD_DEAD);
+    let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0);
+    let gpc0 = bar0.read_u32(gpc::gpc_base(0) as usize).unwrap_or(0xDEAD_DEAD);
 
     notes.push(format!("Final TPC probe: tpc0_ctrl={tpc0:#010x}, tpc0_sm={tpc0_sm:#010x}"));
     notes.push(format!("Final CE probe: ce0={ce0:#010x}, ce4={ce4:#010x}"));
@@ -762,15 +775,15 @@ pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
         notes.push("TPC still faulted — attempting destructive PGRAPH reset".into());
 
         // PMC GR engine reset: clear bit 12, wait, set bit 12
-        let pmc = bar0.read_u32(0x200).unwrap_or(0);
-        let _ = bar0.write_u32(0x200_usize, pmc & !(1 << 12));
+        let pmc_val = bar0.read_u32(pmc_reg::ENABLE as usize).unwrap_or(0);
+        let _ = bar0.write_u32(pmc_reg::ENABLE as usize, pmc_val & !(1 << 12));
         std::thread::sleep(Duration::from_millis(10));
-        let _ = bar0.write_u32(0x200_usize, pmc | (1 << 12));
+        let _ = bar0.write_u32(pmc_reg::ENABLE as usize, pmc_val | (1 << 12));
         std::thread::sleep(Duration::from_millis(50));
         notes.push("PGRAPH reset: PMC bit 12 toggled".into());
 
         // PRI re-enumerate after reset
-        let _ = bar0.write_u32(0x12004c_usize, 2);
+        let _ = bar0.write_u32(pri::COMMAND as usize, 2);
         std::thread::sleep(Duration::from_millis(10));
 
         // Re-apply sw_nonctx.bin after reset
@@ -786,7 +799,7 @@ pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
             pri3.alive, pri3.faulted
         ));
 
-        let tpc0_final = bar0.read_u32(0x504000).unwrap_or(0xDEAD_DEAD);
+        let tpc0_final = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xDEAD_DEAD);
         let tpc_alive_final = !crate::nv::pri::is_pri_fault(tpc0_final);
         notes.push(format!(
             "Post-reset TPC: tpc0={tpc0_final:#010x}, alive={tpc_alive_final}"
@@ -811,7 +824,7 @@ pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> Ex
 ///
 /// Returns `(chip_name, sm_version)`. Falls back to `("gv100", 70)` if
 /// BOOT0 is unreadable or unrecognized.
-pub fn detect_chip(bar0: &MappedBar) -> (&'static str, u32) {
+pub(crate) fn detect_chip(bar0: &MappedBar) -> (&'static str, u32) {
     let boot0 = bar0.read_u32(0x0000_0000).unwrap_or(0);
     let chip_id = (boot0 >> 20) & 0x1FF;
     let sm = chip_id_to_sm(chip_id);

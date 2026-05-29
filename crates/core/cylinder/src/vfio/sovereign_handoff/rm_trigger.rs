@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crate::nv::registers::pmc::InterruptProfile;
 
+use super::errors::HandoffError;
 use super::types::RmChannelEvidence;
 
 /// Result of triggering RM initialization (and optionally creating a channel).
@@ -27,9 +28,8 @@ pub(crate) fn trigger_rm_init(
     create_channel: bool,
     bdf: &str,
     interrupt_profile: &InterruptProfile,
-) -> Result<RmTriggerResult, String> {
-    let devices = std::fs::read_to_string("/proc/devices")
-        .map_err(|e| format!("failed to read /proc/devices: {e}"))?;
+) -> Result<RmTriggerResult, HandoffError> {
+    let devices = std::fs::read_to_string("/proc/devices")?;
     let mut majors: Vec<u32> = Vec::new();
     for line in devices.lines() {
         let line = line.trim();
@@ -44,11 +44,8 @@ pub(crate) fn trigger_rm_init(
         .iter()
         .copied()
         .max()
-        .ok_or_else(|| {
-            format!(
-                "{module_name} chardev not found in /proc/devices — \
-                 __register_chrdev may have been NOPed"
-            )
+        .ok_or_else(|| HandoffError::ChardevNotFound {
+            module_name: module_name.to_string(),
         })?;
 
     tracing::info!(module_name, major, "found catalyst chardev major");
@@ -139,7 +136,12 @@ pub(crate) fn trigger_rm_init(
         dev,
     ) {
         Ok(()) => {}
-        Err(e) => return Err(format!("mknodat({dev_path}): {e}")),
+        Err(e) => {
+            return Err(HandoffError::DeviceNodeCreateFailed {
+                path: dev_path.clone(),
+                detail: e.to_string(),
+            });
+        }
     }
 
     tracing::info!(dev_path, major, "opening catalyst chardev to trigger RM init (fallback)");
@@ -159,7 +161,10 @@ pub(crate) fn trigger_rm_init(
         }
         Err(e) => {
             let _ = std::fs::remove_file(&dev_path);
-            Err(format!("failed to open {dev_path}: {e}"))
+            Err(HandoffError::ChardevOpenFailed {
+                path: dev_path,
+                source: e,
+            })
         }
     }
 }

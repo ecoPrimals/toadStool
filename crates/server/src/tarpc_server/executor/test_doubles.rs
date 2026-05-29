@@ -11,8 +11,8 @@ use std::sync::atomic::{AtomicU8, Ordering};
 
 use super::WorkloadExecutor;
 use crate::rpc_types::{
-    AvailableResources, ComputeCapabilities, ExecutionMetrics, WorkloadResult, WorkloadStatus,
-    WorkloadSubmission,
+    AvailableResources, ComputeCapabilities, ExecutionMetrics, ServiceError, WorkloadResult,
+    WorkloadStatus, WorkloadSubmission,
 };
 
 /// Test-only executor behavior (wrapped by [`crate::tarpc_server::WorkloadExecutorDispatch::TestDouble`]).
@@ -41,7 +41,7 @@ impl WorkloadExecutor for TestWorkloadDouble {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<WorkloadResult, ServiceError>> + Send + '_ {
         let kind = self.clone();
         async move {
             match kind {
@@ -58,7 +58,9 @@ impl WorkloadExecutor for TestWorkloadDouble {
                         gpu_memory_used_bytes: None,
                     },
                 }),
-                Self::FailingUnit | Self::FailingIntegration => Err("executor failed".to_string()),
+                Self::FailingUnit | Self::FailingIntegration => {
+                    Err(ServiceError::ExecutionFailed("executor failed".into()))
+                }
                 Self::QueuedUnit => Ok(WorkloadResult {
                     workload_id: submission.workload_id,
                     status: WorkloadStatus::Queued,
@@ -133,7 +135,7 @@ impl WorkloadExecutor for TestWorkloadDouble {
 
     fn query_capabilities(
         &self,
-    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<ComputeCapabilities, ServiceError>> + Send + '_ {
         let kind = self.clone();
         async move {
             match kind {
@@ -154,8 +156,10 @@ impl WorkloadExecutor for TestWorkloadDouble {
                     },
                     metadata: std::collections::HashMap::new(),
                 }),
-                Self::FailingUnit => Err("capabilities failed".to_string()),
-                Self::FailingIntegration => Err("capabilities unavailable".to_string()),
+                Self::FailingUnit => Err(ServiceError::ExecutionFailed("capabilities failed".into())),
+                Self::FailingIntegration => {
+                    Err(ServiceError::ExecutionFailed("capabilities unavailable".into()))
+                }
                 Self::QueuedUnit => Ok(ComputeCapabilities {
                     service_id: "queued".to_string(),
                     compute_units: vec![],
@@ -207,7 +211,7 @@ impl WorkloadExecutor for TestWorkloadDouble {
                     },
                     metadata: std::collections::HashMap::new(),
                 }),
-                Self::SeqTag(_) => Err("unused".to_string()),
+                Self::SeqTag(_) => Err(ServiceError::ExecutionFailed("unused".into())),
                 Self::Running => Ok(ComputeCapabilities {
                     service_id: "running-test".to_string(),
                     compute_units: vec![],
@@ -232,7 +236,7 @@ impl WorkloadExecutor for TestWorkloadDouble {
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> impl Future<Output = Result<(), String>> + Send + 'a {
+    ) -> impl Future<Output = Result<(), ServiceError>> + Send + 'a {
         let kind = self.clone();
         async move {
             match kind {
@@ -241,8 +245,9 @@ impl WorkloadExecutor for TestWorkloadDouble {
                     Ok(())
                 }
                 Self::FailingUnit => Ok(()),
-                Self::FailingIntegration => Err("cancel failed".to_string()),
-                Self::CancelFailing => Err("cancel failed".to_string()),
+                Self::FailingIntegration | Self::CancelFailing => {
+                    Err(ServiceError::CancelFailed("cancel failed".into()))
+                }
                 Self::Running => Ok(()),
             }
         }

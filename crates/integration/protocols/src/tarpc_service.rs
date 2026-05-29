@@ -324,6 +324,25 @@ pub mod semantic_methods {
 ///
 /// Use `semantic_methods::get_semantic_name()` to convert Rust method names
 /// to semantic names for JSON-RPC interop.
+/// Errors returned by tarpc RPC service methods.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+pub enum ServiceError {
+    #[error("workload not found: {workload_id}")]
+    WorkloadNotFound { workload_id: String },
+
+    #[error("execution failed: {0}")]
+    ExecutionFailed(String),
+
+    #[error("invalid workload ID: {workload_id} — {detail}")]
+    InvalidWorkloadId { workload_id: String, detail: String },
+
+    #[error("cancel failed: {0}")]
+    CancelFailed(String),
+
+    #[error("coordinator error: {0}")]
+    Coordinator(String),
+}
+
 #[tarpc::service]
 pub trait ToadStoolComputeRpc {
     /// Submit workload for execution
@@ -335,7 +354,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * `WorkloadResult` - Initial submission result with workload ID
-    async fn submit_workload(submission: WorkloadSubmission) -> Result<WorkloadResult, String>;
+    async fn submit_workload(submission: WorkloadSubmission) -> Result<WorkloadResult, ServiceError>;
 
     /// Query workload execution status
     ///
@@ -346,7 +365,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * `WorkloadResult` - Current execution status and results
-    async fn query_status(workload_id: String) -> Result<WorkloadResult, String>;
+    async fn query_status(workload_id: String) -> Result<WorkloadResult, ServiceError>;
 
     /// Cancel running workload
     ///
@@ -357,7 +376,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * Success or error message
-    async fn cancel_workload(workload_id: String) -> Result<(), String>;
+    async fn cancel_workload(workload_id: String) -> Result<(), ServiceError>;
 
     /// List all workloads for a given filter
     ///
@@ -370,7 +389,7 @@ pub trait ToadStoolComputeRpc {
     /// * List of workload results
     async fn list_workloads(
         filter: Option<HashMap<String, String>>,
-    ) -> Result<Vec<WorkloadResult>, String>;
+    ) -> Result<Vec<WorkloadResult>, ServiceError>;
 
     /// Query compute capabilities (self-knowledge pattern)
     ///
@@ -383,7 +402,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * `ComputeCapabilities` - This primal's compute resources
-    async fn query_capabilities() -> Result<ComputeCapabilities, String>;
+    async fn query_capabilities() -> Result<ComputeCapabilities, ServiceError>;
 
     /// Health check endpoint
     ///
@@ -391,7 +410,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * Service health status
-    async fn health_check() -> Result<HealthStatus, String>;
+    async fn health_check() -> Result<HealthStatus, ServiceError>;
 }
 
 /// Service health status

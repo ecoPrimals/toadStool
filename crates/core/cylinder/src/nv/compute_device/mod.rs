@@ -87,9 +87,9 @@ impl NvVfioComputeDevice {
     /// [`probe_capabilities`](Self::probe_capabilities) after BAR0 open
     /// to populate real caps from the BOOT0 register.
     #[must_use]
-    pub fn new(bdf: String) -> Self {
+    pub fn new(bdf: &str) -> Self {
         Self {
-            bdf,
+            bdf: bdf.to_string(),
             caps: HardwareCapabilities::UNKNOWN,
             sm: 0,
             fecs_ready: false,

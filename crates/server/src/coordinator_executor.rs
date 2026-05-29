@@ -27,8 +27,8 @@ use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
 
 // Deep debt solution: Use pure RPC types from local module
 use crate::rpc_types::{
-    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, WorkloadResult,
-    WorkloadStatus, WorkloadSubmission,
+    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, ServiceError,
+    WorkloadResult, WorkloadStatus, WorkloadSubmission,
 };
 // WorkloadExecutor trait is defined in tarpc_server module
 use crate::tarpc_server::WorkloadExecutor;
@@ -84,7 +84,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<WorkloadResult, ServiceError>> + Send + '_ {
         let coordinator = Arc::clone(&self.coordinator);
         async move {
             info!(
@@ -99,7 +99,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
             let execution_id = coordinator
                 .submit_execution(request)
                 .await
-                .map_err(|e| format!("Coordinator execution failed: {e}"))?;
+                .map_err(|e| ServiceError::Coordinator(format!("Coordinator execution failed: {e}")))?;
 
             info!("Workload submitted to coordinator: {}", execution_id);
 
@@ -122,7 +122,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
 
     fn query_capabilities(
         &self,
-    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<ComputeCapabilities, ServiceError>> + Send + '_ {
         let service_id = Arc::clone(&self.service_id);
         async move {
             info!("Querying coordinator capabilities (self-knowledge only)");
@@ -183,7 +183,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> impl Future<Output = Result<(), String>> + Send + 'a {
+    ) -> impl Future<Output = Result<(), ServiceError>> + Send + 'a {
         let coordinator = Arc::clone(&self.coordinator);
         async move {
             info!(
@@ -191,13 +191,17 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 workload_id
             );
 
-            let execution_id = uuid::Uuid::parse_str(workload_id)
-                .map_err(|e| format!("Invalid workload ID (expected UUID): {workload_id} - {e}"))?;
+            let execution_id = uuid::Uuid::parse_str(workload_id).map_err(|e| {
+                ServiceError::InvalidWorkloadId {
+                    workload_id: workload_id.to_string(),
+                    detail: e.to_string(),
+                }
+            })?;
 
             coordinator
                 .cancel_execution(execution_id)
                 .await
-                .map_err(|e| format!("Failed to cancel workload: {e}"))
+                .map_err(|e| ServiceError::CancelFailed(format!("Failed to cancel workload: {e}")))
         }
     }
 }

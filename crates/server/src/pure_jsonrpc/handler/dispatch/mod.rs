@@ -807,7 +807,7 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
     // so the gate would deadlock or reject our own BAR0 access.
     let _gate_bypass = toadstool_cylinder::vfio::ember_gate::EmberGateBypass::enter();
 
-    let mut dev = toadstool_cylinder::nv::compute_device::NvVfioComputeDevice::new(bdf.to_string());
+    let mut dev = toadstool_cylinder::nv::compute_device::NvVfioComputeDevice::new(bdf);
 
     let warm_fecs = dev.probe_warm_fecs();
 

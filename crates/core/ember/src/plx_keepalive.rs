@@ -348,6 +348,7 @@ fn detect_bridge_chain(bdf: &str) -> Vec<String> {
 }
 
 /// PLX/Broadcom vendor ID — used as a priority discovery hint.
+// Canonical: toadstool_common::pci::vendors::PLX_VENDOR_ID
 pub const PLX_VENDOR_ID: u16 = 0x10b5;
 
 /// Detect PCIe bridges in a device's ancestry.

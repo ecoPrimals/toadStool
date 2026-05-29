@@ -13,7 +13,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tarpc::context::Context;
 
 use toadstool_server::rpc_types::{
-    ResourceRequirements, ToadStoolComputeRpc, WorkloadPriority, WorkloadStatus, WorkloadSubmission,
+    ResourceRequirements, ServiceError, ToadStoolComputeRpc, WorkloadPriority, WorkloadStatus,
+    WorkloadSubmission,
 };
 use toadstool_server::tarpc_server::{
     StandaloneExecutor, TestWorkloadDouble, ToadStoolTarpcServer, WorkloadExecutor,
@@ -113,7 +114,10 @@ async fn test_submit_workload_executor_error() {
     let result = server.submit_workload(Context::current(), submission).await;
 
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "executor failed");
+    assert_eq!(
+        result.unwrap_err(),
+        ServiceError::ExecutionFailed("executor failed".into())
+    );
     assert_eq!(error_count.load(Ordering::Relaxed), 1);
 }
 
@@ -151,7 +155,10 @@ async fn test_query_status_not_found() {
         .await;
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Workload not found"));
+    assert!(matches!(
+        result.unwrap_err(),
+        ServiceError::WorkloadNotFound { .. }
+    ));
     assert_eq!(error_count.load(Ordering::Relaxed), 1);
 }
 
@@ -195,7 +202,10 @@ async fn test_cancel_workload_executor_error() {
         .await;
 
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "cancel failed");
+    assert_eq!(
+        result.unwrap_err(),
+        ServiceError::CancelFailed("cancel failed".into())
+    );
     assert_eq!(error_count.load(Ordering::Relaxed), 1);
 }
 
@@ -235,7 +245,10 @@ async fn test_query_capabilities_executor_error() {
     let result = server.query_capabilities(Context::current()).await;
 
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "capabilities unavailable");
+    assert_eq!(
+        result.unwrap_err(),
+        ServiceError::ExecutionFailed("capabilities unavailable".into())
+    );
     assert_eq!(error_count.load(Ordering::Relaxed), 1);
 }
 

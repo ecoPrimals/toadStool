@@ -4,7 +4,7 @@
 use std::future::Future;
 
 use crate::coordinator_executor::CoordinatorExecutor;
-use crate::rpc_types::{ComputeCapabilities, WorkloadResult, WorkloadSubmission};
+use crate::rpc_types::{ComputeCapabilities, ServiceError, WorkloadResult, WorkloadSubmission};
 
 #[cfg(any(test, feature = "test-mocks"))]
 use super::executor::TestWorkloadDouble;
@@ -30,7 +30,7 @@ impl WorkloadExecutor for WorkloadExecutorDispatch {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<WorkloadResult, ServiceError>> + Send + '_ {
         async move {
             match self {
                 Self::Standalone(e) => e.execute(submission).await,
@@ -43,7 +43,7 @@ impl WorkloadExecutor for WorkloadExecutorDispatch {
 
     fn query_capabilities(
         &self,
-    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_ {
+    ) -> impl Future<Output = Result<ComputeCapabilities, ServiceError>> + Send + '_ {
         async move {
             match self {
                 Self::Standalone(e) => e.query_capabilities().await,
@@ -57,7 +57,7 @@ impl WorkloadExecutor for WorkloadExecutorDispatch {
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> impl Future<Output = Result<(), String>> + Send + 'a {
+    ) -> impl Future<Output = Result<(), ServiceError>> + Send + 'a {
         async move {
             match self {
                 Self::Standalone(e) => e.cancel(workload_id).await,

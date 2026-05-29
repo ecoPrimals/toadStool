@@ -64,7 +64,7 @@ thiserror = { workspace = true }
 
 # systemd sd_notify protocol (SCM_RIGHTS fd passing for warm keepalive)
 # + mm: catalyst watchdog emergency BAR0 mmap for interrupt quench
-rustix = { workspace = true, features = ["net", "mm"] }
+rustix = { workspace = true, features = ["net", "mm", "fs"] }
 
 # Logging
 tracing = { workspace = true }

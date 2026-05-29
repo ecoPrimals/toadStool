@@ -15,11 +15,13 @@
 //! - [`capability`] — Primal heartbeat (when capability provider enabled)
 //! - [`pcie_keepalive`] — PCIe bridge keepalive + hierarchy pinning (prevents D3cold)
 //! - [`catalyst_watchdog`] — Exp 229 lockup sentinel: monitors handoff liveness, emergency quench + kill
+//! - [`kernel_sentinel`] — Exp 232 kernel oops sentinel: monitors /dev/kmsg for crash signatures, saves triage reports
 
 pub(crate) mod catalyst_watchdog;
 mod capability;
 mod cleanup;
 mod health;
+pub(crate) mod kernel_sentinel;
 pub(crate) mod pcie_keepalive;
 mod resource;
 mod statistics;
@@ -82,6 +84,10 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
     if let Err(e) = catalyst_watchdog::start_watchdog_thread() {
         error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
     }
+
+    // Start kernel oops sentinel — monitors /dev/kmsg for crash signatures
+    // and saves triage reports before the system goes down (Exp 232)
+    kernel_sentinel::start_sentinel_thread();
 
     info!("Background services started");
 
