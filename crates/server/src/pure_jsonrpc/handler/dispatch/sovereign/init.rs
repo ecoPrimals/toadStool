@@ -127,7 +127,12 @@ pub(crate) async fn sovereign_init_ember(
             tracing::info!(chip, bdf, "sovereign.init(ember): using NvGspBridge");
             std::sync::Arc::new(nv)
         } else {
-            tracing::info!(chip, bdf, "sovereign.init(ember): using NoopGspBridge");
+            tracing::info!(
+                chip,
+                bdf,
+                "sovereign.init(ember): using NoopGspBridge — firmware-less init active \
+                 (non-firmware stages only; ACR/FECS require NvGspBridge or warm-handoff)"
+            );
             std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::NoopGspBridge::default())
         }
     };

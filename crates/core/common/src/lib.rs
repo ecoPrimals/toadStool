@@ -49,6 +49,7 @@ pub mod runtime_ports; // NEW: Deep Debt compliant dynamic port discovery
 pub mod secret_string; // Zero-leakage secret wrapper + credential resolution chain
 pub mod self_identity; // Self-aware primal identity and capability discovery
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
+pub mod sysfs_paths; // Linux sysfs path helpers (PCI, module, class)
 pub mod system_time_serde; // Serde for std::time::SystemTime (Unix timestamp)
 pub mod uid_detector; // NEW: Pure Rust unix socket path discovery (100% pure Rust!)
 pub mod universal_adapter;

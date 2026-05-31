@@ -52,6 +52,7 @@ pub(crate) fn trigger_rm_init(
 
     let rm_trigger_bin = "/usr/local/bin/rm_trigger";
     if std::path::Path::new(rm_trigger_bin).exists() {
+        super::forensics::breadcrumb(&format!("rm_trigger: spawning binary (major={major}, channel={create_channel}, bdf={bdf})"));
         tracing::info!(major, create_channel, bdf, "spawning rm_trigger helper");
         let mut cmd = std::process::Command::new(rm_trigger_bin);
         cmd.arg(major.to_string());
@@ -100,9 +101,19 @@ pub(crate) fn trigger_rm_init(
                 // Exp 229 lockup #6: nvidia_close RE-ENABLES INTR_EN after
                 // rm_trigger's pre-exit quench. Quench again from the pipeline
                 // now that nvidia_close has fully completed.
+                super::forensics::breadcrumb(&format!(
+                    "rm_trigger: binary exited code={}, quenching",
+                    output.status.code().unwrap_or(-1)
+                ));
                 crate::nv::registers::pmc::quench_interrupts(
                     bdf, interrupt_profile, "post-exit (after nvidia_close)",
                 );
+                // Exp 233 Run #4: disable MSI at PCI config level immediately
+                // after RM exit. The GPU firmware re-enables INTR_EN during the
+                // 60s settle, and with MSI still active, orphaned interrupts
+                // reach the CPU → hard lockup. Disabling MSI here means even
+                // if INTR_EN goes hot, the interrupts have no delivery path.
+                crate::nv::registers::pmc::disable_pci_msi(bdf, "post-exit");
                 crate::nv::registers::pmc::intx_disable(bdf, "post-exit");
 
                 std::thread::sleep(Duration::from_millis(3000));

@@ -108,9 +108,9 @@ impl VfioAnchor {
     pub fn release_prepared(self) {
         #[cfg(debug_assertions)]
         {
-            let reset_path = format!(
-                "/sys/bus/pci/devices/{}/reset_method",
-                self.bdf
+            let reset_path = toadstool_common::sysfs_paths::sysfs_pci_device_file(
+                &self.bdf,
+                "reset_method",
             );
             if let Ok(method) = std::fs::read_to_string(&reset_path) {
                 let trimmed = method.trim();

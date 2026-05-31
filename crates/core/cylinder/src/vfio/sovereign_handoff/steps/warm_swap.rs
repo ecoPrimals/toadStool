@@ -11,7 +11,12 @@ use super::super::pipeline::PipelineContext;
 use super::super::rollback::halt_result;
 use super::super::types::{HandoffResult, HandoffStep};
 
+fn breadcrumb(msg: &str) {
+    crate::vfio::sovereign_handoff::forensics::breadcrumb(msg);
+}
+
 pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
+        breadcrumb("warm_swap::run ENTERED");
         // ── Step 5: Pin bridges + disable FLR + suppress SBR ───────────
         //
         // The RPC handler calls prepare_anchor_release() before dropping the
@@ -22,8 +27,11 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         // state. For warm GPUs, SBR was already suppressed — this is idempotent.
 
         let t = Instant::now();
+        breadcrumb("step5: pin_bridge_hierarchy");
         guarded_sysfs::pin_bridge_hierarchy(&ctx.config.bdf);
+        breadcrumb("step5: disable_flr");
         guarded_sysfs::disable_flr(&ctx.config.bdf);
+        breadcrumb("step5: suppress_bus_reset");
         if let Err(e) = guarded_sysfs::suppress_bus_reset(&ctx.config.bdf) {
             tracing::warn!(
                 bdf = ctx.config.bdf.as_str(),
@@ -38,19 +46,83 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         });
 
         ctx.heartbeat();
+
+        // ── Pre-unbind interrupt kill (Exp 233 Run #3/#4 IRQ storm fix) ──
+        // Defense-in-depth: disable ALL interrupt paths BEFORE unbind.
+        // 1. GPU-side: quench INTR_EN via BAR0 (stops GPU from asserting IRQs)
+        // 2. PCI config: disable MSI/MSI-X (stops PCI from routing MSI)
+        // 3. PCI config: disable INTx (stops legacy pin interrupts)
+        // 4. PCI config: disable Bus Master (physically prevents MSI memory
+        //    writes — the nuclear option; MSI cannot fire without DMA)
+        //
+        // Run #4 still locked up despite MSI disable alone. The GPU firmware
+        // or driver internals may re-enable MSI. Bus Master disable is the
+        // hardware-level guarantee: no memory writes → no MSI delivery.
+        if ctx.is_catalyst {
+            breadcrumb("pre-unbind: quench_interrupts");
+            crate::nv::registers::pmc::quench_interrupts(
+                &ctx.config.bdf, &ctx.hw.interrupt_profile, "pre-unbind",
+            );
+            breadcrumb("pre-unbind: disable_pci_msi");
+            crate::nv::registers::pmc::disable_pci_msi(
+                &ctx.config.bdf, "pre-unbind",
+            );
+            breadcrumb("pre-unbind: intx_disable");
+            crate::nv::registers::pmc::intx_disable(
+                &ctx.config.bdf, "pre-unbind",
+            );
+            breadcrumb("pre-unbind: disable_bus_master");
+            crate::nv::registers::pmc::disable_bus_master(
+                &ctx.config.bdf, "pre-unbind",
+            );
+            breadcrumb("pre-unbind: ALL interrupt defenses complete");
+
+            // IRQ Clutch (PRE-UNBIND): nv_close_device is NOP'd so NVIDIA's
+            // free_irq + pci_disable_msi never ran. The kernel's unbind path
+            // will try to tear down stale irq_domain / msi_device_data →
+            // irq_domain_remove WARNING → corrupted state → vfio-pci probe
+            // hits freed memory → hard lockup.
+            //
+            // The clutch calls pci_free_irq_vectors() BEFORE unbind, while
+            // the MSI data structures are still valid. This properly tears
+            // down the IRQ domain so unbind finds clean state.
+            //
+            // MUST run after interrupt quench (GPU silenced) but before the
+            // sysfs unbind write.
+            breadcrumb("pre-unbind: engaging IRQ clutch");
+            match guarded_sysfs::engage_irq_clutch(&ctx.config.bdf) {
+                Ok(()) => {
+                    breadcrumb("pre-unbind: IRQ clutch engaged — disengaging");
+                    if let Err(e) = guarded_sysfs::disengage_irq_clutch() {
+                        tracing::warn!(error = %e, "IRQ clutch disengage failed (non-fatal)");
+                    }
+                    breadcrumb("pre-unbind: IRQ clutch complete — MSI/IRQ cleaned");
+                    ctx.irq_clutch_engaged = true;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        bdf = ctx.config.bdf.as_str(),
+                        error = %e,
+                        "pre-unbind IRQ clutch FAILED — unbind will hit stale IRQ state"
+                    );
+                    breadcrumb("pre-unbind: IRQ clutch failed");
+                }
+            }
+        }
+
         // ── Step 6: Warm swap — seeder → final driver (GUARDED) ─────────
 
         let t = Instant::now();
+        breadcrumb("step6: reading current driver");
         if let Some(ref current) = guarded_sysfs::read_current_driver(&ctx.config.bdf) {
             let remaining = ctx.deadline.saturating_sub(ctx.overall.elapsed());
             let unbind_result = if ctx.is_catalyst {
-                // nvidia RM teardown takes 160-400s on GV100. Fire-and-poll
-                // avoids blocking ember's thread — we just poll the driver
-                // symlink every 2s until it clears.
+                breadcrumb("step6: UNBIND FIRE — writing to sysfs unbind NOW");
                 guarded_sysfs::sysfs_unbind_fire_and_poll(
                     &ctx.config.bdf, current, remaining,
                 )
                 .map(|elapsed| {
+                    breadcrumb(&format!("step6: UNBIND COMPLETE — took {}s", elapsed.as_secs()));
                     tracing::info!(
                         bdf = ctx.config.bdf.as_str(),
                         elapsed_s = elapsed.as_secs(),
@@ -76,7 +148,10 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             }
         }
 
+        breadcrumb("step6: post-unbind — driver detached");
+
         if ctx.is_catalyst {
+            breadcrumb("step6: post-unbind PCI diag start");
             // Diagnostic: probe PCI config space and BAR0 between unbind and rebind.
             // Read PCI command register to check if bus mastering was disabled.
             let pci_config_path = crate::linux_paths::sysfs_pci_device_file(
@@ -146,80 +221,130 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                 drop(diag_bar0);
             }
 
-            // After fire-and-poll, the driver symlink clears in ~2s but nvidia
-            // RM teardown still holds the PCI lock for 160-400s. We need to:
-            //   1. Wait for driver=None (done by fire-and-poll)
-            //   2. Set driver_override to final_driver via guarded write (may
-            //      block until PCI lock releases — use 5s timeout, retry)
-            //   3. Write drivers_probe to trigger rebind
-            //   4. Poll for final_driver to appear
-            let poll_deadline = ctx.deadline.saturating_sub(ctx.overall.elapsed());
-            let poll_start = Instant::now();
-            let poll_interval = Duration::from_secs(5);
-            let mut override_set = false;
-            let mut probe_sent = false;
-            let mut final_driver = guarded_sysfs::read_current_driver(&ctx.config.bdf);
+            // Rebind strategy depends on whether the pre-unbind IRQ clutch
+            // succeeded. If the clutch cleaned the MSI/IRQ state, drivers_probe
+            // should be safe. If it failed, fall back to misfire mode (leave
+            // GPU unbound) to prevent hard lockups.
+            if !ctx.irq_clutch_engaged {
+                // ── MISFIRE MODE (clutch failed) ─────────────────────────
+                breadcrumb("step6: MISFIRE MODE — clutch failed, skipping drivers_probe");
 
-            while final_driver.as_deref() != Some(ctx.config.final_driver.as_str()) {
-                if poll_start.elapsed() >= poll_deadline {
-                    ctx.steps.push(HandoffStep {
-                        name: "warm_swap".into(), ok: false,
-                        detail: Some(format!(
-                            "poll for {} timed out (driver={:?}, override_set={}, probe_sent={})",
-                            ctx.config.final_driver, final_driver, override_set, probe_sent,
-                        )),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-                    return Some(halt_result(&ctx.config.bdf, "warm_swap", std::mem::take(&mut ctx.steps), ctx.patch_result.take(),
-                                       ctx.module_loaded, false, ctx.overall, &ctx.sibling_state,
-                                       &ctx.config.module_name, ctx.needs_device_rollback));
+                let override_set = matches!(
+                    guarded_sysfs::sysfs_write_guarded(
+                        &ctx.override_path, &ctx.config.final_driver,
+                        Duration::from_secs(5),
+                    ),
+                    Ok(()),
+                );
+                let current_driver = guarded_sysfs::read_current_driver(&ctx.config.bdf);
+                let swap_elapsed = t.elapsed();
+                tracing::warn!(
+                    bdf = ctx.config.bdf.as_str(),
+                    current_driver = current_driver.as_deref().unwrap_or("none"),
+                    override_set,
+                    "catalyst MISFIRE: IRQ clutch failed pre-unbind, drivers_probe skipped. \
+                     GPU left unbound to prevent lockup."
+                );
+                breadcrumb(&format!(
+                    "step6: MISFIRE — driver={}, override_set={}, {}s",
+                    current_driver.as_deref().unwrap_or("none"),
+                    override_set,
+                    swap_elapsed.as_secs(),
+                ));
+                ctx.steps.push(HandoffStep {
+                    name: "warm_swap".into(), ok: true,
+                    detail: Some(format!(
+                        "MISFIRE: {} unbind OK, clutch FAILED, drivers_probe SKIPPED \
+                         (override={}, driver={}, {}s)",
+                        ctx.config.seeder_driver,
+                        override_set,
+                        current_driver.as_deref().unwrap_or("none"),
+                        swap_elapsed.as_secs(),
+                    )),
+                    duration_ms: swap_elapsed.as_millis() as u64,
+                });
+            } else {
+                // ── FULL REBIND (clutch succeeded) ───────────────────────
+                // Pre-unbind clutch cleaned MSI/IRQ state → unbind should
+                // have completed without irq_domain_remove corruption →
+                // drivers_probe should bind vfio-pci cleanly.
+                let poll_deadline = ctx.deadline.saturating_sub(ctx.overall.elapsed());
+                let poll_start = Instant::now();
+                let poll_interval = Duration::from_secs(5);
+                let mut override_set = false;
+                let mut probe_sent = false;
+                let mut final_driver = guarded_sysfs::read_current_driver(&ctx.config.bdf);
+
+                breadcrumb("step6: clutch OK — attempting full rebind via drivers_probe");
+
+                while final_driver.as_deref() != Some(ctx.config.final_driver.as_str()) {
+                    if poll_start.elapsed() >= poll_deadline {
+                        ctx.steps.push(HandoffStep {
+                            name: "warm_swap".into(), ok: false,
+                            detail: Some(format!(
+                                "poll for {} timed out (driver={:?}, override_set={}, probe_sent={})",
+                                ctx.config.final_driver, final_driver, override_set, probe_sent,
+                            )),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return Some(halt_result(&ctx.config.bdf, "warm_swap", std::mem::take(&mut ctx.steps), ctx.patch_result.take(),
+                                           ctx.module_loaded, false, ctx.overall, &ctx.sibling_state,
+                                           &ctx.config.module_name, ctx.needs_device_rollback));
+                    }
+
+                    if !override_set
+                        && matches!(
+                            guarded_sysfs::sysfs_write_guarded(
+                                &ctx.override_path, &ctx.config.final_driver,
+                                Duration::from_secs(5),
+                            ),
+                            Ok(()),
+                        )
+                    {
+                        override_set = true;
+                        breadcrumb("step6: driver_override set");
+                        tracing::info!(bdf = ctx.config.bdf.as_str(),
+                            "catalyst: driver_override set to {}", ctx.config.final_driver);
+                    }
+
+                    if override_set && !probe_sent {
+                        breadcrumb("step6: sending drivers_probe");
+                        if matches!(
+                            guarded_sysfs::sysfs_write_guarded(
+                                &ctx.probe_path, &ctx.config.bdf,
+                                Duration::from_secs(5),
+                            ),
+                            Ok(()),
+                        ) {
+                            probe_sent = true;
+                            breadcrumb("step6: drivers_probe sent");
+                            tracing::info!(bdf = ctx.config.bdf.as_str(),
+                                "catalyst: drivers_probe sent (IRQ clutch cleaned pre-unbind)");
+                        }
+                    }
+
+                    std::thread::sleep(poll_interval);
+                    final_driver = guarded_sysfs::read_current_driver(&ctx.config.bdf);
                 }
 
-                if !override_set
-                    && matches!(
-                        guarded_sysfs::sysfs_write_guarded(
-                            &ctx.override_path, &ctx.config.final_driver,
-                            Duration::from_secs(5),
-                        ),
-                        Ok(()),
-                    )
-                {
-                    override_set = true;
-                    tracing::info!(bdf = ctx.config.bdf.as_str(),
-                        "catalyst poll: driver_override set to {}", ctx.config.final_driver);
-                }
-
-                if override_set && !probe_sent
-                    && matches!(
-                        guarded_sysfs::sysfs_write_guarded(
-                            &ctx.probe_path, &ctx.config.bdf,
-                            Duration::from_secs(5),
-                        ),
-                        Ok(()),
-                    )
-                {
-                    probe_sent = true;
-                    tracing::info!(bdf = ctx.config.bdf.as_str(),
-                        "catalyst poll: drivers_probe sent");
-                }
-
-                std::thread::sleep(poll_interval);
-                final_driver = guarded_sysfs::read_current_driver(&ctx.config.bdf);
+                let swap_elapsed = t.elapsed();
+                breadcrumb(&format!(
+                    "step6: full rebind complete — driver={}, {}s",
+                    ctx.config.final_driver, swap_elapsed.as_secs(),
+                ));
+                tracing::info!(
+                    bdf = ctx.config.bdf.as_str(),
+                    final_driver = ctx.config.final_driver.as_str(),
+                    elapsed_s = swap_elapsed.as_secs(),
+                    "catalyst warm_swap: final driver bound (clutch-cleaned rebind)"
+                );
+                ctx.steps.push(HandoffStep {
+                    name: "warm_swap".into(), ok: true,
+                    detail: Some(format!("{} → {} (clutch-cleaned, {}s)",
+                        ctx.config.seeder_driver, ctx.config.final_driver, swap_elapsed.as_secs())),
+                    duration_ms: swap_elapsed.as_millis() as u64,
+                });
             }
-
-            let swap_elapsed = t.elapsed();
-            tracing::info!(
-                bdf = ctx.config.bdf.as_str(),
-                final_driver = ctx.config.final_driver.as_str(),
-                elapsed_s = swap_elapsed.as_secs(),
-                "catalyst warm_swap: final driver bound via poll"
-            );
-            ctx.steps.push(HandoffStep {
-                name: "warm_swap".into(), ok: true,
-                detail: Some(format!("{} → {} (poll-waited {}s)",
-                    ctx.config.seeder_driver, ctx.config.final_driver, swap_elapsed.as_secs())),
-                duration_ms: swap_elapsed.as_millis() as u64,
-            });
         } else {
             if let Err(e) = guarded_sysfs::sysfs_write(&ctx.override_path, &ctx.config.final_driver) {
                 ctx.steps.push(HandoffStep {
@@ -274,6 +399,7 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         // vfio-pci owns the device — it bypasses the PCI config lock path.
 
         if ctx.is_catalyst {
+            breadcrumb("catalyst_full_capture: starting BAR0 open");
             let t = Instant::now();
             let bar0_size = 16 * 1024 * 1024;
             tracing::info!(
@@ -283,11 +409,67 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             );
             match crate::vfio::device::MappedBar::from_sysfs_rw(&ctx.config.bdf, bar0_size) {
                 Ok(post_swap_bar0) => {
+                    breadcrumb("catalyst_full_capture: BAR0 open OK, pre-flight check");
                     tracing::info!(
                         bdf = ctx.config.bdf.as_str(),
                         open_ms = t.elapsed().as_millis() as u64,
                         "catalyst profile: BAR0 mmap open succeeded"
                     );
+
+                    // ── Device-alive pre-flight before 641K-register scan ──
+                    //
+                    // Reading a hung GPU register causes a PCIe completion
+                    // timeout that freezes the CPU — no kernel error, no
+                    // recovery. Probe two lightweight registers first:
+                    //   BOOT0 (0x0): chip identity, always readable if alive
+                    //   PMC_ENABLE (0x200): engine clock gates, 0 = all off
+                    // Also ack any pending PRI ring faults so the scan doesn't
+                    // hit a stalled PRI client.
+                    let boot0 = post_swap_bar0.read_u32(pmc::BOOT0 as usize).unwrap_or(0xFFFF_FFFF);
+                    let pmc_en = post_swap_bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
+                    let pri_intr = post_swap_bar0.read_u32(pri::INTR_STATUS as usize).unwrap_or(0);
+
+                    tracing::info!(
+                        bdf = ctx.config.bdf.as_str(),
+                        boot0 = format_args!("0x{boot0:08x}"),
+                        pmc_enable = format_args!("0x{pmc_en:08x}"),
+                        pri_ring_intr = format_args!("0x{pri_intr:08x}"),
+                        "catalyst pre-flight: device alive check"
+                    );
+
+                    if boot0 == 0xFFFF_FFFF {
+                        breadcrumb("catalyst_full_capture: ABORT — BOOT0=0xFFFFFFFF, device gone");
+                        tracing::error!(
+                            bdf = ctx.config.bdf.as_str(),
+                            "catalyst capture ABORTED: BOOT0=0xFFFFFFFF — GPU has fallen off the bus"
+                        );
+                        ctx.steps.push(HandoffStep {
+                            name: "catalyst_full_capture".into(), ok: false,
+                            detail: Some("BOOT0=0xFFFFFFFF — device not responding, scan skipped".into()),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        drop(post_swap_bar0);
+                        // fall through — skip scan, continue pipeline
+                    } else {
+                    // Ack PRI ring faults before scanning PRI-dependent domains.
+                    // Track whether faults cleared — persistent faults mean
+                    // write operations (FECS INIT_CTXSW) can wedge the PRI ring.
+                    let pri_faults_persistent = if pri_intr != 0 {
+                        let _ = post_swap_bar0.write_u32(pri::COMMAND as usize, 0x2);
+                        std::thread::sleep(Duration::from_millis(10));
+                        let pri_after = post_swap_bar0.read_u32(pri::INTR_STATUS as usize).unwrap_or(0);
+                        tracing::info!(
+                            bdf = ctx.config.bdf.as_str(),
+                            pri_intr_before = format_args!("0x{pri_intr:08x}"),
+                            pri_intr_after = format_args!("0x{pri_after:08x}"),
+                            "catalyst pre-flight: PRI ring fault ack"
+                        );
+                        pri_after != 0
+                    } else {
+                        false
+                    };
+
+                    breadcrumb("catalyst_full_capture: pre-flight OK, starting domain scan");
 
                     let cap_start = Instant::now();
                     let domains = ctx.hw.bar0_domains;
@@ -394,16 +576,34 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
 
                     let fecs_halted = fecs_cpuctl & 0x10 != 0;
                     let fecs_alive = fecs_cpuctl & 0xBADF_0000 != 0xBADF_0000;
-                    if fecs_alive {
+
+                    // Gate: skip ALL GPU register WRITES when PRI faults
+                    // are persistent. Reads are safe (return 0xBADF5040),
+                    // but writes can wedge the PRI ring and cause a PCIe
+                    // completion timeout that freezes the CPU.
+                    if pri_faults_persistent {
+                        breadcrumb("FECS INIT_CTXSW SKIPPED — PRI faults persistent, writes unsafe");
+                        tracing::warn!(
+                            bdf = ctx.config.bdf.as_str(),
+                            pri_intr = format_args!("0x{pri_intr:08x}"),
+                            fecs_alive,
+                            "FECS INIT_CTXSW SKIPPED — PRI ring faults not clearable, GPU writes could wedge bus"
+                        );
+                        ctx.steps.push(HandoffStep {
+                            name: "fecs_init_ctxsw".into(), ok: false,
+                            detail: Some(format!(
+                                "SKIPPED: PRI faults persistent (0x{pri_intr:08x}), writes unsafe"
+                            )),
+                            duration_ms: fecs_t.elapsed().as_millis() as u64,
+                        });
+                    } else if fecs_alive {
                         if fecs_halted {
-                            // FECS is halted but accessible — try to unhalt and
-                            // restart from its current PC. CPUCTL bit 1 = START_CPU.
                             tracing::info!(bdf = ctx.config.bdf.as_str(),
                                 "FECS halted — attempting unhalt (CPUCTL START_CPU)");
                             let _ = post_swap_bar0.write_u32(
                                 (falcon::FECS_BASE + falcon::CPUCTL) as usize,
                                 0x2,
-                            ); // START_CPU
+                            );
                             std::thread::sleep(Duration::from_millis(200));
                             let pc_after = post_swap_bar0
                                 .read_u32(falcon::FECS_CTXSW_PC as usize)
@@ -488,6 +688,7 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                         "early tier classification (warm BAR0, pre-PRI-recovery)"
                     );
                     ctx.catalyst_tier = Some(warm_tier);
+                    } // end else (device-alive pre-flight passed)
                 }
                 Err(e) => {
                     tracing::warn!(

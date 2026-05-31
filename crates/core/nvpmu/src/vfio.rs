@@ -408,7 +408,7 @@ fn create_eventfd() -> Result<OwnedFd> {
 }
 
 fn find_iommu_group(bdf: &str) -> Result<u32> {
-    let path = format!("/sys/bus/pci/devices/{bdf}/iommu_group");
+    let path = toadstool_common::sysfs_paths::sysfs_pci_device_file(bdf, "iommu_group");
     let link = std::fs::read_link(&path).map_err(|e| {
         NvPmuError::Hardware(format!(
             "Cannot read IOMMU group for {bdf}: {e}. Is IOMMU enabled and GPU bound to vfio-pci?"

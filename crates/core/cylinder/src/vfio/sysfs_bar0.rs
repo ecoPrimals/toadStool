@@ -6,6 +6,18 @@
 
 use crate::error::ChannelError;
 use crate::mmio_region::MmioRegion;
+use toadstool_hw_safe::DeviceMmap;
+
+fn device_mmap_err_to_errno(e: toadstool_hw_safe::device_mmap::DeviceMmapError) -> rustix::io::Errno {
+    match e {
+        toadstool_hw_safe::device_mmap::DeviceMmapError::ZeroSize => rustix::io::Errno::INVAL,
+        toadstool_hw_safe::device_mmap::DeviceMmapError::MmapFailed(io) => io
+            .raw_os_error()
+            .map(rustix::io::Errno::from_raw_os_error)
+            .unwrap_or(rustix::io::Errno::IO),
+        toadstool_hw_safe::device_mmap::DeviceMmapError::NullPointer => rustix::io::Errno::NOMEM,
+    }
+}
 
 /// Read-only mmap of a PCI BAR0 resource via sysfs.
 ///
@@ -14,8 +26,8 @@ use crate::mmio_region::MmioRegion;
 ///
 /// ## Thread safety (`Send` / `Sync`)
 ///
-/// The [`std::fs::File`] keeps the sysfs mapping alive; `MmioRegion`
-/// holds the base pointer and length. Read-only volatile `u32` loads are safe to
+/// The [`std::fs::File`] keeps the sysfs mapping alive; [`MmioRegion`]
+/// holds the hw-safe mapping and length. Read-only volatile `u32` loads are safe to
 /// share across threads for aligned MMIO access on the supported platforms, in line
 /// with other BAR0 readers in this crate.
 pub struct SysfsBar0 {
@@ -46,33 +58,16 @@ impl SysfsBar0 {
             .open(&path)
             .map_err(|e| ChannelError::resource_io("open", path.clone(), e))?;
 
-        // SAFETY: mmap of a sysfs PCI resource file with read-only protection.
-        // The file descriptor is kept alive in the struct.
-        let raw = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ,
-                rustix::mm::MapFlags::SHARED,
-                &file,
-                0,
-            )
-        }
-        .map_err(|e| ChannelError::Bar0Mmap {
-            path: path.clone(),
-            source: e,
+        let mmap = DeviceMmap::map_shared_ro(&file, 0, size).map_err(|e| {
+            ChannelError::Bar0Mmap {
+                path: path.clone(),
+                source: device_mmap_err_to_errno(e),
+            }
         })?;
-
-        if raw.is_null() {
-            return Err(ChannelError::Bar0MmapNull { path });
-        }
-
-        // SAFETY: `raw`/`size` come from the successful `mmap` above.
-        let region = unsafe { MmioRegion::new(raw.cast::<u8>(), size) };
 
         Ok(Self {
             _file: file,
-            region,
+            region: MmioRegion::from_device_mmap(mmap),
         })
     }
 
@@ -92,7 +87,7 @@ impl SysfsBar0 {
 
     /// The size of the mapped BAR0 region in bytes.
     #[must_use]
-    pub const fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.region.len()
     }
 }
@@ -126,33 +121,16 @@ impl SysfsBar0Rw {
             .open(&path)
             .map_err(|e| ChannelError::resource_io("open (rw)", path.clone(), e))?;
 
-        // SAFETY: mmap of a sysfs PCI resource file with read-write protection.
-        // The file descriptor is kept alive in the struct.
-        let raw = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &file,
-                0,
-            )
-        }
-        .map_err(|e| ChannelError::Bar0Mmap {
-            path: path.clone(),
-            source: e,
+        let mmap = DeviceMmap::map_shared_rw(&file, 0, size).map_err(|e| {
+            ChannelError::Bar0Mmap {
+                path: path.clone(),
+                source: device_mmap_err_to_errno(e),
+            }
         })?;
-
-        if raw.is_null() {
-            return Err(ChannelError::Bar0MmapNull { path });
-        }
-
-        // SAFETY: `raw`/`size` come from the successful `mmap` above.
-        let region = unsafe { MmioRegion::new(raw.cast::<u8>(), size) };
 
         Ok(Self {
             _file: file,
-            region,
+            region: MmioRegion::from_device_mmap(mmap),
         })
     }
 
@@ -194,7 +172,41 @@ impl SysfsBar0Rw {
 
     /// The size of the mapped BAR0 region in bytes.
     #[must_use]
-    pub const fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.region.len()
     }
+}
+
+/// Best-effort read-only BAR0 probe without ember gate (crash forensics, watchdog).
+///
+/// Opens sysfs `resource0`, maps `map_size` bytes read-only, and reads one
+/// register. Returns `None` on any failure.
+#[must_use]
+pub fn read_u32_best_effort(bdf: &str, offset: usize, map_size: usize) -> Option<u32> {
+    let path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
+    let file = std::fs::OpenOptions::new().read(true).open(&path).ok()?;
+    let mmap = DeviceMmap::map_shared_ro(&file, 0, map_size).ok()?;
+    mmap.as_volatile().read_u32(offset).ok()
+}
+
+/// Best-effort multi-register BAR0 snapshot without ember gate.
+///
+/// Returns `None` if open/mmap fails. Individual out-of-bounds reads are skipped.
+#[must_use]
+pub fn read_registers_best_effort(
+    bdf: &str,
+    map_size: usize,
+    offsets: &[(&'static str, usize)],
+) -> Option<Vec<(&'static str, u32)>> {
+    let path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
+    let file = std::fs::OpenOptions::new().read(true).open(&path).ok()?;
+    let mmap = DeviceMmap::map_shared_ro(&file, 0, map_size).ok()?;
+    let mmio = mmap.as_volatile();
+    let mut regs = Vec::with_capacity(offsets.len());
+    for &(name, offset) in offsets {
+        if let Ok(val) = mmio.read_u32(offset) {
+            regs.push((name, val));
+        }
+    }
+    Some(regs)
 }

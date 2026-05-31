@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// SAFETY: BAR0 register reads for crash forensics require mmap + volatile reads.
-// /dev/kmsg seek requires BorrowedFd. These are justified by the crash-recovery context.
+// SAFETY: /dev/kmsg seek/read require BorrowedFd::borrow_raw on an owned fd.
 #![allow(unsafe_code)]
 //! Kernel oops sentinel — diesel engine crash forensics.
 //!
@@ -20,11 +19,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use tracing::{error, info, warn};
 
-const CRASH_REPORT_DIR: &str = "/var/lib/toadstool/crash-reports";
+fn crash_report_dir() -> String {
+    toadstool_cylinder::linux_paths::data_subdir("crash-reports")
+}
 
 static SENTINEL_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Patterns in kernel log lines that indicate the kernel is crashing.
+///
+/// IMPORTANT: these are substring matches against raw kmsg lines. Every
+/// normal kernel message from the nvsov module (e.g. "nvsov: module license
+/// 'NVIDIA' taints kernel") would match a bare "nvsov" pattern — triggering
+/// emergency quench during RM init and corrupting GPU state. Only include
+/// patterns that unambiguously indicate a kernel crash.
 const CRASH_PATTERNS: &[&str] = &[
     "Oops:",
     "BUG:",
@@ -32,22 +39,24 @@ const CRASH_PATTERNS: &[&str] = &[
     "RIP:",
     "Call Trace:",
     "Kernel panic",
-    "irq_domain_remove",
-    "msi_device_data_release",
-    "nvsov",
     "unable to handle page request",
     "unable to handle kernel NULL pointer",
     "stack-protector:",
 ];
 
 /// Patterns that are GPU-related but not necessarily fatal — logged as warnings.
+/// irq_domain_remove and msi_device_data_release are kernel WARNINGs from
+/// stale MSI state cleanup, not crashes. nvsov matches normal module messages.
 const GPU_WARN_PATTERNS: &[&str] = &[
     "NVRM:",
     "nvidia:",
+    "nvsov",
     "vfio-pci",
     "iommu fault",
     "AER:",
     "PCIe Bus Error",
+    "irq_domain_remove",
+    "msi_device_data_release",
 ];
 
 /// Classify a kernel log line.
@@ -83,9 +92,10 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
         .unwrap_or_default()
         .as_secs();
 
-    let _ = std::fs::create_dir_all(CRASH_REPORT_DIR);
+    let crash_dir = crash_report_dir();
+    let _ = std::fs::create_dir_all(&crash_dir);
 
-    let report_path = format!("{}/crash-{}.txt", CRASH_REPORT_DIR, timestamp);
+    let report_path = format!("{}/crash-{}.txt", crash_dir, timestamp);
     let mut report = String::with_capacity(8192);
 
     report.push_str(&format!("=== DIESEL ENGINE CRASH REPORT ===\n"));
@@ -176,48 +186,18 @@ fn discover_gpu_bdfs() -> Vec<String> {
 
 /// Best-effort BAR0 register read — returns None if anything goes wrong.
 fn read_gpu_registers_safe(bdf: &str) -> Option<Vec<(&'static str, u32)>> {
-    use std::os::unix::fs::OpenOptionsExt;
-
-    let resource_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(rustix::fs::OFlags::SYNC.bits() as i32)
-        .open(&resource_path)
-        .ok()?;
-
-    let size = 0x1000000; // 16MB BAR0
-    // SAFETY: memory-mapped PCI BAR0 register read. We only read well-known
-    // offsets. This is a best-effort forensic snapshot during kernel crash.
-    let map = unsafe {
-        rustix::mm::mmap(
-            std::ptr::null_mut(),
-            size,
-            rustix::mm::ProtFlags::READ,
-            rustix::mm::MapFlags::SHARED,
-            &file,
-            0,
-        )
-    }.ok()?;
-
-    let read_reg = |offset: usize| -> u32 {
-        if offset >= size { return 0xdeadbeef; }
-        // SAFETY: offset is within the mmap'd region, volatile read of
-        // memory-mapped hardware register.
-        unsafe { std::ptr::read_volatile((map as *const u8).add(offset) as *const u32) }
-    };
-
-    let regs = vec![
-        ("BOOT0", read_reg(0x000)),
-        ("INTR_0", read_reg(0x100)),
-        ("INTR_EN_0", read_reg(0x140)),
-        ("PMC_ENABLE", read_reg(0x200)),
-        ("FECS_CPUCTL", read_reg(0x409100)),
-    ];
-
-    // SAFETY: unmapping the region we mapped above.
-    unsafe { let _ = rustix::mm::munmap(map, size); }
-
-    Some(regs)
+    const BAR0_SIZE: usize = 0x1000000;
+    toadstool_cylinder::vfio::sysfs_bar0::read_registers_best_effort(
+        bdf,
+        BAR0_SIZE,
+        &[
+            ("BOOT0", 0x000),
+            ("INTR_0", 0x100),
+            ("INTR_EN_0", 0x140),
+            ("PMC_ENABLE", 0x200),
+            ("FECS_CPUCTL", 0x409100),
+        ],
+    )
 }
 
 /// Start the kernel sentinel background thread. Call once at daemon startup.

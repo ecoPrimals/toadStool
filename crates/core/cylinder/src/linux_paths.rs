@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Linux sysfs and procfs layout roots for portable deployments and tests.
+//! Linux sysfs, procfs, and data directory layout for portable deployments and tests.
 //!
 //! Environment:
 //! - `TOADSTOOL_SYSFS_ROOT` — sysfs mount (default `/sys`).
 //! - `TOADSTOOL_PROC_ROOT` — procfs mount (default `/proc`).
 //! - `TOADSTOOL_DATA_DIR` — optional data directory for dumps.
 //!
+//! Sysfs path helpers are defined in [`toadstool_common::sysfs_paths`] and
+//! re-exported here for convenience. Cylinder-specific helpers (procfs, data
+//! directory, kernel release) live here.
+//!
 //! Legacy `CORALREEF_*` equivalents are accepted as fallback with a deprecation warning.
+
+pub use toadstool_common::sysfs_paths::*;
 
 use std::sync::OnceLock;
 
@@ -25,28 +31,12 @@ fn resolve_env(primary: &str, legacy: &str, default: &str) -> String {
     default.to_string()
 }
 
-fn sysfs_root_storage() -> &'static str {
-    static ROOT: OnceLock<String> = OnceLock::new();
-    ROOT.get_or_init(|| resolve_env("TOADSTOOL_SYSFS_ROOT", "CORALREEF_SYSFS_ROOT", "/sys"))
-        .as_str()
-}
-
-fn proc_root_storage() -> &'static str {
-    static ROOT: OnceLock<String> = OnceLock::new();
-    ROOT.get_or_init(|| resolve_env("TOADSTOOL_PROC_ROOT", "CORALREEF_PROC_ROOT", "/proc"))
-        .as_str()
-}
-
-/// Resolved sysfs mount path (default `/sys`).
-#[must_use]
-pub fn sysfs_root() -> &'static str {
-    sysfs_root_storage()
-}
-
 /// Resolved procfs mount path (default `/proc`).
 #[must_use]
 pub fn proc_root() -> &'static str {
-    proc_root_storage()
+    static ROOT: OnceLock<String> = OnceLock::new();
+    ROOT.get_or_init(|| resolve_env("TOADSTOOL_PROC_ROOT", "CORALREEF_PROC_ROOT", "/proc"))
+        .as_str()
 }
 
 /// Running kernel release string (e.g. `"6.17.9-76061709-generic"`).
@@ -94,94 +84,23 @@ pub fn optional_data_dir() -> Option<String> {
     None
 }
 
-/// Join path segments under [`sysfs_root`].
+const DEFAULT_DATA_DIR: &str = "/var/lib/toadstool";
+
+/// Resolved data directory root — uses `TOADSTOOL_DATA_DIR` if set,
+/// otherwise `/var/lib/toadstool`.
 #[must_use]
-pub fn sysfs_join(parts: &[&str]) -> String {
-    let mut s = String::with_capacity(96);
-    s.push_str(sysfs_root());
-    for p in parts {
-        s.push('/');
-        s.push_str(p.trim_matches('/'));
-    }
-    s
+pub fn data_dir() -> &'static str {
+    static DIR: OnceLock<String> = OnceLock::new();
+    DIR.get_or_init(|| optional_data_dir().unwrap_or_else(|| DEFAULT_DATA_DIR.to_string()))
+        .as_str()
 }
 
-/// `/…/bus/pci/devices` under [`sysfs_root`].
+/// Build a path under [`data_dir`] by appending one or more subdirectory
+/// segments, e.g. `data_subdir("catalysts/firmware")` yields
+/// `"/var/lib/toadstool/catalysts/firmware"` (or the env-overridden root).
 #[must_use]
-pub fn sysfs_pci_devices() -> String {
-    sysfs_join(&["bus", "pci", "devices"])
-}
-
-/// `/…/bus/pci/devices/{bdf}` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_pci_device_path(bdf: &str) -> String {
-    sysfs_join(&["bus", "pci", "devices", bdf])
-}
-
-/// `/…/bus/pci/devices/{bdf}/{tail}`.
-#[must_use]
-pub fn sysfs_pci_device_file(bdf: &str, tail: &str) -> String {
-    let base = sysfs_pci_device_path(bdf);
-    if tail.is_empty() {
-        base
-    } else {
-        format!("{base}/{}", tail.trim_start_matches('/'))
-    }
-}
-
-/// `/…/bus/pci/drivers/{driver}/bind` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_pci_driver_bind(driver: &str) -> String {
-    sysfs_join(&["bus", "pci", "drivers", driver, "bind"])
-}
-
-/// `/…/bus/pci/drivers/{driver}/unbind` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_pci_driver_unbind(driver: &str) -> String {
-    sysfs_join(&["bus", "pci", "drivers", driver, "unbind"])
-}
-
-/// `/…/bus/pci/rescan` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_pci_bus_rescan() -> String {
-    sysfs_join(&["bus", "pci", "rescan"])
-}
-
-/// `/…/bus/pci/drivers_autoprobe` under [`sysfs_root`].
-///
-/// Writing `0` disables automatic driver probing on bus rescan;
-/// writing `1` re-enables it.
-#[must_use]
-pub fn sysfs_pci_drivers_autoprobe() -> String {
-    sysfs_join(&["bus", "pci", "drivers_autoprobe"])
-}
-
-/// `/…/bus/pci/drivers_probe` under [`sysfs_root`].
-///
-/// Writing a BDF triggers driver matching for that device, honoring
-/// `driver_override` if set.
-#[must_use]
-pub fn sysfs_pci_drivers_probe() -> String {
-    sysfs_join(&["bus", "pci", "drivers_probe"])
-}
-
-/// `/…/module/{name}` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_module_path(name: &str) -> String {
-    sysfs_join(&["module", name])
-}
-
-/// `/…/class/drm/{node}/device` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_class_drm_device(node_name: &str) -> String {
-    sysfs_join(&["class", "drm", node_name, "device"])
-}
-
-/// `/…/kernel/iommu_groups/{group_id}/devices` under [`sysfs_root`].
-#[must_use]
-pub fn sysfs_kernel_iommu_group_devices(group_id: u32) -> String {
-    let gid = group_id.to_string();
-    sysfs_join(&["kernel", "iommu_groups", &gid, "devices"])
+pub fn data_subdir(sub: &str) -> String {
+    format!("{}/{}", data_dir(), sub.trim_matches('/'))
 }
 
 /// `{proc_root()}/{pid}/fd`.
@@ -318,6 +237,26 @@ mod tests {
     fn sysfs_join_single_segment() {
         let path = sysfs_join(&["kernel"]);
         assert_eq!(path, format!("{}/kernel", sysfs_root()));
+    }
+
+    #[test]
+    fn data_dir_defaults_to_var_lib() {
+        let d = data_dir();
+        assert!(!d.is_empty());
+    }
+
+    #[test]
+    fn data_subdir_appends_segment() {
+        let sub = data_subdir("reagents");
+        assert!(sub.ends_with("/reagents"));
+        assert!(sub.starts_with(data_dir()));
+    }
+
+    #[test]
+    fn data_subdir_trims_slashes() {
+        let sub = data_subdir("/catalysts/firmware/");
+        assert!(sub.ends_with("/catalysts/firmware"));
+        assert!(!sub.ends_with("//"));
     }
 
     #[test]

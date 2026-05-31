@@ -52,7 +52,7 @@ pub fn check_thermal_for_bdf_pub(bdf: &str) -> Option<nvpmu::SafetyStatus> {
 /// Attempts to read hwmon sensors for the given BDF. Returns `None` if
 /// sensors are unavailable (e.g. no hwmon, proprietary driver).
 pub(super) fn check_thermal_for_bdf(bdf: &str) -> Option<nvpmu::SafetyStatus> {
-    let device_path = std::path::PathBuf::from(format!("/sys/bus/pci/devices/{bdf}"));
+    let device_path = std::path::PathBuf::from(toadstool_cylinder::linux_paths::sysfs_pci_device_path(bdf));
     let config = nvpmu::MonitorConfig::default();
     if let Ok(sample) = nvpmu::monitor::sample(&device_path, &config) {
         if sample.status != nvpmu::SafetyStatus::Normal {

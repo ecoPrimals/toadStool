@@ -33,9 +33,6 @@ futures = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-# bincode removed: was declared but unused in source (RUSTSEC-2025-0141 unmaintained).
-# tarpc uses its own serde transport; if raw binary serialization is needed,
-# use postcard (pure Rust, no_std, varint) or bitcode instead.
 humantime-serde = { workspace = true }
 bytes = { workspace = true }
 
@@ -45,11 +42,6 @@ rand = { workspace = true }
 aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
 sha2 = { workspace = true }
-
-# Database - REMOVED: Unused dependency with ring/TLS
-# PURE RUST: sqlx removed - was bringing in ring via rustls for DB TLS
-# If database needed in future, use pure Rust alternatives or feature-gate
-# sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 
 # Utilities
 uuid = { workspace = true }

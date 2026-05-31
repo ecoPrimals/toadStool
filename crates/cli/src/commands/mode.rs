@@ -97,7 +97,11 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty());
             let original_driver = original_driver.unwrap_or_else(|| {
-                if std::path::Path::new("/sys/bus/pci/drivers/nvidia").exists() {
+                if std::path::Path::new(
+                    &toadstool_cylinder::linux_paths::sysfs_join(&["bus", "pci", "drivers", "nvidia"]),
+                )
+                .exists()
+                {
                     "nvidia".to_string()
                 } else {
                     "nouveau".to_string()

@@ -5,7 +5,9 @@
 //! `coral-driver::linux_paths` with inline path construction. The [`SysfsPort`]
 //! trait enables test injection without touching real hardware.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+
+use toadstool_common::sysfs_paths::{sysfs_pci_device_file, sysfs_pci_device_path};
 
 use crate::error::SysfsError;
 
@@ -14,7 +16,7 @@ use crate::error::SysfsError;
 /// Returns `/sys/bus/pci/devices/{bdf}/{file}`.
 #[must_use]
 pub fn pci_device_path(bdf: &str, file: &str) -> PathBuf {
-    Path::new("/sys/bus/pci/devices").join(bdf).join(file)
+    PathBuf::from(sysfs_pci_device_file(bdf, file))
 }
 
 /// Injectable port for sysfs reads/writes (enables test doubles).
@@ -91,7 +93,7 @@ pub fn pin_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
 
 /// Pin upstream PCI bridge power (walk parents).
 pub fn pin_bridge_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
-    let device_path = Path::new("/sys/bus/pci/devices").join(bdf);
+    let device_path = PathBuf::from(sysfs_pci_device_path(bdf));
     if let Ok(parent) = std::fs::read_link(device_path.join("..")) {
         if let Some(bridge_name) = parent.file_name().and_then(|n| n.to_str()) {
             let _ = sysfs.write(
@@ -115,7 +117,7 @@ pub fn pin_bridge_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
 /// For multi-level switch topologies (e.g. PLX PEX 8747 on Tesla K80),
 /// use [`pin_bridge_hierarchy`] instead to walk the full ancestry.
 pub fn pin_bridge_power(bdf: &str) {
-    let device_path = std::path::Path::new("/sys/bus/pci/devices").join(bdf);
+    let device_path = PathBuf::from(sysfs_pci_device_path(bdf));
     if let Ok(parent) = std::fs::read_link(device_path.join("..")) {
         if let Some(bridge_name) = parent.file_name().and_then(|n| n.to_str()) {
             let _ = std::fs::write(pci_device_path(bridge_name, "power/control"), "on");
@@ -132,7 +134,7 @@ pub fn pin_bridge_power(bdf: &str) {
 ///
 /// Returns the number of bridges pinned.
 pub fn pin_bridge_hierarchy(bdf: &str) -> usize {
-    let device_link = Path::new("/sys/bus/pci/devices").join(bdf);
+    let device_link = PathBuf::from(sysfs_pci_device_path(bdf));
     let Ok(canonical) = std::fs::canonicalize(&device_link) else {
         return 0;
     };

@@ -77,10 +77,11 @@ pub fn sovereign_kernel_health(params: Option<&Value>) -> Result<Value, JsonRpcE
 ///
 /// Params:
 /// - `bdf` (required): PCI BDF address (e.g. `"0000:41:00.0"`)
-/// - `chip` (optional, default `"gv100"`): GPU chip identifier
-/// - `driver_version` (optional, default `"470.256.02"`): nvidia driver version
+/// - `chip` (optional): GPU chip identifier — discovered from BOOT0 when omitted
+/// - `driver_version` (optional): nvidia driver version — discovered from procfs when omitted
 /// - `mmiotrace_path` (optional): Path to mmiotrace log for ACR recipe distillation
 pub fn sovereign_reagent_capture(params: Option<&Value>) -> Result<Value, JsonRpcError> {
+    use toadstool_cylinder::nv::generation::VOLTA;
     use toadstool_cylinder::vfio::reagent;
 
     let bdf = params
@@ -91,12 +92,22 @@ pub fn sovereign_reagent_capture(params: Option<&Value>) -> Result<Value, JsonRp
     let chip = params
         .and_then(|p| p.get("chip"))
         .and_then(Value::as_str)
-        .unwrap_or("gv100");
+        .map(str::to_owned)
+        .or_else(|| reagent::discover_chip_from_bdf(bdf).map(str::to_owned))
+        .unwrap_or_else(|| {
+            // DISCOVERY: Volta GV100 default when BOOT0 read is unavailable
+            VOLTA.firmware_chip.to_owned()
+        });
 
     let driver_version = params
         .and_then(|p| p.get("driver_version"))
         .and_then(Value::as_str)
-        .unwrap_or("470.256.02");
+        .map(str::to_owned)
+        .or_else(reagent::discover_nvidia_driver_version)
+        .unwrap_or_else(|| {
+            // DISCOVERY: nvidia-470 default when /proc/driver/nvidia/version is unavailable
+            reagent::DEFAULT_REAGENT_DRIVER_VERSION.to_owned()
+        });
 
     let mmiotrace_path = params
         .and_then(|p| p.get("mmiotrace_path"))
@@ -104,13 +115,13 @@ pub fn sovereign_reagent_capture(params: Option<&Value>) -> Result<Value, JsonRp
 
     info!(
         bdf = bdf,
-        chip = chip,
-        driver_version = driver_version,
+        chip = chip.as_str(),
+        driver_version = driver_version.as_str(),
         mmiotrace_path = ?mmiotrace_path,
         "sovereign.reagent_capture: starting capture pipeline"
     );
 
-    let mut result = reagent::execute_reagent_capture(bdf, chip, driver_version);
+    let mut result = reagent::execute_reagent_capture(bdf, chip.as_str(), driver_version.as_str());
 
     // Optionally distill mmiotrace
     if let Some(trace_path) = mmiotrace_path {
@@ -173,7 +184,7 @@ pub fn sovereign_reagent_capture(params: Option<&Value>) -> Result<Value, JsonRp
     Ok(serde_json::json!({
         "chip": result.manifest.chip,
         "bdf": bdf,
-        "driver_version": driver_version,
+        "driver_version": driver_version.as_str(),
         "captured_at": result.manifest.captured_at,
         "manifest_path": result.manifest_path,
         "completeness": {

@@ -101,8 +101,8 @@ pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, Han
 
     let imem_status = if imem_nonzero > 0 {
         // Full FECS + GPCCS IMEM dump
-        let fw_dir = "/var/lib/toadstool/catalysts/firmware";
-        let _ = std::fs::create_dir_all(fw_dir);
+        let fw_dir = crate::linux_paths::data_subdir("catalysts/firmware");
+        let _ = std::fs::create_dir_all(&fw_dir);
         for (name, eng_base) in [
             ("fecs", falcon::FECS_BASE),
             ("gpccs", falcon::GPCCS_BASE),

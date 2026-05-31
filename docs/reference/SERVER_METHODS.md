@@ -1,5 +1,9 @@
 # ToadStool Server — JSON-RPC Method Reference
 
+**Last Updated**: May 2026 — S282  
+**Direct handlers**: 88 (see `DIRECT_JSONRPC_METHODS` in `crates/server/src/pure_jsonrpc/handler/core/mod.rs`)  
+**Semantic aliases**: additional names resolved via `SemanticMethodRegistry` before dispatch
+
 All methods follow [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over Unix domain sockets
 or optionally over TCP.
 
@@ -69,8 +73,13 @@ These are the entry points biomeOS and primalSpring use for live validation.
 |--------|---------|-------------|
 | `capabilities.list` | `capability.list`, `primal.capabilities`, `compute.capabilities` | Returns compute capabilities for this instance |
 | `compute.discover_capabilities` | — | Returns full method list + semantic mappings |
-| `health.liveness` | `health.readiness`, `health.check`, `toadstool.health`, `compute.health` | Health check with uptime, version, error count |
+| `health.liveness` | — | Liveness probe (always `alive`) |
+| `health.readiness` | — | Readiness probe with version and startup state |
+| `health.check` | `toadstool.health`, `compute.health` | Full health check with uptime, version, error count |
+| `health.version` | `ember.health.version`, `sovereign.health.version` | Build identity (session, build hash) |
+| `health.drain` | `ember.health.drain`, `sovereign.health.drain` | Enter drain mode (stop accepting new work) |
 | `identity.get` | — | Returns primal identity + registered semantic methods |
+| `primal.announce` | — | Self-announce to biomeOS Neural API (capabilities, cost hints) |
 | `toadstool.version` | `compute.version` | Version and build info |
 
 ---
@@ -132,6 +141,15 @@ Query what execution capabilities this ToadStool instance has.
 
 ---
 
+### `toadstool.validate`
+Pre-flight validate a workload path (Tier 2 Science API).
+
+**Request params:** `{ "workload_path": str, "dry_run"?: bool }`
+
+**Response:** `ValidateResult` object
+
+---
+
 ### `toadstool.resources.*`
 
 | Method | Description |
@@ -149,6 +167,11 @@ Query what execution capabilities this ToadStool instance has.
 Direct GPU job queue access. Use these when you need precise control over
 GPU dispatch (e.g. from the compute service or custom pipelines). The job
 queue runs independently of the workload executor.
+
+### `compute.execute`
+Alias for `toadstool.submit_workload` — submit a high-level workload via the semantic compute namespace.
+
+---
 
 ### `compute.submit`
 Enqueue a raw GPU job.
@@ -212,6 +235,11 @@ Low-level shader dispatch (VFIO/DRM passthrough).
 | `compute.dispatch.result` | Retrieve dispatch result |
 | `compute.dispatch.forward` | Forward dispatch to another gate |
 | `compute.dispatch.capabilities` | Query dispatch capabilities |
+| `compute.dispatch.pipeline.submit` | Submit a multi-stage pipeline dispatch |
+| `compute.dispatch.pipeline.status` | Query pipeline dispatch status |
+| `compute.fan_out` | DAG-aware fan-out dispatch for distributed clone processing |
+
+Aliases: `ember.fan_out`, `sovereign.fan_out` → `compute.fan_out`
 
 ---
 
@@ -247,11 +275,11 @@ Silicon performance surface reporting and routing.
 
 ## `gpu.*` Methods
 
-| Method | Description |
-|--------|-------------|
-| `gpu.query_info` / `gpu.info` | GPU adapter info (driver, f64 support, workgroups) |
-| `gpu.query_memory` / `gpu.memory` | GPU memory info (total, available, used) |
-| `gpu.query_telemetry` / `gpu.telemetry` | GPU telemetry (temperature, utilization) |
+| Method | Aliases | Description |
+|--------|---------|-------------|
+| `gpu.query_info` | `gpu.info` | GPU adapter info (driver, f64 support, workgroups) |
+| `gpu.query_memory` | `gpu.memory` | GPU memory info (total, available, used) |
+| `gpu.query_telemetry` | `gpu.telemetry` | GPU telemetry (temperature, utilization) |
 
 ---
 
@@ -283,14 +311,17 @@ Hardware transport discovery and routing (DRM, V4L2, serial).
 
 ---
 
-## `device.*` Methods (S252)
+## `device.*` Methods (S252+)
 
-Device lifecycle management — swap, warm detection.
+Device lifecycle management — swap, warm detection, VFIO dispatch, GR init.
 
-| Method | Description |
-|--------|-------------|
-| `device.swap` | Orchestrate GPU personality swap (quiesce → persist → unbind → rebind → restore → verify) |
-| `device.warm_catch` | Detect warm (already-initialized) GPU state and capture personality |
+| Method | Aliases | Description |
+|--------|---------|-------------|
+| `device.swap` | `ember.swap`, `sovereign.boot` | Orchestrate GPU personality swap (quiesce → persist → unbind → rebind → restore → verify) |
+| `device.warm_catch` | — | Detect warm (already-initialized) GPU state and capture personality |
+| `device.vfio.open` | `ember.vfio.open` | Open VFIO session on a bound GPU |
+| `device.vfio.roundtrip` | `ember.vfio.roundtrip` | Alloc→upload→dispatch→sync→readback roundtrip on VFIO GPU |
+| `device.gr.init` | `compute.context.init`, `ember.gr.init`, `sovereign.gr.init` | GR context init (FECS method entry) for warm-caught Volta+ GPUs |
 
 ---
 
@@ -313,10 +344,11 @@ Low-level MMIO register access and Falcon microcontroller status via sysfs BAR0.
 
 glowPlug/ember device lifecycle management.
 
-| Method | Description |
-|--------|-------------|
-| `ember.list` | List managed GPU devices |
-| `ember.status` | Device manager status |
+| Method | Aliases | Description |
+|--------|---------|-------------|
+| `ember.list` | `device.list` | List managed GPU devices |
+| `ember.status` | `device.status` | Device manager status |
+| `ember.reacquire` | `device.reacquire` | Reacquire a previously released device handle |
 
 ---
 
@@ -325,6 +357,45 @@ glowPlug/ember device lifecycle management.
 Sovereign shader dispatch: send a compiled shader binary to GPU hardware
 via VFIO or DRM passthrough. Input formats: base64, byte array, or
 `compile_result` object from the visualization service.
+
+---
+
+## `sovereign.*` Methods (S263+)
+
+Sovereign compute diagnostics, warm handoff, catalyst boot, and reagent capture.
+These route through the ember/dispatch handler when a cached VFIO device is available.
+
+| Method | Aliases | Description |
+|--------|---------|-------------|
+| `sovereign.init` | — | Initialize sovereign compute on a warm-caught GPU |
+| `sovereign.profile` | — | Profile sovereign GPU state |
+| `sovereign.warm_status` | — | Query warm-handoff readiness |
+| `sovereign.ce_validate` | `ce.validate` | Composition engine validate |
+| `sovereign.pmu_investigate` | `pmu.investigate` | PMU register investigation |
+| `sovereign.warm_handoff` | — | Execute warm handoff sequence |
+| `sovereign.catalyst_boot` | — | Catalyst channel boot (Exp 229) |
+| `sovereign.classify_tier` | — | Classify GPU tier |
+| `sovereign.experiment` | — | Run sovereign experiment |
+| `sovereign.devinit` | — | Device initialization probe |
+| `sovereign.kernel_health` | — | Kernel driver health check |
+| `sovereign.snapshot` | — | Capture sovereign state snapshot |
+| `sovereign.compare` | — | Compare two sovereign snapshots |
+| `sovereign.catalyst_diff` | — | Diff catalyst channel state |
+| `sovereign.reagent_capture` | — | Capture reagent state |
+| `sovereign.recipe_replay` | — | Replay a captured recipe |
+| `sovereign.runtime_services_probe` | — | Probe runtime services availability |
+
+---
+
+## `auth.*` Methods
+
+Pre-dispatch capability gate introspection (JH-0/JH-2).
+
+| Method | Description |
+|--------|-------------|
+| `auth.check` | Check whether caller may invoke a method |
+| `auth.mode` | Return current auth enforcement mode |
+| `auth.peer_info` | Return caller context for the current request |
 
 ---
 

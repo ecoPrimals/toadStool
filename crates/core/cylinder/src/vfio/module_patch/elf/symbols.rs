@@ -31,14 +31,6 @@ impl SymbolResolver for NmResolver {
     }
 }
 
-/// Resolve text symbol offsets in a `.ko` file.
-///
-/// Delegates to [`NmResolver`] (backed by `kmod::nm_text_symbols`).
-#[allow(dead_code)]
-pub(crate) fn resolve_symbols(ko_path: &Path) -> Result<HashMap<String, u64>, PatchError> {
-    NmResolver.resolve(ko_path)
-}
-
 /// Resolve symbol FILE offsets by parsing ELF structures directly.
 ///
 /// Unlike `nm` (which returns section-relative virtual addresses), this
@@ -57,8 +49,6 @@ pub(crate) fn resolve_symbol_file_offsets(elf: &[u8]) -> HashMap<String, u64> {
 
     const SHT_SYMTAB: u32 = 2;
     const STT_FUNC: u8 = 2;
-    #[allow(dead_code)]
-    const STB_GLOBAL: u8 = 1;
 
     // Build section offset table: section_index -> sh_offset
     let mut section_offsets = Vec::with_capacity(e_shnum);
@@ -121,42 +111,4 @@ pub(crate) fn resolve_symbol_file_offsets(elf: &[u8]) -> HashMap<String, u64> {
     }
 
     result
-}
-
-/// Find the file offset of the `.text` section in an ELF module.
-///
-/// `nm` reports section-relative virtual addresses. To convert them to
-/// byte offsets within the file we need the section's `sh_offset`.
-/// Returns 0 if the section cannot be found (graceful fallback for
-/// non-standard layouts).
-#[allow(dead_code)]
-pub(crate) fn find_text_section_offset(elf: &[u8]) -> usize {
-    if elf.len() < 64 { return 0; }
-    let e_shoff = u64::from_le_bytes(elf[40..48].try_into().unwrap_or([0; 8])) as usize;
-    let e_shentsize = u16::from_le_bytes(elf[58..60].try_into().unwrap_or([0; 2])) as usize;
-    let e_shnum = u16::from_le_bytes(elf[60..62].try_into().unwrap_or([0; 2])) as usize;
-    let e_shstrndx = u16::from_le_bytes(elf[62..64].try_into().unwrap_or([0; 2])) as usize;
-
-    if e_shentsize == 0 || e_shoff == 0 || e_shstrndx >= e_shnum { return 0; }
-
-    let shstrtab_sh = e_shoff + e_shstrndx * e_shentsize;
-    if shstrtab_sh + 40 > elf.len() { return 0; }
-    let shstrtab_off = u64::from_le_bytes(
-        elf[shstrtab_sh + 24..shstrtab_sh + 32].try_into().unwrap_or([0; 8]),
-    ) as usize;
-
-    for i in 0..e_shnum {
-        let sh = e_shoff + i * e_shentsize;
-        if sh + e_shentsize > elf.len() { break; }
-        let sh_name = u32::from_le_bytes(
-            elf[sh..sh + 4].try_into().unwrap_or([0; 4]),
-        ) as usize;
-        let name_off = shstrtab_off + sh_name;
-        if name_off + 6 <= elf.len() && &elf[name_off..name_off + 6] == b".text\0" {
-            return u64::from_le_bytes(
-                elf[sh + 24..sh + 32].try_into().unwrap_or([0; 8]),
-            ) as usize;
-        }
-    }
-    0
 }

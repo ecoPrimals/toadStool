@@ -3,6 +3,14 @@
 //!
 //! This module provides rapid system discovery and deployment capabilities for ToadStool,
 //! enabling sub-60-second bootstrap with full ecosystem integration.
+//!
+//! The [`toadstool-auto-config`] crate (enabled via CLI `zero-config` feature) provides the
+//! intelligent backend: hardware detection, ecosystem discovery, NL config, and MCP interface.
+//! This module is the CLI deployment orchestration layer on top of that library.
+#[cfg(feature = "zero-config")]
+pub use toadstool_auto_config::{
+    EcosystemDiscoverer, HardwareDetector, IntelligentAutoConfig, NaturalLanguageConfig,
+};
 
 // Re-export types
 pub use types::*;

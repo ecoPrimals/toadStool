@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! AMD Vega 20 (MI50/MI60, GFX906) `GpuMetal` + `BootPipeline` implementation.
 //!
+//! **Status (Wave 5):** Probe and warm-detection are functional. Cold boot
+//! (`devinit`, `engine_init`) returns `Unsupported` — AMD hardware is not yet
+//! available for sovereign validation. Use
+//! [`crate::vfio::sovereign_stages::ChipDetection`] / `detect_chip()` to
+//! distinguish "AMD present but cold boot not implemented" from "no GPU found".
+//!
 //! Register offsets derived from AMD's publicly documented MMIO layout
 //! and Mesa amdgpu driver headers for Vega/GFX906. Key subsystems:
 //!
@@ -13,7 +19,8 @@
 //!
 //! The `VegaInit` struct implements the vendor-agnostic `BootPipeline` trait,
 //! proving the trait works cross-vendor. Probe reads GRBM_STATUS for warm
-//! detection; devinit/engine_init return `Unsupported` (no AMD hardware present).
+//! detection; `devinit` / `engine_init` return `Unsupported` until AMD cold
+//! boot is implemented (see module-level status note).
 
 use super::bar_cartography::DomainHint;
 use super::gpu_vendor::*;
@@ -86,6 +93,10 @@ impl GpuIdentity for AmdVegaIdentity {
 }
 
 /// AMD Vega 20 `GpuMetal` — bare-metal register access for MI50/MI60.
+///
+/// Register cartography and warm-probe paths are implemented. Sovereign cold
+/// boot is not — pair with [`VegaInit`] for probe-only workflows until AMD
+/// init stages land.
 #[derive(Debug)]
 pub struct AmdVegaMetal {
     identity: AmdVegaIdentity,
@@ -359,13 +370,16 @@ pub struct VegaInitResult {
     pub method: String,
 }
 
-/// AMD Vega 20 (MI50/MI60) boot pipeline stub.
+/// AMD Vega 20 (MI50/MI60) boot pipeline — probe functional, cold boot pending.
 ///
 /// Implements `BootPipeline` using the GRBM register map already defined
 /// in this module. The probe phase is functional — it reads GRBM_STATUS,
-/// GRBM_STATUS2, and SRBM_STATUS to detect engine state. The devinit
-/// and engine_init phases return `Unsupported` since no AMD hardware is
-/// available for validation.
+/// GRBM_STATUS2, and SRBM_STATUS to detect engine state.
+///
+/// **Cold boot status:** `devinit` and `engine_init` return
+/// [`DriverError::Unsupported`] with guidance. Warm GPUs skip devinit via
+/// `"warm-skip"`. For PCI-level detection before opening BAR0, see
+/// [`crate::vfio::sovereign_stages::detect_chip`].
 ///
 /// This stub proves the `BootPipeline` trait works cross-vendor: the same
 /// `probe → is_warm → devinit → engine_init → verify` contract applies
@@ -449,7 +463,9 @@ impl BootPipeline for VegaInit {
             });
         }
         Err(DriverError::Unsupported(
-            "Vega cold devinit not implemented (no AMD hardware for validation)".into(),
+            "AMD Vega cold devinit not implemented — GPU present but sovereign \
+             cold boot pending; warm GPUs detected via probe may skip devinit"
+                .into(),
         ))
     }
 
@@ -467,7 +483,9 @@ impl BootPipeline for VegaInit {
         _probe: &VegaProbeResult,
     ) -> Result<(), DriverError> {
         Err(DriverError::Unsupported(
-            "Vega engine_init not implemented (no AMD hardware for validation)".into(),
+            "AMD Vega engine_init not implemented — GPU present but sovereign \
+             cold boot pending; register cartography and warm probe are functional"
+                .into(),
         ))
     }
 

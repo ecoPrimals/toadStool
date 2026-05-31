@@ -34,7 +34,8 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
     };
 
     let npu_detected = Path::new("/dev/akida0").exists() || {
-        let pci_devices = Path::new("/sys/bus/pci/devices");
+        let pci_devices_path = toadstool_cylinder::linux_paths::sysfs_pci_devices();
+        let pci_devices = std::path::Path::new(&pci_devices_path);
         let mut found = false;
         if let Ok(mut entries) = tokio::fs::read_dir(pci_devices).await {
             while let Ok(Some(entry)) = entries.next_entry().await {

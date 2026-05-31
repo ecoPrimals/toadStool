@@ -59,7 +59,8 @@ impl NvidiaGpu {
 /// # Errors
 /// Returns I/O error if `/sys/bus/pci/devices/` cannot be read.
 pub fn discover_gpus() -> Result<Vec<NvidiaGpu>> {
-    let pci_dir = Path::new("/sys/bus/pci/devices");
+    let pci_devices = toadstool_common::sysfs_paths::sysfs_pci_devices();
+    let pci_dir = Path::new(&pci_devices);
     if !pci_dir.exists() {
         return Ok(Vec::new());
     }

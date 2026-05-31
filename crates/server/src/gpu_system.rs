@@ -212,7 +212,7 @@ pub fn query_firmware_inventory() -> serde_json::Value {
 ///
 /// Falls back to "unknown" if sysfs read fails.
 fn infer_chip_codename(pci_slot: &str) -> String {
-    let device_path = format!("/sys/bus/pci/devices/{pci_slot}/device");
+    let device_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(pci_slot, "device");
     let device_id = std::fs::read_to_string(&device_path)
         .map(|s| s.trim().to_lowercase())
         .unwrap_or_default();

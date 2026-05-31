@@ -32,7 +32,7 @@
 //! PLX discovery is retained as a priority hint, not the identity of the
 //! subsystem.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -291,7 +291,7 @@ impl PcieBridgeKeepalive {
 /// Returns `true` if the read succeeded and didn't return `0xFFFFFFFF`
 /// (which indicates the device is in D3cold or the link is down).
 fn config_read_heartbeat(bdf: &str) -> bool {
-    let config_path = format!("/sys/bus/pci/devices/{bdf}/config");
+    let config_path = toadstool_common::sysfs_paths::sysfs_pci_device_file(bdf, "config");
     let path = Path::new(&config_path);
 
     if !path.exists() {
@@ -324,7 +324,7 @@ pub fn is_pci_bdf(name: &str) -> bool {
 fn detect_bridge_chain(bdf: &str) -> Vec<String> {
     let mut chain = vec![bdf.to_string()];
 
-    let device_link = Path::new("/sys/bus/pci/devices").join(bdf);
+    let device_link = PathBuf::from(toadstool_common::sysfs_paths::sysfs_pci_device_path(bdf));
     let Ok(canonical) = std::fs::canonicalize(&device_link) else {
         return chain;
     };

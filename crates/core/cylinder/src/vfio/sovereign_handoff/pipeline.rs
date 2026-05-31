@@ -35,6 +35,7 @@ pub(crate) struct PipelineContext<'a> {
     pub override_path: String,
     pub probe_path: String,
     pub handoff_guard: Option<HandoffGuard>,
+    pub irq_clutch_engaged: bool,
     heartbeat_fn: Option<&'a (dyn Fn() + Send)>,
     signal_fn: Option<&'a (dyn Fn(PipelineSignal) + Send)>,
 }
@@ -119,45 +120,64 @@ fn execute_handoff_inner(
         override_path: String::new(),
         probe_path: String::new(),
         handoff_guard: None,
+        irq_clutch_engaged: false,
         heartbeat_fn: heartbeat_ref,
         signal_fn: signal_ref,
     };
 
+    // Forensic breadcrumb helper — writes timestamped markers to a file
+    // that survives soft lockups. Check /tmp/handoff-forensics.log after reboot.
+    fn crumb(msg: &str) {
+        crate::vfio::sovereign_handoff::forensics::breadcrumb(&format!("PIPELINE: {msg}"));
+    }
+
+    crumb(&format!("=== HANDOFF START bdf={} strategy={} ===", config.bdf, config.seeder_driver));
+
     ctx.heartbeat();
+    crumb("preflight");
     if let Some(result) = steps::preflight::run(&mut ctx) {
         return result;
     }
 
     ctx.heartbeat();
+    crumb("module_prep");
     if let Some(result) = steps::module_prep::run(&mut ctx) {
         return result;
     }
 
     ctx.heartbeat();
+    crumb("unbind_bind");
     if let Some(result) = steps::unbind_bind::run(&mut ctx) {
         return result;
     }
 
     ctx.heartbeat();
+    crumb("rm_trigger");
     steps::rm_trigger::run(&mut ctx);
 
     ctx.heartbeat();
+    crumb("settle_capture");
     if let Some(result) = steps::settle_capture::run(&mut ctx) {
         return result;
     }
 
     ctx.heartbeat();
+    crumb("warm_swap");
     if let Some(result) = steps::warm_swap::run(&mut ctx) {
         return result;
     }
 
+    crumb("recovery");
     steps::recovery::run(&mut ctx);
 
     ctx.heartbeat();
+    crumb("classify_preserve");
     steps::classify_preserve::run(&mut ctx);
 
     ctx.heartbeat();
+    crumb("cleanup");
     steps::cleanup::run(&mut ctx);
+    crumb("=== HANDOFF COMPLETE ===");
 
     let pri_ring_anchor = ctx.boot_evidence.as_ref().map(|ev| {
         let mut anchor = PriRingAnchor::from_evidence(&ctx.config.bdf, ev.clone());

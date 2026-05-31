@@ -189,7 +189,7 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         };
         let bdf = bdf.as_str();
 
-        let power_path = format!("/sys/bus/pci/devices/{bdf}/power_state");
+        let power_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "power_state");
         let power = std::fs::read_to_string(&power_path)
             .ok()
             .map_or_else(|| "unknown".into(), |s| s.trim().to_string());
@@ -220,9 +220,9 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
 
     /// Read gpu_busy_percent from the first DRM card node for this BDF.
     fn read_gpu_busy_percent(bdf: &str) -> Option<u32> {
-        let drm_dir = std::path::Path::new("/sys/bus/pci/devices")
-            .join(bdf)
-            .join("drm");
+        let drm_dir = std::path::PathBuf::from(
+            toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "drm"),
+        );
         let entries = std::fs::read_dir(&drm_dir).ok()?;
         for entry in entries.flatten() {
             let name = entry.file_name();

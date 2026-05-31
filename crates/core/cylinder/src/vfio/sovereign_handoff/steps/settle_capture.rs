@@ -10,14 +10,20 @@ use super::super::pipeline::PipelineContext;
 use super::super::rollback::deadline_exceeded;
 use super::super::types::{HandoffResult, HandoffStep};
 
+fn breadcrumb(msg: &str) {
+    crate::vfio::sovereign_handoff::forensics::breadcrumb(msg);
+}
+
 pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         // ── Step 4: Settle — wait for hardware initialization ───────────
 
         let t = Instant::now();
+        breadcrumb(&format!("settle: starting {}ms settle", ctx.config.settle.as_millis()));
         tracing::info!(bdf = ctx.config.bdf.as_str(), seeder = ctx.config.seeder_driver.as_str(),
                        settle_ms = ctx.config.settle.as_millis() as u64,
                        "waiting for seeder hardware initialization");
         std::thread::sleep(ctx.config.settle);
+        breadcrumb("settle: settle complete");
         ctx.steps.push(HandoffStep {
             name: "seeder_settle".into(), ok: true,
             detail: Some(format!("{}ms settle", ctx.config.settle.as_millis())),
@@ -87,6 +93,20 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         }
 
         ctx.heartbeat();
+
+        // ── Post-settle interrupt re-quench (Exp 233 Run #4) ──────────
+        if ctx.is_catalyst {
+            breadcrumb("post-settle: quench_interrupts");
+            pmc::quench_interrupts(
+                &ctx.config.bdf, &ctx.hw.interrupt_profile, "post-settle",
+            );
+            breadcrumb("post-settle: disable_pci_msi");
+            pmc::disable_pci_msi(&ctx.config.bdf, "post-settle");
+            breadcrumb("post-settle: intx_disable");
+            pmc::intx_disable(&ctx.config.bdf, "post-settle");
+            breadcrumb("post-settle: interrupt defenses done");
+        }
+
         // ── Step 4b: Catalyst Capture (if catalyst strategy) ──────────
         //
         // While the catalyst driver owns the GPU and has fully initialized
@@ -184,8 +204,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
 
                     // If IMEM is readable, do full FECS + GPCCS capture
                     if imem_nonzero > 0 && imem_faulted == 0 {
-                        let fw_dir = "/var/lib/toadstool/catalysts/firmware";
-                        let _ = std::fs::create_dir_all(fw_dir);
+                        let fw_dir = crate::linux_paths::data_subdir("catalysts/firmware");
+                        let _ = std::fs::create_dir_all(&fw_dir);
                         for (name, base) in [("fecs", 0x40_9000usize), ("gpccs", 0x41_a000usize)] {
                             let imemc_r = base + 0x180;
                             let imemd_r = base + 0x184;

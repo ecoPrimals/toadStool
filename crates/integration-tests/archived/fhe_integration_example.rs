@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! FHE Integration Test - Complete Example
 //!
-//! **Purpose**: Demonstrate full FHE NTT pipeline with actual GPU execution
+//! **ARCHIVED (S282)**: FHE NTT math moved to barraCuda (`ecoPrimals/barraCuda/`).
+//! No FHE crate or feature remains in toadStool. This file is preserved for
+//! reference only and is not compiled into CI.
+//!
+//! Original location: `tests/pending/fhe_integration_example.rs`
 //!
 //! **Status**: Example/Documentation
 //! - Shows how to integrate FHE operations

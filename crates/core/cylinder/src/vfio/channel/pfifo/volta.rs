@@ -11,7 +11,7 @@ use super::PfifoInitConfig;
 
 /// Configurable PFIFO engine initialization.
 ///
-/// Same as [`super::init_pfifo_engine`] but takes a [`PfifoInitConfig`] to
+/// Same as [`super::init::init_pfifo_engine`] but takes a [`PfifoInitConfig`] to
 /// control the bring-up sequence. Use this from the diagnostic runner.
 pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> DriverResult<(u32, u32)> {
     let w = |reg: usize, val: u32| {

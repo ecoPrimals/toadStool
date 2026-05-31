@@ -6,13 +6,13 @@
 > That proposal was for the HTTP-based daemon. The daemon is now fully IPC-first
 > (JSON-RPC 2.0 over Unix sockets) as of S169.
 
-## Current Architecture (S170→S275)
+## Current Architecture (S170→S282)
 
 ```
 toadstool daemon start
     ├── Unix socket: $XDG_RUNTIME_DIR/biomeos/compute.sock (JSON-RPC) + compute-tarpc.sock (tarpc)
     ├── TCP (optional): --port <PORT> for JSON-RPC over TCP
-    ├── JSON-RPC 2.0 methods (85 direct + semantic registry)
+    ├── JSON-RPC 2.0 methods (88 direct + semantic registry)
     └── Graceful shutdown via SIGINT/SIGTERM
 ```
 

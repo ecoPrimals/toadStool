@@ -102,6 +102,53 @@ impl DeviceMmap {
         })
     }
 
+    /// Map a device fd at `offset` as a shared read-only region of `size` bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DeviceMmapError::ZeroSize`] if `size == 0`, or
+    /// [`DeviceMmapError::MmapFailed`] if the kernel rejects the mapping.
+    pub fn map_shared_ro(fd: impl AsFd, offset: u64, size: usize) -> Result<Self, DeviceMmapError> {
+        if size == 0 {
+            return Err(DeviceMmapError::ZeroSize);
+        }
+
+        if isize::try_from(size).is_err() {
+            return Err(DeviceMmapError::MmapFailed(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "mmap length exceeds isize::MAX",
+            )));
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            let raw = fd.as_fd().as_raw_fd();
+            debug_assert!(raw >= 0, "AsFd: negative fd");
+        }
+
+        // SAFETY: fd is a valid open descriptor (AsFd contract); offset and
+        // size describe a mappable region of the device (caller invariant);
+        // PROT_READ + MAP_SHARED is correct for read-only device MMIO probes.
+        let raw = unsafe {
+            rustix::mm::mmap(
+                std::ptr::null_mut(),
+                size,
+                rustix::mm::ProtFlags::READ,
+                rustix::mm::MapFlags::SHARED,
+                fd,
+                offset,
+            )
+        }
+        .map_err(|e| DeviceMmapError::MmapFailed(e.into()))?;
+
+        let ptr = NonNull::new(raw.cast()).ok_or(DeviceMmapError::NullPointer)?;
+        tracing::debug!(size, offset, "device mmap region created (ro)");
+        Ok(Self {
+            ptr: ExclusivePtr::new(ptr),
+            size,
+        })
+    }
+
     /// Size of the mapped region in bytes.
     #[must_use]
     pub const fn size(&self) -> usize {
@@ -250,19 +297,16 @@ mod tests {
     }
 
     #[test]
-    fn debug_impl() {
+    fn map_shared_ro_works() {
         let mut tmp = tempfile::NamedTempFile::new().unwrap();
         tmp.write_all(&[0u8; 4096]).unwrap();
         tmp.flush().unwrap();
 
         let file = std::fs::OpenOptions::new()
             .read(true)
-            .write(true)
             .open(tmp.path())
             .unwrap();
-        let region = DeviceMmap::map_shared_rw(&file, 0, 4096).unwrap();
-        let dbg = format!("{region:?}");
-        assert!(dbg.contains("DeviceMmap"));
-        assert!(dbg.contains("4096"));
+        let region = DeviceMmap::map_shared_ro(&file, 0, 4096).unwrap();
+        assert_eq!(region.size(), 4096);
     }
 }

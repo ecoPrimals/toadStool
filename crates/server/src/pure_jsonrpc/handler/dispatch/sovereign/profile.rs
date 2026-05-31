@@ -79,6 +79,12 @@ pub(crate) async fn sovereign_profile_ember(
         if nv.has_gr_firmware() {
             std::sync::Arc::new(nv)
         } else {
+            tracing::info!(
+                chip,
+                bdf,
+                "sovereign.profile: using NoopGspBridge — firmware-less init active \
+                 (non-firmware stages only; ACR/FECS require NvGspBridge or warm-handoff)"
+            );
             std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::NoopGspBridge::default())
         }
     };

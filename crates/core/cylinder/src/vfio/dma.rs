@@ -361,10 +361,15 @@ impl Drop for DmaBuffer {
     }
 }
 
-// SAFETY: Matches the `Send` / `Sync` rationale in the [`DmaBuffer`] docs.
+// SAFETY: The inner `NonNull<u8>` in `DmaBufferBytes` points to a page-aligned,
+// mlock'd allocation exclusively owned by this struct until drop. The VFIO/
+// IOMMU backend (`DmaBackend`) is `Send + Sync`. Moving the buffer does not
+// duplicate ownership or invalidate the kernel/IOMMU mapping.
 unsafe impl Send for DmaBuffer {}
 
-// SAFETY: Matches the `Send` / `Sync` rationale in the [`DmaBuffer`] docs.
+// SAFETY: Host-side access goes through `&self`/`&mut self` (Rust borrow rules).
+// Shared `&DmaBuffer` does not expose unsynchronized host mutation. Concurrent
+// GPU DMA to the same IOVA requires caller-side queueing per the device contract.
 unsafe impl Sync for DmaBuffer {}
 
 #[cfg(test)]

@@ -389,12 +389,12 @@ impl KmodBuilder {
     /// parameter and compares against the expected value. Returns true
     /// only if the module is loaded AND all parameters match.
     fn is_loaded_with_matching_params(&self) -> bool {
-        let sys_path = format!("/sys/module/{}", self.name);
+        let sys_path = crate::linux_paths::sysfs_module_path(&self.name);
         if !Path::new(&sys_path).exists() {
             return false;
         }
         for (key, value) in &self.params {
-            let param_path = format!("{sys_path}/parameters/{key}");
+            let param_path = crate::linux_paths::sysfs_module_parameter(&self.name, key);
             match std::fs::read_to_string(&param_path) {
                 Ok(contents) if contents.trim() == value => {}
                 _ => return false,
@@ -405,7 +405,7 @@ impl KmodBuilder {
 
     /// If the module is already loaded, unload it first (idempotent reload).
     fn ensure_unloaded(&self) -> Result<(), GuardedSysfsError> {
-        let sys_path = format!("/sys/module/{}", self.name);
+        let sys_path = crate::linux_paths::sysfs_module_path(&self.name);
         if Path::new(&sys_path).exists() {
             tracing::info!(module = self.name.as_str(),
                            "kmod already loaded — unloading for reload");
@@ -432,7 +432,8 @@ impl KmodBuilder {
         // Check persistent cache first — survives reboots, avoids kbuild
         // entirely when the kernel version hasn't changed.
         let cache_dir = PathBuf::from(format!(
-            "/var/lib/toadstool/kmod-cache/{krel}"
+            "{}/kmod-cache/{krel}",
+            crate::linux_paths::data_dir()
         ));
         let cached_ko = cache_dir.join(format!("{}.ko", self.name));
         if cached_ko.exists() {
@@ -559,7 +560,7 @@ impl KmodBuilder {
 
     /// Unload the module and clean up build artifacts.
     pub fn unload_and_clean(name: &str, tmpdir: &str) -> Result<(), GuardedSysfsError> {
-        let sys_path = format!("/sys/module/{name}");
+        let sys_path = crate::linux_paths::sysfs_module_path(name);
         if !Path::new(&sys_path).exists() {
             return Ok(());
         }
@@ -642,7 +643,7 @@ MODULE_DESCRIPTION("Suppress PCI bus reset for specified devices");
 /// vfio-pci is re-bound.
 pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
     // If the module is already loaded, check if this BDF is already covered
-    let sys_param = format!("/sys/module/{NO_BUS_RESET_MODULE}/parameters/bdf");
+    let sys_param = crate::linux_paths::sysfs_module_parameter(NO_BUS_RESET_MODULE, "bdf");
     if Path::new(&sys_param).exists()
         && let Ok(loaded_bdfs) = std::fs::read_to_string(&sys_param)
     {
@@ -687,6 +688,115 @@ pub fn restore_bus_reset() -> Result<(), GuardedSysfsError> {
     KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, NO_BUS_RESET_TMPDIR)
 }
 
+// ── IRQ Clutch ──────────────────────────────────────────────────────────
+//
+// Kernel module that properly cleans up stale IRQ/MSI state between
+// driver unbind and rebind during catalyst handoff.
+//
+// When nv_close_device is NOP'd, NVIDIA's free_irq + pci_disable_msi
+// never run, leaving:
+//   1. request_irq() handler still registered on the IRQ descriptor
+//   2. MSI domain/vectors still allocated in the kernel's IRQ subsystem
+//
+// Previous version only called pci_free_irq_vectors() which tears down
+// the MSI domain but can't remove the action handler → WARNING:
+//   "remove_proc_entry: removing non-empty directory 'irq/176'"
+// The leaked handler means rmmod frees the code pages while the IRQ
+// descriptor still references the handler → use-after-free on next IRQ.
+//
+// Fixed version: call free_irq() FIRST to deregister the action handler,
+// THEN pci_free_irq_vectors() to tear down the MSI domain cleanly.
+// NVIDIA registers its handler with dev_id = pci_get_drvdata(dev).
+
+const IRQ_CLUTCH_MODULE: &str = "irq_clutch";
+const IRQ_CLUTCH_TMPDIR: &str = "/tmp/toadstool-irq-clutch";
+
+const IRQ_CLUTCH_SOURCE: &str = r#"
+#include <linux/module.h>
+#include <linux/pci.h>
+#include <linux/interrupt.h>
+#include <linux/string.h>
+
+static char *bdf = "";
+module_param(bdf, charp, 0444);
+MODULE_PARM_DESC(bdf, "PCI BDF of device to clean IRQ vectors for");
+
+static int __init irq_clutch_init(void)
+{
+    struct pci_dev *dev;
+    unsigned int dom, bus, slot, fn;
+    void *dev_id;
+    int irq;
+
+    if (sscanf(bdf, "%x:%x:%x.%x", &dom, &bus, &slot, &fn) != 4) {
+        pr_err("irq_clutch: invalid BDF format: %s\n", bdf);
+        return -EINVAL;
+    }
+
+    dev = pci_get_domain_bus_and_slot(dom, bus, PCI_DEVFN(slot, fn));
+    if (!dev) {
+        pr_err("irq_clutch: device %s not found\n", bdf);
+        return -ENODEV;
+    }
+
+    /*
+     * Step 1: Deregister the NVIDIA IRQ handler.
+     *
+     * nv_close_device was NOP'd so free_irq() never ran. The handler is
+     * still registered on dev->irq with dev_id = pci_get_drvdata(dev)
+     * (the nv_linux_state_t* that NVIDIA passed to request_irq).
+     *
+     * We must free_irq BEFORE pci_free_irq_vectors — otherwise the MSI
+     * domain teardown hits the registered action and produces:
+     *   "remove_proc_entry: removing non-empty directory 'irq/N'"
+     */
+    irq = dev->irq;
+    dev_id = pci_get_drvdata(dev);
+    if (dev_id && irq > 0) {
+        free_irq(irq, dev_id);
+        pr_info("irq_clutch: freed IRQ %d handler (dev_id=%px) for %s\n",
+                irq, dev_id, pci_name(dev));
+    } else {
+        pr_warn("irq_clutch: no handler to free (irq=%d, dev_id=%px) for %s\n",
+                irq, dev_id, pci_name(dev));
+    }
+
+    /* Step 2: Tear down the MSI domain and free vectors cleanly. */
+    pci_free_irq_vectors(dev);
+    pci_dev_put(dev);
+
+    pr_info("irq_clutch: cleaned IRQ vectors for %s\n", bdf);
+    return 0;
+}
+
+static void __exit irq_clutch_exit(void) {}
+
+module_init(irq_clutch_init);
+module_exit(irq_clutch_exit);
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Clean stale IRQ handlers and MSI state between driver swaps");
+"#;
+
+/// Engage the IRQ clutch: load `irq_clutch.ko` which first calls
+/// `free_irq()` to deregister the NVIDIA IRQ handler, then calls
+/// `pci_free_irq_vectors()` to tear down the MSI domain cleanly.
+///
+/// Must be called BEFORE unbind (while MSI data structures are valid).
+pub fn engage_irq_clutch(bdf: &str) -> Result<(), GuardedSysfsError> {
+    tracing::info!(bdf, "engaging IRQ clutch — cleaning stale MSI/IRQ vectors");
+    KmodBuilder::new(IRQ_CLUTCH_MODULE)
+        .source(IRQ_CLUTCH_SOURCE)
+        .tmpdir(IRQ_CLUTCH_TMPDIR)
+        .param("bdf", bdf)
+        .build_and_load()
+}
+
+/// Disengage the IRQ clutch: unload the module and clean up.
+pub fn disengage_irq_clutch() -> Result<(), GuardedSysfsError> {
+    tracing::info!("disengaging IRQ clutch");
+    KmodBuilder::unload_and_clean(IRQ_CLUTCH_MODULE, IRQ_CLUTCH_TMPDIR)
+}
+
 /// Remove a single BDF from the `no_bus_reset` module's suppression list.
 ///
 /// Reads the currently-loaded BDF parameter, removes the target, then
@@ -694,7 +804,7 @@ pub fn restore_bus_reset() -> Result<(), GuardedSysfsError> {
 /// BDF, unloads entirely. This allows SBR for the target while keeping
 /// other GPUs protected.
 pub fn unsuppress_bus_reset_for(bdf: &str) -> Result<(), GuardedSysfsError> {
-    let sys_param = format!("/sys/module/{NO_BUS_RESET_MODULE}/parameters/bdf");
+    let sys_param = crate::linux_paths::sysfs_module_parameter(NO_BUS_RESET_MODULE, "bdf");
     let param_path = Path::new(&sys_param);
     if !param_path.exists() {
         tracing::info!(bdf, "no_bus_reset module not loaded — SBR already allowed");

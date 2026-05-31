@@ -93,6 +93,15 @@ impl PatchSet {
                     symbol: "nv_cap_destroy_entry".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
+                // Module exit crash prevention (Exp 233): same as catalyst set.
+                PatchTarget {
+                    symbol: "rm_shutdown_rm".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_destroy_rsync_info".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
                 // NOP the __register_chrdev call inside init_module
                 // (nvidia_frontend_init_module). Host nvidia owns major 195;
                 // a second registration fails, causing module init failure.
@@ -118,22 +127,18 @@ impl PatchSet {
                 // Preserve GPU hardware state through close + unbind.
                 //
                 // nv_close_device is the per-device close callback that runs
-                // when the last fd is closed. It decrements usage_count and,
-                // if zero, calls: rm_disable_adapter, rm_shutdown_adapter,
-                // nv_dev_free_stacks, free_irq, pci_disable_msi.
+                // when the last fd is closed. It calls: rm_disable_adapter,
+                // rm_shutdown_adapter, nv_dev_free_stacks, free_irq, pci_disable_msi.
                 //
-                // NOPing just rm_disable/shutdown_adapter (lockups #1-#6)
-                // was insufficient: nv_dev_free_stacks frees kernel thread
-                // stacks while RM threads are still running (use-after-free),
-                // and free_irq + pci_disable_msi remove interrupt handling.
-                // Lockup #7 confirmed: INTR_EN quench worked (0x00000000)
-                // but system froze ~1s later from RM thread stack corruption.
-                //
-                // RetAtEntry on nv_close_device skips ALL per-device
-                // teardown. The outer nvidia_close still calls
+                // RetAtEntry skips ALL per-device teardown. GPU stays fully
+                // managed: IRQ handler active, MSI active, RM threads have
+                // valid stacks. The outer nvidia_close still calls
                 // rm_free_unused_clients (per-client RM cleanup) safely.
-                // GPU stays fully managed: IRQ handler active, MSI active,
-                // RM threads have valid stacks.
+                //
+                // NOTE: This causes irq_domain_remove WARNING at unbind
+                // (stale MSI/IRQ allocations). The warm_swap step handles
+                // this by doing post-unbind PCI MSI cleanup before vfio-pci
+                // rebind.
                 PatchTarget {
                     symbol: "nv_close_device".into(),
                     strategy: PatchStrategy::RetAtEntry,
@@ -238,13 +243,35 @@ impl PatchSet {
                     symbol: "os_is_administrator".into(),
                     strategy: PatchStrategy::Ret1AtEntry,
                 },
-                // NOTE: cleanup_module RetAtEntry was tried (Exp 232) but causes
-                // kernel oops in irq_domain_remove/msi_device_data_release
-                // during unbind — the PCI subsystem expects the IRQ domain to
-                // be properly torn down before the driver unregisters. The
-                // zombie module (Unloading/ref=-1) is accepted as non-fatal;
-                // the preflight guard + force rmmod handle it.
+                // Module exit path crash prevention (Exp 233):
+                // rmmod triggers cleanup_module → nvidia_exit_module →
+                // nv_kthread_q_stop → rm_shutdown_rm → RM blob accesses
+                // stale BAR0 (GPU already on vfio-pci) → page fault → oops
+                // → zombie module (Unloading/ref=-1).
                 //
+                // We can't NOP cleanup_module itself (Exp 232: causes
+                // irq_domain_remove/msi_device_data_release oops because
+                // chardev+PCI driver unregistration is skipped). Instead,
+                // NOP rm_shutdown_rm — the RM-level shutdown trampoline that
+                // enters the closed-source blob. This lets the exit path
+                // complete normally (chardev unregister, PCI driver unregister,
+                // kthread stop) while skipping only the hardware-accessing
+                // RM teardown. The GPU is already on vfio-pci, so there's
+                // nothing for RM to shut down.
+                PatchTarget {
+                    symbol: "rm_shutdown_rm".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // nv_destroy_rsync_info is called immediately after
+                // rm_shutdown_rm in cleanup_module. With rm_shutdown_rm
+                // NOP'd, RM's rsync refcount is never decremented to zero.
+                // nv_destroy_rsync_info loops on WARN_ON until the count
+                // reaches zero — which never happens → infinite freeze
+                // (Exp 233 Run #2). NOP it.
+                PatchTarget {
+                    symbol: "nv_destroy_rsync_info".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
                 // Change the chardev major from 195 (0xc3) to 0 (dynamic
                 // allocation) so nvsov gets its own chardev that doesn't
                 // conflict with the host nvidia-580 module.

@@ -141,6 +141,8 @@ pub mod pure_jsonrpc;
 pub mod resource_estimator;
 pub mod resource_optimizer;
 pub mod resource_validator;
+#[cfg(feature = "sandbox")]
+pub mod sandbox;
 // routes: REMOVED — HTTP routes belong to edge/orchestration; use pure_jsonrpc
 #[cfg(feature = "tarpc")]
 pub mod rpc_types; // Pure RPC types (depends on tarpc service definitions)

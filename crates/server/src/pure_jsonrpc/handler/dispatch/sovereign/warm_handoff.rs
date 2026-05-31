@@ -92,7 +92,7 @@ pub(crate) async fn sovereign_warm_handoff(
                     fecs_cpuctl = format_args!("0x{fecs_cpuctl:08x}"),
                     "catalyst re-entry: GPU degraded from prior cycle, forcing SBR cleanup"
                 );
-                let reset_path = format!("/sys/bus/pci/devices/{bdf}/reset");
+                let reset_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "reset");
                 if let Err(e) = std::fs::write(&reset_path, "1") {
                     tracing::error!(bdf, error = %e, "SBR cleanup failed — proceeding anyway");
                 } else {

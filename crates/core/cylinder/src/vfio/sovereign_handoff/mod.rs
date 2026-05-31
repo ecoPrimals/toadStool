@@ -35,6 +35,7 @@
 
 mod config;
 mod errors;
+pub mod forensics;
 mod lock;
 mod module_deps;
 mod pipeline;

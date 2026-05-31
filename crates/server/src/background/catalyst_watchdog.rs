@@ -1,8 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// SAFETY: Emergency interrupt quench requires raw BAR0 MMIO writes via mmap.
-// These are volatile ptr operations on a PCI BAR mapped via sysfs resource0.
-// The alternative (no quench) is a system-wide lockup from IRQ storm.
-#![allow(unsafe_code)]
 //! Catalyst handoff watchdog — diesel engine lockup sentinel.
 //!
 //! Spawns a watchdog thread when a catalyst handoff begins. The thread monitors
@@ -71,9 +67,21 @@ fn epoch_ms() -> u64 {
 
 /// Emergency interrupt quench — uses generation-aware register writes via
 /// `InterruptProfile`, plus PCI INTx disable as belt-and-suspenders.
+/// Routine quench — suppress GPU interrupt assertion without disrupting DMA.
+/// Used during INTR_EN monitoring when RM is still running and needs Bus Master.
+fn routine_quench(bdf: &str, profile: &InterruptProfile) {
+    warn!(bdf, "WATCHDOG: performing routine interrupt quench");
+    toadstool_cylinder::nv::registers::pmc::quench_interrupts(bdf, profile, "watchdog-routine");
+    toadstool_cylinder::nv::registers::pmc::intx_disable(bdf, "watchdog-routine");
+}
+
+/// Emergency quench — full nuclear shutdown including Bus Master disable.
+/// Only called on heartbeat timeout (pipeline is hung, RM is unresponsive).
 fn emergency_quench(bdf: &str, profile: &InterruptProfile) {
-    warn!(bdf, "WATCHDOG: performing emergency interrupt quench");
+    warn!(bdf, "WATCHDOG: performing EMERGENCY interrupt quench (full nuclear)");
     toadstool_cylinder::nv::registers::pmc::quench_interrupts(bdf, profile, "watchdog-emergency");
+    toadstool_cylinder::nv::registers::pmc::disable_pci_msi(bdf, "watchdog-emergency");
+    toadstool_cylinder::nv::registers::pmc::disable_bus_master(bdf, "watchdog-emergency");
     toadstool_cylinder::nv::registers::pmc::intx_disable(bdf, "watchdog-emergency");
 }
 
@@ -264,30 +272,12 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
                     }
                 }
 
-                // IRQ storm detection — if INTR_EN goes hot during handoff,
-                // re-quench immediately to prevent level-triggered IRQ storm
-                if phase == PHASE_PIPELINE_ACTIVE || phase == PHASE_MODULE_CLEANUP {
-                    let bdf_for_irq = WATCHDOG.bdf.lock()
-                        .unwrap_or_else(|e| e.into_inner())
-                        .clone();
-                    if !bdf_for_irq.is_empty() {
-                        if let Some(intr_en) = read_intr_en_safe(&bdf_for_irq) {
-                            let hot_bits = intr_en & !0x200; // bit 9 (PBDMA) is expected
-                            if hot_bits != 0 {
-                                let profile = WATCHDOG.interrupt_profile.lock()
-                                    .unwrap_or_else(|e| e.into_inner())
-                                    .clone();
-                                warn!(
-                                    bdf = bdf_for_irq.as_str(),
-                                    intr_en = format!("0x{:08x}", intr_en).as_str(),
-                                    hot_bits = format!("0x{:08x}", hot_bits).as_str(),
-                                    "WATCHDOG: INTR_EN went hot during handoff — pre-emptive quench"
-                                );
-                                emergency_quench(&bdf_for_irq, &profile);
-                            }
-                        }
-                    }
-                }
+                // INTR_EN monitoring DISABLED (Exp 233 checkpoint):
+                // RM enables interrupts as part of normal GPU initialization.
+                // Quenching INTR_EN during RM init disrupts RM's interrupt
+                // flow and causes hangs/lockups. The pre-unbind and post-exit
+                // pipeline quench steps handle the critical moments.
+                // The heartbeat timeout (below) is the safety net for hangs.
 
                 // Heartbeat timeout check
                 let last_hb = WATCHDOG.last_heartbeat_ms.load(Ordering::Acquire);
@@ -349,36 +339,5 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
 /// Best-effort read of INTR_EN_0 (0x140) from BAR0 via sysfs resource0.
 /// Returns None if the GPU is owned by vfio-pci or the read fails.
 fn read_intr_en_safe(bdf: &str) -> Option<u32> {
-    use std::os::unix::fs::OpenOptionsExt;
-
-    let resource_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(rustix::fs::OFlags::SYNC.bits() as i32)
-        .open(&resource_path)
-        .ok()?;
-
-    let map_size: usize = 0x200; // only need first 512 bytes
-    // SAFETY: mmap of PCI BAR0 for a volatile register read at a known offset.
-    let map = unsafe {
-        rustix::mm::mmap(
-            std::ptr::null_mut(),
-            map_size,
-            rustix::mm::ProtFlags::READ,
-            rustix::mm::MapFlags::SHARED,
-            &file,
-            0,
-        )
-    }.ok()?;
-
-    // SAFETY: offset 0x140 is within the 512-byte mapping, volatile read of
-    // memory-mapped hardware register.
-    let val = unsafe {
-        std::ptr::read_volatile((map as *const u8).add(0x140) as *const u32)
-    };
-
-    // SAFETY: unmapping the region we mapped above.
-    unsafe { let _ = rustix::mm::munmap(map, map_size); }
-
-    Some(val)
+    toadstool_cylinder::vfio::sysfs_bar0::read_u32_best_effort(bdf, 0x140, 0x200)
 }

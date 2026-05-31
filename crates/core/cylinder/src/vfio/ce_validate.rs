@@ -87,7 +87,17 @@ pub fn validate_ce_with_profile(
     };
 
     // Step 1: Discover CE runlist from engine topology table.
-    let ce_rl = match pfifo::discover_ce_runlist(bar0) {
+    let resolved_profile: &crate::nv::generation::GenerationProfile = match profile {
+        Some(p) => p,
+        None => {
+            let boot0 = bar0.read_u32(0).unwrap_or(0);
+            crate::nv::identity::boot0_to_sm(boot0)
+                .map(|sm| crate::nv::generation::profile_for_sm(sm))
+                .unwrap_or_else(|| crate::nv::generation::profile_for_sm(70))
+        }
+    };
+
+    let ce_rl = match pfifo::discover_ce_runlist(bar0, resolved_profile) {
         Some(rl) => {
             tracing::info!(ce_runlist = rl, "CE runlist discovered");
             result.ce_runlist = Some(rl);
@@ -101,7 +111,7 @@ pub fn validate_ce_with_profile(
     };
 
     // Find the PBDMA serving this runlist from RUNLIST_PBDMA_MAP.
-    let ce_pbdma = pfifo::find_pbdma_for_runlist(bar0, ce_rl);
+    let ce_pbdma = pfifo::find_pbdma_for_runlist(bar0, ce_rl, resolved_profile);
     result.ce_pbdma = ce_pbdma;
     tracing::info!(
         ce_pbdma = ?ce_pbdma,
@@ -212,9 +222,7 @@ pub fn validate_ce_with_profile(
     result.src_sample = bytemuck::cast_slice::<u8, u32>(&src_buf.as_slice()[..16]).to_vec();
 
     // Step 4: Build CE pushbuffer (init + DMA copy).
-    let ce_class = profile
-        .map(|p| p.ce_class)
-        .unwrap_or(crate::nv::pushbuf::ce::VOLTA_DMA_COPY_A);
+    let ce_class = resolved_profile.ce_class;
     let mut pb = PushBuf::ce_init(ce_class);
     let copy_pb = PushBuf::ce_dma_copy(CE_SRC_IOVA, CE_DST_IOVA, CE_BUF_SIZE as u32);
     pb.append(&copy_pb);

@@ -18,6 +18,10 @@
 use crate::error::{NvPmuError, Result};
 use std::fs;
 use std::path::Path;
+use toadstool_common::sysfs_paths::{
+    sysfs_pci_bus_rescan, sysfs_pci_device_file, sysfs_pci_driver_bind, sysfs_pci_driver_new_id,
+    sysfs_pci_driver_remove_id, sysfs_pci_driver_unbind,
+};
 
 /// Current binding state of a PCI device.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -46,7 +50,7 @@ pub struct BindResult {
 /// # Errors
 /// Returns error if sysfs is inaccessible.
 pub fn current_binding(bdf: &str) -> Result<BindingState> {
-    let driver_link = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let driver_link = sysfs_pci_device_file(bdf, "driver");
     let path = Path::new(&driver_link);
 
     if !path.exists() {
@@ -75,7 +79,7 @@ pub fn current_binding(bdf: &str) -> Result<BindingState> {
 /// # Errors
 /// Returns error if the device has active consumers.
 pub fn check_unbind_safe(bdf: &str) -> Result<()> {
-    let drm_path = format!("/sys/bus/pci/devices/{bdf}/drm");
+    let drm_path = sysfs_pci_device_file(bdf, "drm");
     if Path::new(&drm_path).exists()
         && let Ok(entries) = fs::read_dir(&drm_path)
     {
@@ -120,7 +124,7 @@ pub fn bind_vfio(bdf: &str) -> Result<BindResult> {
     let device = read_sysfs_attr(bdf, "device")?;
 
     if let BindingState::KernelDriver(ref driver) = previous {
-        let unbind_path = format!("/sys/bus/pci/devices/{bdf}/driver/unbind");
+        let unbind_path = sysfs_pci_device_file(bdf, "driver/unbind");
         fs::write(&unbind_path, bdf).map_err(|e| {
             NvPmuError::Hardware(format!("Failed to unbind {bdf} from {driver}: {e}"))
         })?;
@@ -128,7 +132,7 @@ pub fn bind_vfio(bdf: &str) -> Result<BindResult> {
     }
 
     fs::write(
-        "/sys/bus/pci/drivers/vfio-pci/new_id",
+        &sysfs_pci_driver_new_id("vfio-pci"),
         format!("{vendor} {device}"),
     )
     .map_err(|e| NvPmuError::Hardware(format!("Failed to register with vfio-pci: {e}")))?;
@@ -166,20 +170,20 @@ pub fn unbind_vfio(bdf: &str, original_driver: &str) -> Result<BindResult> {
     let vendor = read_sysfs_attr(bdf, "vendor")?;
     let device = read_sysfs_attr(bdf, "device")?;
 
-    let unbind_path = "/sys/bus/pci/drivers/vfio-pci/unbind";
-    fs::write(unbind_path, bdf)
+    let unbind_path = sysfs_pci_driver_unbind("vfio-pci");
+    fs::write(&unbind_path, bdf)
         .map_err(|e| NvPmuError::Hardware(format!("Failed to unbind {bdf} from vfio-pci: {e}")))?;
 
     let _ = fs::write(
-        "/sys/bus/pci/drivers/vfio-pci/remove_id",
+        &sysfs_pci_driver_remove_id("vfio-pci"),
         format!("{vendor} {device}"),
     );
 
-    let driver_bind_path = format!("/sys/bus/pci/drivers/{original_driver}/bind");
+    let driver_bind_path = sysfs_pci_driver_bind(original_driver);
     if Path::new(&driver_bind_path).exists() {
         let _ = fs::write(&driver_bind_path, bdf);
     } else {
-        let _ = fs::write("/sys/bus/pci/rescan", "1");
+        let _ = fs::write(&sysfs_pci_bus_rescan(), "1");
     }
 
     let current = current_binding(bdf)?;
@@ -193,7 +197,7 @@ pub fn unbind_vfio(bdf: &str, original_driver: &str) -> Result<BindResult> {
 }
 
 fn read_sysfs_attr(bdf: &str, attr: &str) -> Result<String> {
-    let path = format!("/sys/bus/pci/devices/{bdf}/{attr}");
+    let path = sysfs_pci_device_file(bdf, attr);
     fs::read_to_string(&path)
         .map(|s| s.trim().to_string())
         .map_err(|e| NvPmuError::Hardware(format!("Cannot read {path}: {e}")))

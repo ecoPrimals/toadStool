@@ -42,5 +42,6 @@ pub use huge_page::HugePageMemory;
 pub use locked_memory::LockedMemory;
 pub use safe_mmap::SafeMmapRegion;
 pub use volatile_mmio::VolatileMmio;
+pub use volatile_mmio::MmioError;
 
 pub(crate) use exclusive_ptr::ExclusivePtr;

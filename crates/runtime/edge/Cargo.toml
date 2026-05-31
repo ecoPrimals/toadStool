@@ -29,7 +29,6 @@ serialport = { version = "4.3", default-features = false }
 embedded-hal = "1.0"
 rppal = { version = "0.17", optional = true }
 esp-idf-sys = { version = "0.34", optional = true }
-# arduino-hal = { version = "0.1", optional = true }  # Not available on crates.io
 # Use the `cross` *binary* (`cargo install cross`) for toolchains — not the crates.io `cross` crate
 # (that crate pulls clap 3 + extra deps and is unrelated to this runtime's `Command`-based toolchains).
 # C build dependencies - only needed for native bindings
@@ -38,13 +37,6 @@ bindgen = { version = "0.69", optional = true }
 
 # Network and communication
 # mdns removed: MDNSDiscovery is a stub with no mDNS usage; use mdns-sd for consistency
-# zeroconf = "0.12"  # Optional - not critical for core functionality
-# mqtt = "0.1"  # Using latest available version
-# coap = "0.10"  # Optional - not critical for core functionality
-
-# EVOLVED: sysinfo removed (Mar 9, 2026) — edge crate excluded from workspace,
-# migrate to toadstool-sysmon when re-enabled
-# sysinfo = "0.30"
 
 # HTTP client for file downloads (optional - used by ESP32 download_file when path is URL)
 # reqwest 0.13 defaults to aws-lc-rs instead of ring for rustls crypto — aligns with deny.toml ring ban.
@@ -62,7 +54,6 @@ reqwest = { version = "0.13", optional = true, default-features = false, feature
 default = []
 # Platform-specific features (enable as needed)
 raspberry-pi = ["rppal"]
-# arduino = ["arduino-hal"]  # Temporarily disabled - not available on crates.io
 # ESP32 support requires esp-idf-sys (C dependency) - not in default
 esp32 = ["esp-idf-sys"]
 all-platforms = ["raspberry-pi", "esp32"]

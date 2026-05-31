@@ -19,7 +19,7 @@ fn is_gpu_or_npu_class(class: u32) -> bool {
 }
 
 fn read_current_driver(bdf: &str) -> String {
-    let link = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let link = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver");
     std::fs::read_link(&link)
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
@@ -27,7 +27,7 @@ fn read_current_driver(bdf: &str) -> String {
 }
 
 fn read_power_state(bdf: &str) -> String {
-    let path = format!("/sys/bus/pci/devices/{bdf}/power_state");
+    let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "power_state");
     std::fs::read_to_string(path)
         .ok()
         .map(|s| s.trim().to_string())
@@ -152,7 +152,7 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
         }
 
         DeviceCommand::Warm { bdf } => {
-            let config_path = format!("/sys/bus/pci/devices/{bdf}/config");
+            let config_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "config");
             let pmc_enable = std::fs::File::open(&config_path)
                 .and_then(|f| {
                     use std::io::{Read, Seek, SeekFrom};
@@ -166,8 +166,10 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
 
             let popcount = pmc_enable.count_ones();
             let warm = popcount > 4;
-            let resource0_exists =
-                std::path::Path::new(&format!("/sys/bus/pci/devices/{bdf}/resource0")).exists();
+            let resource0_exists = std::path::Path::new(
+                &toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "resource0"),
+            )
+            .exists();
 
             println!("Warm detection for {bdf}:");
             println!("  PMC_ENABLE:     0x{pmc_enable:08x}");

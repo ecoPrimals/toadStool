@@ -15,10 +15,18 @@
 //! blobs by the `gsp::firmware_parser` module.
 
 use crate::error::DriverError;
-use crate::mmio_region::MmioRegion;
 use crate::vfio::device::{ApplyError, RegisterAccess};
-use std::fs::OpenOptions;
-use std::os::unix::io::AsRawFd;
+use std::path::Path;
+use toadstool_hw_safe::SafeMmapRegion;
+
+#[cfg(test)]
+use crate::mmio_region::MmioRegion;
+
+enum Bar0Backing {
+    Sysfs(SafeMmapRegion),
+    #[cfg(test)]
+    Test(MmioRegion),
+}
 
 /// GPU BAR0 MMIO mapping for direct register access.
 ///
@@ -29,24 +37,43 @@ use std::os::unix::io::AsRawFd;
 ///
 /// The mapping is owned together with the open `resource0` [`std::fs::File`]; the
 /// kernel keeps the mmap valid for the file’s lifetime. Volatile MMIO accesses
-/// are performed through `MmioRegion` and are safe to use
+/// are performed through hw-safe and are safe to use
 /// across threads for aligned 32-bit operations when hardware access ordering is
 /// respected by callers—matching other BAR0 wrappers in this crate.
 pub struct Bar0Access {
-    _file: std::fs::File,
-    region: MmioRegion,
+    backing: Bar0Backing,
 }
 
 impl std::fmt::Debug for Bar0Access {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Bar0Access")
-            .field("size", &self.region.len())
-            .field("ptr", &self.region.as_ptr())
+            .field("size", &self.size())
             .finish_non_exhaustive()
     }
 }
 
 impl Bar0Access {
+    fn read_u32_at(&self, off: usize) -> Result<u32, DriverError> {
+        match &self.backing {
+            Bar0Backing::Sysfs(m) => m
+                .as_volatile()
+                .read_u32(off)
+                .map_err(|e| DriverError::MmapFailed(std::borrow::Cow::Owned(e.to_string()))),
+            #[cfg(test)]
+            Bar0Backing::Test(r) => r.read_u32(off),
+        }
+    }
+
+    fn write_u32_at(&mut self, off: usize, value: u32) -> Result<(), DriverError> {
+        match &mut self.backing {
+            Bar0Backing::Sysfs(m) => m
+                .as_volatile()
+                .write_u32(off, value)
+                .map_err(|e| DriverError::MmapFailed(std::borrow::Cow::Owned(e.to_string()))),
+            #[cfg(test)]
+            Bar0Backing::Test(r) => r.write_u32(off, value),
+        }
+    }
     /// Open BAR0 from a DRM render node path (e.g. `/dev/dri/renderD128`).
     ///
     /// Resolves the sysfs device directory and maps `resource0`.
@@ -92,63 +119,14 @@ impl Bar0Access {
 
     /// Open BAR0 from an explicit resource file path.
     fn open_resource(path: &str) -> Result<Self, ApplyError> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)
-            .map_err(|e| ApplyError::MmioFailed {
+        let mmap = SafeMmapRegion::map_shared_rw(Path::new(path)).map_err(|e| {
+            ApplyError::MmioFailed {
                 offset: 0,
-                detail: format!("open {path}: {e}"),
-            })?;
-
-        let size = usize::try_from(
-            file.metadata()
-                .map_err(|e| ApplyError::MmioFailed {
-                    offset: 0,
-                    detail: format!("stat {path}: {e}"),
-                })?
-                .len(),
-        )
-        .map_err(|_| ApplyError::MmioFailed {
-            offset: 0,
-            detail: format!("{path}: BAR0 size exceeds usize"),
+                detail: format!("mmap {path}: {e}"),
+            }
         })?;
 
-        if size == 0 {
-            return Err(ApplyError::MmioFailed {
-                offset: 0,
-                detail: format!("{path}: BAR0 resource has zero size"),
-            });
-        }
-
-        // SAFETY: resource0 is a PCI BAR sysfs file. mmap with SHARED gives
-        // direct MMIO access to GPU registers. file.as_raw_fd() is valid (open File);
-        // BorrowedFd::borrow_raw requires valid fd for the duration of the call.
-        let raw_ptr = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                std::os::unix::io::BorrowedFd::borrow_raw(file.as_raw_fd()),
-                0,
-            )
-        }
-        .map_err(|e| ApplyError::MmioFailed {
-            offset: 0,
-            detail: format!("mmap {path} ({size} bytes): {e}"),
-        })?;
-
-        if raw_ptr.is_null() {
-            return Err(ApplyError::MmioFailed {
-                offset: 0,
-                detail: format!("mmap {path}: returned null"),
-            });
-        }
-
-        // SAFETY: `raw_ptr`/`size` come from the successful `mmap` above; unmapped only in `MmioRegion::drop`.
-        let region = unsafe { MmioRegion::new(raw_ptr.cast::<u8>(), size) };
-
+        let size = mmap.size();
         tracing::info!(
             path,
             size_mib = size / (1024 * 1024),
@@ -156,31 +134,26 @@ impl Bar0Access {
         );
 
         Ok(Self {
-            _file: file,
-            region,
+            backing: Bar0Backing::Sysfs(mmap),
         })
     }
 
     /// Construct BAR0 access from a heap-backed [`MmioRegion`] for unit tests.
-    ///
-    /// Keeps a dummy open file handle so the struct layout matches production
-    /// mmap-backed BAR0; only `region` is used for reads/writes.
     #[cfg(test)]
     pub(crate) fn from_mmio_region_for_test(region: MmioRegion) -> Self {
-        let file = OpenOptions::new()
-            .read(true)
-            .open("/dev/null")
-            .expect("open /dev/null for Bar0Access test placeholder");
         Self {
-            _file: file,
-            region,
+            backing: Bar0Backing::Test(region),
         }
     }
 
     /// BAR0 mapping size in bytes.
     #[must_use]
-    pub const fn size(&self) -> usize {
-        self.region.len()
+    pub fn size(&self) -> usize {
+        match &self.backing {
+            Bar0Backing::Sysfs(m) => m.size(),
+            #[cfg(test)]
+            Bar0Backing::Test(r) => r.len(),
+        }
     }
 
     /// Read a GPU identification register (`NV_PMC_BOOT_0` at offset 0x0).
@@ -198,8 +171,7 @@ impl Bar0Access {
 impl RegisterAccess for Bar0Access {
     fn read_u32(&self, offset: u32) -> Result<u32, ApplyError> {
         let off = offset as usize;
-        self.region
-            .read_u32(off)
+        self.read_u32_at(off)
             .map_err(|e: DriverError| ApplyError::MmioFailed {
                 offset,
                 detail: e.to_string(),
@@ -208,8 +180,7 @@ impl RegisterAccess for Bar0Access {
 
     fn write_u32(&mut self, offset: u32, value: u32) -> Result<(), ApplyError> {
         let off = offset as usize;
-        self.region
-            .write_u32(off, value)
+        self.write_u32_at(off, value)
             .map_err(|e: DriverError| ApplyError::MmioFailed {
                 offset,
                 detail: e.to_string(),
@@ -217,10 +188,14 @@ impl RegisterAccess for Bar0Access {
     }
 }
 
-// SAFETY: Matches the `Send` / `Sync` rationale in the [`Bar0Access`] docs.
+// SAFETY: `MmioRegion` wraps `NonNull<u8>`, which is not `Send` on its own.
+// The sysfs `resource0` mmap stays valid when moved: the open `File` pins the
+// mapping and the kernel keeps MMIO pages mapped until `munmap` on drop.
 unsafe impl Send for Bar0Access {}
 
-// SAFETY: Matches the `Send` / `Sync` rationale in the [`Bar0Access`] docs.
+// SAFETY: Shared `&Bar0Access` only exposes volatile aligned `u32` MMIO via
+// `&self`; no aliased Rust `&mut` to the mapped bytes. Concurrent MMIO ordering
+// is the caller's responsibility, matching other BAR0 wrappers in this crate.
 unsafe impl Sync for Bar0Access {}
 
 /// Extract a PCI BDF from a sysfs device directory path.

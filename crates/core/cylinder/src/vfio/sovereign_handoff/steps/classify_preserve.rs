@@ -72,8 +72,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             && let Some(ref pr) = ctx.patch_result
         {
                 let t = Instant::now();
-                let frozen_dir = "/var/lib/toadstool/catalysts/frozen";
-                let _ = std::fs::create_dir_all(frozen_dir);
+                let frozen_dir = crate::linux_paths::data_subdir("catalysts/frozen");
+                let _ = std::fs::create_dir_all(&frozen_dir);
                 let krel = crate::linux_paths::kernel_release().unwrap_or("unknown");
                 let frozen_dest = format!(
                     "{}/nvsov_gv100_470.256.02_k{}.ko",
@@ -104,8 +104,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                 }
 
                 // Persist recipe JSON (PatchSet serialization)
-                let recipe_dir = "/var/lib/toadstool/catalysts/recipes";
-                let _ = std::fs::create_dir_all(recipe_dir);
+                let recipe_dir = crate::linux_paths::data_subdir("catalysts/recipes");
+                let _ = std::fs::create_dir_all(&recipe_dir);
                 let patch_set_name = match &ctx.config.module_source {
                     ModuleSourceConfig::DkmsPatched { patch_set, .. } => patch_set.clone(),
                     ModuleSourceConfig::Patched { patch_set, .. } => patch_set.clone(),

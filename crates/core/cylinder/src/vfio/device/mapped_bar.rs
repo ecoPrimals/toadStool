@@ -121,7 +121,7 @@ impl MappedBar {
 
     /// Raw pointer to the BAR base (for callers that need ptr arithmetic).
     #[must_use]
-    pub const fn base_ptr(&self) -> *mut u8 {
+    pub fn base_ptr(&self) -> *mut u8 {
         self.region.as_ptr()
     }
 
@@ -200,34 +200,17 @@ impl MappedBar {
                 )))
             })?;
 
-        // SAFETY: mmap of a sysfs PCI resource file with read-write protection.
-        let raw = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &file,
-                0,
-            )
-        }
-        .map_err(|e| {
+        let mmap = toadstool_hw_safe::DeviceMmap::map_shared_rw(&file, 0, size).map_err(|e| {
             DriverError::MmapFailed(Cow::Owned(format!(
                 "sysfs BAR0 mmap failed for {bdf}: {e}"
             )))
         })?;
 
-        if raw.is_null() {
-            return Err(DriverError::MmapFailed(Cow::Borrowed(
-                "sysfs BAR0 mmap returned null",
-            )));
-        }
-
         // Leak the file descriptor — the mmap keeps the mapping alive.
         std::mem::forget(file);
-        // SAFETY: `raw`/`size` come from the successful `mmap` above.
-        let region = unsafe { MmioRegion::new(raw.cast::<u8>(), size) };
-        Ok(Self { region })
+        Ok(Self {
+            region: MmioRegion::from_device_mmap(mmap),
+        })
     }
 }
 
@@ -241,8 +224,12 @@ impl MappedBar {
     }
 }
 
-// SAFETY: Matches the `Send` / `Sync` rationale in the [`MappedBar`] docs.
+// SAFETY: `MappedBar` wraps `MmioRegion` (`NonNull<u8>`), which is not
+// `Send` alone. The VFIO BAR0 `MAP_SHARED` mapping remains valid when moved
+// across threads; access is only through volatile methods on `&self`/`&mut self`.
 unsafe impl Send for MappedBar {}
 
-// SAFETY: Matches the `Send` / `Sync` rationale in the [`MappedBar`] docs.
+// SAFETY: Volatile MMIO reads/writes on `&self` do not expose aliased Rust
+// `&mut` to the mapped bytes. The mapping is process-global once established;
+// concurrent write ordering is enforced by callers.
 unsafe impl Sync for MappedBar {}

@@ -40,7 +40,7 @@ impl Bar0Access {
     /// Returns error if the resource file cannot be opened or mmap fails.
     /// Requires read+write permission on `/sys/bus/pci/devices/{bdf}/resource0`.
     pub fn open(bdf: &str) -> Result<Self> {
-        let path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+        let path = toadstool_common::sysfs_paths::sysfs_pci_device_file(bdf, "resource0");
         Self::open_path(bdf, Path::new(&path))
     }
 

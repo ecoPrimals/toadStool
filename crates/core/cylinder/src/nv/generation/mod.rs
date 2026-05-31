@@ -9,6 +9,16 @@
 //! Adding a new generation = one new `const GenerationProfile`, zero new
 //! match arms scattered across the codebase.
 
+mod ada;
+mod ampere;
+mod blackwell;
+mod hopper;
+mod kepler;
+mod maxwell;
+mod pascal;
+mod turing;
+mod volta;
+
 use std::ops::RangeInclusive;
 
 use crate::nv::registers::pmc::InterruptProfile;
@@ -225,374 +235,42 @@ pub struct GenerationProfile {
     pub ce_class: u32,
     /// Interrupt register semantics (direct-write vs SET/CLEAR pair).
     pub interrupt_profile: InterruptProfile,
+
+    // ── PFIFO / PTOP discovery offsets ──────────────────────────────
+    // Drive `discover_ce_runlist()` / `find_pbdma_for_runlist()` instead of
+    // hardcoded GV100 BAR0 addresses.
+
+    /// BAR0 base for PTOP engine topology table (DEVICE_INFO walk).
+    pub ptop_device_info_base: u32,
+    /// BAR0 base for RUNLIST_PBDMA_MAP (indexed by runlist ID).
+    pub runlist_pbdma_map_base: u32,
 }
 
-const LOCAL_MEM_WINDOW_LEGACY: u64 = 0xFF00_0000;
-const LOCAL_MEM_WINDOW_VOLTA: u64 = 0xFF00_0000_0000_0000;
+pub(crate) const LOCAL_MEM_WINDOW_LEGACY: u64 = 0xFF00_0000;
+pub(crate) const LOCAL_MEM_WINDOW_VOLTA: u64 = 0xFF00_0000_0000_0000;
 
 /// Standard FECS program counter offset (same across Kepler–Blackwell).
-const FECS_PC: u32 = 0x0040_9624;
+pub(crate) const FECS_PC: u32 = 0x0040_9624;
 /// Standard GPC broadcast status offset.
-const GPC_BROADCAST: u32 = 0x0041_A004;
+pub(crate) const GPC_BROADCAST: u32 = 0x0041_A004;
 /// Standard CE0 base offset.
-const CE0_BASE: u32 = 0x0010_4000;
+pub(crate) const CE0_BASE: u32 = 0x0010_4000;
 /// Standard PGRAPH status offset.
-const PGRAPH_STATUS: u32 = 0x0040_0700;
+pub(crate) const PGRAPH_STATUS: u32 = 0x0040_0700;
+/// PTOP engine topology table — GK104 uses the same region as GV100 V2 entries.
+pub(crate) const PTOP_DEVICE_INFO: u32 = 0x0002_2700;
+/// RUNLIST_PBDMA_MAP — PBDMA bitmask per runlist ID (Kepler through Blackwell).
+pub(crate) const RUNLIST_PBDMA_MAP: u32 = 0x0000_2390;
 
-/// Kepler (GK110/GK210) — Tesla K40, Tesla K80.
-pub const KEPLER: GenerationProfile = GenerationProfile {
-    name: "Kepler",
-    sm_range: 35..=37,
-    qmd_version: QmdVersion::V21,
-    qmd_word_count: 64,
-    channel_class: 0xA06F, // KEPLER_CHANNEL_GPFIFO_A
-    compute_class: 0xA1C0, // KEPLER_COMPUTE_B
-    launch_method: LaunchMethod::Pcas,
-    local_mem_window: LOCAL_MEM_WINDOW_LEGACY,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::NoAcr,
-    memory_type: MemoryType::Gddr5,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "gk210",
-    has_full_rate_fp64: true,
-    recommended_workgroup_size: 128,
-    max_cta_per_sm: 32,
-    page_table_format: PageTableFormat::V1TwoLevel,
-    instance_block_format: InstanceBlockFormat::Simple,
-    runlist_format: RunlistFormat::Gk104Global,
-    power_safety: PowerSafetyProfile::PRE_FIRMWARE,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xA0B5, // KEPLER_DMA_COPY_A
-    interrupt_profile: InterruptProfile::PRE_VOLTA,
-};
-
-/// Maxwell (GM200) — GTX 980 Ti, Titan X (Maxwell).
-pub const MAXWELL: GenerationProfile = GenerationProfile {
-    name: "Maxwell",
-    sm_range: 50..=52,
-    qmd_version: QmdVersion::V21,
-    qmd_word_count: 64,
-    channel_class: 0xB06F, // MAXWELL_CHANNEL_GPFIFO_A
-    compute_class: 0xB0C0, // MAXWELL_COMPUTE_B
-    launch_method: LaunchMethod::Pcas,
-    local_mem_window: LOCAL_MEM_WINDOW_LEGACY,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::Untested,
-    memory_type: MemoryType::Gddr5,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "gm200",
-    has_full_rate_fp64: false,
-    recommended_workgroup_size: 128,
-    max_cta_per_sm: 32,
-    page_table_format: PageTableFormat::V1TwoLevel,
-    instance_block_format: InstanceBlockFormat::Simple,
-    runlist_format: RunlistFormat::Gk104Global,
-    power_safety: PowerSafetyProfile::PRE_FIRMWARE,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xB0B5, // MAXWELL_DMA_COPY_A
-    interrupt_profile: InterruptProfile::PRE_VOLTA,
-};
-
-/// Pascal (GP100/GP102) — GTX 1080, Tesla P100.
-///
-/// `has_full_rate_fp64` is true because this profile covers GP100 (1:2).
-/// Consumer GP10x (1:32) shares SM 6.x but uses different device IDs.
-pub const PASCAL: GenerationProfile = GenerationProfile {
-    name: "Pascal",
-    sm_range: 60..=62,
-    qmd_version: QmdVersion::V21,
-    qmd_word_count: 64,
-    channel_class: 0xC06F, // PASCAL_CHANNEL_GPFIFO_A
-    compute_class: 0xC0C0, // PASCAL_COMPUTE_A
-    launch_method: LaunchMethod::Pcas,
-    local_mem_window: LOCAL_MEM_WINDOW_LEGACY,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::AcrSec2,
-    memory_type: MemoryType::Hbm2,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "gp100",
-    has_full_rate_fp64: true,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 32,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Simple,
-    runlist_format: RunlistFormat::Gk104Global,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC0B5, // PASCAL_DMA_COPY_A
-    interrupt_profile: InterruptProfile::PRE_VOLTA,
-};
-
-/// Volta (GV100) — Titan V, Tesla V100.
-pub const VOLTA: GenerationProfile = GenerationProfile {
-    name: "Volta",
-    sm_range: 70..=74,
-    qmd_version: QmdVersion::V22,
-    qmd_word_count: 64,
-    channel_class: 0xC36F, // VOLTA_CHANNEL_GPFIFO_A
-    compute_class: 0xC3C0, // VOLTA_COMPUTE_A
-    launch_method: LaunchMethod::Pcas,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::AcrSec2,
-    memory_type: MemoryType::Hbm2,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "gv100",
-    has_full_rate_fp64: true,
-    recommended_workgroup_size: 128,
-    max_cta_per_sm: 32,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC3B5, // VOLTA_DMA_COPY_A
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Turing (TU102/TU104/TU106) — RTX 2080, Tesla T4.
-pub const TURING: GenerationProfile = GenerationProfile {
-    name: "Turing",
-    sm_range: 75..=79,
-    qmd_version: QmdVersion::V22,
-    qmd_word_count: 64,
-    channel_class: 0xC36F, // VOLTA_CHANNEL_GPFIFO_A (shared with Volta)
-    compute_class: 0xC5C0, // TURING_COMPUTE_A
-    launch_method: LaunchMethod::Pcas,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::AcrSec2,
-    memory_type: MemoryType::Gddr6,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "tu102",
-    has_full_rate_fp64: false,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC5B5, // TURING_DMA_COPY_A
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Ampere A (GA100) — A100 datacenter.
-pub const AMPERE_A: GenerationProfile = GenerationProfile {
-    name: "Ampere A",
-    sm_range: 80..=80,
-    qmd_version: QmdVersion::V23,
-    qmd_word_count: 64,
-    channel_class: 0xC56F, // AMPERE_CHANNEL_GPFIFO_A
-    compute_class: 0xC6C0, // AMPERE_COMPUTE_A
-    launch_method: LaunchMethod::Pcas2,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::AcrSec2,
-    memory_type: MemoryType::Hbm2,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "ga100",
-    has_full_rate_fp64: true,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC6B5, // AMPERE_DMA_COPY_A
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Ampere B (GA102/GA104/GA106/GA107) — RTX 3090, RTX 3080, etc.
-pub const AMPERE_B: GenerationProfile = GenerationProfile {
-    name: "Ampere B",
-    sm_range: 81..=88,
-    qmd_version: QmdVersion::V23,
-    qmd_word_count: 64,
-    channel_class: 0xC56F, // AMPERE_CHANNEL_GPFIFO_A
-    compute_class: 0xC7C0, // AMPERE_COMPUTE_B
-    launch_method: LaunchMethod::Pcas2,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::AcrSec2,
-    memory_type: MemoryType::Gddr6x,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "ga102",
-    has_full_rate_fp64: false,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC7B5, // AMPERE_DMA_COPY_B
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Ada Lovelace (AD102/AD103/AD104) — RTX 4090, RTX 4080, etc.
-pub const ADA: GenerationProfile = GenerationProfile {
-    name: "Ada",
-    sm_range: 89..=89,
-    qmd_version: QmdVersion::V30,
-    qmd_word_count: 64,
-    channel_class: 0xC56F, // AMPERE_CHANNEL_GPFIFO_A (shared with Ampere)
-    compute_class: 0xC9C0, // ADA_COMPUTE_A
-    launch_method: LaunchMethod::Pcas2,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::AcrSec2,
-    memory_type: MemoryType::Gddr6x,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "ad102",
-    has_full_rate_fp64: false,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC8B5, // ADA_DMA_COPY_A
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Hopper (GH100) — H100, H200 datacenter.
-pub const HOPPER: GenerationProfile = GenerationProfile {
-    name: "Hopper",
-    sm_range: 90..=99,
-    qmd_version: QmdVersion::V30,
-    qmd_word_count: 64,
-    channel_class: 0xC56F, // AMPERE_CHANNEL_GPFIFO_A (shared)
-    compute_class: 0xCBC0, // HOPPER_COMPUTE_A
-    launch_method: LaunchMethod::Pcas2,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::GpGetPoll,
-    boot_strategy: BootStrategy::Untested,
-    memory_type: MemoryType::Hbm2,
-    has_hardware_f64_rcp: true,
-    nctaid_source: NctaidSource::SystemRegister,
-    userd_gp_get: true,
-    firmware_chip: "gh100",
-    has_full_rate_fp64: true,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC8B5, // HOPPER_DMA_COPY_A (same as Ada in open-gpu-doc)
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Blackwell A (GB100/GB102) — B100, B200 datacenter.
-pub const BLACKWELL_A: GenerationProfile = GenerationProfile {
-    name: "Blackwell A",
-    sm_range: 100..=119,
-    qmd_version: QmdVersion::V50,
-    qmd_word_count: 96,
-    channel_class: 0xC96F, // BLACKWELL_CHANNEL_GPFIFO_A
-    compute_class: 0xCDC0, // BLACKWELL_COMPUTE_A
-    launch_method: LaunchMethod::Pcas2,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::SemaphoreFence,
-    boot_strategy: BootStrategy::KmodPromote,
-    memory_type: MemoryType::Hbm2,
-    has_hardware_f64_rcp: false,
-    nctaid_source: NctaidSource::DriverCbuf7,
-    userd_gp_get: false,
-    firmware_chip: "gb100",
-    has_full_rate_fp64: true,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC8B5, // BLACKWELL_DMA_COPY_A (provisional)
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
-
-/// Blackwell B (GB202/GB203/GB205/GB206/GB207) — RTX 5090, RTX 5080, RTX 5060, etc.
-pub const BLACKWELL_B: GenerationProfile = GenerationProfile {
-    name: "Blackwell B",
-    sm_range: 120..=u32::MAX,
-    qmd_version: QmdVersion::V50,
-    qmd_word_count: 96,
-    channel_class: 0xC96F, // BLACKWELL_CHANNEL_GPFIFO_A (CUDA R580 trace: 0xC96F for all Blackwell)
-    compute_class: 0xCEC0, // BLACKWELL_COMPUTE_B
-    launch_method: LaunchMethod::Pcas2,
-    local_mem_window: LOCAL_MEM_WINDOW_VOLTA,
-    completion: CompletionStrategy::SemaphoreFence,
-    boot_strategy: BootStrategy::KmodPromote,
-    memory_type: MemoryType::Gddr7,
-    has_hardware_f64_rcp: false,
-    nctaid_source: NctaidSource::DriverCbuf7,
-    userd_gp_get: false,
-    firmware_chip: "gb202",
-    has_full_rate_fp64: false,
-    recommended_workgroup_size: 256,
-    max_cta_per_sm: 16,
-    page_table_format: PageTableFormat::V2FiveLevel,
-    instance_block_format: InstanceBlockFormat::Subcontexted,
-    runlist_format: RunlistFormat::Gv100PerRunlist,
-    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
-    fecs_pc_offset: FECS_PC,
-    gpc_broadcast_offset: GPC_BROADCAST,
-    ce0_base_offset: CE0_BASE,
-    pgraph_status_offset: PGRAPH_STATUS,
-    ce_class: 0xC8B5, // BLACKWELL_DMA_COPY_B (provisional)
-    interrupt_profile: InterruptProfile::VOLTA_PLUS,
-};
+pub use ada::ADA;
+pub use ampere::{AMPERE_A, AMPERE_B};
+pub use blackwell::{BLACKWELL_A, BLACKWELL_B};
+pub use hopper::HOPPER;
+pub use kepler::KEPLER;
+pub use maxwell::MAXWELL;
+pub use pascal::PASCAL;
+pub use turing::TURING;
+pub use volta::VOLTA;
 
 /// All known generation profiles, ordered by SM range.
 const ALL_PROFILES: &[&GenerationProfile] = &[
@@ -833,6 +511,8 @@ mod tests {
             assert_eq!(p.ce0_base_offset, 0x0010_4000, "SM {sm}: CE0 base offset");
             assert_eq!(p.pgraph_status_offset, 0x0040_0700, "SM {sm}: PGRAPH status offset");
             assert!(p.ce_class != 0, "SM {sm}: CE class should be non-zero");
+            assert_eq!(p.ptop_device_info_base, 0x0002_2700, "SM {sm}: PTOP base");
+            assert_eq!(p.runlist_pbdma_map_base, 0x0000_2390, "SM {sm}: PBDMA map base");
         }
     }
 

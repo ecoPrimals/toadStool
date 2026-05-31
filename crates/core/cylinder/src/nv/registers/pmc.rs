@@ -213,3 +213,156 @@ pub fn intx_disable(bdf: &str, context: &str) {
         );
     }
 }
+
+/// PCI capability IDs for MSI and MSI-X.
+const PCI_CAP_ID_MSI: u8 = 0x05;
+const PCI_CAP_ID_MSIX: u8 = 0x11;
+
+/// Disable MSI and MSI-X at the PCI config space level.
+///
+/// Walks the PCI capability chain starting at config byte 0x34 to find:
+/// - MSI capability (ID 0x05): clears bit 0 (MSI Enable) of Message Control
+///   at `cap_offset + 2`
+/// - MSI-X capability (ID 0x11): clears bit 15 (MSI-X Enable) and sets bit 14
+///   (Function Mask) of Message Control at `cap_offset + 2`
+///
+/// This is a PCI-spec operation via sysfs config space — no driver involvement.
+/// Must be called BEFORE driver unbind to prevent orphaned MSI vectors from
+/// generating unhandled interrupts (Exp 233 Run #3 IRQ storm vector).
+pub fn disable_pci_msi(bdf: &str, context: &str) {
+    let cfg_path = crate::linux_paths::sysfs_pci_device_file(bdf, "config");
+    let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+        Ok(f) => f,
+        Err(e) => {
+            tracing::warn!(bdf, context, error = %e, "MSI disable: cannot open config");
+            return;
+        }
+    };
+
+    use std::io::{Read, Seek, Write};
+
+    let mut hdr = [0u8; 0x40];
+    if f.seek(std::io::SeekFrom::Start(0)).is_err() || f.read_exact(&mut hdr).is_err() {
+        tracing::warn!(bdf, context, "MSI disable: cannot read PCI header");
+        return;
+    }
+
+    let status = u16::from_le_bytes([hdr[0x06], hdr[0x07]]);
+    if status & 0x0010 == 0 {
+        tracing::info!(bdf, context, "MSI disable: no capabilities list (status bit 4 clear)");
+        return;
+    }
+
+    let mut cap_ptr = hdr[0x34] & 0xFC;
+    let mut msi_disabled = false;
+    let mut msix_disabled = false;
+    let mut visited = 0u32;
+
+    while cap_ptr != 0 && visited < 48 {
+        visited += 1;
+        let cap_offset = cap_ptr as u64;
+
+        let mut cap_hdr = [0u8; 4];
+        if f.seek(std::io::SeekFrom::Start(cap_offset)).is_err()
+            || f.read_exact(&mut cap_hdr).is_err()
+        {
+            break;
+        }
+
+        let cap_id = cap_hdr[0];
+        let next_ptr = cap_hdr[1] & 0xFC;
+
+        if cap_id == PCI_CAP_ID_MSI && !msi_disabled {
+            let msg_ctrl = u16::from_le_bytes([cap_hdr[2], cap_hdr[3]]);
+            let was_enabled = msg_ctrl & 0x0001 != 0;
+            if was_enabled {
+                let new_ctrl = msg_ctrl & !0x0001;
+                let new_bytes = new_ctrl.to_le_bytes();
+                let ctrl_offset = cap_offset + 2;
+                if f.seek(std::io::SeekFrom::Start(ctrl_offset)).is_ok() {
+                    let _ = f.write_all(&new_bytes);
+                }
+                tracing::info!(
+                    bdf, context,
+                    cap_offset = format_args!("0x{cap_offset:02x}"),
+                    old_ctrl = format_args!("0x{msg_ctrl:04x}"),
+                    new_ctrl = format_args!("0x{new_ctrl:04x}"),
+                    "PCI MSI disabled"
+                );
+            } else {
+                tracing::info!(
+                    bdf, context,
+                    cap_offset = format_args!("0x{cap_offset:02x}"),
+                    "PCI MSI already disabled"
+                );
+            }
+            msi_disabled = true;
+        } else if cap_id == PCI_CAP_ID_MSIX && !msix_disabled {
+            let msg_ctrl = u16::from_le_bytes([cap_hdr[2], cap_hdr[3]]);
+            let was_enabled = msg_ctrl & 0x8000 != 0;
+            // Clear enable (bit 15), set function mask (bit 14)
+            let new_ctrl = (msg_ctrl & !0x8000) | 0x4000;
+            if new_ctrl != msg_ctrl {
+                let new_bytes = new_ctrl.to_le_bytes();
+                let ctrl_offset = cap_offset + 2;
+                if f.seek(std::io::SeekFrom::Start(ctrl_offset)).is_ok() {
+                    let _ = f.write_all(&new_bytes);
+                }
+            }
+            tracing::info!(
+                bdf, context,
+                cap_offset = format_args!("0x{cap_offset:02x}"),
+                old_ctrl = format_args!("0x{msg_ctrl:04x}"),
+                new_ctrl = format_args!("0x{new_ctrl:04x}"),
+                was_enabled,
+                "PCI MSI-X disabled + masked"
+            );
+            msix_disabled = true;
+        }
+
+        if msi_disabled && msix_disabled {
+            break;
+        }
+        cap_ptr = next_ptr;
+    }
+
+    if !msi_disabled && !msix_disabled {
+        tracing::info!(bdf, context, "MSI disable: no MSI/MSI-X capabilities found");
+    }
+}
+
+/// Clear PCI command register bit 2 (Bus Master Enable) via sysfs config space.
+///
+/// With Bus Master disabled, the device physically cannot perform memory writes,
+/// which means MSI (a memory-write-based interrupt) cannot be delivered regardless
+/// of MSI enable bits. This is the nuclear option for preventing IRQ storms.
+///
+/// MUST only be called immediately before unbind — DMA-dependent operations
+/// (RM, firmware) will fail with Bus Master off.
+pub fn disable_bus_master(bdf: &str, context: &str) {
+    let cfg_path = crate::linux_paths::sysfs_pci_device_file(bdf, "config");
+    let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+        Ok(f) => f,
+        Err(e) => {
+            tracing::warn!(bdf, context, error = %e, "Bus Master disable: cannot open config");
+            return;
+        }
+    };
+
+    use std::io::{Read, Seek, Write};
+    let mut cmd_bytes = [0u8; 2];
+    if f.seek(std::io::SeekFrom::Start(4)).is_ok()
+        && f.read_exact(&mut cmd_bytes).is_ok()
+    {
+        let old_cmd = u16::from_le_bytes(cmd_bytes);
+        let new_cmd = old_cmd & !0x0004;
+        let _ = f.seek(std::io::SeekFrom::Start(4));
+        let _ = f.write_all(&new_cmd.to_le_bytes());
+        tracing::info!(
+            bdf, context,
+            old_cmd = format_args!("0x{old_cmd:04x}"),
+            new_cmd = format_args!("0x{new_cmd:04x}"),
+            "PCI Bus Master disabled"
+        );
+    }
+}

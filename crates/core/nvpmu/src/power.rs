@@ -85,7 +85,7 @@ impl GpuPowerController {
     pub fn new(bdf: &str) -> Self {
         Self {
             bdf: bdf.to_string(),
-            sysfs_path: PathBuf::from(format!("/sys/bus/pci/devices/{bdf}")),
+            sysfs_path: PathBuf::from(toadstool_common::sysfs_paths::sysfs_pci_device_path(bdf)),
         }
     }
 

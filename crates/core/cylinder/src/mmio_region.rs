@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! RAII wrapper for mmap-backed MMIO with bounds-checked volatile access.
 //!
-//! Volatile `u32` loads/stores for mapped BAR/MMIO are implemented only in this
-//! module so [`MmioRegion::read_u32`] and [`MmioRegion::write_u32`] stay the safe API.
+//! Volatile register access delegates to [`toadstool_hw_safe::VolatileMmio`];
+//! fd-backed mappings use [`toadstool_hw_safe::DeviceMmap`].
 
 use std::borrow::Cow;
 use std::ptr::NonNull;
+
+use toadstool_hw_safe::{DeviceMmap, MmioError, VolatileMmio};
 
 use crate::error::DriverError;
 
@@ -16,28 +18,33 @@ use crate::error::DriverError;
 /// additional invariants (for example VFIO-mapped BARs) may provide those impls.
 #[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 pub(crate) struct MmioRegion {
-    ptr: NonNull<u8>,
-    len: usize,
     backing: Backing,
 }
 
 #[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 enum Backing {
-    /// Region was obtained via `mmap`; [`Drop`] calls `munmap`.
-    Mmap,
-    /// Test-only: `ptr` points into this allocation; do not `munmap`.
+    /// Region mapped via [`DeviceMmap`]; unmapped on drop by hw-safe.
+    Device(DeviceMmap),
+    /// Adopted `mmap` result; this struct calls `munmap` on drop.
+    Adopted {
+        ptr: NonNull<u8>,
+        len: usize,
+    },
+    /// Test-only: do not `munmap`.
     #[cfg(test)]
-    Heap(
-        #[expect(
-            dead_code,
-            reason = "owns heap bytes; only dropped, not read via field access"
-        )]
-        Box<[u8]>,
-    ),
+    Heap(Box<[u8]>),
 }
 
 #[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 impl MmioRegion {
+    /// Wrap an fd-backed mapping from [`DeviceMmap`].
+    #[must_use]
+    pub(crate) fn from_device_mmap(mmap: DeviceMmap) -> Self {
+        Self {
+            backing: Backing::Device(mmap),
+        }
+    }
+
     /// Take ownership of an `mmap` result; the region is unmapped on [`Drop`].
     ///
     /// # Safety
@@ -48,94 +55,104 @@ impl MmioRegion {
     /// - `len` must match the length passed to `mmap`.
     #[must_use]
     pub(crate) unsafe fn new(ptr: *mut u8, len: usize) -> Self {
-        assert!(!ptr.is_null(), "MmioRegion::new: mmap pointer must be non-null (caller broke safety contract)");
+        assert!(
+            !ptr.is_null(),
+            "MmioRegion::new: mmap pointer must be non-null (caller broke safety contract)"
+        );
         Self {
-            // SAFETY: asserted non-null above
-            ptr: unsafe { NonNull::new_unchecked(ptr) },
-            len,
-            backing: Backing::Mmap,
+            backing: Backing::Adopted {
+                // SAFETY: asserted non-null above
+                ptr: unsafe { NonNull::new_unchecked(ptr) },
+                len,
+            },
         }
     }
 
     /// Byte length of the mapped region.
     #[must_use]
     pub(crate) const fn len(&self) -> usize {
-        self.len
+        match &self.backing {
+            Backing::Device(m) => m.size(),
+            Backing::Adopted { len, .. } => *len,
+            #[cfg(test)]
+            Backing::Heap(h) => h.len(),
+        }
     }
 
     /// Raw base pointer (for legacy callers that perform their own arithmetic).
     #[must_use]
-    pub(crate) const fn as_ptr(&self) -> *mut u8 {
-        self.ptr.as_ptr()
+    pub(crate) fn as_ptr(&self) -> *mut u8 {
+        match &self.backing {
+            Backing::Device(m) => m.as_ptr().as_ptr(),
+            Backing::Adopted { ptr, .. } => ptr.as_ptr(),
+            #[cfg(test)]
+            Backing::Heap(h) => h.as_ptr().cast_mut(),
+        }
+    }
+
+    fn volatile(&self) -> VolatileMmio<'_> {
+        match &self.backing {
+            Backing::Device(m) => m.as_volatile(),
+            Backing::Adopted { ptr, len } => {
+                // SAFETY: Adopted pointers satisfy VolatileMmio construction invariants.
+                unsafe { VolatileMmio::new(*ptr, *len) }
+            }
+            #[cfg(test)]
+            Backing::Heap(h) => {
+                let ptr = NonNull::new(h.as_ptr().cast_mut())
+                    .expect("non-empty heap backing has non-null ptr");
+                // SAFETY: heap backing is owned by this struct for its lifetime.
+                unsafe { VolatileMmio::new(ptr, h.len()) }
+            }
+        }
+    }
+
+    fn map_hw_err(e: MmioError) -> DriverError {
+        match e {
+            MmioError::OutOfBounds { offset, .. } => DriverError::MmapFailed(Cow::Owned(format!(
+                "MMIO read: offset {offset:#x} + 4 out of range"
+            ))),
+            MmioError::Misaligned {
+                address,
+                alignment,
+            } => DriverError::MmapFailed(Cow::Owned(format!(
+                "MMIO access at {address:#x} is not {alignment}-byte aligned"
+            ))),
+        }
     }
 
     /// Volatile 32-bit read at `offset` bytes from the region base.
     ///
     /// # Errors
     ///
-    /// Returns [`DriverError::MmapFailed`] if `offset + 4` exceeds the region.
-    #[expect(
-        clippy::cast_ptr_alignment,
-        reason = "Callers that require aligned MMIO (e.g. BAR) validate alignment separately"
-    )]
+    /// Returns [`DriverError::MmapFailed`] if `offset + 4` exceeds the region
+    /// or the offset is misaligned.
     pub(crate) fn read_u32(&self, offset: usize) -> Result<u32, DriverError> {
-        if !offset.is_multiple_of(4) {
-            return Err(DriverError::MmapFailed(Cow::Owned(format!(
-                "MMIO read: offset {offset:#x} is not 4-byte aligned"
-            ))));
-        }
-        if offset.checked_add(4).is_none_or(|end| end > self.len) {
-            return Err(DriverError::MmapFailed(Cow::Owned(format!(
-                "MMIO read: offset {offset:#x} + 4 out of range (size {:#x})",
-                self.len
-            ))));
-        }
-        // SAFETY: `offset` is 4-byte aligned and `offset + 4 <= len`, so the cast to
-        // `*const u32` is aligned and within the mapping.
-        Ok(unsafe { std::ptr::read_volatile(self.ptr.as_ptr().add(offset).cast::<u32>()) })
+        self.volatile()
+            .read_u32(offset)
+            .map_err(Self::map_hw_err)
     }
 
     /// Volatile 32-bit write at `offset` bytes from the region base.
     ///
     /// # Errors
     ///
-    /// Returns [`DriverError::MmapFailed`] if `offset + 4` exceeds the region.
-    #[expect(
-        clippy::cast_ptr_alignment,
-        reason = "Callers that require aligned MMIO (e.g. BAR) validate alignment separately"
-    )]
+    /// Returns [`DriverError::MmapFailed`] if `offset + 4` exceeds the region
+    /// or the offset is misaligned.
     pub(crate) fn write_u32(&self, offset: usize, value: u32) -> Result<(), DriverError> {
-        if !offset.is_multiple_of(4) {
-            return Err(DriverError::MmapFailed(Cow::Owned(format!(
-                "MMIO write: offset {offset:#x} is not 4-byte aligned"
-            ))));
-        }
-        if offset.checked_add(4).is_none_or(|end| end > self.len) {
-            return Err(DriverError::MmapFailed(Cow::Owned(format!(
-                "MMIO write: offset {offset:#x} + 4 out of range (size {:#x})",
-                self.len
-            ))));
-        }
-        // SAFETY: `offset` is 4-byte aligned and `offset + 4 <= len`, so the cast to
-        // `*mut u32` is aligned and within the mapping.
-        unsafe {
-            std::ptr::write_volatile(self.ptr.as_ptr().add(offset).cast::<u32>(), value);
-        }
-        Ok(())
+        self.volatile()
+            .write_u32(offset, value)
+            .map_err(Self::map_hw_err)
     }
 
     /// Heap-backed region for unit tests (no `munmap`; frees the buffer on drop).
     #[cfg(test)]
-    pub(crate) fn from_heap_slice_for_test(mut backing: Box<[u8]>) -> Self {
+    pub(crate) fn from_heap_slice_for_test(backing: Box<[u8]>) -> Self {
         assert!(
             !backing.is_empty(),
             "from_heap_slice_for_test: empty slice not supported"
         );
-        let len = backing.len();
-        let ptr = NonNull::new(backing.as_mut_ptr()).expect("non-empty slice has non-null ptr");
         Self {
-            ptr,
-            len,
             backing: Backing::Heap(backing),
         }
     }
@@ -143,14 +160,12 @@ impl MmioRegion {
 
 impl Drop for MmioRegion {
     fn drop(&mut self) {
-        #[cfg(test)]
-        if matches!(&self.backing, Backing::Heap(_)) {
-            return;
-        }
-        // SAFETY: `Backing::Mmap` is only constructed via `new`, whose safety contract
-        // requires that `ptr`/`len` came from `mmap` and were not freed elsewhere.
-        unsafe {
-            let _ = rustix::mm::munmap(self.ptr.as_ptr().cast::<std::ffi::c_void>(), self.len);
+        if let Backing::Adopted { ptr, len } = self.backing {
+            // SAFETY: Adopted backing came from `new`, whose safety contract
+            // requires that `ptr`/`len` came from `mmap` and were not freed elsewhere.
+            unsafe {
+                let _ = rustix::mm::munmap(ptr.as_ptr().cast::<std::ffi::c_void>(), len);
+            }
         }
     }
 }

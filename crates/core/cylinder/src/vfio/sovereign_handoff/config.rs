@@ -4,6 +4,15 @@ use std::time::Duration;
 
 use super::types::{HandoffConfig, ModuleSourceConfig};
 
+/// Fallback DKMS version when discovery from `/var/lib/dkms/` fails.
+const FALLBACK_DKMS_VERSION: &str = "470.256.02";
+
+/// Resolve the installed nvidia DKMS version, falling back to [`FALLBACK_DKMS_VERSION`].
+fn discovered_nvidia_dkms_version() -> String {
+    crate::vfio::kmod::discover_dkms_version("nvidia")
+        .unwrap_or_else(|| FALLBACK_DKMS_VERSION.to_owned())
+}
+
 impl HandoffConfig {
     /// Create a config for Titan V warm handoff via patched nouveau.
     #[must_use]
@@ -83,7 +92,7 @@ impl HandoffConfig {
             module_name: "nvsov".into(),
             module_source: ModuleSourceConfig::DkmsPatched {
                 dkms_module: "nvidia".into(),
-                dkms_version: "470.256.02".into(),
+                dkms_version: discovered_nvidia_dkms_version(),
                 patch_set: "nvidia_warm_handoff".into(),
             },
             settle: Duration::from_secs(60),
@@ -113,7 +122,7 @@ impl HandoffConfig {
             module_name: "nvsov".into(),
             module_source: ModuleSourceConfig::DkmsPatched {
                 dkms_module: "nvidia".into(),
-                dkms_version: "470.256.02".into(),
+                dkms_version: discovered_nvidia_dkms_version(),
                 patch_set: "nvidia_catalyst_handoff".into(),
             },
             settle: Duration::from_secs(60),
@@ -135,7 +144,7 @@ impl HandoffConfig {
             module_name: "nvsov".into(),
             module_source: ModuleSourceConfig::DkmsPatched {
                 dkms_module: "nvidia".into(),
-                dkms_version: "470.256.02".into(),
+                dkms_version: discovered_nvidia_dkms_version(),
                 patch_set: "nvidia_boot_services".into(),
             },
             settle: Duration::from_secs(60),

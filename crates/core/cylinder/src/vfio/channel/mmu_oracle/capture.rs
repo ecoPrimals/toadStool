@@ -538,8 +538,11 @@ impl std::fmt::Debug for Bar0Handle {
     }
 }
 
-// SAFETY: Matches the `Send` rationale in the [`Bar0Handle`] docs; the caller
-// must keep the mapping alive.
+// SAFETY: Raw `*mut u8`/`usize` pair borrowed from an existing BAR0 mmap.
+// `Send` allows moving the handle into worker threads (e.g. `spawn_blocking`);
+// the caller must keep the underlying mapping alive for the handle's lifetime.
+// Intentionally not `Sync`: sharing `&Bar0Handle` would duplicate unsynchronized
+// raw-pointer access.
 unsafe impl Send for Bar0Handle {}
 
 impl Bar0Handle {

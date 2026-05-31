@@ -80,6 +80,8 @@ test-mocks = []
 # Gates reqwest-based HTTP communication in ecosystem modules
 networking = []
 wgpu = ["dep:wgpu"]
+# Marker for WASM runtime probe in StubRuntimeEngine (wired by CLI `wasm` feature).
+wasm-runtime = []
 # mDNS bootstrap discovery (songBird's domain -- use for cold-start only)
 mdns = ["dep:mdns-sd"]
 # Proptest generators for workload/resource types (`crate::proptest_strategies`).

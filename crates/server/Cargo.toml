@@ -42,18 +42,6 @@ base64 = { workspace = true }
 # Async runtime and channels
 tokio = { workspace = true }
 
-# HTTP client - REMOVED: Legacy artifact from old Songbird HTTP registration
-# ARCHITECTURAL EVOLUTION (Jan 17, 2026):
-#   OLD: ToadStool used HTTP to register with Songbird (violated concentrated gap)
-#   NEW: Songbird discovers ToadStool via Unix socket (capability-based discovery)
-#   RESULT: ToadStool has NO legitimate need for HTTP/TLS dependencies!
-# 
-# Deep Debt Solution: ToadStool provides Unix socket server (pure_jsonrpc),
-# Songbird discovers ToadStool via socket path, registration happens via JSON-RPC over Unix.
-# This achieves 100% Pure Rust and TRUE UniBin (no C deps, trivial cross-compilation).
-#
-# reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -85,11 +73,17 @@ nvpmu = { path = "../core/nvpmu" }
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 futures = { workspace = true }
 
+# Security sandboxing (optional — workload isolation via seccomp/capabilities)
+toadstool-security-sandbox = { path = "../security/sandbox", optional = true }
+toadstool-security-policies = { path = "../security/policies", optional = true }
+
 [features]
 default = ["gpu-discovery", "tarpc", "btsp"]
 gpu-discovery = ["wgpu"]
 tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
 btsp = ["toadstool-common/btsp"]
+# Cross-platform sandbox + policy enforcement (seccomp, capabilities, RBAC)
+sandbox = ["dep:toadstool-security-sandbox", "dep:toadstool-security-policies"]
 # Exposes `mocks` module (MockResourceMonitor, etc.) for integration tests / tools — not default
 test-mocks = []
 

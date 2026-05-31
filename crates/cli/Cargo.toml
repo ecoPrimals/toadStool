@@ -44,6 +44,9 @@ toadstool-display = { path = "../runtime/display" }
 toadstool-config = { path = "../core/config" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-server = { path = "../server" }  # UniBin Phase 2: Server library integration (library compiles!)
+# Intelligent auto-configuration library (hardware detection, ecosystem discovery, NL config).
+# CLI `zero_config/` is the deployment orchestration layer; this crate is the backend.
+toadstool-auto-config = { path = "../auto_config", optional = true }
 # Runtime engines
 toadstool-runtime-container = { path = "../runtime/container" }
 toadstool-runtime-native = { path = "../runtime/native" }
@@ -127,7 +130,11 @@ rustix = { workspace = true, features = ["process"] }
 [features]
 default = ["full"]
 slow-tests = []
-full = ["daemon", "wasm", "nautilus"]
+full = ["daemon", "wasm", "nautilus", "zero-config"]
+# Intelligent auto-config backend for `zero_config/` deployment flow
+zero-config = ["dep:toadstool-auto-config"]
+# Workload sandboxing (seccomp, capabilities) — passes through to server
+sandbox = ["toadstool-server/sandbox"]
 # BTSP on daemon JSON-RPC (FAMILY_ID production mode); passes through to toadstool-common
 btsp = ["toadstool-common/btsp"]
 daemon = ["btsp"]

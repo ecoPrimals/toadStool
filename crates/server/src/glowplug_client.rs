@@ -173,7 +173,7 @@ impl GlowPlugClient {
     /// determine if the GPU was previously initialized (e.g. by nouveau
     /// warm-handoff). Also probes FECS CPUCTL (0x409100) for falcon state.
     pub fn warm_detect(&self, bdf: &str) -> serde_json::Value {
-        let resource_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+        let resource_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
         let resource0_exists = std::path::Path::new(&resource_path).exists();
 
         let (pmc_enable, fecs_cpuctl) = if resource0_exists {
@@ -243,7 +243,7 @@ pub fn create_glowplug_client() -> SharedGlowPlugClient {
 
 /// Read the current driver bound to a PCI device.
 fn read_current_driver(bdf: &str) -> Option<String> {
-    let link = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let link = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver");
     std::fs::read_link(&link)
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
@@ -284,7 +284,7 @@ fn read_bar0_registers(bdf: &str) -> (u32, u32) {
 
 /// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).
 fn discover_gpu_bdfs() -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
         return Vec::new();
     };
 

@@ -19,12 +19,13 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 toadstool-common = { path = "../../core/common" }
+toadstool-hw-safe = { path = "../hw-safe" }
 toadstool-ember = { path = "../ember" }
 tracing = { workspace = true }
 
 [[bin]]
 name = "rm_trigger"
-path = "src/bin/rm_trigger.rs"
+path = "src/bin/rm_trigger/main.rs"
 
 [[bin]]
 name = "sovereign_acr_boot"

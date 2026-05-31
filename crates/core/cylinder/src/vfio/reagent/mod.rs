@@ -22,6 +22,14 @@
 //! └─────────────────────────────────────────────────────────────┘
 //! ```
 
+mod catalog;
+mod vram_capture;
+
+pub use catalog::{FirmwareBlob, catalog_linux_firmware};
+pub use vram_capture::{
+    capture_vram_firmware, read_vram_via_pramin, vram_firmware_addrs,
+};
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -85,7 +93,63 @@ pub enum ReagentError {
 }
 
 /// Default runtime reagent storage directory.
-pub const REAGENT_STORE_DIR: &str = "/var/lib/toadstool/reagents";
+pub fn reagent_store_dir() -> String {
+    crate::linux_paths::data_subdir("reagents")
+}
+
+/// Default chip identifier when BOOT0 discovery is unavailable (Volta GV100).
+pub const DEFAULT_REAGENT_CHIP: &str = "gv100";
+
+/// Default nvidia driver version when `/proc/driver/nvidia/version` is unavailable.
+pub const DEFAULT_REAGENT_DRIVER_VERSION: &str = "470.256.02";
+
+/// Discover GPU chip name from BAR0 BOOT0 via [`GenerationProfile`].
+///
+/// Reads PMC BOOT0 at offset 0, decodes SM version, and returns
+/// `profile.firmware_chip`. Returns `None` when BAR0 is unreadable or BOOT0
+/// is zero/`0xFFFF_FFFF`.
+#[must_use]
+pub fn discover_chip_from_bar0(bar0: &crate::vfio::device::MappedBar) -> Option<&'static str> {
+    let boot0 = bar0.read_u32(0).unwrap_or(0);
+    if boot0 == 0 || boot0 == 0xFFFF_FFFF {
+        return None;
+    }
+    let sm = crate::nv::identity::boot0_to_sm(boot0)?;
+    Some(crate::nv::generation::profile_for_sm(sm).firmware_chip)
+}
+
+/// Discover GPU chip name from sysfs BAR0 for a PCI BDF.
+///
+/// Opens `resource0` read/write and delegates to [`discover_chip_from_bar0`].
+/// Used by reagent capture when the RPC caller omits an explicit `chip`.
+#[must_use]
+pub fn discover_chip_from_bdf(bdf: &str) -> Option<&'static str> {
+    const BAR0_SIZE: usize = 16 * 1024 * 1024;
+    let bar0 = crate::vfio::device::MappedBar::from_sysfs_rw(bdf, BAR0_SIZE).ok()?;
+    discover_chip_from_bar0(&bar0)
+}
+
+/// Discover the loaded nvidia kernel module version from procfs.
+///
+/// Parses `/proc/driver/nvidia/version` for the `major.minor.patch` token
+/// in the NVRM version line (e.g. `470.256.02`).
+#[must_use]
+pub fn discover_nvidia_driver_version() -> Option<String> {
+    let content = std::fs::read_to_string("/proc/driver/nvidia/version").ok()?;
+    parse_nvidia_proc_version(&content)
+}
+
+fn parse_nvidia_proc_version(content: &str) -> Option<String> {
+    for token in content.split_whitespace() {
+        if token.chars().next()?.is_ascii_digit()
+            && token.matches('.').count() >= 2
+            && token.chars().all(|c| c.is_ascii_digit() || c == '.')
+        {
+            return Some(token.to_owned());
+        }
+    }
+    None
+}
 
 /// A unified artifact combining all captured chemical agents for a
 /// specific GPU + driver + kernel combination.
@@ -151,21 +215,6 @@ pub struct ReagentFirmware {
     pub linux_firmware_blobs: Vec<FirmwareBlob>,
     /// Per-blob provenance notes.
     pub provenance: HashMap<String, String>,
-}
-
-/// A cataloged firmware blob from linux-firmware or extraction.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FirmwareBlob {
-    /// Subsystem (e.g. "gr", "acr", "sec2", "pmu").
-    pub subsystem: String,
-    /// Filename (e.g. "fecs_inst.bin").
-    pub filename: String,
-    /// Absolute path on disk.
-    pub path: PathBuf,
-    /// File size in bytes.
-    pub size_bytes: u64,
-    /// Whether this blob is required for ACR boot chain.
-    pub acr_required: bool,
 }
 
 /// How complete the reagent capture was.
@@ -250,7 +299,7 @@ impl ReagentManifest {
     /// Full path to the reagent directory.
     #[must_use]
     pub fn store_path(&self) -> PathBuf {
-        PathBuf::from(REAGENT_STORE_DIR).join(self.dir_name())
+        PathBuf::from(reagent_store_dir()).join(self.dir_name())
     }
 
     /// Write the manifest to the reagent store directory.
@@ -329,62 +378,6 @@ impl ReagentManifest {
         );
         Ok(manifest_path)
     }
-}
-
-/// Catalog linux-firmware blobs for a given chip.
-///
-/// Scans `/lib/firmware/nvidia/{chip}/` for known firmware files and
-/// returns a list of those that exist on disk with their metadata.
-pub fn catalog_linux_firmware(chip: &str) -> Vec<FirmwareBlob> {
-    let base = format!("/lib/firmware/nvidia/{chip}");
-
-    let known_blobs = [
-        ("acr", "bl.bin", true),
-        ("acr", "ucode_unload.bin", false),
-        ("gr", "fecs_bl.bin", true),
-        ("gr", "fecs_inst.bin", true),
-        ("gr", "fecs_data.bin", true),
-        ("gr", "gpccs_bl.bin", true),
-        ("gr", "gpccs_inst.bin", true),
-        ("gr", "gpccs_data.bin", true),
-        ("gr", "sw_ctx.bin", false),
-        ("gr", "sw_nonctx.bin", false),
-        ("gr", "sw_bundle_init.bin", false),
-        ("gr", "sw_method_init.bin", false),
-        ("sec2", "desc.bin", true),
-        ("sec2", "image.bin", true),
-        ("sec2", "sig.bin", true),
-        ("pmu", "bl.bin", false),
-        ("pmu", "inst.bin", false),
-        ("pmu", "data.bin", false),
-        ("pmu", "sig.bin", false),
-    ];
-
-    let mut found = Vec::new();
-    for (subsystem, filename, acr_required) in &known_blobs {
-        let path = PathBuf::from(format!("{base}/{subsystem}/{filename}"));
-        if path.exists() {
-            let size_bytes = std::fs::metadata(&path)
-                .map(|m| m.len())
-                .unwrap_or(0);
-            found.push(FirmwareBlob {
-                subsystem: (*subsystem).to_owned(),
-                filename: (*filename).to_owned(),
-                path,
-                size_bytes,
-                acr_required: *acr_required,
-            });
-        }
-    }
-
-    tracing::info!(
-        chip = chip,
-        found = found.len(),
-        acr_required_present = found.iter().filter(|b| b.acr_required).count(),
-        "linux-firmware blobs cataloged"
-    );
-
-    found
 }
 
 /// Distill an mmiotrace log into an ACR-focused reagent recipe.
@@ -478,136 +471,6 @@ pub struct MmiotraceReagentSummary {
     pub acr_output_path: PathBuf,
 }
 
-/// Attempt to read VRAM content through the PRAMIN window (BAR0 0x700000).
-///
-/// When nvidia is loaded and PRAMIN is configured, the 1 MiB window at
-/// BAR0 offset 0x700000 maps a configurable region of GPU VRAM. By writing
-/// the target VRAM page address to `NV_PBUS_BAR0_WINDOW` (0x1700), we can
-/// read arbitrary VRAM contents.
-///
-/// Returns the bytes read, or an error if PRAMIN is not configured or the
-/// read fails.
-pub fn read_vram_via_pramin(
-    bar0: &crate::vfio::device::MappedBar,
-    vram_addr: u64,
-    len: usize,
-) -> Result<Vec<u8>, ReagentError> {
-    const PRAMIN_BASE: usize = 0x70_0000;
-    const PRAMIN_SIZE: usize = 0x10_0000; // 1 MiB window
-    const BAR0_WINDOW_REG: usize = 0x1700;
-
-    if len > PRAMIN_SIZE {
-        return Err(ReagentError::PraminSizeExceeded {
-            len,
-            max: PRAMIN_SIZE,
-        });
-    }
-
-    let page_addr = (vram_addr >> 16) as u32;
-    bar0.write_u32(BAR0_WINDOW_REG, page_addr)?;
-
-    let page_offset = (vram_addr & 0xFFFF) as usize;
-    let mut data = Vec::with_capacity(len);
-
-    for i in (0..len).step_by(4) {
-        let offset = PRAMIN_BASE + page_offset + i;
-        let word = bar0.read_u32(offset)?;
-        data.extend_from_slice(&word.to_le_bytes());
-    }
-
-    data.truncate(len);
-
-    let nonzero = data.iter().filter(|&&b| b != 0).count();
-    tracing::info!(
-        vram_addr = format!("0x{vram_addr:x}"),
-        len = len,
-        nonzero_bytes = nonzero,
-        "VRAM read via PRAMIN"
-    );
-
-    Ok(data)
-}
-
-/// Known VRAM firmware staging addresses from Exp 160 mmiotrace analysis.
-/// nvidia stages firmware blobs in VRAM before DMA-loading to falcon IMEM.
-pub mod vram_firmware_addrs {
-    /// FECS firmware staged at this VRAM address before BootROM DMA (Exp 160, nvidia-535).
-    pub const FECS_VRAM_ADDR_535: u64 = 0x802F_D458;
-    /// FECS code size (from nvidia-535 mmiotrace — 25632 bytes, matches fecs_inst.bin).
-    pub const FECS_CODE_SIZE: usize = 25632;
-    /// GPCCS firmware typically follows FECS in VRAM (offset determined at runtime).
-    pub const GPCCS_VRAM_OFFSET_HINT: u64 = 0x10000;
-}
-
-/// Attempt VRAM firmware capture for all known falcon staging addresses.
-///
-/// While nvidia is loaded and FECS is running, the firmware blobs are staged
-/// in VRAM at known addresses. This function reads them through the PRAMIN
-/// window, bypassing the HS IMEM PIO block entirely.
-///
-/// Returns paths to captured firmware files, or errors for each.
-pub fn capture_vram_firmware(
-    bar0: &crate::vfio::device::MappedBar,
-    output_dir: &std::path::Path,
-) -> Vec<(String, Result<PathBuf, ReagentError>)> {
-    use vram_firmware_addrs::*;
-
-    std::fs::create_dir_all(output_dir).ok();
-    let mut results = Vec::new();
-
-    // Capture FECS from VRAM
-    let fecs_path = output_dir.join("fecs_vram_capture.bin");
-    let fecs_result = read_vram_via_pramin(bar0, FECS_VRAM_ADDR_535, FECS_CODE_SIZE)
-        .and_then(|data| {
-            let nonzero = data.iter().filter(|&&b| b != 0).count();
-            if nonzero < FECS_CODE_SIZE / 10 {
-                return Err(ReagentError::VramCaptureEmpty {
-                    name: "FECS",
-                    nonzero,
-                    total: FECS_CODE_SIZE,
-                    addr: FECS_VRAM_ADDR_535,
-                });
-            }
-            std::fs::write(&fecs_path, &data).map_err(ReagentError::WriteRecipe)?;
-            tracing::info!(
-                path = %fecs_path.display(),
-                size = data.len(),
-                nonzero = nonzero,
-                "FECS firmware captured from VRAM"
-            );
-            Ok(fecs_path.clone())
-        });
-    results.push(("fecs_vram".to_owned(), fecs_result));
-
-    // Attempt GPCCS capture at hinted offset after FECS
-    let gpccs_addr = FECS_VRAM_ADDR_535 + GPCCS_VRAM_OFFSET_HINT;
-    let gpccs_size = 12643; // matches gpccs_inst.bin
-    let gpccs_path = output_dir.join("gpccs_vram_capture.bin");
-    let gpccs_result = read_vram_via_pramin(bar0, gpccs_addr, gpccs_size)
-        .and_then(|data| {
-            let nonzero = data.iter().filter(|&&b| b != 0).count();
-            if nonzero < gpccs_size / 10 {
-                return Err(ReagentError::VramCaptureEmpty {
-                    name: "GPCCS",
-                    nonzero,
-                    total: gpccs_size,
-                    addr: gpccs_addr,
-                });
-            }
-            std::fs::write(&gpccs_path, &data).map_err(ReagentError::WriteRecipe)?;
-            tracing::info!(
-                path = %gpccs_path.display(),
-                size = data.len(),
-                nonzero = nonzero,
-                "GPCCS firmware captured from VRAM"
-            );
-            Ok(gpccs_path.clone())
-        });
-    results.push(("gpccs_vram".to_owned(), gpccs_result));
-
-    results
-}
-
 /// Runtime services configuration — nvidia stays loaded as a persistent
 /// compute backend while toadStool manages infrastructure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -629,7 +492,7 @@ impl RuntimeServicesConfig {
             bdf: bdf.to_owned(),
             probe_falcon_state: true,
             capture_reagents: true,
-            reagent_store: PathBuf::from(REAGENT_STORE_DIR),
+            reagent_store: PathBuf::from(reagent_store_dir()),
         }
     }
 }
@@ -724,7 +587,7 @@ pub fn execute_reagent_capture(
     );
 
     // Strategy 3: Copy existing catalyst artifacts if available
-    let catalyst_dir = PathBuf::from("/var/lib/toadstool/catalysts");
+    let catalyst_dir = PathBuf::from(crate::linux_paths::data_subdir("catalysts"));
     if copy_catalyst_artifacts(&catalyst_dir, &store_dir, &mut manifest).is_ok() {
         strategy_results.insert(
             "catalyst_artifacts".to_owned(),
@@ -764,12 +627,12 @@ fn detect_kernel_version() -> String {
 }
 
 fn probe_nvidia_bar0_state(bdf: &str) -> Result<String, ReagentError> {
-    let resource_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+    let resource_path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
     if !Path::new(&resource_path).exists() {
         return Err(ReagentError::NoBar0Resource { path: resource_path });
     }
 
-    let driver_path = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let driver_path = crate::linux_paths::sysfs_pci_device_file(bdf, "driver");
     let driver = std::fs::read_link(&driver_path)
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
@@ -876,17 +739,11 @@ mod tests {
     }
 
     #[test]
-    fn firmware_blob_serde() {
-        let blob = FirmwareBlob {
-            subsystem: "gr".to_owned(),
-            filename: "fecs_inst.bin".to_owned(),
-            path: PathBuf::from("/lib/firmware/nvidia/gv100/gr/fecs_inst.bin"),
-            size_bytes: 32768,
-            acr_required: true,
-        };
-        let json = serde_json::to_string(&blob).unwrap();
-        let loaded: FirmwareBlob = serde_json::from_str(&json).unwrap();
-        assert_eq!(loaded.subsystem, "gr");
-        assert!(loaded.acr_required);
+    fn parse_nvidia_proc_version_extracts_driver_number() {
+        let sample = "NVRM version: NVIDIA UNIX x86_64 Kernel Module  580.119.02  Thu Aug  7 20:09:00 UTC 2025";
+        assert_eq!(
+            super::parse_nvidia_proc_version(sample).as_deref(),
+            Some("580.119.02")
+        );
     }
 }

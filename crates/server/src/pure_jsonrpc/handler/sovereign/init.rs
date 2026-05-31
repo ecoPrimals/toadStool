@@ -164,7 +164,11 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
             info!(chip, "sovereign.init: using NvGspBridge (firmware found)");
             std::sync::Arc::new(nv)
         } else {
-            info!(chip, "sovereign.init: using NoopGspBridge (no firmware)");
+            info!(
+                chip,
+                "sovereign.init: using NoopGspBridge — firmware-less init active \
+                 (non-firmware stages only; ACR/FECS require NvGspBridge or warm-handoff)"
+            );
             std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::NoopGspBridge::default())
         }
     };

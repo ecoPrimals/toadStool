@@ -137,13 +137,6 @@ fn is_excluded(bdf: &str) -> bool {
         .contains(bdf)
 }
 
-/// Exclude a single BDF from keepalive reads and return an RAII guard.
-/// Convenience wrapper for `HandoffExclusionGuard::new` with one BDF.
-#[allow(dead_code)] // single-BDF convenience for future handoff call sites
-pub fn exclude_bdf(bdf: &str) -> HandoffExclusionGuard {
-    HandoffExclusionGuard::new(vec![bdf.to_string()])
-}
-
 fn current_interval() -> Duration {
     if SWAP_GUARD_COUNT.load(Ordering::Relaxed) > 0 {
         BURST_INTERVAL

@@ -129,6 +129,52 @@ pub fn find_dkms_module(name: &str, version: &str) -> Result<PathBuf, KmodError>
     })
 }
 
+/// Discover an installed DKMS module version from `/var/lib/dkms/{module}/`.
+///
+/// Scans version subdirectories and parses `PACKAGE_VERSION` from each
+/// `dkms.conf`. Returns the lexicographically greatest version found
+/// (DKMS version strings sort correctly for NVIDIA driver numbering).
+pub fn discover_dkms_version(module_name: &str) -> Option<String> {
+    let base = PathBuf::from(format!("/var/lib/dkms/{module_name}"));
+    if !base.is_dir() {
+        return None;
+    }
+
+    let mut versions = Vec::new();
+    let entries = std::fs::read_dir(&base).ok()?;
+    for entry in entries.flatten() {
+        if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
+        let version_dir = entry.path();
+        let conf_path = version_dir.join("dkms.conf");
+        if conf_path.is_file()
+            && let Ok(content) = std::fs::read_to_string(&conf_path)
+            && let Some(version) = parse_dkms_package_version(&content)
+        {
+            versions.push(version);
+            continue;
+        }
+        let dir_name = entry.file_name().to_string_lossy().into_owned();
+        if !dir_name.is_empty() && dir_name != "kernelversions" {
+            versions.push(dir_name);
+        }
+    }
+
+    versions.sort();
+    versions.pop()
+}
+
+fn parse_dkms_package_version(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("PACKAGE_VERSION=") {
+            return Some(rest.trim_matches('"').to_owned());
+        }
+    }
+    None
+}
+
 /// Load a kernel module from a `.ko` or `.ko.zst` file via guarded `insmod`.
 ///
 /// If the path ends in `.ko.zst`, the module is decompressed in-process via
@@ -423,5 +469,23 @@ mod tests {
     fn find_stock_module_fails_for_nonsense() {
         let result = find_stock_module("toadstool_nonexistent_module_12345");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_dkms_package_version_extracts_quoted_value() {
+        let conf = r#"
+PACKAGE_NAME="nvidia"
+PACKAGE_VERSION="470.256.02"
+BUILT_MODULE_NAME[0]="nvidia"
+"#;
+        assert_eq!(
+            super::parse_dkms_package_version(conf).as_deref(),
+            Some("470.256.02")
+        );
+    }
+
+    #[test]
+    fn discover_dkms_version_returns_none_for_missing_module() {
+        assert!(discover_dkms_version("toadstool_nonexistent_dkms_module").is_none());
     }
 }

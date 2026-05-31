@@ -22,8 +22,6 @@ pub use diag::{
     probe_gpu_identity,
 };
 pub use gem::{GemNewResult, gem_cpu_prep, gem_new, pushbuf_submit};
-#[allow(unused_imports, reason = "used by NvDevice orchestration absorbed in later Phase C batch")]
-pub(crate) use gem::gem_mmap_region;
 pub use new_uapi::{
     exec_submit, exec_submit_with_signal, syncobj_create, syncobj_destroy, syncobj_wait,
     vm_bind_map, vm_bind_unmap, vm_init,

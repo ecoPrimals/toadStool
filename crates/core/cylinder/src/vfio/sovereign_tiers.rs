@@ -279,7 +279,8 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     let gr_status = bar0.read_u32(0x400700).ok(); // PGRAPH_STATUS
 
     // Discover CE runlist
-    let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
+    let default_profile = crate::nv::generation::profile_for_sm(70);
+    let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0, default_profile);
 
     // Check TPC PRI ring stations — the key dispatch-readiness indicator.
     // Probe GPC{n}_TPC0+0xC (0x50400c + gpc*0x8000) which is a TPC ID/status
@@ -391,7 +392,7 @@ pub fn classify_tier_for_profile(
     };
 
     let gr_status = bar0.read_u32(profile.pgraph_status_offset as usize).ok();
-    let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
+    let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0, profile);
 
     let tpc_status = bar0.read_u32(0x50400c).ok();
     let tpc_alive = (0..6u32).any(|gpc| {
