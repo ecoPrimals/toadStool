@@ -189,12 +189,27 @@ pub(crate) async fn sovereign_warm_handoff(
         &config.module_name,
     );
 
-    let rpc_timeout = std::time::Duration::from_secs(420);
+    let rpc_timeout = std::time::Duration::from_mins(7);
+    let module_name_for_signal = config.module_name.clone();
     let blocking_future = tokio::task::spawn_blocking(move || {
-        toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_heartbeat(
+        toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_signals(
             &config,
             None,
-            || crate::background::catalyst_watchdog::heartbeat(),
+            crate::background::catalyst_watchdog::heartbeat,
+            {
+                let mod_name = module_name_for_signal;
+                move |signal| {
+                    use toadstool_cylinder::vfio::sovereign_handoff::PipelineSignal;
+                    match signal {
+                        PipelineSignal::EnterModuleCleanup => {
+                            crate::background::catalyst_watchdog::enter_module_cleanup(&mod_name);
+                        }
+                        PipelineSignal::ExitModuleCleanup => {
+                            crate::background::catalyst_watchdog::exit_module_cleanup();
+                        }
+                    }
+                }
+            },
         )
     });
 

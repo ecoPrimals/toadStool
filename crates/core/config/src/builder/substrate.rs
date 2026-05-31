@@ -113,8 +113,7 @@ impl ToadStoolConfigTrait for SubstrateConfig {
                 },
             ),
             auto_discover: env::var(socket_env::TOADSTOOL_AUTO_DISCOVER)
-                .map(|s| s != "false" && s != "0")
-                .unwrap_or(true),
+                .map_or(true, |s| s != "false" && s != "0"),
         })
     }
 

@@ -87,6 +87,8 @@ fn classify_line(line: &str) -> Severity {
 /// Capture a crash triage report — gather as much state as possible before
 /// the system goes down.
 fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
+    use std::fmt::Write;
+
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
@@ -98,11 +100,10 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
     let report_path = format!("{}/crash-{}.txt", crash_dir, timestamp);
     let mut report = String::with_capacity(8192);
 
-    report.push_str(&format!("=== DIESEL ENGINE CRASH REPORT ===\n"));
-    report.push_str(&format!("Timestamp: {}\n", timestamp));
-    report.push_str(&format!("Trigger:   {}\n\n", trigger_line));
+    report.push_str("=== DIESEL ENGINE CRASH REPORT ===\n");
+    let _ = writeln!(report, "Timestamp: {timestamp}");
+    let _ = writeln!(report, "Trigger:   {trigger_line}\n");
 
-    // Recent kernel log context
     report.push_str("=== KERNEL LOG CONTEXT (last 50 lines) ===\n");
     for line in recent_lines.iter().rev().take(50).rev() {
         report.push_str(line);
@@ -110,27 +111,25 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
     }
     report.push('\n');
 
-    // Module state
     report.push_str("=== MODULE STATE ===\n");
     for name in &["nvsov", "nvidia", "nvidia_uvm", "nvidia_modeset", "nvidia_drm", "vfio_pci", "no_bus_reset"] {
         if let Some(snap) = toadstool_cylinder::vfio::guarded_sysfs::module_snapshot(name) {
-            report.push_str(&format!("{}: {}\n", name, snap));
+            let _ = writeln!(report, "{name}: {snap}");
         }
     }
     report.push('\n');
 
-    // GPU BAR0 key registers (best-effort, may fail if GPU is already dead)
     report.push_str("=== GPU REGISTER SNAPSHOT (best-effort) ===\n");
     let gpu_bdfs = discover_gpu_bdfs();
     for bdf in &gpu_bdfs {
-        report.push_str(&format!("--- {} ---\n", bdf));
+        let _ = writeln!(report, "--- {bdf} ---");
         let resource_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
         match std::fs::metadata(&resource_path) {
             Ok(_) => {
                 match read_gpu_registers_safe(bdf) {
                     Some(regs) => {
                         for (name, val) in &regs {
-                            report.push_str(&format!("  {}: 0x{:08x}\n", name, val));
+                            let _ = writeln!(report, "  {name}: 0x{val:08x}");
                         }
                     }
                     None => report.push_str("  (BAR0 read failed — GPU may be owned by vfio-pci or dead)\n"),
@@ -141,17 +140,15 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
     }
     report.push('\n');
 
-    // PCI config space
     report.push_str("=== PCI CONFIG (best-effort) ===\n");
     for bdf in &gpu_bdfs {
         let config_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
-        if let Ok(data) = std::fs::read(&config_path) {
-            if data.len() >= 8 {
+        if let Ok(data) = std::fs::read(&config_path)
+            && data.len() >= 8 {
                 let cmd = u16::from_le_bytes([data[4], data[5]]);
                 let status = u16::from_le_bytes([data[6], data[7]]);
-                report.push_str(&format!("{}: CMD=0x{:04x} STATUS=0x{:04x}\n", bdf, cmd, status));
+                let _ = writeln!(report, "{bdf}: CMD=0x{cmd:04x} STATUS=0x{status:04x}");
             }
-        }
     }
 
     // Write the report
@@ -186,7 +183,7 @@ fn discover_gpu_bdfs() -> Vec<String> {
 
 /// Best-effort BAR0 register read — returns None if anything goes wrong.
 fn read_gpu_registers_safe(bdf: &str) -> Option<Vec<(&'static str, u32)>> {
-    const BAR0_SIZE: usize = 0x1000000;
+    const BAR0_SIZE: usize = 0x100_0000;
     toadstool_cylinder::vfio::sysfs_bar0::read_registers_best_effort(
         bdf,
         BAR0_SIZE,
@@ -195,7 +192,7 @@ fn read_gpu_registers_safe(bdf: &str) -> Option<Vec<(&'static str, u32)>> {
             ("INTR_0", 0x100),
             ("INTR_EN_0", 0x140),
             ("PMC_ENABLE", 0x200),
-            ("FECS_CPUCTL", 0x409100),
+            ("FECS_CPUCTL", 0x40_9100),
         ],
     )
 }
@@ -211,6 +208,9 @@ pub fn start_sentinel_thread() {
         .spawn(move || {
             // Wrap entire thread body in catch_unwind to detect silent panics
             let result = std::panic::catch_unwind(|| {
+            use rustix::fd::BorrowedFd;
+            use std::os::unix::io::AsRawFd;
+
             info!("kernel sentinel: thread spawned, opening /dev/kmsg");
 
             // /dev/kmsg is a special device: each read() returns exactly one
@@ -225,8 +225,6 @@ pub fn start_sentinel_thread() {
             };
 
             // Seek to end so we only see new messages
-            use rustix::fd::BorrowedFd;
-            use std::os::unix::io::AsRawFd;
             let raw_fd = kmsg_fd.as_raw_fd();
             // SAFETY: we own kmsg_fd and it outlives this borrow
             let borrowed = unsafe { BorrowedFd::borrow_raw(raw_fd) };
@@ -264,7 +262,7 @@ pub fn start_sentinel_thread() {
                 let line = line.trim_end();
 
                 // /dev/kmsg format: "priority,sequence,timestamp,-;message"
-                let msg = line.splitn(2, ';').nth(1).unwrap_or(line);
+                let msg = line.split_once(';').map_or(line, |x| x.1);
 
                 // Keep a rolling buffer of recent lines
                 if recent_lines.len() >= 64 {

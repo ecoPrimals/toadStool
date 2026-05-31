@@ -349,7 +349,7 @@ impl ConnectedJsonRpcClient {
         tokio::time::timeout(timeout, self.call(method, params))
             .await
             .map_err(|_| {
-                ToadStoolError::network(format!("RPC call {method} timed out after {timeout:?}",))
+                ToadStoolError::network(format!("RPC call {method} timed out after {timeout:?}"))
             })?
     }
 }

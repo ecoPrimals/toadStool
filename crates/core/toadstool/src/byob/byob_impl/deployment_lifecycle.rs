@@ -199,7 +199,7 @@ impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
         // ✅ ZERO-COPY: Pre-allocate HashMap with known capacity
         let mut service_endpoints = HashMap::with_capacity(deployment.services.len());
         for ((service_name, service_spec), internal_ip) in
-            deployment.services.iter().zip(internal_ips.into_iter())
+            deployment.services.iter().zip(internal_ips)
         {
             // Allocate external IP if service has exposed ports
             let external_ip = self.allocate_external_ip(service_spec, &deployment.team_id);

@@ -89,8 +89,7 @@ impl ResourceManager {
             .clamp(0.0, 1.0);
 
         let (memory_used_bytes, memory_total_bytes) = toadstool_sysmon::memory_info()
-            .map(|m| (m.used, m.total.max(1)))
-            .unwrap_or((0, 1));
+            .map_or((0, 1), |m| (m.used, m.total.max(1)));
 
         let disks = toadstool_sysmon::disk_usage().unwrap_or_default();
         let (disk_used_bytes, disk_total_bytes) =

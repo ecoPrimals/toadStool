@@ -59,8 +59,7 @@ impl UnibinExecutionConfig {
             .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.into());
         let tcp_bind_address = std::env::var(socket_env::TOADSTOOL_TCP_BIND_ADDRESS).ok();
         let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
-            .map(|v| v != "1" && v.to_lowercase() != "true")
-            .unwrap_or(true);
+            .map_or(true, |v| v != "1" && v.to_lowercase() != "true");
         let coordination_auth_token = std::env::var(socket_env::COORDINATION_AUTH_TOKEN)
             .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_AUTH_TOKEN))
             .ok();

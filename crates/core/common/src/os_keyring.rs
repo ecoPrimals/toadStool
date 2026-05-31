@@ -146,7 +146,7 @@ fn store_linux_secret_service(name: &str, value: &str) -> bool {
         let _ = stdin.write_all(value.as_bytes());
     }
 
-    child.wait().map(|s| s.success()).unwrap_or(false)
+    child.wait().is_ok_and(|s| s.success())
 }
 
 #[cfg(target_os = "linux")]
@@ -156,8 +156,7 @@ fn delete_linux_secret_service(name: &str) -> bool {
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
 }
 
 #[cfg(target_os = "macos")]

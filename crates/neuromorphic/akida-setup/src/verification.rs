@@ -15,7 +15,7 @@ pub fn verify_setup(devices: &[AkidaDevice]) -> Result<()> {
     // condition-based wait.
     tracing::info!("Waiting for device nodes...");
     for _ in 0..50 {
-        if list_device_nodes().map(|n| !n.is_empty()).unwrap_or(false) {
+        if list_device_nodes().is_ok_and(|n| !n.is_empty()) {
             break;
         }
         std::thread::sleep(Duration::from_millis(100));

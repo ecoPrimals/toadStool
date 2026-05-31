@@ -13,7 +13,7 @@ pub(crate) async fn sovereign_catalyst_boot(
     params: Option<&serde_json::Value>,
 ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
     use crate::pure_jsonrpc::types::JsonRpcError;
-    use toadstool_cylinder::vfio::sovereign_handoff::{HandoffConfig, execute_handoff};
+    use toadstool_cylinder::vfio::sovereign_handoff::HandoffConfig;
 
     let bdf = params
         .and_then(|p| p.get("bdf"))
@@ -93,9 +93,23 @@ pub(crate) async fn sovereign_catalyst_boot(
     }
 
     let bdf_owned = bdf.to_string();
+    let watchdog_profile = toadstool_cylinder::nv::registers::pmc::InterruptProfile::for_sm(
+        config.sm_version.unwrap_or(70),
+    );
+    let _watchdog_guard = crate::background::catalyst_watchdog::activate(
+        &bdf_owned,
+        watchdog_profile,
+        Some(std::time::Duration::from_mins(2)),
+        &config.module_name,
+    );
+
     let rpc_timeout = std::time::Duration::from_secs(90);
     let blocking_future = tokio::task::spawn_blocking(move || {
-        execute_handoff(&config, None)
+        toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_heartbeat(
+            &config,
+            None,
+            crate::background::catalyst_watchdog::heartbeat,
+        )
     });
 
     let handoff_result = match tokio::time::timeout(rpc_timeout, blocking_future).await {

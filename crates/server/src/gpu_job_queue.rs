@@ -247,7 +247,7 @@ impl GpuJobQueue {
             jobs.values().cloned().collect()
         };
         // Sort by submission time (newest first)
-        result.sort_by(|a, b| b.submitted_at.cmp(&a.submitted_at));
+        result.sort_by_key(|j| std::cmp::Reverse(j.submitted_at));
         result
     }
 

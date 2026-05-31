@@ -148,8 +148,7 @@ impl ProviderRegistry {
         };
 
         // Failure rate affects score
-        if provider.request_count > 0 {
-            let failure_rate = (provider.failure_count * 100) / provider.request_count;
+        if let Some(failure_rate) = (provider.failure_count * 100).checked_div(provider.request_count) {
             score += failure_rate;
         }
 

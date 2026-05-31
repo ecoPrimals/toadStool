@@ -99,7 +99,7 @@ pub(super) fn generate_recommendations(
         }
     }
 
-    recs.sort_by(|a, b| b.priority.cmp(&a.priority));
+    recs.sort_by_key(|r| std::cmp::Reverse(r.priority));
     recs
 }
 

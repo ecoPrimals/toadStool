@@ -93,8 +93,7 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
     // Fallback: use std::thread::available_parallelism
     if cpu_info.physical_cores == 0 {
         cpu_info.physical_cores = std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .unwrap_or(4);
+            .map_or(4, std::num::NonZero::get);
         cpu_info.logical_cores = cpu_info.physical_cores;
         cpu_info.model_name = "Unknown CPU".to_string();
         warn!("Could not detect CPU details, using fallback values");
@@ -127,11 +126,10 @@ fn parse_linux_cpuinfo(cpuinfo: &str) -> CpuInfo {
                 "processor" => {
                     core_count += 1;
                 }
-                "model name" => {
-                    if parsed.model_name.is_empty() {
+                "model name"
+                    if parsed.model_name.is_empty() => {
                         parsed.model_name = value.to_string();
                     }
-                }
                 "cpu family" => {
                     if let Ok(family) = value.parse::<u32>() {
                         parsed.family = family;

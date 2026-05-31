@@ -177,7 +177,7 @@ fn disable_pci_msi_config(bdf: &str) {
 
     while cap_ptr != 0 && visited < 48 {
         visited += 1;
-        let cap_offset = cap_ptr as u64;
+        let cap_offset = u64::from(cap_ptr);
         let mut cap_hdr = [0u8; 4];
         if f.seek(std::io::SeekFrom::Start(cap_offset)).is_err()
             || f.read_exact(&mut cap_hdr).is_err()

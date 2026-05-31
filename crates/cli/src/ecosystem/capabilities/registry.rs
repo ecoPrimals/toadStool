@@ -98,7 +98,7 @@ impl CapabilityRegistry {
         }
 
         // Sort by priority (highest first)
-        provider_list.sort_by(|a, b| b.priority.cmp(&a.priority));
+        provider_list.sort_by_key(|p| std::cmp::Reverse(p.priority));
         drop(providers);
     }
 

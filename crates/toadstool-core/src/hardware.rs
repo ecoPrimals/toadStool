@@ -178,8 +178,7 @@ impl HardwareManager {
                     // Check if userspace access available (resource files readable)
                     let userspace_capable = device_path.join("resource0").exists()
                         && fs::metadata(device_path.join("resource0"))
-                            .map(|m| !m.permissions().readonly())
-                            .unwrap_or(false);
+                            .is_ok_and(|m| !m.permissions().readonly());
 
                     npus.push(HardwareDevice {
                         hardware_type: HardwareType::Npu,

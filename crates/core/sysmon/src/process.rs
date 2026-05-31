@@ -92,8 +92,7 @@ pub fn all_processes() -> Result<Vec<ProcessInfo>> {
 
         let status_path = format!("/proc/{pid}/status");
         let rss_bytes = std::fs::read_to_string(&status_path)
-            .map(|c| parse_vm_rss(&c))
-            .unwrap_or(0);
+            .map_or(0, |c| parse_vm_rss(&c));
 
         if let Some(info) = parse_proc_stat(&stat_content, rss_bytes, boot_time) {
             procs.push(info);

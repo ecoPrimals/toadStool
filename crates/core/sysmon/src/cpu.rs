@@ -11,8 +11,7 @@ use std::time::Duration;
 #[must_use]
 pub fn cpu_count() -> usize {
     thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
+        .map_or(1, std::num::NonZero::get)
 }
 
 /// CPU brand/model string from `/proc/cpuinfo`.

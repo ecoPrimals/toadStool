@@ -116,7 +116,7 @@ pub(crate) fn trigger_rm_init(
                 crate::nv::registers::pmc::disable_pci_msi(bdf, "post-exit");
                 crate::nv::registers::pmc::intx_disable(bdf, "post-exit");
 
-                std::thread::sleep(Duration::from_millis(3000));
+                std::thread::sleep(Duration::from_secs(3));
                 return Ok(RmTriggerResult {
                     summary: format!(
                         "RM triggered via rm_trigger helper (major={major}, channel={}), exit={}",
@@ -162,7 +162,7 @@ pub(crate) fn trigger_rm_init(
         .open(&dev_path);
     match fd {
         Ok(f) => {
-            std::thread::sleep(Duration::from_millis(5000));
+            std::thread::sleep(Duration::from_secs(5));
             drop(f);
             let _ = std::fs::remove_file(&dev_path);
             Ok(RmTriggerResult {

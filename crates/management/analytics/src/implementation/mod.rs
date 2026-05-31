@@ -90,7 +90,7 @@ impl IntelligentAnalyticsEngine {
 
         let alert_engine = self;
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(60));
+            let mut interval = tokio::time::interval(Duration::from_mins(1));
 
             loop {
                 interval.tick().await;
@@ -204,7 +204,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     ) -> ToadStoolResult<Vec<crate::types::PredictionPoint>> {
         debug!("Predicting values for metric: {}", metric_name);
 
-        let cutoff_time = SystemTime::now() - Duration::from_secs(168 * 3600);
+        let cutoff_time = SystemTime::now() - Duration::from_hours(168);
         let buf = self.data_buffer.read().await;
         let matching = buffer::query_data_points(&buf, metric_name, cutoff_time);
 
@@ -225,7 +225,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     async fn evaluate_alerts(&self) -> ToadStoolResult<Vec<Alert>> {
         debug!("Evaluating alert conditions");
 
-        let recent_time = SystemTime::now() - Duration::from_secs(5 * 60);
+        let recent_time = SystemTime::now() - Duration::from_mins(5);
         let buf = self.data_buffer.read().await;
         let recent_points: Vec<&AnalyticsDataPoint> = buf
             .iter()

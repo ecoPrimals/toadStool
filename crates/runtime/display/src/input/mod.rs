@@ -168,7 +168,7 @@ impl InputManager {
         loop {
             // Sync current focus into parser before parsing each batch.
             // Uses a brief read lock — no async boundary needed here.
-            let current_focus = shared_focus.read().map(|g| *g).unwrap_or(None);
+            let current_focus = shared_focus.read().map_or(None, |g| *g);
             parser.set_focused_window(current_focus);
 
             // Use spawn_blocking for synchronous evdev calls
@@ -266,12 +266,11 @@ impl InputManager {
         let previous = self
             .shared_focus
             .write()
-            .map(|mut g| {
+            .map_or(None, |mut g| {
                 let old = *g;
                 *g = window;
                 old
-            })
-            .unwrap_or(None);
+            });
 
         if previous != window {
             tracing::debug!("Input focus changed: {:?} → {:?}", previous, window);
@@ -291,7 +290,7 @@ impl InputManager {
     /// Get currently focused window.
     #[must_use]
     pub fn focused_window(&self) -> Option<WindowId> {
-        self.shared_focus.read().map(|g| *g).unwrap_or(None)
+        self.shared_focus.read().map_or(None, |g| *g)
     }
 
     /// Get number of devices

@@ -84,7 +84,7 @@ impl DispatchHandler {
             priority: 3,
             preferred_devices,
             min_vram_bytes: 0,
-            estimated_duration: std::time::Duration::from_secs(60),
+            estimated_duration: std::time::Duration::from_mins(1),
         };
 
         match orchestrator.allocate(&request) {

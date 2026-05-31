@@ -17,7 +17,6 @@
 )]
 
 use toadstool_cylinder::nv::registers::{falcon, gpc, pgraph, pbus, pmc, pmu, pramin};
-use std::io;
 use std::os::fd::AsFd;
 use std::process::ExitCode;
 use std::thread;

@@ -132,7 +132,7 @@ pub fn bind_vfio(bdf: &str) -> Result<BindResult> {
     }
 
     fs::write(
-        &sysfs_pci_driver_new_id("vfio-pci"),
+        sysfs_pci_driver_new_id("vfio-pci"),
         format!("{vendor} {device}"),
     )
     .map_err(|e| NvPmuError::Hardware(format!("Failed to register with vfio-pci: {e}")))?;
@@ -175,7 +175,7 @@ pub fn unbind_vfio(bdf: &str, original_driver: &str) -> Result<BindResult> {
         .map_err(|e| NvPmuError::Hardware(format!("Failed to unbind {bdf} from vfio-pci: {e}")))?;
 
     let _ = fs::write(
-        &sysfs_pci_driver_remove_id("vfio-pci"),
+        sysfs_pci_driver_remove_id("vfio-pci"),
         format!("{vendor} {device}"),
     );
 
@@ -183,7 +183,7 @@ pub fn unbind_vfio(bdf: &str, original_driver: &str) -> Result<BindResult> {
     if Path::new(&driver_bind_path).exists() {
         let _ = fs::write(&driver_bind_path, bdf);
     } else {
-        let _ = fs::write(&sysfs_pci_bus_rescan(), "1");
+        let _ = fs::write(sysfs_pci_bus_rescan(), "1");
     }
 
     let current = current_binding(bdf)?;

@@ -111,8 +111,7 @@ impl Default for DiscoveryConfig {
     fn default() -> Self {
         // Environment-aware defaults
         let enable_mdns = std::env::var(socket_env::TOADSTOOL_MDNS_ENABLE)
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(true);
+            .map_or(true, |v| v == "true" || v == "1");
 
         let require_mdns = std::env::var(socket_env::TOADSTOOL_MDNS_REQUIRE)
             .is_ok_and(|v| v == "true" || v == "1");

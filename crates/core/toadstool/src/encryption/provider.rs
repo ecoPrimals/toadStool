@@ -241,7 +241,7 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
         }
 
         // Sort by score (best first)
-        matches.sort_by(|a, b| b.0.cmp(&a.0));
+        matches.sort_by_key(|item| std::cmp::Reverse(item.0));
 
         // Return best match
         Ok(Some(matches[0].1.clone()))

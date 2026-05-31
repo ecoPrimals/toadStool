@@ -370,7 +370,7 @@ impl PolicyManager for FilePolicyManager {
 
         // Evaluate current policy rules
         let mut rules_by_priority: Vec<_> = policy.rules.iter().collect();
-        rules_by_priority.sort_by(|a, b| b.priority.cmp(&a.priority));
+        rules_by_priority.sort_by_key(|r| std::cmp::Reverse(r.priority));
 
         for rule in rules_by_priority {
             if !rule.enabled {

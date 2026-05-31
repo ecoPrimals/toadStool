@@ -26,8 +26,7 @@ pub fn get_worker_threads() -> u32 {
     loader.get_u32(
         "WORKER_THREADS",
         std::thread::available_parallelism()
-            .map(|n| n.get() as u32)
-            .unwrap_or(4),
+            .map_or(4, |n| n.get() as u32),
     )
 }
 

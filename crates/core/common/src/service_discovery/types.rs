@@ -137,8 +137,7 @@ impl DiscoveredService {
     pub fn is_fresh(&self, ttl: Duration) -> bool {
         self.last_seen
             .elapsed()
-            .map(|elapsed| elapsed < ttl)
-            .unwrap_or(false)
+            .is_ok_and(|elapsed| elapsed < ttl)
     }
 }
 

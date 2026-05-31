@@ -59,10 +59,8 @@ impl EcosystemIntegrator {
         let discovery_engine = DiscoveryEngine::new();
 
         // Define capabilities instead of hardcoded service names
+        use crate::ecosystem::constants::capability_categories;
         let scan_capabilities = if service_types.is_empty() {
-            // Discover all known ecosystem capabilities
-            // Zero-copy optimization: Use static strings
-            use crate::ecosystem::constants::capability_categories;
             vec![
                 capability_categories::NETWORK.to_string(),      // coordination / discovery
                 capability_categories::CRYPTO.to_string(),         // crypto / security
@@ -70,7 +68,6 @@ impl EcosystemIntegrator {
                 capability_categories::ORCHESTRATION.to_string(), // Orchestration capabilities
             ]
         } else {
-            use crate::ecosystem::constants::capability_categories;
             use crate::templates::capability_helpers::dependency_label_to_capability;
 
             service_types

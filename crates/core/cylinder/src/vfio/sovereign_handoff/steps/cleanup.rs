@@ -22,6 +22,7 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         // valid, preventing use-after-free crashes.
 
         ctx.module_unloaded = false;
+        ctx.signal(PipelineSignal::EnterModuleCleanup);
         if ctx.module_loaded {
             if ctx.is_catalyst {
                 // NOP'd nv_close_device means NVIDIA RM's kernel timers,
@@ -74,6 +75,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             }
         }
 
+        ctx.signal(PipelineSignal::ExitModuleCleanup);
+
         // ── Step 9: Restore reset capabilities ─────────────────────────────
         //
         // Re-enable default PCI reset methods so that subsequent cold resets
@@ -83,7 +86,6 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         if let Err(e) = guarded_sysfs::restore_bus_reset() {
             tracing::warn!(error = %e, "failed to unload no_bus_reset module (non-fatal)");
         }
-
 
     None
 }

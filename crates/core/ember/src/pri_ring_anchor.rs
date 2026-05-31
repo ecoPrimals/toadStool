@@ -41,8 +41,7 @@ impl BootServiceEvidence {
     pub fn new(engine: impl Into<String>, description: impl Into<String>) -> Self {
         let ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
         Self {
             description: description.into(),
             engine: engine.into(),

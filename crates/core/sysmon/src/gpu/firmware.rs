@@ -185,8 +185,7 @@ fn check_firmware_component(base: &Path, chip: &str, component: &str) -> FwStatu
     let dir = base.join(chip).join(component);
     if dir.exists()
         && std::fs::read_dir(&dir)
-            .map(|mut d| d.next().is_some())
-            .unwrap_or(false)
+            .is_ok_and(|mut d| d.next().is_some())
     {
         return FwStatus::Present;
     }

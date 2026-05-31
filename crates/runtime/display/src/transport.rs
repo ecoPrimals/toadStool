@@ -115,12 +115,11 @@ impl HardwareTransport for DisplayTransport {
     fn is_available(&self) -> bool {
         // Re-probe the connector for hotplug.
         enumerate_connectors(&self.device)
-            .map(|cs| {
+            .is_ok_and(|cs| {
                 cs.iter().any(|c| {
                     c.handle == self.pipeline.connector && c.status == ConnectionStatus::Connected
                 })
             })
-            .unwrap_or(false)
     }
 
     fn send(&mut self, data: &[u8]) -> Result<usize, TransportError> {

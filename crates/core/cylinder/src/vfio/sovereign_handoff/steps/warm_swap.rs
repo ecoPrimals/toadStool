@@ -623,7 +623,7 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                             "FECS accessible — sending INIT_CTXSW");
                         match crate::vfio::channel::fecs::fecs_init_ctxsw(&post_swap_bar0) {
                             Ok(r) => {
-                                std::thread::sleep(Duration::from_millis(1000));
+                                std::thread::sleep(Duration::from_secs(1));
                                 let tpc0 = post_swap_bar0
                                     .read_u32((gpc::gpc_tpc0(0) + 0x100) as usize)
                                     .unwrap_or(0xdead);

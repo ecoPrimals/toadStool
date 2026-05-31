@@ -92,7 +92,7 @@ pub fn validate_ce_with_profile(
         None => {
             let boot0 = bar0.read_u32(0).unwrap_or(0);
             crate::nv::identity::boot0_to_sm(boot0)
-                .map(|sm| crate::nv::generation::profile_for_sm(sm))
+                .map(crate::nv::generation::profile_for_sm)
                 .unwrap_or_else(|| crate::nv::generation::profile_for_sm(70))
         }
     };

@@ -64,11 +64,7 @@ impl MetricsCollector {
     /// Get average execution time in microseconds
     pub fn average_execution_time_us(&self) -> u64 {
         let total = self.total_executions.load(Ordering::Relaxed);
-        if total == 0 {
-            0
-        } else {
-            self.total_execution_time_us.load(Ordering::Relaxed) / total
-        }
+        self.total_execution_time_us.load(Ordering::Relaxed).checked_div(total).unwrap_or(0)
     }
 }
 

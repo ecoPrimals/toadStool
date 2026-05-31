@@ -34,7 +34,7 @@ fn kepler_patch_set_targets_correct_functions() {
 fn nvidia_patch_set_targets_correct_functions() {
     let ps = PatchSet::nvidia_warm_handoff();
     assert_eq!(ps.module_name, "nvidia");
-    assert_eq!(ps.targets.len(), 17);
+    assert_eq!(ps.targets.len(), 19);
 
     let names: Vec<&str> = ps.targets.iter().map(|t| t.symbol.as_str()).collect();
     // Teardown NOPs

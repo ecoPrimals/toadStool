@@ -77,7 +77,7 @@ pub(crate) fn build_composed_policy(
         }
     }
 
-    all_rules.sort_by(|a, b| b.priority.cmp(&a.priority));
+    all_rules.sort_by_key(|r| std::cmp::Reverse(r.priority));
     composed_policy.rules = all_rules;
 
     // Merge metadata

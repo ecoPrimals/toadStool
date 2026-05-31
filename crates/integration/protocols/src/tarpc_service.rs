@@ -327,22 +327,37 @@ pub mod semantic_methods {
 /// Errors returned by tarpc RPC service methods.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum ServiceError {
+    /// The requested workload was not found.
     #[error("workload not found: {workload_id}")]
-    WorkloadNotFound { workload_id: String },
+    WorkloadNotFound {
+        /// ID of the missing workload.
+        workload_id: String,
+    },
 
+    /// Workload execution failed.
     #[error("execution failed: {0}")]
     ExecutionFailed(String),
 
+    /// The workload ID was invalid or malformed.
     #[error("invalid workload ID: {workload_id} — {detail}")]
-    InvalidWorkloadId { workload_id: String, detail: String },
+    InvalidWorkloadId {
+        /// The invalid workload ID.
+        workload_id: String,
+        /// Explanation of why the ID is invalid.
+        detail: String,
+    },
 
+    /// Workload cancellation failed.
     #[error("cancel failed: {0}")]
     CancelFailed(String),
 
+    /// Coordinator-level error.
     #[error("coordinator error: {0}")]
     Coordinator(String),
 }
 
+/// Core RPC service for workload execution and management.
+#[allow(missing_docs)]
 #[tarpc::service]
 pub trait ToadStoolComputeRpc {
     /// Submit workload for execution

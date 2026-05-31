@@ -39,8 +39,7 @@ impl CpuComputeResource {
     /// Returns when the Rayon thread pool cannot be constructed.
     pub fn new() -> ToadStoolResult<Self> {
         let num_cores = std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .unwrap_or(1);
+            .map_or(1, std::num::NonZero::get);
 
         let thread_pool = Self::build_thread_pool(num_cores, "toadstool-cpu")?;
         Ok(Self::from_thread_pool(num_cores, thread_pool))
@@ -236,8 +235,7 @@ impl CpuComputeResource {
 
     fn detect_ram_size() -> u64 {
         toadstool_sysmon::memory_info()
-            .map(|m| m.total)
-            .unwrap_or(0)
+            .map_or(0, |m| m.total)
     }
 
     /// Detect cache hierarchy

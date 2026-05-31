@@ -25,8 +25,7 @@ pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, Va
 
     // Query CPU
     let total_cpu_cores = std::thread::available_parallelism()
-        .map(|n| u32::try_from(n.get()).unwrap_or(CPU_FALLBACK_CORES))
-        .unwrap_or(CPU_FALLBACK_CORES);
+        .map_or(CPU_FALLBACK_CORES, |n| u32::try_from(n.get()).unwrap_or(CPU_FALLBACK_CORES));
     let available_cpu_cores = (total_cpu_cores * CPU_AVAILABLE_PERCENT) / 100;
 
     let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {

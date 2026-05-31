@@ -26,7 +26,7 @@ use std::time::Duration;
 use toadstool_cylinder::nv::registers::pmc::InterruptProfile;
 use tracing::{error, info, warn};
 
-const DEFAULT_WATCHDOG_TIMEOUT: Duration = Duration::from_secs(120);
+const DEFAULT_WATCHDOG_TIMEOUT: Duration = Duration::from_mins(2);
 const WATCHDOG_CHECK_INTERVAL: Duration = Duration::from_millis(500);
 const MODULE_POLL_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -69,6 +69,8 @@ fn epoch_ms() -> u64 {
 /// `InterruptProfile`, plus PCI INTx disable as belt-and-suspenders.
 /// Routine quench — suppress GPU interrupt assertion without disrupting DMA.
 /// Used during INTR_EN monitoring when RM is still running and needs Bus Master.
+/// Disabled at Exp 233 checkpoint — kept for re-activation if INTR_EN monitoring is restored.
+#[allow(dead_code)]
 fn routine_quench(bdf: &str, profile: &InterruptProfile) {
     warn!(bdf, "WATCHDOG: performing routine interrupt quench");
     toadstool_cylinder::nv::registers::pmc::quench_interrupts(bdf, profile, "watchdog-routine");
@@ -122,7 +124,7 @@ pub fn heartbeat() {
 /// the module death transition in real-time.
 pub fn enter_module_cleanup(module_name: &str) {
     {
-        let mut locked = WATCHDOG.module_name.lock().unwrap_or_else(|e| e.into_inner());
+        let mut locked = WATCHDOG.module_name.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked = module_name.to_string();
     }
     WATCHDOG.phase.store(PHASE_MODULE_CLEANUP, Ordering::Release);
@@ -165,7 +167,7 @@ pub fn activate(
         *locked_profile = profile;
     }
     {
-        let mut locked_module = WATCHDOG.module_name.lock().unwrap_or_else(|e| e.into_inner());
+        let mut locked_module = WATCHDOG.module_name.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked_module = module_name.to_string();
     }
     let timeout = timeout.unwrap_or(DEFAULT_WATCHDOG_TIMEOUT);
@@ -188,8 +190,8 @@ pub fn is_active() -> bool {
 /// Force an emergency interrupt quench from an external caller (e.g. kernel
 /// sentinel). Uses the currently registered BDF and interrupt profile.
 pub fn force_emergency_quench() {
-    let bdf = WATCHDOG.bdf.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    let profile = WATCHDOG.interrupt_profile.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let bdf = WATCHDOG.bdf.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+    let profile = *WATCHDOG.interrupt_profile.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     if !bdf.is_empty() {
         emergency_quench(&bdf, &profile);
     }
@@ -231,7 +233,7 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
                 // Module lifecycle monitoring during cleanup phase
                 if phase == PHASE_MODULE_CLEANUP {
                     let module_name = WATCHDOG.module_name.lock()
-                        .unwrap_or_else(|e| e.into_inner())
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
                         .clone();
                     if !module_name.is_empty() {
                         module_poll_counter += 1;
@@ -251,7 +253,7 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
                                 );
                             }
 
-                            if snap.is_zombie() && !last_module_state.as_deref().is_some_and(|s| s == "Unloading") {
+                            if snap.is_zombie() && last_module_state.as_deref().is_none_or(|s| s != "Unloading") {
                                 warn!(
                                     module = snap.name.as_str(),
                                     state = snap.state.as_str(),
@@ -297,15 +299,13 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
                         .unwrap_or_else(std::sync::PoisonError::into_inner);
 
                     let module_name = WATCHDOG.module_name.lock()
-                        .unwrap_or_else(|e| e.into_inner())
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
                         .clone();
 
-                    let module_state = if !module_name.is_empty() {
-                        toadstool_cylinder::vfio::guarded_sysfs::module_snapshot(&module_name)
-                            .map(|s| format!("state={} ref={} stuck={}", s.state, s.refcount, s.is_stuck))
-                            .unwrap_or_else(|| "not loaded".into())
-                    } else {
+                    let module_state = if module_name.is_empty() {
                         "unknown".into()
+                    } else {
+                        toadstool_cylinder::vfio::guarded_sysfs::module_snapshot(&module_name).map_or_else(|| "not loaded".into(), |s| format!("state={} ref={} stuck={}", s.state, s.refcount, s.is_stuck))
                     };
 
                     error!(
@@ -338,6 +338,8 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
 
 /// Best-effort read of INTR_EN_0 (0x140) from BAR0 via sysfs resource0.
 /// Returns None if the GPU is owned by vfio-pci or the read fails.
+/// Disabled at Exp 233 checkpoint — kept for re-activation if INTR_EN monitoring is restored.
+#[allow(dead_code)]
 fn read_intr_en_safe(bdf: &str) -> Option<u32> {
     toadstool_cylinder::vfio::sysfs_bar0::read_u32_best_effort(bdf, 0x140, 0x200)
 }

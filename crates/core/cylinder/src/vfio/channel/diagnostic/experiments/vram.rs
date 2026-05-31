@@ -151,7 +151,7 @@ pub(super) fn all_vram(ctx: &mut ExperimentContext<'_>) -> DriverResult<()> {
     let _ = wv(ctx, PM, inst_base + ramin::SC0_PAGE_DIR_BASE_HI, 0);
 
     let gpfifo_vram: u64 = 0x9000;
-    let userd_vram: u64 = 0xA000;
+    let userd_vram: u32 = 0xA000;
     let _ = wv(ctx, PM, inst_base + ramfc::GP_BASE_LO, gpfifo_vram as u32);
     let _ = wv(
         ctx,
@@ -163,7 +163,7 @@ pub(super) fn all_vram(ctx: &mut ExperimentContext<'_>) -> DriverResult<()> {
         ctx,
         PM,
         inst_base + ramfc::USERD_LO,
-        userd_vram as u32 & 0xFFFF_FE00,
+        userd_vram & 0xFFFF_FE00,
     );
     let _ = wv(ctx, PM, inst_base + ramfc::USERD_HI, 0);
     let _ = wv(ctx, PM, inst_base + ramfc::SIGNATURE, 0x0000_FACE);
@@ -198,7 +198,7 @@ pub(super) fn all_vram(ctx: &mut ExperimentContext<'_>) -> DriverResult<()> {
     let _ = wv(ctx, PM, 0xC004, 1);
     let _ = wv(ctx, PM, 0xC008, 0);
     let _ = wv(ctx, PM, 0xC00C, 0);
-    let chan_dw0 = userd_vram as u32 & 0xFFFF_FF00;
+    let chan_dw0 = userd_vram & 0xFFFF_FF00;
     let _ = wv(ctx, PM, 0xC010, chan_dw0);
     let _ = wv(ctx, PM, 0xC014, 0);
     let chan_dw2 = (0x8000_u32 & 0xFFFF_F000) | ctx.channel_id;
@@ -336,15 +336,15 @@ pub(super) fn all_vram_direct_pbdma(ctx: &mut ExperimentContext<'_>) -> DriverRe
     let _ = wv(ctx, PM, ib + ramin::SC_PDB_VALID, 1);
     let _ = wv(ctx, PM, ib + ramin::SC0_PAGE_DIR_BASE_LO, pdb_lo);
     let _ = wv(ctx, PM, ib + ramin::SC0_PAGE_DIR_BASE_HI, 0);
-    let gpfifo_vram: u64 = 0x9000;
-    let userd_vram: u64 = 0xA000;
-    let _ = wv(ctx, PM, ib + ramfc::GP_BASE_LO, gpfifo_vram as u32);
+    let gpfifo_vram: u32 = 0x9000;
+    let userd_vram: u32 = 0xA000;
+    let _ = wv(ctx, PM, ib + ramfc::GP_BASE_LO, gpfifo_vram);
     let _ = wv(ctx, PM, ib + ramfc::GP_BASE_HI, ctx.limit2 << 16);
     let _ = wv(
         ctx,
         PM,
         ib + ramfc::USERD_LO,
-        userd_vram as u32 & 0xFFFF_FE00,
+        userd_vram & 0xFFFF_FE00,
     );
     let _ = wv(ctx, PM, ib + ramfc::USERD_HI, 0);
     let _ = wv(ctx, PM, ib + ramfc::SIGNATURE, 0x0000_FACE);
@@ -367,7 +367,7 @@ pub(super) fn all_vram_direct_pbdma(ctx: &mut ExperimentContext<'_>) -> DriverRe
     let _ = wv(ctx, PM, 0xC004, 1);
     let _ = wv(ctx, PM, 0xC008, 0);
     let _ = wv(ctx, PM, 0xC00C, 0);
-    let _ = wv(ctx, PM, 0xC010, (userd_vram as u32) & 0xFFFF_FF00);
+    let _ = wv(ctx, PM, 0xC010, userd_vram & 0xFFFF_FF00);
     let _ = wv(ctx, PM, 0xC014, 0);
     let _ = wv(ctx, PM, 0xC018, (0x8000_u32 & 0xFFFF_F000) | ctx.channel_id);
     let _ = wv(ctx, PM, 0xC01C, 0);
@@ -386,11 +386,11 @@ pub(super) fn all_vram_direct_pbdma(ctx: &mut ExperimentContext<'_>) -> DriverRe
     let _ = ctx.w(pccsr::channel(ctx.channel_id), pccsr::CHANNEL_ENABLE_SET);
     std::thread::sleep(std::time::Duration::from_millis(5));
 
-    let _ = ctx.w(pb + 0x40, gpfifo_vram as u32);
+    let _ = ctx.w(pb + 0x40, gpfifo_vram);
     let _ = ctx.w(pb + 0x44, ctx.limit2 << 16);
     let _ = ctx.w(pb + 0x48, 0);
     let _ = ctx.w(pb + 0x4C, 0);
-    let _ = ctx.w(pb + 0xD0, userd_vram as u32 & 0xFFFF_FE00);
+    let _ = ctx.w(pb + 0xD0, userd_vram & 0xFFFF_FE00);
     let _ = ctx.w(pb + 0xD4, 0);
     let _ = ctx.w(pb + 0xC0, 0x0000_FACE);
     let _ = ctx.w(pb + 0xAC, 0x1000_3080);

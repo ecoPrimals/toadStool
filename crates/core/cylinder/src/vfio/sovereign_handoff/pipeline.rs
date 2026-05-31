@@ -126,7 +126,7 @@ fn execute_handoff_inner(
     };
 
     // Forensic breadcrumb helper — writes timestamped markers to a file
-    // that survives soft lockups. Check /tmp/handoff-forensics.log after reboot.
+    // that survives soft lockups. Check /var/log/handoff-forensics.log after reboot.
     fn crumb(msg: &str) {
         crate::vfio::sovereign_handoff::forensics::breadcrumb(&format!("PIPELINE: {msg}"));
     }

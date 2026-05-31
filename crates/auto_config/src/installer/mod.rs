@@ -171,8 +171,7 @@ async fn docker_available() -> bool {
         .args(["version", "--format", "{{.Server.Version}}"])
         .output()
         .await
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 #[cfg(test)]

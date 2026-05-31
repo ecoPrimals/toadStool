@@ -161,7 +161,7 @@ async fn test_mock_executor_query_status_not_found() {
         )
         .await;
     assert!(status.is_err());
-    assert!(status.unwrap_err().contains("not found"));
+    assert!(status.unwrap_err().to_string().contains("not found"));
 }
 
 #[tokio::test]
@@ -253,7 +253,7 @@ async fn test_query_capabilities_executor_error() {
         .await;
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("capabilities failed"));
+    assert!(result.unwrap_err().to_string().contains("capabilities failed"));
 }
 
 #[tokio::test]
@@ -511,7 +511,7 @@ async fn test_cancel_workload_executor_error() {
         .cancel_workload(tarpc::context::current(), "cancel-fail-test".to_string())
         .await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("cancel failed"));
+    assert!(result.unwrap_err().to_string().contains("cancel failed"));
 }
 
 #[tokio::test]

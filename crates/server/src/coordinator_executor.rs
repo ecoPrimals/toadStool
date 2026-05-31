@@ -131,8 +131,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
             // The coordinator will report what THIS instance can do
 
             let cpu_cores = std::thread::available_parallelism()
-                .map(|n| u32::try_from(n.get()).unwrap_or(4))
-                .unwrap_or(4);
+                .map_or(4, |n| u32::try_from(n.get()).unwrap_or(4));
 
             let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
                 total: 0,

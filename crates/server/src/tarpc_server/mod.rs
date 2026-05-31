@@ -62,8 +62,7 @@ impl ToadStoolTarpcServer {
     async fn calculate_resource_utilization(&self) -> f32 {
         let active_count = self.workloads.read().await.len();
         let max_capacity = std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .unwrap_or(4)
+            .map_or(4, std::num::NonZero::get)
             * 4; // ~4 workloads per core
 
         #[expect(
@@ -97,8 +96,7 @@ impl ToadStoolTarpcServer {
                     reason = "precision loss acceptable for this conversion"
                 )]
                 let cpu_count = std::thread::available_parallelism()
-                    .map(|n| n.get() as f32)
-                    .unwrap_or(4.0);
+                    .map_or(4.0, |n| n.get() as f32);
                 return Some((load / cpu_count).min(1.0));
             }
         }

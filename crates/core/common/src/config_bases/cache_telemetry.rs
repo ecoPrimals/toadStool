@@ -96,8 +96,7 @@ impl Default for TelemetryConfig {
         // Sovereignty principle: all data collection is opt-in, never opt-out.
         // Operators explicitly enable telemetry via config or TOADSTOOL_TELEMETRY=1.
         let opt_in = std::env::var(socket_env::TOADSTOOL_TELEMETRY)
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
+            .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
         Self {
             metrics_enabled: opt_in,
             tracing_enabled: opt_in,

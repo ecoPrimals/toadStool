@@ -24,7 +24,7 @@ pub(crate) use memory::{
 };
 pub use memory::{MemoryTrainingResult, MemoryTrainingStrategy};
 pub(crate) use pmc::{
-    PMC_ENABLE, PMC_INTR_EN_0, PmcEnableResult, bar0_probe, pgraph_engine_reset, pmc_enable,
+    PMC_ENABLE, PmcEnableResult, bar0_probe, pgraph_engine_reset, pmc_enable,
     pmc_enable_full, pmc_enable_rollback,
 };
 pub(crate) use power::{cg_sweep, pgob_ungating, pri_bus_recover};
@@ -96,7 +96,7 @@ impl SovereignSnapshot {
             pmu_cpuctl: r(falcon::PMU_BASE + falcon::CPUCTL),
             pmu_pc: r(falcon::PMU_BASE + falcon::PC),
             gpc_per_unit,
-            gpc_tpc0: gpc_tpc0,
+            gpc_tpc0,
             ce: ce_vals,
             pbdma0_intr: r(pgraph::PBDMA0_INTR as usize),
             therm_gate: r(pgraph::THERM_GATE as usize),
@@ -433,11 +433,6 @@ pub(crate) fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
 /// Only proceeds if GPCs showed life in stage 2-3. Writes GPC MMU init
 /// registers and replays sw_nonctx.bin firmware blob. Higher risk — large
 /// write sequence.
-pub(crate) fn experiment_stage_4(bar0: &MappedBar) -> ExperimentResult {
-    experiment_stage_4_with_chip(bar0, "gv100", 70)
-}
-
-/// Stage 4 with explicit chip/SM version parameters.
 pub(crate) fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
@@ -670,14 +665,11 @@ pub(crate) fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
 /// replay. This is the "throw everything at it" sequence from
 /// `compute_device.rs`, extracted here for controlled experiment use.
 ///
+/// Stage 6: Full 5-phase ungating + PGRAPH reset (Exp 217).
+///
 /// Higher risk than stages 1-5 — includes PGRAPH engine reset which
 /// may change FECS state. Use after stages 1-3 confirm GPC fabric is
 /// alive but TPCs remain PRI-faulted.
-pub(crate) fn experiment_stage_6(bar0: &MappedBar) -> ExperimentResult {
-    experiment_stage_6_with_chip(bar0, "gv100", 70)
-}
-
-/// Stage 6 with explicit chip/SM version parameters.
 pub(crate) fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
     use std::time::Duration;
 
@@ -882,12 +874,11 @@ pub(crate) const AMD_GRBM_STATUS: u32 = 0x8010;
 pub fn detect_chip(bar0: &MappedBar) -> ChipDetection {
     let boot0 = bar0.read_u32(0x0000_0000).unwrap_or(0xFFFF_FFFF);
 
-    if boot0 != 0 && boot0 != 0xFFFF_FFFF {
-        if let Some(sm) = crate::nv::identity::boot0_to_sm(boot0) {
+    if boot0 != 0 && boot0 != 0xFFFF_FFFF
+        && let Some(sm) = crate::nv::identity::boot0_to_sm(boot0) {
             let chip = crate::nv::identity::chip_name(sm);
             return ChipDetection::Nvidia { chip, sm };
         }
-    }
 
     let grbm_status = bar0
         .read_u32(AMD_GRBM_STATUS as usize)

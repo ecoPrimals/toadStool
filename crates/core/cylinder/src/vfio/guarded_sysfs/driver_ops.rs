@@ -166,6 +166,7 @@ pub fn sysfs_write_guarded(
 /// the same fork isolation as [`sysfs_write_guarded`] but for reads.
 ///
 /// Returns the file contents as a trimmed string on success.
+#[allow(dead_code)]
 pub(crate) fn sysfs_read_guarded(
     path: &str,
     timeout: Duration,

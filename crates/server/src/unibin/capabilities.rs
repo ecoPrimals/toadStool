@@ -88,21 +88,18 @@ async fn discover_all_capabilities() -> Vec<Arc<str>> {
                 tracing::info!("✅ Detected GPU: {} ({:?})", info.name, info.backend);
 
                 match info.backend {
-                    wgpu::Backend::Vulkan => {
-                        if !capabilities.iter().any(|c| c.as_ref() == "vulkan") {
+                    wgpu::Backend::Vulkan
+                        if !capabilities.iter().any(|c| c.as_ref() == "vulkan") => {
                             capabilities.push(Arc::from("vulkan"));
                         }
-                    }
-                    wgpu::Backend::Metal => {
-                        if !capabilities.iter().any(|c| c.as_ref() == "metal") {
+                    wgpu::Backend::Metal
+                        if !capabilities.iter().any(|c| c.as_ref() == "metal") => {
                             capabilities.push(Arc::from("metal"));
                         }
-                    }
-                    wgpu::Backend::Dx12 => {
-                        if !capabilities.iter().any(|c| c.as_ref() == "dx12") {
+                    wgpu::Backend::Dx12
+                        if !capabilities.iter().any(|c| c.as_ref() == "dx12") => {
                             capabilities.push(Arc::from("dx12"));
                         }
-                    }
                     _ => {}
                 }
 

@@ -142,8 +142,7 @@ pub fn get_env_with_prefix(prefix: &str, key: &str, default: &str) -> String {
 #[must_use]
 pub fn get_env_bool(key: &str, default: bool) -> bool {
     env::var(key)
-        .map(|v| v.to_lowercase() == "true" || v == "1")
-        .unwrap_or(default)
+        .map_or(default, |v| v.to_lowercase() == "true" || v == "1")
 }
 
 /// Get an environment variable as any type that implements `FromStr`.

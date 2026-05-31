@@ -160,7 +160,7 @@ pub fn sovereign_profile(
 
     // Log the top 3 stages by duration for quick diagnosis
     let mut sorted: Vec<&StageTimingUs> = stage_timings_us.iter().collect();
-    sorted.sort_by(|a, b| b.duration_us.cmp(&a.duration_us));
+    sorted.sort_by_key(|s| std::cmp::Reverse(s.duration_us));
     for (i, s) in sorted.iter().take(3).enumerate() {
         tracing::info!(
             rank = i + 1,

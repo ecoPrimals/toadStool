@@ -15,8 +15,7 @@ use toadstool_common::constants::platform_paths::procfs;
 /// Falls back to 4 `GiB` if `/proc` is unavailable (macOS, Windows).
 fn total_system_memory_bytes() -> f64 {
     toadstool_sysmon::memory_info()
-        .map(|m| m.total as f64)
-        .unwrap_or(4.0 * 1024.0 * 1024.0 * 1024.0)
+        .map_or(4.0 * 1024.0 * 1024.0 * 1024.0, |m| m.total as f64)
 }
 
 /// Gets platform-specific metrics for a process

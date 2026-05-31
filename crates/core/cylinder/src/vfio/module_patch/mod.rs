@@ -234,6 +234,7 @@ pub(crate) fn patch_module_with_rename(
 /// Patch a stock kernel module and write the result to a temporary file.
 ///
 /// Convenience wrapper around [`patch_module_with_rename`] without renaming.
+#[allow(dead_code)]
 pub(crate) fn patch_module(source_ko: &Path, patch_set: &PatchSet) -> Result<ModulePatchResult, PatchError> {
     patch_module_with_rename(source_ko, patch_set, None)
 }

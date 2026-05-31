@@ -75,7 +75,7 @@ impl JobRouter {
             .collect();
 
         if !candidates.is_empty() {
-            candidates.sort_by(|a, b| b.vram_available_mb.cmp(&a.vram_available_mb));
+            candidates.sort_by_key(|c| std::cmp::Reverse(c.vram_available_mb));
             let best = candidates[0];
             return RoutingDecision {
                 gate_id: Arc::clone(&best.gate_id),
