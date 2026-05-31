@@ -11,12 +11,14 @@
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 2: Warm Sovereign Compute                                  │
 //! │   GPC fabric + TPC stations → FECS dispatch → shader execution. │
-//! │   Status: NOT ACHIEVED (Exp 224 audit) — classify_tier confirms │
-//! │   tpc_alive=false, tpc_status=0xBADF5040, gpc_enables=0x0.     │
-//! │   TPC PRI ring stations require GPCCS firmware execution.       │
+//! │   Status: ACHIEVED via catalyst (Exp 229 Run #9, Exp 233       │
+//! │   Run #1) — warm_compute tier confirmed post-catalyst handoff. │
+//! │   63K+ alive registers captured. FECS/GPCCS IMEM valid.        │
+//! │   NOT achieved cold (Exp 224): tpc_status=0xBADF5040 persists  │
+//! │   without catalyst RM init. TPC PRI ring requires GPCCS fw.    │
 //! │   GPCCS is HS fuse-locked on GV100 (Volta+).                   │
-//! │   NOTE: sovereign.init compute_ready=true is an init health     │
-//! │   check (PTIMER/PRAMIN/PMC), NOT dispatch readiness.            │
+//! │   Sovereign shader execution BLOCKED: FECS PENDING_CTX_RELOAD, │
+//! │   RM channel creation fails (device_alloc 0x22).               │
 //! │   PMU software path CLOSED (Exp 211) — HS-locked.              │
 //! │   BAR0 register path CLOSED (Exp 217) — firmware-mediated.     │
 //! ├─────────────────────────────────────────────────────────────────┤
