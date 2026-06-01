@@ -314,6 +314,160 @@ impl PatchSet {
         }
     }
 
+    /// Exp 234: Minimal un-NOP variant of catalyst — restores the cap
+    /// subsystem (nv_cap_init, nv_cap_drv_init, nv_cap_create_dir_entry,
+    /// nv_cap_create_file_entry) so RM can populate its internal device
+    /// table during nv_pci_probe → rm_init_private_state.
+    ///
+    /// Exp 234 finding: MODULE_NAME is hardcoded as "nvidia" inside the
+    /// compiled binary — the .ko file rename to nvsov only changes ELF
+    /// module metadata. All procfs paths (nv_procfs_init, nv_cap_init)
+    /// use "nvidia" strings, colliding with the host nvidia-580 driver.
+    /// Cap functions MUST remain NOP'd.
+    ///
+    /// Changes vs catalyst_handoff:
+    /// - CHANGED: nv_procfs_init, nv_cap_procfs_init, nv_acpi_init →
+    ///   Ret0AtEntry (explicit return 0 instead of RetAtEntry's undefined
+    ///   rax, preventing nvidia_init_module from aborting on negative rc)
+    /// - KEPT: all cap NOPs (Ret1AtEntry), all teardown NOPs,
+    ///   os_is_administrator, init_module chrdev patches
+    pub fn nvidia_catalyst_minimal_nop() -> Self {
+        Self {
+            name: "nvidia_catalyst_minimal_nop".into(),
+            module_name: "nvidia".into(),
+            targets: vec![
+                // ── Teardown NOPs ────────────────────────────────────────
+                // nv_close_device is NOT NOP'd — it decrements usage_count.
+                // Without it, nv_pci_remove busy-waits forever for
+                // usage_count==0. The destructive calls inside
+                // nv_stop_device (rm_disable_adapter, rm_shutdown_adapter,
+                // nv_kthread_q_stop) are separately NOP'd below.
+                //
+                // nv_pci_remove is NOT NOP'd here (unlike catalyst_handoff).
+                // It must run so release_mem_region frees BAR0 on unbind.
+                // The destructive RM calls inside it are separately NOP'd:
+                PatchTarget {
+                    symbol: "rm_disable_adapter".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "rm_shutdown_adapter".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+
+                // ── Host conflict isolation ─────────────────────────────
+                // MODULE_NAME="nvidia" is baked into .rodata — these
+                // functions create /proc/driver/nvidia/ and
+                // /proc/driver/nvidia-caps/ which collide with host.
+                // Ret0AtEntry returns explicit 0 (success) so
+                // nvidia_init_module proceeds past its rc < 0 checks.
+                PatchTarget {
+                    symbol: "nv_procfs_init".into(),
+                    strategy: PatchStrategy::Ret0AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_procfs_init".into(),
+                    strategy: PatchStrategy::Ret0AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_acpi_init".into(),
+                    strategy: PatchStrategy::Ret0AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nvlink_core_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nvswitch_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+
+                // ── Cap system NOPs (namespace collision) ───────────────
+                // Cap functions use hardcoded "driver/nvidia" paths from
+                // MODULE_NAME. Return fake non-NULL handles to satisfy
+                // nvidia_init_module's NULL checks.
+                PatchTarget {
+                    symbol: "nv_cap_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_drv_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_create_dir_entry".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_create_file_entry".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+
+                // ── Cap access control bypass ───────────────────────────
+                PatchTarget {
+                    symbol: "nv_cap_validate_and_dup_fd".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_close_fd".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "os_is_administrator".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_destroy_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+
+                // ── Module exit safety ────────────────────────────────────
+                // cleanup_module is NOT NOP'd — it must run so the PCI driver
+                // is properly unregistered via nv_pci_unregister_driver().
+                // NOP only the specific calls that hang:
+                PatchTarget {
+                    symbol: "nv_kthread_q_stop".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "rm_shutdown_rm".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_destroy_rsync_info".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+
+                // ── init_module patches (chrdev isolation) ──────────────
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x7b,
+                        expected: 0xc3,
+                        replacement: 0x00,
+                    },
+                },
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x8a,
+                        expected: 0x89,
+                        replacement: 0x31,
+                    },
+                },
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x8b,
+                        expected: 0xd8,
+                        replacement: 0xc0,
+                    },
+                },
+            ],
+            min_applied: 1,
+        }
+    }
+
     /// Boot-services variant of the catalyst — uses nvidia RM as a UEFI-like
     /// boot service to initialize compute engines (ACR→FECS→GPCCS→TPC), then
     /// performs a clean unbind + PRI ring recovery post-swap.

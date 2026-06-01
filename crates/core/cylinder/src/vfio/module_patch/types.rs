@@ -13,6 +13,11 @@ pub enum PatchStrategy {
     /// displacement target (which occupies bytes 1-4).
     /// Use for functions where `RetAfterFtrace` hits a relocation at +5.
     RetAtEntry,
+    /// Like `RetAtEntry` but explicitly returns 0 via `xor eax,eax; ret`
+    /// (3 bytes at entry+5). For functions returning `int` where 0 means
+    /// success and we need a deterministic return value (unlike `RetAtEntry`
+    /// which leaves rax undefined).
+    Ret0AtEntry,
     /// Like `RetAtEntry` but returns 1 instead of 0. Uses `xor eax,eax;
     /// inc eax; ret` (4 bytes: `31 c0 ff c0 c3`). For nvidia functions
     /// where 0 signals failure (e.g. `nv_cap_init` returns an opaque handle).
@@ -44,6 +49,9 @@ impl std::str::FromStr for PatchStrategy {
         let s = s.trim();
         if s == "RetAtEntry" {
             return Ok(Self::RetAtEntry);
+        }
+        if s == "Ret0AtEntry" {
+            return Ok(Self::Ret0AtEntry);
         }
         if s == "Ret1AtEntry" {
             return Ok(Self::Ret1AtEntry);

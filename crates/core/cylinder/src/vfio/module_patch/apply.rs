@@ -136,6 +136,52 @@ pub(crate) fn apply_single_patch(
                 })
             }
         }
+        PatchStrategy::Ret0AtEntry => {
+            let first_byte = module_bytes[offset];
+            let has_ftrace = first_byte == FTRACE_CALL_OPCODE
+                || first_byte == MULTIBYTE_NOP_LEAD
+                || first_byte == NOP_OPCODE;
+
+            if has_ftrace && offset + FTRACE_CALL_SIZE + 3 <= module_bytes.len() {
+                let patch_off = offset + FTRACE_CALL_SIZE;
+                let original_byte = module_bytes[patch_off];
+                module_bytes[patch_off] = 0x31;         // xor
+                module_bytes[patch_off + 1] = 0xc0;     // eax, eax
+                module_bytes[patch_off + 2] = RET_OPCODE;
+
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: true,
+                    offset: Some(patch_off),
+                    detail: format!(
+                        "ret0@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
+                    ),
+                })
+            } else if offset + 3 <= module_bytes.len() {
+                let original_byte = module_bytes[offset];
+                module_bytes[offset] = 0x31;
+                module_bytes[offset + 1] = 0xc0;
+                module_bytes[offset + 2] = RET_OPCODE;
+
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: true,
+                    offset: Some(offset),
+                    detail: format!(
+                        "ret0@{offset:#x} (was {original_byte:#04x}, entry+0, 3B)"
+                    ),
+                })
+            } else {
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: false,
+                    offset: None,
+                    detail: format!(
+                        "insufficient space for ret0 at {offset:#x}"
+                    ),
+                })
+            }
+        }
         PatchStrategy::Ret1AtEntry => {
             let first_byte = module_bytes[offset];
             let has_ftrace = first_byte == FTRACE_CALL_OPCODE
@@ -274,6 +320,14 @@ pub fn reapply_nops(module_bytes: &mut [u8], result: &ModulePatchResult) {
                 module_bytes[off + 3] = 0x00;
                 module_bytes[off + 4] = 0x00;
                 module_bytes[off + 5] = RET_OPCODE;
+                restored += 1;
+            }
+        } else if patch.detail.starts_with("ret0") {
+            // xor eax,eax; ret (3 bytes)
+            if off + 3 <= module_bytes.len() {
+                module_bytes[off] = 0x31;
+                module_bytes[off + 1] = 0xc0;
+                module_bytes[off + 2] = RET_OPCODE;
                 restored += 1;
             }
         } else if patch.detail.starts_with("ret1") {

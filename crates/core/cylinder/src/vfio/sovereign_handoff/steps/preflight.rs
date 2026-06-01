@@ -105,6 +105,7 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             &ctx.config.module_source,
             ModuleSourceConfig::DkmsPatched { patch_set, .. }
                 if patch_set == "nvidia_catalyst_handoff"
+                    || patch_set == "nvidia_catalyst_minimal_nop"
                     || patch_set == "nvidia_boot_services"
                     || patch_set == "nvidia_warm_handoff"
         );

@@ -64,9 +64,7 @@ fn parse_modprobe_deps(output: &str, target_module: &str) -> Vec<String> {
         assert_eq!(cfg.module_name, "nvsov");
         if let ModuleSourceConfig::DkmsPatched { dkms_module, dkms_version, patch_set } = &cfg.module_source {
             assert_eq!(dkms_module, "nvidia");
-            let expected = crate::vfio::kmod::discover_dkms_version("nvidia")
-                .unwrap_or_else(|| "470.256.02".into());
-            assert_eq!(dkms_version, &expected);
+            assert_eq!(dkms_version, "470.256.02");
             assert_eq!(patch_set, "nvidia_warm_handoff");
         }
     }
@@ -80,9 +78,7 @@ fn parse_modprobe_deps(output: &str, target_module: &str) -> Vec<String> {
         assert_eq!(cfg.settle.as_secs(), 60);
         if let ModuleSourceConfig::DkmsPatched { dkms_module, dkms_version, patch_set } = &cfg.module_source {
             assert_eq!(dkms_module, "nvidia");
-            let expected = crate::vfio::kmod::discover_dkms_version("nvidia")
-                .unwrap_or_else(|| "470.256.02".into());
-            assert_eq!(dkms_version, &expected);
+            assert_eq!(dkms_version, "470.256.02");
             assert_eq!(patch_set, "nvidia_catalyst_handoff");
         }
     }

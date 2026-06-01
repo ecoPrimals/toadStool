@@ -25,7 +25,8 @@ pub(crate) async fn sovereign_warm_handoff(
     let mut config = HandoffConfig::from_strategy(strategy, bdf).ok_or_else(|| {
         JsonRpcError::invalid_params(format!(
             "Unknown warm handoff strategy: '{strategy}'. \
-             Valid: nouveau_titanv, nouveau_k80, nvidia_titanv, nvidia_patched_titanv, nvidia_catalyst_titanv"
+             Valid: nouveau_titanv, nouveau_k80, nvidia_titanv, nvidia_patched_titanv, \
+             nvidia_catalyst_titanv, nvidia_catalyst_minimal_nop_titanv"
         ))
     })?;
 

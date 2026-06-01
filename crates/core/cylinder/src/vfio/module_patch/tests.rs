@@ -60,10 +60,59 @@ fn nvidia_patch_set_targets_correct_functions() {
 }
 
 #[test]
+fn nvidia_catalyst_minimal_nop_patch_set_structure() {
+    let ps = PatchSet::nvidia_catalyst_minimal_nop();
+    assert_eq!(ps.module_name, "nvidia");
+    assert_eq!(ps.name, "nvidia_catalyst_minimal_nop");
+
+    let names: Vec<&str> = ps.targets.iter().map(|t| t.symbol.as_str()).collect();
+
+    // Cap system functions NOP'd with Ret1AtEntry (MODULE_NAME="nvidia"
+    // is baked into .rodata — paths collide with host nvidia driver)
+    assert!(names.contains(&"nv_cap_init"));
+    assert!(names.contains(&"nv_cap_drv_init"));
+    assert!(names.contains(&"nv_cap_create_dir_entry"));
+    assert!(names.contains(&"nv_cap_create_file_entry"));
+
+    let cap_init = ps.targets.iter().find(|t| t.symbol == "nv_cap_init").unwrap();
+    assert_eq!(cap_init.strategy, PatchStrategy::Ret1AtEntry);
+
+    // Host conflict NOPs with Ret0AtEntry (explicit success return)
+    assert!(names.contains(&"nv_procfs_init"));
+    assert!(names.contains(&"nv_cap_procfs_init"));
+    assert!(names.contains(&"nv_acpi_init"));
+
+    let procfs = ps.targets.iter().find(|t| t.symbol == "nv_procfs_init").unwrap();
+    assert_eq!(procfs.strategy, PatchStrategy::Ret0AtEntry);
+    let cap_procfs = ps.targets.iter().find(|t| t.symbol == "nv_cap_procfs_init").unwrap();
+    assert_eq!(cap_procfs.strategy, PatchStrategy::Ret0AtEntry);
+
+    // Teardown NOPs: nv_close_device and nv_pci_remove both NOT NOP'd.
+    // nv_close_device must run for usage_count decrement.
+    // nv_pci_remove must run for release_mem_region (BAR0).
+    assert!(!names.contains(&"nv_close_device"));
+    assert!(!names.contains(&"nv_pci_remove"));
+    assert!(names.contains(&"rm_shutdown_rm"));
+
+    // cleanup_module is NOT NOP'd (PCI driver must be unregistered)
+    assert!(!names.contains(&"cleanup_module"));
+
+    // kthread stop NOP'd to prevent module exit hang
+    assert!(names.contains(&"nv_kthread_q_stop"));
+    let kthread = ps.targets.iter().find(|t| t.symbol == "nv_kthread_q_stop").unwrap();
+    assert_eq!(kthread.strategy, PatchStrategy::RetAtEntry);
+
+    // Access control bypass still present
+    assert!(names.contains(&"os_is_administrator"));
+    assert!(names.contains(&"nv_cap_validate_and_dup_fd"));
+}
+
+#[test]
 fn by_name_resolves_known_sets() {
     assert!(PatchSet::by_name("volta_warm_handoff").is_some());
     assert!(PatchSet::by_name("kepler_warm_handoff").is_some());
     assert!(PatchSet::by_name("nvidia_warm_handoff").is_some());
+    assert!(PatchSet::by_name("nvidia_catalyst_minimal_nop").is_some());
     assert!(PatchSet::by_name("nonexistent").is_none());
 }
 
@@ -207,6 +256,28 @@ fn apply_single_patch_accepts_multibyte_nop() {
     assert_eq!(result.offset, Some(5));
     assert_eq!(bytes[5], RET_OPCODE);
     assert!(result.detail.contains("nop-padded"));
+}
+
+#[test]
+fn apply_single_patch_ret0_at_entry() {
+    let mut bytes = vec![0xe8, 0x00, 0x00, 0x00, 0x00, 0x55, 0x48, 0x89, 0xe5, 0x41];
+    let len = bytes.len();
+    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+
+    let target = PatchTarget {
+        symbol: "test_fn".into(),
+        strategy: PatchStrategy::Ret0AtEntry,
+    };
+
+    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
+        .unwrap();
+
+    assert!(result.applied);
+    assert_eq!(result.offset, Some(5));
+    assert_eq!(bytes[5], 0x31);     // xor
+    assert_eq!(bytes[6], 0xc0);     // eax, eax
+    assert_eq!(bytes[7], RET_OPCODE);
+    assert!(result.detail.contains("ret0"));
 }
 
 #[test]

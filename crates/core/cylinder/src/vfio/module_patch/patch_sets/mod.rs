@@ -13,6 +13,7 @@ impl PatchSet {
             "kepler_warm_handoff" => Some(Self::kepler_warm_handoff()),
             "nvidia_warm_handoff" => Some(Self::nvidia_warm_handoff()),
             "nvidia_catalyst_handoff" => Some(Self::nvidia_catalyst_handoff()),
+            "nvidia_catalyst_minimal_nop" => Some(Self::nvidia_catalyst_minimal_nop()),
             "nvidia_boot_services" => Some(Self::nvidia_boot_services()),
             _ => None,
         }
@@ -33,6 +34,9 @@ impl PatchSet {
         match (chip_family, driver, strategy) {
             (ChipFamily::Volta, "nvidia-470" | "470.256.02", "catalyst") => {
                 Some(Self::nvidia_catalyst_handoff())
+            }
+            (ChipFamily::Volta, "nvidia-470" | "470.256.02", "catalyst_minimal_nop") => {
+                Some(Self::nvidia_catalyst_minimal_nop())
             }
             (ChipFamily::Volta, "nvidia-470" | "470.256.02", "warm") => {
                 Some(Self::nvidia_warm_handoff())

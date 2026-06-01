@@ -7,6 +7,11 @@ use super::types::{HandoffConfig, ModuleSourceConfig};
 /// Fallback DKMS version when discovery from `/var/lib/dkms/` fails.
 const FALLBACK_DKMS_VERSION: &str = "470.256.02";
 
+/// nvidia-470 is the last driver branch that supports GV100 (Titan V).
+/// nvidia-580+ dropped GV100 support entirely. Catalyst strategies for
+/// Titan V MUST use this version regardless of what's installed.
+const NVIDIA_470_DKMS_VERSION: &str = "470.256.02";
+
 /// Resolve the installed nvidia DKMS version, falling back to [`FALLBACK_DKMS_VERSION`].
 fn discovered_nvidia_dkms_version() -> String {
     crate::vfio::kmod::discover_dkms_version("nvidia")
@@ -92,7 +97,7 @@ impl HandoffConfig {
             module_name: "nvsov".into(),
             module_source: ModuleSourceConfig::DkmsPatched {
                 dkms_module: "nvidia".into(),
-                dkms_version: discovered_nvidia_dkms_version(),
+                dkms_version: NVIDIA_470_DKMS_VERSION.into(),
                 patch_set: "nvidia_warm_handoff".into(),
             },
             settle: Duration::from_mins(1),
@@ -122,8 +127,31 @@ impl HandoffConfig {
             module_name: "nvsov".into(),
             module_source: ModuleSourceConfig::DkmsPatched {
                 dkms_module: "nvidia".into(),
-                dkms_version: discovered_nvidia_dkms_version(),
+                dkms_version: NVIDIA_470_DKMS_VERSION.into(),
                 patch_set: "nvidia_catalyst_handoff".into(),
+            },
+            settle: Duration::from_mins(1),
+            final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
+            sm_version: Some(70),
+        }
+    }
+
+    /// Exp 234: Minimal un-NOP variant — restores the cap subsystem so RM
+    /// can populate its device table. Uses `nvidia_catalyst_minimal_nop`
+    /// patch set which un-NOPs nv_cap_init, nv_cap_drv_init,
+    /// nv_cap_create_dir_entry, nv_cap_create_file_entry.
+    #[must_use]
+    pub fn nvidia_catalyst_minimal_nop_titanv(bdf: &str) -> Self {
+        Self {
+            bdf: bdf.into(),
+            seeder_driver: "nvsov".into(),
+            module_name: "nvsov".into(),
+            module_source: ModuleSourceConfig::DkmsPatched {
+                dkms_module: "nvidia".into(),
+                dkms_version: NVIDIA_470_DKMS_VERSION.into(),
+                patch_set: "nvidia_catalyst_minimal_nop".into(),
             },
             settle: Duration::from_mins(1),
             final_driver: "vfio-pci".into(),
@@ -144,7 +172,7 @@ impl HandoffConfig {
             module_name: "nvsov".into(),
             module_source: ModuleSourceConfig::DkmsPatched {
                 dkms_module: "nvidia".into(),
-                dkms_version: discovered_nvidia_dkms_version(),
+                dkms_version: NVIDIA_470_DKMS_VERSION.into(),
                 patch_set: "nvidia_boot_services".into(),
             },
             settle: Duration::from_mins(1),
@@ -164,6 +192,7 @@ impl HandoffConfig {
             "nvidia_titanv" => Some(Self::nvidia_titanv(bdf)),
             "nvidia_patched_titanv" => Some(Self::nvidia_patched_titanv(bdf)),
             "nvidia_catalyst_titanv" => Some(Self::nvidia_catalyst_titanv(bdf)),
+            "nvidia_catalyst_minimal_nop_titanv" => Some(Self::nvidia_catalyst_minimal_nop_titanv(bdf)),
             "nvidia_boot_services_titanv" => Some(Self::nvidia_boot_services_titanv(bdf)),
             "nvidia_runtime_services" => Some(Self::nvidia_runtime_services(bdf)),
             _ => None,

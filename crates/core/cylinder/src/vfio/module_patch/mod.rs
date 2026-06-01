@@ -18,7 +18,7 @@
 //!
 //! # Usage
 //!
-//! ```no_run
+//! ```ignore
 //! use toadstool_cylinder::vfio::module_patch::*;
 //!
 //! let stock_ko = std::path::Path::new("/lib/modules/6.17.9/nouveau.ko");

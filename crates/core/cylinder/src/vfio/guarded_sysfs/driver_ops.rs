@@ -248,19 +248,56 @@ pub(crate) fn sysfs_unbind_fire_and_poll(
         reason: "path contains NUL byte".into(),
     })?;
 
-    let _child_pid = fork_sysfs_child(&path_c, bdf.as_bytes())?;
+    let child_pid = fork_sysfs_child(&path_c, bdf.as_bytes())?;
 
     let start = Instant::now();
     let poll_interval = Duration::from_secs(2);
 
     loop {
         if read_current_driver(bdf).is_none() {
-            let elapsed = start.elapsed();
+            let symlink_elapsed = start.elapsed();
             tracing::info!(
-                bdf, elapsed_s = elapsed.as_secs(),
-                "fire-and-poll unbind: driver cleared"
+                bdf, elapsed_s = symlink_elapsed.as_secs(),
+                "fire-and-poll unbind: driver symlink cleared"
             );
-            return Ok(elapsed);
+
+            // The driver symlink is removed by driver_sysfs_remove() BEFORE
+            // the driver's .remove callback runs. The child's write() syscall
+            // won't return until device_release_driver() completes (including
+            // .remove and device_lock release). Wait for the child to exit so
+            // the device_lock is guaranteed free for subsequent sysfs ops.
+            let child_deadline = deadline.saturating_sub(symlink_elapsed);
+            let child_start = Instant::now();
+            loop {
+                match rustix::process::waitpid(
+                    Some(child_pid),
+                    rustix::process::WaitOptions::NOHANG,
+                ) {
+                    Ok(Some(_status)) => {
+                        let total = start.elapsed();
+                        tracing::info!(
+                            bdf, elapsed_s = total.as_secs(),
+                            remove_ms = (total - symlink_elapsed).as_millis() as u64,
+                            "fire-and-poll unbind: child exited (device_lock released)"
+                        );
+                        return Ok(total);
+                    }
+                    Ok(None) => {
+                        if child_start.elapsed() >= child_deadline {
+                            tracing::warn!(
+                                bdf,
+                                "fire-and-poll: child still in .remove after deadline — \
+                                 proceeding (device_lock may still be held)"
+                            );
+                            return Ok(start.elapsed());
+                        }
+                        std::thread::sleep(Duration::from_millis(500));
+                    }
+                    Err(_) => {
+                        return Ok(start.elapsed());
+                    }
+                }
+            }
         }
 
         if start.elapsed() >= deadline {
