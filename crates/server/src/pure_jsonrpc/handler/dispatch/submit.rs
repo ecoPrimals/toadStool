@@ -472,7 +472,7 @@ impl DispatchHandler {
             if let Some(inner) = client.client_ref().await {
                 let pre_dispatch = std::time::Instant::now();
                 match inner
-                    .call("compute.dispatch.execute", dispatch_params)
+                    .call("compute.dispatch.submit", dispatch_params)
                     .await
                 {
                     Ok(result) => {
