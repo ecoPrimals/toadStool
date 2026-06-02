@@ -5,8 +5,13 @@
 //! `local_cylinder` path. Used for GPUs that are bound to the nvidia/amdgpu
 //! DRM driver (e.g. display GPUs or GPUs without VFIO passthrough).
 //!
-//! The wgpu path accepts compiled SPIR-V binaries and dispatches them
-//! through the standard Vulkan compute pipeline with buffer readback.
+//! The wgpu path accepts WGSL source and dispatches it through the standard
+//! Vulkan compute pipeline with buffer readback.
+//!
+//! NOTE: This crate is compiled with `panic = "abort"`, so `catch_unwind` is
+//! useless. Every wgpu error that could panic (device lost, invalid pipeline)
+//! must be detected and handled *before* calling panicking APIs like
+//! `pipeline.get_bind_group_layout()`.
 
 #[cfg(feature = "gpu-discovery")]
 use base64::Engine;
@@ -16,8 +21,9 @@ struct WgpuDispatchContext {
     device: wgpu::Device,
     queue: wgpu::Queue,
     adapter_name: String,
+    spirv_passthrough: bool,
+    device_lost: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
-
 
 #[cfg(feature = "gpu-discovery")]
 static WGPU_CTX: std::sync::OnceLock<Option<WgpuDispatchContext>> = std::sync::OnceLock::new();
@@ -26,8 +32,15 @@ static WGPU_CTX: std::sync::OnceLock<Option<WgpuDispatchContext>> = std::sync::O
 fn get_or_init_wgpu() -> Option<&'static WgpuDispatchContext> {
     WGPU_CTX
         .get_or_init(|| {
-            let rt = tokio::runtime::Runtime::new().ok()?;
-            rt.block_on(init_wgpu())
+            // wgpu init is async; spawn a dedicated thread with its own runtime
+            // to avoid "Cannot start a runtime from within a runtime" when called
+            // from a tokio worker thread during dispatch.
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Runtime::new().ok()?;
+                rt.block_on(init_wgpu())
+            })
+            .join()
+            .ok()?
         })
         .as_ref()
 }
@@ -46,18 +59,31 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
 
     let info = adapter.get_info();
     let adapter_name = info.name.clone();
+    let supported_features = adapter.features();
+    let spirv_passthrough = supported_features.contains(wgpu::Features::SPIRV_SHADER_PASSTHROUGH);
     tracing::info!(
         adapter = %adapter_name,
         vendor = format_args!("0x{:x}", info.vendor),
         device = format_args!("0x{:x}", info.device),
+        spirv_passthrough,
         "wgpu dispatch: adapter selected"
     );
+
+    let mut required_features = wgpu::Features::empty();
+    if spirv_passthrough {
+        required_features |= wgpu::Features::SPIRV_SHADER_PASSTHROUGH;
+    } else {
+        tracing::warn!(
+            adapter = %adapter_name,
+            "SPIRV_SHADER_PASSTHROUGH not supported — wgpu dispatch will use naga/WGSL path"
+        );
+    }
 
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("toadstool-wgpu-dispatch"),
-                required_features: wgpu::Features::SPIRV_SHADER_PASSTHROUGH,
+                required_features,
                 ..Default::default()
             },
             None,
@@ -65,10 +91,44 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
         .await
         .ok()?;
 
+    let device_lost = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let lost_flag = std::sync::Arc::clone(&device_lost);
+
+    device.set_device_lost_callback(move |reason, msg| {
+        tracing::error!(?reason, message = %msg, "wgpu device lost");
+        lost_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+    });
+
+    device.on_uncaptured_error(Box::new(|error| {
+        tracing::error!(error = %error, "wgpu uncaptured device error");
+    }));
+
+    // Poll once to flush any pending device-lost signals from driver errors
+    // that were silently swallowed by request_device.
+    let _ = device.poll(wgpu::Maintain::Wait);
+    // Small yield to let the device-lost callback fire.
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    if device_lost.load(std::sync::atomic::Ordering::SeqCst) {
+        tracing::error!(
+            adapter = %adapter_name,
+            "wgpu device was lost immediately after creation — disabling wgpu dispatch"
+        );
+        return None;
+    }
+
+    tracing::info!(
+        adapter = %adapter_name,
+        spirv_passthrough,
+        "wgpu dispatch: device initialized"
+    );
+
     Some(WgpuDispatchContext {
         device,
         queue,
         adapter_name,
+        spirv_passthrough,
+        device_lost,
     })
 }
 
@@ -79,16 +139,23 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
 #[cfg(feature = "gpu-discovery")]
 pub(super) fn try_wgpu_dispatch(
     binary: &[u8],
+    wgsl_source: Option<&str>,
     workgroup_size: [u32; 3],
     buffer_descs: &serde_json::Value,
 ) -> Option<Result<serde_json::Value, String>> {
     let ctx = get_or_init_wgpu()?;
-    Some(run_wgpu_dispatch(ctx, binary, workgroup_size, buffer_descs))
+
+    if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
+        return Some(Err("wgpu device is lost — cannot dispatch".into()));
+    }
+
+    Some(run_wgpu_dispatch(ctx, binary, wgsl_source, workgroup_size, buffer_descs))
 }
 
 #[cfg(not(feature = "gpu-discovery"))]
 pub(super) fn try_wgpu_dispatch(
     _binary: &[u8],
+    _wgsl_source: Option<&str>,
     _workgroup_size: [u32; 3],
     _buffer_descs: &serde_json::Value,
 ) -> Option<Result<serde_json::Value, String>> {
@@ -99,40 +166,100 @@ pub(super) fn try_wgpu_dispatch(
 fn run_wgpu_dispatch(
     ctx: &WgpuDispatchContext,
     binary: &[u8],
+    wgsl_source: Option<&str>,
     workgroup_size: [u32; 3],
     buffer_descs: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
-    let spirv_words: Vec<u32> = binary
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-        .collect();
-
-    #[allow(unsafe_code)]
-    // SAFETY: SPIR-V has been compiled by coralReef (trusted primal).
-    // SPIRV_SHADER_PASSTHROUGH feature is enabled on the device.
-    let shader = unsafe {
-        ctx.device
-            .create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {
-                label: Some("toadstool_wgpu_dispatch"),
-                source: std::borrow::Cow::Borrowed(&spirv_words),
-            })
+    // Validate SPIR-V magic (0x07230203 LE) before using passthrough.
+    // coralReef may return its internal binary format instead of SPIR-V;
+    // feeding non-SPIR-V to the Vulkan driver causes immediate device loss.
+    let is_valid_spirv = binary.len() >= 4 && {
+        let magic = u32::from_le_bytes([binary[0], binary[1], binary[2], binary[3]]);
+        magic == 0x07230203
     };
+
+    let shader = if ctx.spirv_passthrough && is_valid_spirv {
+        let spirv_words: Vec<u32> = binary
+            .chunks_exact(4)
+            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect();
+
+        tracing::info!(spirv_words = spirv_words.len(), "wgpu dispatch: SPIR-V passthrough");
+        #[allow(unsafe_code)]
+        // SAFETY: SPIR-V magic validated; compiled by coralReef (trusted primal).
+        unsafe {
+            ctx.device
+                .create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {
+                    label: Some("toadstool_wgpu_dispatch"),
+                    source: std::borrow::Cow::Borrowed(&spirv_words),
+                })
+        }
+    } else if let Some(wgsl) = wgsl_source {
+        if !is_valid_spirv && !binary.is_empty() {
+            tracing::info!(
+                binary_magic = format_args!("0x{:08x}", if binary.len() >= 4 {
+                    u32::from_le_bytes([binary[0], binary[1], binary[2], binary[3]])
+                } else { 0 }),
+                "wgpu dispatch: binary is not SPIR-V — using naga/WGSL path"
+            );
+        }
+        ctx.device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("toadstool_wgpu_dispatch_wgsl"),
+                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(wgsl)),
+            })
+    } else {
+        return Err("Binary is not SPIR-V and no WGSL source provided for naga compilation".into());
+    };
+
+    // Use an explicit PipelineLayout rather than relying on
+    // pipeline.get_bind_group_layout() which panics if the pipeline is invalid
+    // (fatal under panic=abort).
+    let bind_group_layout = ctx
+        .device
+        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("toadstool_wgpu_bgl"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+    let pipeline_layout = ctx
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("toadstool_wgpu_pl"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
 
     let pipeline = ctx
         .device
         .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("toadstool_wgpu_pipeline"),
-            layout: None,
+            layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main",
             compilation_options: Default::default(),
             cache: None,
         });
 
+    // Check device lost after pipeline creation (driver errors surface here).
+    let _ = ctx.device.poll(wgpu::Maintain::Wait);
+    if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err("wgpu device lost during pipeline creation".into());
+    }
+
     let buf_arr = buffer_descs.as_array();
     let mut gpu_buffers: Vec<wgpu::Buffer> = Vec::new();
     let mut staging_buffers: Vec<Option<wgpu::Buffer>> = Vec::new();
-    let mut readback_meta: Vec<(usize, u64, bool)> = Vec::new(); // (index, size, needs_readback)
+    let mut readback_meta: Vec<(usize, u64, bool)> = Vec::new();
 
     if let Some(descs) = buf_arr {
         for (i, desc) in descs.iter().enumerate() {
@@ -149,8 +276,8 @@ fn run_wgpu_dispatch(
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or("inout");
 
-            let needs_upload = matches!(direction, "in" | "inout");
-            let needs_readback = matches!(direction, "out" | "inout");
+            let needs_upload = matches!(direction, "in" | "inout" | "readwrite");
+            let needs_readback = matches!(direction, "out" | "inout" | "readwrite");
 
             let mut usage = wgpu::BufferUsages::STORAGE;
             if needs_readback {
@@ -203,7 +330,7 @@ fn run_wgpu_dispatch(
 
     let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
-        layout: &pipeline.get_bind_group_layout(0),
+        layout: &bind_group_layout,
         entries: &bind_group_entries,
     });
 
@@ -229,6 +356,10 @@ fn run_wgpu_dispatch(
     ctx.queue.submit(Some(encoder.finish()));
     ctx.device.poll(wgpu::Maintain::Wait);
 
+    if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err("wgpu device lost during dispatch".into());
+    }
+
     let mut readback_results: Vec<serde_json::Value> = Vec::new();
     for (idx, (_meta_idx, size, needs_readback)) in readback_meta.iter().enumerate() {
         if *needs_readback {
@@ -240,7 +371,6 @@ fn run_wgpu_dispatch(
                 });
                 ctx.device.poll(wgpu::Maintain::Wait);
 
-                let _ = ctx.device.poll(wgpu::Maintain::Wait);
                 match rx.recv() {
                     Ok(Ok(())) => {
                         let data = slice.get_mapped_range();

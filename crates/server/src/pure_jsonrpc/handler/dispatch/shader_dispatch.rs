@@ -168,8 +168,10 @@ impl DispatchHandler {
 
         // Phase E: try wgpu dispatch for DRM-bound GPUs (Vulkan compute path).
         if needs_shader_service {
+            let wgsl_source = p.get("wgsl_source").and_then(serde_json::Value::as_str);
             if let Some(wgpu_result) = super::wgpu_dispatch::try_wgpu_dispatch(
                 &binary_bytes,
+                wgsl_source,
                 workgroup_size,
                 &buffer_descs,
             ) {
