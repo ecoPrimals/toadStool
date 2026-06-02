@@ -6,10 +6,9 @@
     clippy::no_effect_underscore_binding,
     clippy::unreadable_literal
 )]
-//! Supplemental integration coverage for `tarpc_server` and tarpc RPC wire types:
+//! Supplemental coverage for `tarpc_server` and tarpc RPC wire types:
 //! serde round-trips, semantic method helpers, workload map edge cases, and health
-//! metrics with `Running` workloads. Complements `src/tarpc_server_tests.rs` and
-//! `tests/tarpc_server_tests.rs` without duplicating their scenarios.
+//! metrics with `Running` workloads.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,12 +16,12 @@ use std::sync::atomic::AtomicU8;
 
 use tarpc::context::Context;
 
-use toadstool_server::rpc_types::{
+use crate::rpc_types::{
     AvailableResources, ComputeUnit, ExecutionMetrics, HealthStatus, ResourceRequirements,
     TarpcWorkloadSubmission, ToadStoolComputeRpc, WorkloadPriority, WorkloadResult, WorkloadStatus,
     WorkloadSubmission, semantic_methods,
 };
-use toadstool_server::tarpc_server::{
+use crate::tarpc_server::{
     StandaloneExecutor, TestWorkloadDouble, ToadStoolTarpcServer, WorkloadExecutor,
     WorkloadExecutorDispatch,
 };

@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S282
+**Date**: June 2, 2026 — S283
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -19,6 +19,45 @@ pre-existing clippy errors in cylinder lib + 13 in server. Evolved
 SAFETY, zero production panics in lib, ~97% env centralized, 178 lib
 tests, zero clippy across full workspace.
 
+### S283 — Deep Debt Evolution Pass (Jun 2, 2026)
+
+**Large file refactoring (>800L):**
+- `pmu_investigate.rs` (1035L) → `pmu_investigate/mod.rs` + `phase_c.rs`
+- `handler/mod.rs` (984L) → extracted `ember.rs` (984→688L)
+- `kmod_build.rs` (898L) → `kmod_build/mod.rs` + `build.rs` + `load.rs`
+- `kernel_health.rs` (868L) → 6 submodules (paths/elf/autoconf/probe/reference/repair)
+- `nv_gsp_bridge.rs` (835L) → `nv_gsp_bridge/mod.rs` + `boot.rs` + `bridge_impl.rs`
+- `sovereign_stages/mod.rs` (936L) → extracted `experiment.rs`
+
+**Production mock isolation:**
+- `server/mocks.rs`, `test_doubles.rs`, `cloud/test_mocks.rs`, `mock_primal.rs` → `#[cfg(test)]`
+
+**Deprecated alias removal:**
+- `StubGspBridge` type alias: removed (zero callers)
+- `NestGateResult` type alias: removed → `StorageServiceResult`
+- `NestGateMount` re-export: removed → `StorageMount`
+- `initialize_nestgate_connection`, `with_squirrel`, `initialize_squirrel_connection`: removed
+- `CORALREEF_*` env fallbacks (6 constants): fully removed from `socket_env.rs` + all fallback chains
+
+**Capability evolution:**
+- `bear_dog/` module → `security_client/` (capability-based naming)
+- `CapabilityDomain::from_label` → resolves via capability constants, not primal strings
+- `visualization_client.rs` → capability-based shader discovery
+- `ipc_watch.rs` → `discovery_available` (was `songbird_available`)
+- Serde alias deprecation documented in network/zero-config/DNS types
+
+**Unsafe evolution:**
+- MMIO in `capture.rs`, `nouveau_oracle.rs` → `DeviceMmap` + `MmioRegion` hw-safe types
+- `ffi_loader.rs` → all unsafe centralized in helpers with SAFETY docs
+
+**Env centralization (~97% → ~98%):**
+- +15 `socket_env` constants (network config, capability ports, hardware paths)
+- `ports.rs` unified capability port resolution
+
+**Unwrap evolution:**
+- 167 bare `.unwrap()` → 0 across 7 production-adjacent files
+- Tests evolved to `-> ToadStoolResult<()>` + `?` pattern
+
 **S281 (Deep Debt Evolution IV: libc Elimination + Workspace Consolidation)**:
 Eliminated `libc` dependency from cylinder — last direct C binding on core
 hardware path. `rm_trigger` evolved to `rustix::ioctl` with typed `RmIoctl`
@@ -32,7 +71,7 @@ lib tests, zero clippy.
 primalSpring Wave 59 response. Deleted orphan `env_overrides.rs` (342L
 dead code). Expanded `socket_env.rs` with +73 env var name constants
 (POSIX/XDG, systemd, domain discovery, crypto keys, cylinder/ember,
-DNS/server config, deprecated CORALREEF_* aliases). Migrated 117 raw
+DNS/server config, CORALREEF_* aliases — removed S283). Migrated 117 raw
 `std::env::var("...")` sites → `socket_env::` constants across 30 files
 (43%→64% centralized). Fixed 5 P0 bare `#[allow(clippy::)]`: 2
 `collapsible_str_replace` fixed at source, 3 missing reasons added.
@@ -160,7 +199,7 @@ sovereign_tiers, pmu_investigate, pushbuf). Upstream API removals absorbed
 `VfioResourceHandle` `Option<i32>` → `OwnedFd` (RAII fd ownership).
 SwapOrchestrator quiesce/persist/restore evolved from stubs to real impls.
 `toadstool device swap|list|status|warm` CLI (coralctl parity). 5 CORALREEF_*
-env vars deprecated with TOADSTOOL_* primaries + deprecation warnings. Ember
+env vars removed (were deprecated S253; TOADSTOOL_* primaries only; purged S283). Ember
 socket naming `coral-ember-*` → `toadstool-ember-*`. `DEFAULT_BIND_ADDR`
 aligned to 127.0.0.1. 13 `#[allow(deprecated)]` → `#[expect(deprecated,
 reason)]`. Zero `#[allow(deprecated)]` remaining in codebase.
@@ -1147,7 +1186,7 @@ statrs→nalgebra→simba chain, INFO-level unmaintained) remains with updated r
 ## S202 Resolved Debt (Deep Debt Execution: Capability-Based Evolution)
 
 ### D-HARDCODED-PRIMAL-LITERALS — RESOLVED S202
-Production `"toadstool"` string literals in `self_identity.rs`, `bear_dog/client.rs`,
+Production `"toadstool"` string literals in `self_identity.rs`, `security_client/client.rs`,
 and `identity.rs` now use the `PRIMAL_NAME` constant from `toadstool_common::constants`.
 `"coral_reef_available"` JSON-RPC key evolved to `"shader_compiler_available"`.
 
@@ -1819,7 +1858,7 @@ Wired `monitor_deployment_health` into a background `tokio::spawn` task. Added `
 ## S171 Resolved Debt
 
 ### TS-01 coralReef discovery and --port wiring
-- **D-CORALREEF-URL-S171**: Renamed `CORALREEF_URL` env → `CORALREEF_SOCKET` (deprecated fallback retained). coralReef discovery is socket-first: XDG manifest, biomeos dir scan, capability socket.
+- **D-CORALREEF-URL-S171**: Renamed `CORALREEF_URL` env → `CORALREEF_SOCKET` (fallback removed S283). coralReef discovery is socket-first: XDG manifest, biomeos dir scan, capability socket.
 - **D-GLOWPLUG-UID-S171**: Removed hardcoded `/run/user/1000/` from `glowplug_client.rs`; uses `platform_paths::biomeos_runtime_dir()`.
 - **D-PORT-HELP-S171**: Fixed `--port` help text from "HTTP API port" to "JSON-RPC TCP port" on Server and Daemon commands.
 - **D-DAEMON-TCP-S171**: Wired `DaemonServer.config.port` to TCP JSON-RPC binding (was accepted but ignored).
@@ -2332,7 +2371,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | Clone reduction | 19 unnecessary `.clone()` calls removed across 4 files (borrow, move-instead-of-clone patterns). |
 | Unsafe code audit | Confirmed: all ~70 unsafe blocks in hardware drivers only (akida MMIO/VFIO, V4L2, GPU memory), all `// SAFETY:` documented. 36+ crates have `#![deny(unsafe_code)]`. |
 | Flaky test fix | `discover_from_config_invalid_toml_returns_none` CWD race condition fixed with shared `Mutex<()>` guard. |
-| Coverage expansion | +126 new tests: sysmon 53 (cpu, disk, error, loadavg, memory, network, process parsers), science handler 38, primal discovery 14, bear_dog 10, mdns 4, integrator 5, unibin 2. |
+| Coverage expansion | +126 new tests: sysmon 53 (cpu, disk, error, loadavg, memory, network, process parsers), science handler 38, primal discovery 14, security_client 10, mdns 4, integrator 5, unibin 2. |
 | llvm-cov verified | ~86% line coverage (121K production lines, S147). 20,015 tests. |
 
 ## Recently Resolved (S137 — sysinfo Eliminated / ecoBin v3.0 — Mar 9, 2026)

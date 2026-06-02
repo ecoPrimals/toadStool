@@ -11,9 +11,8 @@
 //! 1 MiB page of VRAM is visible. By sliding this window, we can read
 //! arbitrary VRAM locations.
 
-use std::ptr::NonNull;
-
 use crate::error::ChannelError;
+use crate::vfio::sysfs_bar0::{SysfsBar0Rw, DEFAULT_BAR0_SIZE};
 
 use super::registers::{misc, pccsr, ramin};
 
@@ -72,108 +71,38 @@ pub struct NouveauPageTableDump {
     pub log: Vec<String>,
 }
 
-/// Read-write mmap of BAR0 for oracle page table walking.
-struct Bar0Rw {
-    ptr: NonNull<u8>,
-    size: usize,
-    _file: std::fs::File,
+/// Read a 64-bit value from PRAMIN at the given VRAM-relative offset within the current window.
+fn read_pramin_u64(bar0: &SysfsBar0Rw, offset_in_window: usize) -> u64 {
+    let lo = bar0.read_u32(PRAMIN_OFFSET + offset_in_window) as u64;
+    let hi = bar0.read_u32(PRAMIN_OFFSET + offset_in_window + 4) as u64;
+    lo | (hi << 32)
 }
 
-impl Bar0Rw {
-    fn open(bdf: &str) -> Result<Self, ChannelError> {
-        crate::vfio::ember_gate::check_channel(bdf)?;
-        let path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
-        let file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)
-            .map_err(|e| ChannelError::resource_io("open", path.clone(), e))?;
-
-        let size = 16 * 1024 * 1024; // 16 MiB BAR0
-        // SAFETY: mmap of PCI BAR0 sysfs resource with R/W for PRAMIN window sliding.
-        let raw = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &file,
-                0,
-            )
-        }
-        .map_err(|e| ChannelError::Bar0Mmap {
-            path: path.clone(),
-            source: e,
-        })?;
-
-        let ptr = NonNull::new(raw.cast::<u8>())
-            .ok_or(ChannelError::Bar0MmapNull { path: path.clone() })?;
-
-        Ok(Self {
-            ptr,
-            size,
-            _file: file,
-        })
-    }
-
-    fn read_u32(&self, offset: usize) -> u32 {
-        assert!(offset + 4 <= self.size);
-        // SAFETY: bounds checked, volatile for MMIO.
-        unsafe { std::ptr::read_volatile(self.ptr.as_ptr().add(offset).cast::<u32>()) }
-    }
-
-    fn write_u32(&self, offset: usize, val: u32) {
-        assert!(offset + 4 <= self.size);
-        // SAFETY: bounds checked, volatile for MMIO.
-        unsafe {
-            std::ptr::write_volatile(self.ptr.as_ptr().add(offset).cast::<u32>(), val);
-        }
-    }
-
-    /// Read a 64-bit value from PRAMIN at the given VRAM-relative offset
-    /// within the current 1 MiB window.
-    fn read_pramin_u64(&self, offset_in_window: usize) -> u64 {
-        let lo = self.read_u32(PRAMIN_OFFSET + offset_in_window) as u64;
-        let hi = self.read_u32(PRAMIN_OFFSET + offset_in_window + 4) as u64;
-        lo | (hi << 32)
-    }
-
-    fn read_pramin_u32(&self, offset_in_window: usize) -> u32 {
-        self.read_u32(PRAMIN_OFFSET + offset_in_window)
-    }
-
-    /// Set the BAR0 window to expose `vram_page` (1 MiB aligned) at PRAMIN.
-    fn set_window(&self, vram_page: u64) {
-        let window_val = (vram_page >> 16) as u32;
-        self.write_u32(misc::BAR0_WINDOW, window_val);
-        // Read back to ensure the write landed.
-        let _ = self.read_u32(misc::BAR0_WINDOW);
-    }
-
-    /// Read a u32 from arbitrary VRAM address by sliding the PRAMIN window.
-    fn read_vram_u32(&self, vram_addr: u64) -> u32 {
-        let page = vram_addr & !0xF_FFFF; // 1 MiB aligned
-        let offset = (vram_addr & 0xF_FFFF) as usize;
-        self.set_window(page);
-        self.read_pramin_u32(offset)
-    }
-
-    /// Read a u64 from arbitrary VRAM address.
-    fn read_vram_u64(&self, vram_addr: u64) -> u64 {
-        let page = vram_addr & !0xF_FFFF;
-        let offset = (vram_addr & 0xF_FFFF) as usize;
-        self.set_window(page);
-        self.read_pramin_u64(offset)
-    }
+fn read_pramin_u32(bar0: &SysfsBar0Rw, offset_in_window: usize) -> u32 {
+    bar0.read_u32(PRAMIN_OFFSET + offset_in_window)
 }
 
-impl Drop for Bar0Rw {
-    fn drop(&mut self) {
-        // SAFETY: unmapping the region mapped in open().
-        unsafe {
-            let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
-        }
-    }
+/// Set the BAR0 window to expose `vram_page` (1 MiB aligned) at PRAMIN.
+fn set_window(bar0: &SysfsBar0Rw, vram_page: u64) {
+    let window_val = (vram_page >> 16) as u32;
+    let _ = bar0.write_u32(misc::BAR0_WINDOW, window_val);
+    let _ = bar0.read_u32(misc::BAR0_WINDOW);
+}
+
+/// Read a u32 from arbitrary VRAM address by sliding the PRAMIN window.
+fn read_vram_u32(bar0: &SysfsBar0Rw, vram_addr: u64) -> u32 {
+    let page = vram_addr & !0xF_FFFF;
+    let offset = (vram_addr & 0xF_FFFF) as usize;
+    set_window(bar0, page);
+    read_pramin_u32(bar0, offset)
+}
+
+/// Read a u64 from arbitrary VRAM address.
+fn read_vram_u64(bar0: &SysfsBar0Rw, vram_addr: u64) -> u64 {
+    let page = vram_addr & !0xF_FFFF;
+    let offset = (vram_addr & 0xF_FFFF) as usize;
+    set_window(bar0, page);
+    read_pramin_u64(bar0, offset)
 }
 
 /// Decode a VRAM physical address from a V2 PDE.
@@ -216,7 +145,7 @@ fn decode_flags(entry: u64) -> String {
 }
 
 /// Scan PCCSR for the first active channel and return its ID and instance pointer.
-fn find_active_channel(bar0: &Bar0Rw) -> Option<(u32, u32)> {
+fn find_active_channel(bar0: &SysfsBar0Rw) -> Option<(u32, u32)> {
     for id in 0..512u32 {
         let inst_reg = bar0.read_u32(pccsr::inst(id));
         if inst_reg == 0 || inst_reg == 0xFFFF_FFFF || inst_reg == 0xBADF_1000 {
@@ -240,7 +169,7 @@ fn find_active_channel(bar0: &Bar0Rw) -> Option<(u32, u32)> {
 /// 4. Walks the V2 page table chain: PD3 → PD2 → PD1 → PD0 → PT
 /// 5. Returns raw PDE/PTE values for comparison with sovereign encoding
 pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, ChannelError> {
-    let bar0 = Bar0Rw::open(bdf)?;
+    let bar0 = SysfsBar0Rw::open(bdf, DEFAULT_BAR0_SIZE)?;
     let mut log = Vec::new();
 
     let boot0 = bar0.read_u32(misc::BOOT0);
@@ -272,8 +201,8 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     ));
 
     // Read instance block fields via PRAMIN.
-    let pdb_lo = bar0.read_vram_u32(inst_vram_addr + ramin::PAGE_DIR_BASE_LO as u64);
-    let pdb_hi = bar0.read_vram_u32(inst_vram_addr + ramin::PAGE_DIR_BASE_HI as u64);
+    let pdb_lo = read_vram_u32(&bar0, inst_vram_addr + ramin::PAGE_DIR_BASE_LO as u64);
+    let pdb_hi = read_vram_u32(&bar0, inst_vram_addr + ramin::PAGE_DIR_BASE_HI as u64);
 
     log.push(format!(
         "PAGE_DIR_BASE: lo={pdb_lo:#010x} hi={pdb_hi:#010x}"
@@ -293,18 +222,18 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     ));
 
     // Read RAMFC fields.
-    let ramfc_userd_lo = bar0.read_vram_u32(inst_vram_addr + 0x008);
-    let ramfc_userd_hi = bar0.read_vram_u32(inst_vram_addr + 0x00C);
-    let ramfc_gp_base_lo = bar0.read_vram_u32(inst_vram_addr + 0x010);
-    let ramfc_gp_base_hi = bar0.read_vram_u32(inst_vram_addr + 0x014);
+    let ramfc_userd_lo = read_vram_u32(&bar0, inst_vram_addr + 0x008);
+    let ramfc_userd_hi = read_vram_u32(&bar0, inst_vram_addr + 0x00C);
+    let ramfc_gp_base_lo = read_vram_u32(&bar0, inst_vram_addr + 0x010);
+    let ramfc_gp_base_hi = read_vram_u32(&bar0, inst_vram_addr + 0x014);
     log.push(format!(
         "RAMFC: USERD={ramfc_userd_hi:#010x}_{ramfc_userd_lo:#010x} GP_BASE={ramfc_gp_base_hi:#010x}_{ramfc_gp_base_lo:#010x}"
     ));
 
-    let sc0_pdb_lo = bar0.read_vram_u32(inst_vram_addr + ramin::SC0_PAGE_DIR_BASE_LO as u64);
-    let sc0_pdb_hi = bar0.read_vram_u32(inst_vram_addr + ramin::SC0_PAGE_DIR_BASE_HI as u64);
-    let addr_limit_lo = bar0.read_vram_u32(inst_vram_addr + ramin::ADDR_LIMIT_LO as u64);
-    let addr_limit_hi = bar0.read_vram_u32(inst_vram_addr + ramin::ADDR_LIMIT_HI as u64);
+    let sc0_pdb_lo = read_vram_u32(&bar0, inst_vram_addr + ramin::SC0_PAGE_DIR_BASE_LO as u64);
+    let sc0_pdb_hi = read_vram_u32(&bar0, inst_vram_addr + ramin::SC0_PAGE_DIR_BASE_HI as u64);
+    let addr_limit_lo = read_vram_u32(&bar0, inst_vram_addr + ramin::ADDR_LIMIT_LO as u64);
+    let addr_limit_hi = read_vram_u32(&bar0, inst_vram_addr + ramin::ADDR_LIMIT_HI as u64);
 
     log.push(format!(
         "SC0_PDB: lo={sc0_pdb_lo:#010x} hi={sc0_pdb_hi:#010x}"
@@ -314,7 +243,7 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     ));
 
     // Walk PD3 → PD2: read PD3 entry 0.
-    let pd3_entry0 = bar0.read_vram_u64(pd3_vram_addr);
+    let pd3_entry0 = read_vram_u64(&bar0, pd3_vram_addr);
     let pd2_vram_addr = decode_pde_addr(pd3_entry0);
     log.push(format!(
         "PD3[0]: raw={pd3_entry0:#018x} → PD2 addr={pd2_vram_addr:#010x} flags=[{}]",
@@ -322,7 +251,7 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     ));
 
     // Walk PD2 → PD1: read PD2 entry 0.
-    let pd2_entry0 = bar0.read_vram_u64(pd2_vram_addr);
+    let pd2_entry0 = read_vram_u64(&bar0, pd2_vram_addr);
     let pd1_vram_addr = decode_pde_addr(pd2_entry0);
     log.push(format!(
         "PD2[0]: raw={pd2_entry0:#018x} → PD1 addr={pd1_vram_addr:#010x} flags=[{}]",
@@ -330,7 +259,7 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     ));
 
     // Walk PD1 → PD0: read PD1 entry 0.
-    let pd1_entry0 = bar0.read_vram_u64(pd1_vram_addr);
+    let pd1_entry0 = read_vram_u64(&bar0, pd1_vram_addr);
     let pd0_vram_addr = decode_pde_addr(pd1_entry0);
     log.push(format!(
         "PD1[0]: raw={pd1_entry0:#018x} → PD0 addr={pd0_vram_addr:#010x} flags=[{}]",
@@ -339,8 +268,8 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
 
     // PD0 is dual-format: 16 bytes per entry.
     // [0:7] = small page PDE, [8:15] = large page PDE.
-    let pd0_entry0_small = bar0.read_vram_u64(pd0_vram_addr);
-    let pd0_entry0_large = bar0.read_vram_u64(pd0_vram_addr + 8);
+    let pd0_entry0_small = read_vram_u64(&bar0, pd0_vram_addr);
+    let pd0_entry0_large = read_vram_u64(&bar0, pd0_vram_addr + 8);
     let pt_vram_addr = decode_pde_addr(pd0_entry0_small);
     log.push(format!(
         "PD0[0] small: raw={pd0_entry0_small:#018x} → PT addr={pt_vram_addr:#010x} flags=[{}]",
@@ -354,7 +283,7 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     // Read first 16 PTEs from PT.
     let mut pt_entries = Vec::with_capacity(16);
     for i in 0..16u64 {
-        let pte = bar0.read_vram_u64(pt_vram_addr + i * 8);
+        let pte = read_vram_u64(&bar0, pt_vram_addr + i * 8);
         let phys = decode_pte_addr(pte);
         log.push(format!(
             "PT[{i:2}]: raw={pte:#018x} → phys={phys:#012x} flags=[{}]",
@@ -364,7 +293,7 @@ pub fn read_nouveau_page_tables(bdf: &str) -> Result<NouveauPageTableDump, Chann
     }
 
     // Restore BAR0 window.
-    bar0.set_window((saved_window as u64) << 16);
+    set_window(&bar0, (saved_window as u64) << 16);
 
     Ok(NouveauPageTableDump {
         channel_id,

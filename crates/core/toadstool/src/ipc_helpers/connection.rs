@@ -22,7 +22,7 @@ use super::framing;
 /// Request timeout for IPC operations (from config defaults)
 pub const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
 
-/// Capabilities advertised to Songbird via `ipc.register`.
+/// Capabilities advertised to the discovery service via `ipc.register`.
 /// Must stay aligned with the `primal.announce` handler in `identity.rs`.
 pub const DISCOVERY_CAPABILITIES: &[&str] = &[
     "compute",
@@ -60,9 +60,9 @@ pub fn get_default_coordination_socket() -> String {
     format!("{}/biomeos/coordination.sock", get_runtime_dir())
 }
 
-/// Self-register with Songbird via `DISCOVERY_SOCKET` (preferred) or coordination fallback.
+/// Self-register with the discovery service via `DISCOVERY_SOCKET` (preferred) or coordination fallback.
 ///
-/// Sends `ipc.register` so Songbird can resolve `toadstool` by capability
+/// Sends `ipc.register` so the coordination plane can resolve `toadstool` by capability
 /// without the composition launcher doing it on our behalf. Fire-and-forget
 /// at the call site — if this fails the primal continues in standalone mode.
 ///
@@ -113,21 +113,6 @@ pub async fn register_with_discovery() -> ToadStoolResult<()> {
     debug!("Registration response: {:?}", response);
 
     Ok(())
-}
-
-/// Register ToadStool with coordination/discovery service.
-///
-/// Delegates to [`register_with_discovery`], which uses `DISCOVERY_SOCKET`
-/// (highest precedence, set by `composition_nucleus.sh` → Songbird) with
-/// full fallback through `resolve_capability_socket_fallback("discovery", …)`.
-///
-/// # Errors
-///
-/// Returns error if the coordination service is unreachable, JSON-RPC framing
-/// fails, or registration is rejected.
-#[deprecated(note = "use register_with_discovery — aligns with DISCOVERY_SOCKET + ipc.register")]
-pub async fn register_with_coordination() -> ToadStoolResult<()> {
-    register_with_discovery().await
 }
 
 /// Find primals by capability via discovery/coordination service

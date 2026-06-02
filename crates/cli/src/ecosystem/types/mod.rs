@@ -21,7 +21,7 @@ pub use crypto::{
 };
 pub use discovery::{DiscoveredService, DiscoveryResult, ServiceType};
 pub use endpoint::{EcosystemService, ServiceEndpoint, TrustLevel};
-pub use storage::{NestGateMount, StorageMount};
+pub use storage::StorageMount;
 
 /// Ecosystem service discovery and integration (main struct)
 pub struct EcosystemIntegrator {

@@ -211,6 +211,24 @@ mod tests {
     use std::io::Write;
     use tempfile::NamedTempFile;
 
+    /// Writes a `.toml` workload fixture and returns the temp file (kept alive) and path.
+    fn write_toml_fixture(content: &str) -> (NamedTempFile, PathBuf) {
+        let mut tmp = NamedTempFile::with_suffix(".toml").expect("temp toml file");
+        write!(tmp, "{content}").expect("write workload toml");
+        tmp.flush().expect("flush");
+        let path = tmp.path().to_path_buf();
+        (tmp, path)
+    }
+
+    /// Writes raw bytes to a temp file for dependency validation tests.
+    fn write_bytes_fixture(content: &[u8]) -> (NamedTempFile, PathBuf) {
+        let mut tmp = NamedTempFile::new().expect("temp file");
+        tmp.write_all(content).expect("write bytes");
+        tmp.flush().expect("flush");
+        let path = tmp.path().to_path_buf();
+        (tmp, path)
+    }
+
     #[tokio::test]
     async fn test_execute_workload_file_not_found() {
         let path = PathBuf::from("/nonexistent/workload-12345.toml");
@@ -220,10 +238,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_workload_invalid_toml() {
-        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
-        write!(tmp, "invalid toml [unclosed").unwrap();
-        tmp.flush().unwrap();
-        let path = tmp.path().to_path_buf();
+        let (_tmp, path) = write_toml_fixture("invalid toml [unclosed");
 
         let result = execute_workload(&path, None, &[], 60, "text").await;
         assert!(result.is_err());
@@ -242,10 +257,7 @@ type = "native"
 command = "/bin/echo"
 args = ["hello"]
 "#;
-        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
-        write!(tmp, "{}", content).unwrap();
-        tmp.flush().unwrap();
-        let path = tmp.path().to_path_buf();
+        let (_tmp, path) = write_toml_fixture(content);
 
         let result = execute_workload(&path, None, &[], 10, "text").await;
         assert!(result.is_ok(), "execute_workload failed: {:?}", result);
@@ -262,10 +274,7 @@ version = "1.0"
 type = "native"
 command = "/bin/echo"
 "#;
-        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
-        write!(tmp, "{}", content).unwrap();
-        tmp.flush().unwrap();
-        let path = tmp.path().to_path_buf();
+        let (_tmp, path) = write_toml_fixture(content);
 
         let result = execute_workload(&path, Some("native"), &[], 10, "text").await;
         assert!(result.is_ok());
@@ -283,10 +292,7 @@ type = "native"
 command = "/bin/echo"
 args = ["test"]
 "#;
-        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
-        write!(tmp, "{}", content).unwrap();
-        tmp.flush().unwrap();
-        let path = tmp.path().to_path_buf();
+        let (_tmp, path) = write_toml_fixture(content);
 
         let result = execute_workload(&path, None, &[], 10, "json").await;
         assert!(result.is_ok());
@@ -303,10 +309,7 @@ version = "1.0"
 type = "native"
 command = "/bin/echo"
 "#;
-        let mut tmp = NamedTempFile::with_suffix(".toml").unwrap();
-        write!(tmp, "{}", content).unwrap();
-        tmp.flush().unwrap();
-        let path = tmp.path().to_path_buf();
+        let (_tmp, path) = write_toml_fixture(content);
 
         let env = vec!["CUSTOM_VAR=value".to_string()];
         let result = execute_workload(&path, None, &env, 10, "text").await;
@@ -354,7 +357,9 @@ command = "/bin/echo"
             blake3: None,
             required: true,
         }]));
-        let err = validate_data_dependencies(&wl).await.unwrap_err();
+        let err = validate_data_dependencies(&wl)
+            .await
+            .expect_err("required dep missing");
         assert!(err.to_string().contains("not found"));
     }
 
@@ -371,10 +376,10 @@ command = "/bin/echo"
 
     #[tokio::test]
     async fn test_validate_dep_exists() {
-        let tmp = NamedTempFile::new().unwrap();
+        let (_tmp, path) = write_bytes_fixture(b"");
         let wl = make_workload(Some(vec![spec::DataDependency {
             name: "present".into(),
-            source: tmp.path().to_string_lossy().into_owned(),
+            source: path.to_string_lossy().into_owned(),
             blake3: None,
             required: true,
         }]));
@@ -383,14 +388,12 @@ command = "/bin/echo"
 
     #[tokio::test]
     async fn test_validate_blake3_match() {
-        let mut tmp = NamedTempFile::new().unwrap();
-        write!(tmp, "hello world").unwrap();
-        tmp.flush().unwrap();
+        let (_tmp, path) = write_bytes_fixture(b"hello world");
 
         let hash = blake3::hash(b"hello world").to_hex().to_string();
         let wl = make_workload(Some(vec![spec::DataDependency {
             name: "hashed".into(),
-            source: tmp.path().to_string_lossy().into_owned(),
+            source: path.to_string_lossy().into_owned(),
             blake3: Some(hash),
             required: true,
         }]));
@@ -399,17 +402,17 @@ command = "/bin/echo"
 
     #[tokio::test]
     async fn test_validate_blake3_mismatch() {
-        let mut tmp = NamedTempFile::new().unwrap();
-        write!(tmp, "hello world").unwrap();
-        tmp.flush().unwrap();
+        let (_tmp, path) = write_bytes_fixture(b"hello world");
 
         let wl = make_workload(Some(vec![spec::DataDependency {
             name: "bad-hash".into(),
-            source: tmp.path().to_string_lossy().into_owned(),
+            source: path.to_string_lossy().into_owned(),
             blake3: Some("0000000000000000000000000000000000000000000000000000000000000000".into()),
             required: true,
         }]));
-        let err = validate_data_dependencies(&wl).await.unwrap_err();
+        let err = validate_data_dependencies(&wl)
+            .await
+            .expect_err("BLAKE3 mismatch");
         assert!(err.to_string().contains("BLAKE3 mismatch"));
     }
 

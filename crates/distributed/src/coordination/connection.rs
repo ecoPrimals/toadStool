@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_tcp_endpoint_rejected() {
+    async fn test_connection_grpc_tcp_endpoint_rejected() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_GRPC_ENDPOINT_9999.to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::GRPC),
@@ -199,13 +199,14 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.active_endpoint, TEST_GRPC_ENDPOINT_9999);
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_https_endpoint_rejected() {
+    async fn test_connection_grpc_https_endpoint_rejected() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec!["https://coordination.example.com:443".to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::GRPC),
@@ -213,12 +214,13 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_message_queue_tcp_endpoint_rejected() {
+    async fn test_connection_message_queue_tcp_endpoint_rejected() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_AMQP_ENDPOINT.to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::MessageQueue),
@@ -226,13 +228,14 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
         assert_eq!(conn.active_endpoint, TEST_AMQP_ENDPOINT);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_auth_api_key() {
+    async fn test_connection_auth_api_key() -> ToadStoolResult<()> {
         let creds = AuthCredentials {
             api_key: Some("secret-key".to_string()),
             ..Default::default()
@@ -247,12 +250,13 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.auth_token, Some("secret-key".to_string()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_auth_bearer() {
+    async fn test_connection_auth_bearer() -> ToadStoolResult<()> {
         let creds = AuthCredentials {
             token: Some("bearer-token-123".to_string()),
             ..Default::default()
@@ -267,12 +271,13 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.auth_token, Some("bearer-token-123".to_string()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_auth_oauth2() {
+    async fn test_connection_auth_oauth2() -> ToadStoolResult<()> {
         let creds = AuthCredentials {
             token: Some("oauth2-access-token".to_string()),
             ..Default::default()
@@ -287,12 +292,13 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.auth_token, Some("oauth2-access-token".to_string()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_all_tcp_endpoints_degrade() {
+    async fn test_connection_grpc_all_tcp_endpoints_degrade() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![
                 "invalid-endpoint".to_string(),
@@ -303,12 +309,13 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_all_endpoints_fail_uses_first_degraded() {
+    async fn test_connection_all_endpoints_fail_uses_first_degraded() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec!["invalid".to_string(), "also-invalid".to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::GRPC),
@@ -316,13 +323,14 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.active_endpoint, "invalid");
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_http_plain_rejected() {
+    async fn test_connection_http_plain_rejected() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::HTTP),
@@ -330,13 +338,14 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
         assert_eq!(conn.active_endpoint, TEST_HTTP_ENDPOINT_8080);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_endpoints_preserved() {
+    async fn test_connection_endpoints_preserved() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![
                 TEST_PLACEHOLDER_ENDPOINT_A.to_string(),
@@ -347,14 +356,15 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert_eq!(conn.endpoints.len(), 2);
         assert_eq!(conn.endpoints[0], TEST_PLACEHOLDER_ENDPOINT_A);
         assert_eq!(conn.endpoints[1], TEST_PLACEHOLDER_ENDPOINT_B);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_protocol_config_preserved() {
+    async fn test_connection_protocol_config_preserved() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_MINIMAL_ENDPOINT.to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::GRPC),
@@ -362,10 +372,11 @@ mod tests {
             pool: ConnectionPoolConfig::default(),
         };
 
-        let conn = CoordinationConnection::new(config).await.unwrap();
+        let conn = CoordinationConnection::new(config).await?;
         assert!(matches!(
             conn.protocol_config.protocol,
             CoordinationTransport::GRPC
         ));
+        Ok(())
     }
 }

@@ -120,7 +120,7 @@ impl VfioChannel {
                 )
             }
             PageTableFormat::V2FiveLevel => {
-                let config = pfifo::PfifoInitConfig::for_thermal_state(warm_handoff, false);
+                let config = pfifo::PfifoInitConfig::for_thermal_state(warm_handoff, warm_handoff);
                 Self::create_with_config(
                     container,
                     bar0,
@@ -254,6 +254,13 @@ impl VfioChannel {
     #[must_use]
     pub const fn runlist_id_hint(&self) -> u32 {
         self.runlist_id
+    }
+
+    /// Override the target runlist ID. Use when the hardware rejects
+    /// writes to the original runlist's per-RL registers (GV100 PRI
+    /// domain fault after PGRAPH reset).
+    pub fn force_runlist(&mut self, id: u32) {
+        self.runlist_id = id;
     }
 
     /// BAR0 offset for the USERMODE doorbell register.

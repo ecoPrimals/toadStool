@@ -282,7 +282,7 @@ fn test_storage_error_authentication() {
 fn test_storage_result_ok() {
     // Test successful result
     let value = "success".to_string();
-    let result: NestGateResult<String> = Ok(value.clone());
+    let result: StorageServiceResult<String> = Ok(value.clone());
 
     assert!(result.is_ok());
     if let Ok(v) = result {
@@ -294,7 +294,7 @@ fn test_storage_result_ok() {
 fn test_storage_result_err() {
     // Test error result
     let error = StorageError::Connection("failed".to_string());
-    let result: NestGateResult<String> = Err(error);
+    let result: StorageServiceResult<String> = Err(error);
 
     assert!(result.is_err());
     if let Err(e) = result {

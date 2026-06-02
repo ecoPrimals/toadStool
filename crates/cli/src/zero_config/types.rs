@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Type definitions for zero-configuration deployment
+//!
+//! **Serde alias deprecation:** Several structs use `#[serde(alias = …)]` to accept
+//! legacy primal field names (`songbird`, `beardog`, `nestgate`, `squirrel`, and
+//! `*_enabled` variants) in on-disk config. These aliases are deprecated and will be
+//! removed in a future release; migrate to capability-domain field names.
 
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -149,7 +154,8 @@ pub struct GpuInfo {
 /// Detected ecosystem capability providers.
 ///
 /// Fields use capability-domain names per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
-/// Serde aliases preserve older config field names where needed.
+/// Serde aliases preserve older primal config field names; aliases are deprecated
+/// and will be removed in a future release.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EcosystemServices {
     /// Coordination / orchestration capability provider

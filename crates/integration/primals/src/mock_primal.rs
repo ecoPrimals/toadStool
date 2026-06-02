@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Test double for [`crate::PrimalIntegration`] — only built for `cfg(test)` or `test-mocks`.
+//! Test double for [`crate::PrimalIntegration`] — only built for `#[cfg(test)]`.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -13,7 +13,7 @@ use crate::{
 };
 use toadstool::{ToadStoolError, ToadStoolResult};
 
-/// Minimal mock Primal for unit tests and integration tests that enable `test-mocks`.
+/// Minimal mock Primal for unit tests.
 pub struct MockPrimal {
     /// Logical service name returned in registrations and startup results.
     pub name: String,

@@ -60,12 +60,3 @@ pub fn coordination_loopback_bootstrap_url() -> String {
 pub fn api() -> String {
     format!("http://{}:{}", DEFAULT_HOSTNAME, network::API_PORT)
 }
-
-/// Default cloud endpoint
-///
-/// Port 0 = OS-assigned. In production, prefer capability-based discovery.
-#[deprecated(note = "Use capability-based discovery via discover_or_fallback() instead")]
-#[must_use]
-pub fn cloud() -> String {
-    format!("http://{}:{}", DEFAULT_HOSTNAME, network::API_PORT)
-}

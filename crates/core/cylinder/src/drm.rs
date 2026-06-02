@@ -34,15 +34,10 @@ fn dri_render_prefix() -> &'static str {
     PREFIX.get_or_init(|| {
         use toadstool_common::interned_strings::socket_env;
 
-        if let Some(v) = std::env::var(socket_env::TOADSTOOL_DRI_RENDER_PREFIX).ok().filter(|s| !s.is_empty()) {
-            return v;
-        }
-        #[expect(deprecated, reason = "legacy env-var fallback for migration")]
-        if let Some(v) = std::env::var(socket_env::CORALREEF_DRI_RENDER_PREFIX).ok().filter(|s| !s.is_empty()) {
-            tracing::warn!("deprecated env var CORALREEF_DRI_RENDER_PREFIX — migrate to TOADSTOOL_DRI_RENDER_PREFIX");
-            return v;
-        }
-        "/dev/dri/renderD".into()
+        std::env::var(socket_env::TOADSTOOL_DRI_RENDER_PREFIX)
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "/dev/dri/renderD".into())
     })
 }
 

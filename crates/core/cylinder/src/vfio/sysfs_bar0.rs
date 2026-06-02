@@ -8,7 +8,10 @@ use crate::error::ChannelError;
 use crate::mmio_region::MmioRegion;
 use toadstool_hw_safe::DeviceMmap;
 
-fn device_mmap_err_to_errno(e: toadstool_hw_safe::device_mmap::DeviceMmapError) -> rustix::io::Errno {
+/// Map [`DeviceMmapError`] to a `rustix` errno for [`ChannelError::Bar0Mmap`].
+pub(crate) fn device_mmap_err_to_errno(
+    e: toadstool_hw_safe::device_mmap::DeviceMmapError,
+) -> rustix::io::Errno {
     match e {
         toadstool_hw_safe::device_mmap::DeviceMmapError::ZeroSize => rustix::io::Errno::INVAL,
         toadstool_hw_safe::device_mmap::DeviceMmapError::MmapFailed(io) => io

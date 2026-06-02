@@ -8,7 +8,6 @@ target/
 # --- Binary/data files ---
 **/*.csv
 **/*.json
-!biome.yaml
 !toadstool.toml
 
 # --- Generated output ---

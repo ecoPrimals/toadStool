@@ -17,33 +17,33 @@ use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use tracing::{debug, info, warn};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(10);
-const POLL_INTERVAL_NO_SONGBIRD: Duration = Duration::from_secs(30);
-const SHADER_CAPABILITY: &str = "shader";
+const POLL_INTERVAL_NO_DISCOVERY: Duration = Duration::from_secs(30);
+const SHADER_CAPABILITY: &str = toadstool_common::constants::primal_identity::capability::SHADER_COMPILER;
 
 /// Run the `ipc.watch` background poller.
 ///
-/// Connects to songBird's discovery socket and polls `ipc.watch` for shader
+/// Connects to the discovery capability socket and polls `ipc.watch` for shader
 /// capability registrations. On detection, invalidates the visualization client
 /// cache to trigger re-discovery.
-pub async fn run(coral_client: SharedVisualizationClient) {
+pub async fn run(shader_client: SharedVisualizationClient) {
     info!("ipc.watch background poller starting (watching for shader capability)");
 
     let mut revision: u64 = 0;
-    let mut songbird_available = false;
+    let mut discovery_available = false;
 
     loop {
         let env = SocketPathEnv::from_env();
         let discovery_socket = resolve_capability_socket_fallback("discovery", &env);
 
         if !discovery_socket.exists() {
-            if songbird_available {
+            if discovery_available {
                 warn!(
                     path = %discovery_socket.display(),
-                    "songBird discovery socket disappeared — will retry"
+                    "discovery service socket disappeared — will retry"
                 );
-                songbird_available = false;
+                discovery_available = false;
             }
-            tokio::time::sleep(POLL_INTERVAL_NO_SONGBIRD).await;
+            tokio::time::sleep(POLL_INTERVAL_NO_DISCOVERY).await;
             continue;
         }
 
@@ -59,12 +59,12 @@ pub async fn run(coral_client: SharedVisualizationClient) {
             .await
         {
             Ok(response) => {
-                if !songbird_available {
+                if !discovery_available {
                     info!(
                         path = %discovery_socket.display(),
-                        "songBird ipc.watch connected"
+                        "discovery ipc.watch connected"
                     );
-                    songbird_available = true;
+                    discovery_available = true;
                 }
 
                 if let Some(new_rev) = response.get("revision").and_then(|v| v.as_u64()) {
@@ -89,7 +89,7 @@ pub async fn run(coral_client: SharedVisualizationClient) {
                                 revision,
                                 "ipc.watch: shader provider registered — invalidating cache"
                             );
-                            coral_client.invalidate().await;
+                            shader_client.invalidate().await;
                         } else {
                             debug!(primal, kind, revision, "ipc.watch: shader provider event");
                         }
@@ -97,20 +97,20 @@ pub async fn run(coral_client: SharedVisualizationClient) {
                 }
             }
             Err(e) => {
-                if songbird_available {
+                if discovery_available {
                     debug!(
                         error = %e,
-                        "ipc.watch poll failed — songBird may be restarting"
+                        "ipc.watch poll failed — discovery service may be restarting"
                     );
-                    songbird_available = false;
+                    discovery_available = false;
                 }
             }
         }
 
-        let interval = if songbird_available {
+        let interval = if discovery_available {
             POLL_INTERVAL
         } else {
-            POLL_INTERVAL_NO_SONGBIRD
+            POLL_INTERVAL_NO_DISCOVERY
         };
         tokio::time::sleep(interval).await;
     }

@@ -191,14 +191,3 @@ async fn test_detector_concurrent_calls() {
     assert!(r3.is_ok());
     assert!(r4.is_ok());
 }
-
-// ============================================================================
-// Legacy CloudEnvironment Tests (Deprecated)
-// ============================================================================
-
-#[test]
-#[expect(deprecated)]
-fn test_cloud_environment_alias_deprecated() {
-    // CloudEnvironment is now an alias to HardwareEnvironment
-    let _env: CloudEnvironment = HardwareEnvironment::default();
-}

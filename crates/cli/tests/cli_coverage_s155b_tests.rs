@@ -28,7 +28,7 @@ mod ecosystem_tests {
     use toadstool_cli::ecosystem::service_type::ServiceType;
     use toadstool_cli::ecosystem::{
         BearDogPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
-        EcosystemIntegrator, NestGateMount, ServiceSignature, SignedServiceResponse, TrustLevel,
+        EcosystemIntegrator, StorageMount, ServiceSignature, SignedServiceResponse, TrustLevel,
     };
     use uuid::Uuid;
 
@@ -83,7 +83,7 @@ mod ecosystem_tests {
 
     #[test]
     fn test_nestgate_mount_creation() {
-        let mount = NestGateMount {
+        let mount = StorageMount {
             dataset_name: "research-data".to_string(),
             mount_point: PathBuf::from("/mnt/data"),
             endpoint: "127.0.0.1:9000".to_string(),

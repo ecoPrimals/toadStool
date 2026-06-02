@@ -77,7 +77,7 @@ pub use messaging::{PrimalMessage, PrimalMessageType, PrimalMetrics};
 pub use primal_types::{GpuAllocation, PrimalConfig, PrimalResources, PrimalType};
 pub use service::{ServiceEndpoint, ServiceRegistration, StartupResult, StartupStatus};
 
-#[cfg(any(test, feature = "test-mocks"))]
+#[cfg(test)]
 pub mod mock_primal;
 
 /// Universal trait for Primal integration

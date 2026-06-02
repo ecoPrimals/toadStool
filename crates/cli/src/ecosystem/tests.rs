@@ -178,7 +178,7 @@ fn test_beardog_permission_creation() {
 
 #[test]
 fn test_nestgate_mount_creation() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "research-data".to_string(),
         mount_point: PathBuf::from("/mnt/data"),
         endpoint: "127.0.0.1:9000".to_string(),
@@ -530,7 +530,7 @@ fn test_beardog_permission_expiration() {
 
 #[test]
 fn test_nestgate_mount_with_encryption() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "encrypted-data".to_string(),
         mount_point: PathBuf::from("/mnt/secure"),
         endpoint: "127.0.0.1:9000".to_string(),
@@ -546,7 +546,7 @@ fn test_nestgate_mount_with_encryption() {
 
 #[test]
 fn test_nestgate_mount_without_encryption() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "public-data".to_string(),
         mount_point: PathBuf::from("/mnt/public"),
         endpoint: "127.0.0.1:9001".to_string(),

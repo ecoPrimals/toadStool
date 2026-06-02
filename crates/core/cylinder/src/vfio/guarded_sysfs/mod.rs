@@ -123,6 +123,6 @@ pub(crate) use driver_ops::{
 pub use kmod_build::{
     KmodBuilder, disengage_irq_clutch, engage_irq_clutch, insmod_guarded,
     insmod_guarded_with_params, kmod_guarded, restore_bus_reset, rmmod_guarded,
-    suppress_bus_reset, unsuppress_bus_reset_for,
+    suppress_all_resets, suppress_bus_reset, unsuppress_bus_reset_for,
 };
 pub use proc_scan::{ModuleSnapshot, iommu_group_ready, is_module_stuck, module_snapshot, release_bar0_fds};

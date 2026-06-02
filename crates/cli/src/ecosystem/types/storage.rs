@@ -20,6 +20,3 @@ pub struct StorageMount {
     /// Encryption key (if encrypted)
     pub encryption_key: Option<String>,
 }
-
-/// Compatibility alias for [`StorageMount`] (prefer the canonical name in new code).
-pub type NestGateMount = StorageMount;

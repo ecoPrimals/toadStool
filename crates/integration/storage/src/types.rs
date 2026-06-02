@@ -49,10 +49,6 @@ pub enum StorageError {
 /// Result type for storage-service operations.
 pub type StorageServiceResult<T> = Result<T, StorageError>;
 
-#[deprecated(since = "0.2.0", note = "use StorageServiceResult — capability-based naming")]
-/// Legacy alias for [`StorageServiceResult`].
-pub type NestGateResult<T> = StorageServiceResult<T>;
-
 /// Storage tier options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StorageTier {

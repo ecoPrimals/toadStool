@@ -4,18 +4,11 @@
 //! All functions respect `TOADSTOOL_SYSFS_ROOT` (default `/sys`) so tests and
 //! containers can point at a mock sysfs tree.
 
+use crate::interned_strings::socket_env;
 use std::sync::OnceLock;
 
-fn resolve_env(primary: &str, legacy: &str, default: &str) -> String {
+fn resolve_env(primary: &str, default: &str) -> String {
     if let Some(v) = std::env::var(primary).ok().filter(|s| !s.is_empty()) {
-        return v.trim_end_matches('/').to_string();
-    }
-    if let Some(v) = std::env::var(legacy).ok().filter(|s| !s.is_empty()) {
-        tracing::warn!(
-            legacy_var = legacy,
-            modern_var = primary,
-            "deprecated env var — migrate to {primary}"
-        );
         return v.trim_end_matches('/').to_string();
     }
     default.to_string()
@@ -25,7 +18,7 @@ fn resolve_env(primary: &str, legacy: &str, default: &str) -> String {
 #[must_use]
 pub fn sysfs_root() -> &'static str {
     static ROOT: OnceLock<String> = OnceLock::new();
-    ROOT.get_or_init(|| resolve_env("TOADSTOOL_SYSFS_ROOT", "CORALREEF_SYSFS_ROOT", "/sys"))
+    ROOT.get_or_init(|| resolve_env(socket_env::TOADSTOOL_SYSFS_ROOT, "/sys"))
         .as_str()
 }
 

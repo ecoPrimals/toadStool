@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S282
+**Last Updated**: Jun 2026 — S283
 
 ---
 
@@ -30,19 +30,19 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S282+ — May 2026)
+## Current State (S283 — Jun 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **23,770+ tests** (9,182+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **88 JSON-RPC methods** (direct) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. **Recommended caller timeout: ≥3 seconds** for health probes during startup.
-- **Deep Debt Evolution Pass** (S282+) — Systematic 6-wave refactor:
+- **Deep Debt Evolution Pass** (S283) — Systematic 6-wave refactor (S282) + Evolution VI (S283: large-file splits, rename/alias cleanup, unwrap elimination, test-only mocks, capability-based discovery):
   - **Wave 1**: All hardcoded paths consolidated — `data_subdir()` for `/var/lib/toadstool/*` (7 files), `sysfs_paths` module in `toadstool-common` for `/sys/*` (~50 files across 6 crates), chip/driver defaults evolved to BOOT0-based discovery.
   - **Wave 2**: 5 oversized files (800+ lines each) refactored — `rm_trigger.rs` (1113L→3 modules), `pfifo/mod.rs` (916L→init/channel/runlist), `dispatch/mod.rs` (903L→state+device), `reagent.rs` (893L→catalog+vram_capture), `generation.rs` (862L→9 per-arch modules).
   - **Wave 3**: mmap/volatile patterns consolidated to `hw-safe` types across 6 files; all 18 `unsafe impl Send/Sync` blocks audited with SAFETY documentation.
   - **Wave 4**: `security-sandbox`/`security-policies` wired (feature-gated), `auto-config` wired to CLI, `runtime-python`/`burn-inference` archived. Commented-out Cargo.toml blocks cleaned. Dead code (`exclude_bdf`, Phase C imports, superseded ELF helpers) removed.
   - **Wave 5**: `StubRuntimeEngine` evolved to runtime backend probing (WGPU/VFIO/WASM). AMD chip detection added to `detect_chip()` (`ChipDetection` enum). `NoopGspBridge` fallback logging enhanced.
-  - **Wave 6**: Docs refreshed — session tags to S282, method count to 88, test metrics updated, `SERVER_METHODS.md` verified, FHE integration test archived.
+  - **Wave 6**: Docs refreshed — session tags to S283, method count to 88, test metrics updated, `SERVER_METHODS.md` verified, FHE integration test archived.
 - **Diesel Engine Crash Fault Tolerance** (Exp 233) — Three-layer crash protection validated: IRQ clutch (`irq_clutch.ko`), PRI fault guard (skip GPU writes when PRI ring faulted), zombie module strategy (skip `rmmod` for catalyst handoffs to prevent use-after-free from uncanceled RM kernel timers). System survives warm handoff without lockup.
 - **Phase C complete** (S245–S253) — toadstool-cylinder, DRM/MMIO/AMD/NVIDIA/VFIO absorbed. `OwnedFd` VFIO. GspBridge trait.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V. Current frontier: FECS PENDING_CTX_RELOAD.
@@ -50,7 +50,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S282+).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S283).
 
 ---
 

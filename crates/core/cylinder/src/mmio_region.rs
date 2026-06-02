@@ -45,7 +45,11 @@ impl MmioRegion {
         }
     }
 
-    /// Take ownership of an `mmap` result; the region is unmapped on [`Drop`].
+    /// Take ownership of an existing `mmap` result; the region is unmapped on [`Drop`].
+    ///
+    /// Prefer [`Self::from_device_mmap`] when mapping from an fd via [`DeviceMmap`].
+    /// Use this only when another subsystem (for example VFIO runtime) already
+    /// performed `mmap` and cylinder must adopt the pointer without remapping.
     ///
     /// # Safety
     ///

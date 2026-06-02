@@ -9,6 +9,8 @@
 //! - Phase 3: Runtime discovery via coordination service
 //! - Phase 4: Full mDNS + capability-based discovery
 
+use toadstool_common::interned_strings::socket_env;
+
 /// Default ports for ToadStool services
 ///
 /// **Self-Knowledge Principle**: ToadStool only defines its own ports.
@@ -229,20 +231,29 @@ pub fn resolve_capability_port(capability: &str, fallback_port: u16) -> u16 {
         std::env::var(key).ok()?.parse().ok()
     }
 
+    #[expect(deprecated, reason = "legacy primal port env names in capability resolution chain")]
     let ordered_keys: &[&str] = match capability {
         "COORDINATION" => &[
-            "TOADSTOOL_COORDINATION_PORT",
-            "COORDINATION_PORT",
-            "SONGBIRD_PORT",
+            socket_env::TOADSTOOL_COORDINATION_PORT,
+            socket_env::COORDINATION_PORT,
+            socket_env::SONGBIRD_PORT,
         ],
-        "SECURITY" => &["TOADSTOOL_SECURITY_PORT", "SECURITY_PORT", "BEARDOG_PORT"],
-        "STORAGE" => &["TOADSTOOL_STORAGE_PORT", "STORAGE_PORT", "NESTGATE_PORT"],
+        "SECURITY" => &[
+            socket_env::TOADSTOOL_SECURITY_PORT,
+            socket_env::SECURITY_PORT,
+            socket_env::BEARDOG_PORT,
+        ],
+        "STORAGE" => &[
+            socket_env::TOADSTOOL_STORAGE_PORT,
+            socket_env::STORAGE_PORT,
+            socket_env::NESTGATE_PORT,
+        ],
         "PLATFORM" => &[
-            "TOADSTOOL_INTELLIGENCE_PORT",
-            "TOADSTOOL_PLATFORM_PORT",
-            "INTELLIGENCE_PORT",
-            "PLATFORM_PORT",
-            "SQUIRREL_PORT",
+            socket_env::TOADSTOOL_INTELLIGENCE_PORT,
+            socket_env::TOADSTOOL_PLATFORM_PORT,
+            socket_env::INTELLIGENCE_PORT,
+            socket_env::PLATFORM_PORT,
+            socket_env::SQUIRREL_PORT,
         ],
         _ => &[],
     };

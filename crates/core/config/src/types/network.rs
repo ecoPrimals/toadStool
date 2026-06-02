@@ -6,6 +6,12 @@
 //! - Service endpoint URLs (coordination, security, storage, etc.)
 //! - Connection settings (timeouts, retries, keepalive)
 //! - TLS/SSL configuration
+//!
+//! **Serde alias deprecation:** [`EndpointConfig`] fields accept legacy primal names
+//! (`songbird`, `beardog`, `nestgate`, `squirrel`) via `#[serde(alias = …)]` for
+//! on-disk compatibility. These aliases are deprecated and will be removed in a
+//! future release; migrate configs to capability field names (`coordination`,
+//! `security`, `storage`, `ai_processing`).
 
 use serde::{Deserialize, Serialize};
 use toadstool_common::interned_strings::socket_env;
@@ -68,9 +74,10 @@ impl Default for NetworkConfig {
 /// External service endpoints configuration.
 ///
 /// Fields use **capability-domain names** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
-/// Serde aliases accept the legacy primal names (`songbird`, `beardog`, etc.) in
-/// existing config files. All capability fields are deprecated — prefer runtime
-/// discovery via `ServiceDiscovery::find_by_capability(...)`.
+/// Serde aliases accept legacy primal names (`songbird`, `beardog`, etc.) in existing
+/// config files; those aliases are deprecated and will be removed in a future release.
+/// All capability endpoint fields are deprecated — prefer runtime discovery via
+/// `ServiceDiscovery::find_by_capability(...)`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointConfig {
     /// Coordination capability endpoint (legacy fallback)

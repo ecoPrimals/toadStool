@@ -107,4 +107,4 @@ pub fn make_mock_capabilities() -> crate::cloud::types::CloudCapabilities {
 pub use crate::cloud::test_mocks::MockCloudProvider;
 
 /// [`UniversalCloudOrchestrator`] with [`MockCloudProvider`] — use for type inference in tests.
-pub use crate::cloud::TestUniversalOrchestrator;
+pub type TestUniversalOrchestrator = crate::cloud::UniversalCloudOrchestrator<MockCloudProvider>;

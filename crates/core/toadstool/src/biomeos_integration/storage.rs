@@ -138,12 +138,6 @@ impl StorageProvisioningManager {
         self.backend.initialize().await
     }
 
-    /// Legacy name for [`Self::initialize_storage_service_connection`].
-    #[deprecated(since = "0.3.0", note = "Use initialize_storage_service_connection()")]
-    pub async fn initialize_nestgate_connection(&self) -> ToadStoolResult<()> {
-        self.initialize_storage_service_connection().await
-    }
-
     /// Provision a volume from manifest configuration
     ///
     /// # Errors

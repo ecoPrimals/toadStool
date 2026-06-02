@@ -255,52 +255,54 @@ mod tests {
     use toadstool_config::defaults::endpoints::coordination_loopback_bootstrap_url;
 
     #[tokio::test]
-    async fn test_coordinator_creation_default() {
+    async fn test_coordinator_creation_default() -> ToadStoolResult<()> {
         let config = DistributedConfig::default();
-        let result = DistributedCoordinator::new(config).await;
-        assert!(result.is_ok());
+        DistributedCoordinator::new(config).await?;
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_coordinator_submit_execution() {
+    async fn test_coordinator_submit_execution() -> ToadStoolResult<()> {
         let config = DistributedConfig::default();
-        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
 
         let request = ExecutionRequest::default();
-        let result = coordinator.submit_execution(request).await;
-        assert!(result.is_ok());
-        let execution_id = result.unwrap();
+        let execution_id = coordinator.submit_execution(request).await?;
         assert_ne!(execution_id, Uuid::nil());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_coordinator_start() {
+    async fn test_coordinator_start() -> ToadStoolResult<()> {
         let config = DistributedConfig::default();
-        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
         let coordinator = Arc::new(coordinator);
 
-        let result = coordinator.start().await;
-        assert!(result.is_ok());
+        coordinator.start().await?;
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_coordinator_submit_multiple() {
+    async fn test_coordinator_submit_multiple() -> ToadStoolResult<()> {
         let config = DistributedConfig::default();
-        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
 
-        let ids: Vec<Uuid> = futures::future::join_all((0..5).map(|_| {
-            let coord = &coordinator;
-            let req = ExecutionRequest::default();
-            async move { coord.submit_execution(req).await.unwrap() }
-        }))
-        .await;
+        let mut ids = Vec::with_capacity(5);
+        for _ in 0..5 {
+            ids.push(
+                coordinator
+                    .submit_execution(ExecutionRequest::default())
+                    .await?,
+            );
+        }
 
         let unique: std::collections::HashSet<_> = ids.iter().collect();
         assert_eq!(unique.len(), 5);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_standalone_executor_capacity_limit() {
+    async fn test_standalone_executor_capacity_limit() -> ToadStoolResult<()> {
         let config = DistributedConfig {
             standalone: StandaloneConfig {
                 max_concurrent_executions: 2,
@@ -310,29 +312,28 @@ mod tests {
             },
             ..Default::default()
         };
-        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
 
         // Submit 2 - should succeed
-        let _ = coordinator
+        coordinator
             .submit_execution(ExecutionRequest::default())
-            .await
-            .unwrap();
-        let _ = coordinator
+            .await?;
+        coordinator
             .submit_execution(ExecutionRequest::default())
-            .await
-            .unwrap();
+            .await?;
 
         // Submit 3rd - should fail with resource error
-        let result = coordinator
+        let err = coordinator
             .submit_execution(ExecutionRequest::default())
-            .await;
-        assert!(result.is_err());
-        let err_msg = result.err().unwrap().to_string();
+            .await
+            .expect_err("third submission should exceed capacity");
+        let err_msg = err.to_string();
         assert!(err_msg.contains("Insufficient") || err_msg.contains("resource"));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_coordinator_with_coordination_config() {
+    async fn test_coordinator_with_coordination_config() -> ToadStoolResult<()> {
         let config = DistributedConfig {
             coordination: Some(CoordinationConfig {
                 endpoint: coordination_loopback_bootstrap_url(),
@@ -341,36 +342,35 @@ mod tests {
             }),
             ..Default::default()
         };
-        let result = DistributedCoordinator::new(config).await;
-        assert!(result.is_ok());
-        let coordinator = result.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
         assert!(
             coordinator.coordination_client.is_none() || coordinator.coordination_client.is_some()
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_standalone_executor_clone() {
+    async fn test_standalone_executor_clone() -> ToadStoolResult<()> {
         let config = DistributedConfig::default();
-        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
         let _executor = std::sync::Arc::clone(&coordinator.standalone_executor);
         assert!(Arc::strong_count(&coordinator.standalone_executor) >= 2);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_submit_execution_returns_unique_ids() {
+    async fn test_submit_execution_returns_unique_ids() -> ToadStoolResult<()> {
         let config = DistributedConfig::default();
-        let coordinator = DistributedCoordinator::new(config).await.unwrap();
+        let coordinator = DistributedCoordinator::new(config).await?;
 
         let id1 = coordinator
             .submit_execution(ExecutionRequest::default())
-            .await
-            .unwrap();
+            .await?;
         let id2 = coordinator
             .submit_execution(ExecutionRequest::default())
-            .await
-            .unwrap();
+            .await?;
 
         assert_ne!(id1, id2);
+        Ok(())
     }
 }

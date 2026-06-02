@@ -9,23 +9,14 @@
 //! Sysfs path helpers are defined in [`toadstool_common::sysfs_paths`] and
 //! re-exported here for convenience. Cylinder-specific helpers (procfs, data
 //! directory, kernel release) live here.
-//!
-//! Legacy `CORALREEF_*` equivalents are accepted as fallback with a deprecation warning.
 
 pub use toadstool_common::sysfs_paths::*;
 
 use std::sync::OnceLock;
+use toadstool_common::interned_strings::socket_env;
 
-fn resolve_env(primary: &str, legacy: &str, default: &str) -> String {
+fn resolve_env(primary: &str, default: &str) -> String {
     if let Some(v) = std::env::var(primary).ok().filter(|s| !s.is_empty()) {
-        return v.trim_end_matches('/').to_string();
-    }
-    if let Some(v) = std::env::var(legacy).ok().filter(|s| !s.is_empty()) {
-        tracing::warn!(
-            legacy_var = legacy,
-            modern_var = primary,
-            "deprecated env var — migrate to {primary}"
-        );
         return v.trim_end_matches('/').to_string();
     }
     default.to_string()
@@ -35,7 +26,7 @@ fn resolve_env(primary: &str, legacy: &str, default: &str) -> String {
 #[must_use]
 pub fn proc_root() -> &'static str {
     static ROOT: OnceLock<String> = OnceLock::new();
-    ROOT.get_or_init(|| resolve_env("TOADSTOOL_PROC_ROOT", "CORALREEF_PROC_ROOT", "/proc"))
+    ROOT.get_or_init(|| resolve_env(socket_env::TOADSTOOL_PROC_ROOT, "/proc"))
         .as_str()
 }
 
@@ -73,15 +64,9 @@ pub fn kbuild_dir() -> Option<String> {
 pub fn optional_data_dir() -> Option<String> {
     use toadstool_common::interned_strings::socket_env;
 
-    if let Some(v) = std::env::var(socket_env::TOADSTOOL_DATA_DIR).ok().filter(|s| !s.is_empty()) {
-        return Some(v);
-    }
-    #[expect(deprecated, reason = "legacy env-var fallback for migration")]
-    if let Some(v) = std::env::var(socket_env::CORALREEF_DATA_DIR).ok().filter(|s| !s.is_empty()) {
-        tracing::warn!("deprecated env var CORALREEF_DATA_DIR — migrate to TOADSTOOL_DATA_DIR");
-        return Some(v);
-    }
-    None
+    std::env::var(socket_env::TOADSTOOL_DATA_DIR)
+        .ok()
+        .filter(|s| !s.is_empty())
 }
 
 const DEFAULT_DATA_DIR: &str = "/var/lib/toadstool";

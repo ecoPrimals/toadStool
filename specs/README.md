@@ -162,6 +162,7 @@ gap closure, performance surface database. See `ALL_SILICON_PIPELINE.md`.
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | **[SOVEREIGN_COMPUTE_EVOLUTION.md](./SOVEREIGN_COMPUTE_EVOLUTION.md)** | WGSL optimizer, VFIO interface/transport, mycelial ToadStool — master roadmap | **Mar 12** | 🔄 Active |
+| **[COMPUTE_DISPATCH_ENGINE.md](./COMPUTE_DISPATCH_ENGINE.md)** | Compute dispatch & GPU diesel engine — wgpu path live, VFIO PBDMA runlist gap | **Jun 2** | 🔄 Active |
 | **[BARRACUDA_PRIMAL_BUDDING.md](./BARRACUDA_PRIMAL_BUDDING.md)** | barraCuda budding — fully untangled, zero cross-deps | **Mar 3** | ✅ Phase 5 Complete |
 | **[ARCHITECTURE_DEMARCATION.md](./ARCHITECTURE_DEMARCATION.md)** | 4-layer chain: barraCuda → coralReef → toadStool + songBird (wire) | **Mar 12** | 🔄 Active |
 
@@ -208,10 +209,10 @@ science for the springs. Driven by ludoSpring V24 audit. See `ALL_SILICON_PIPELI
 
 | Phase | Description | Status | What It Unlocks |
 |:-----:|-------------|:------:|-----------------|
-| **A** | Sovereign compute dispatch (VFIO shader cores) | 🔄 WIP | Springs get sovereign shader compute without Vulkan/CUDA |
-| **B** | Silicon discovery + performance surface database | 🔄 **S159** | toadStool knows every unit on the die and measured throughput |
-| **C** | Tolerance-based multi-unit routing | 📋 Planned | Single workload splits across shader + tensor + RT + TMU + ROP |
-| **D** | Mixed command streams (compute + graphics + RT) | 📋 Planned | 50-100 effective TFLOPS per RTX 3090 — all silicon active |
+| **A** | Sovereign compute dispatch (VFIO shader cores) | ✅ COMPLETE | Springs get sovereign shader compute without Vulkan/CUDA |
+| **B** | Silicon discovery + performance surface database | ✅ COMPLETE | toadStool knows every unit on the die and measured throughput |
+| **C** | Tolerance-based multi-unit routing | ✅ COMPLETE | Single workload splits across shader + tensor + RT + TMU + ROP |
+| **D** | Mixed command streams (compute + graphics + RT) | 🔄 ACTIVE — VFIO sovereign path; blocked on PBDMA runlist | 50-100 effective TFLOPS per RTX 3090 — all silicon active |
 
 **Phase B (S159)**: Foundation types landed — `SiliconUnit` enum (9 GPU
 functional units), `PerformanceMeasurement` for spring experiment data,

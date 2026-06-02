@@ -172,35 +172,30 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_load_balancer_new() {
+    async fn setup_load_balancer() -> ToadStoolResult<CoordinationLoadBalancer> {
         let config = make_load_balancer_config();
         let connection = Arc::new(make_mock_connection());
-
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
-
-        assert!(!advice.recommended_nodes.is_empty());
-        assert!(advice.reasoning.contains("localhost") || advice.reasoning.contains("No capacity"));
+        CoordinationLoadBalancer::new(config, connection).await
     }
 
     #[tokio::test]
-    async fn test_request_advice_empty_capacity() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
-
+    async fn test_load_balancer_new() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
+
+        assert!(!advice.recommended_nodes.is_empty());
+        assert!(advice.reasoning.contains("localhost") || advice.reasoning.contains("No capacity"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_request_advice_empty_capacity() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
+        let advice = lb
+            .request_advice(&ResourceRequirements::default())
+            .await?;
 
         assert_eq!(
             advice.recommended_nodes[0],
@@ -208,173 +203,130 @@ mod tests {
         );
         assert!(advice.reasoning.contains("No capacity data"));
         assert!(advice.load_distribution.is_empty());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_request_advice_with_capacity() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_request_advice_with_capacity() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        lb.update_node_load(&"node1".to_string(), 0.3)
-            .await
-            .unwrap();
-        lb.update_node_load(&"node2".to_string(), 0.7)
-            .await
-            .unwrap();
+        lb.update_node_load(&"node1".to_string(), 0.3).await?;
+        lb.update_node_load(&"node2".to_string(), 0.7).await?;
 
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(advice.recommended_nodes, vec!["node1".to_string()]);
         assert!(advice.reasoning.contains("node1"));
         assert!(advice.reasoning.contains("30"));
         assert_eq!(advice.load_distribution.len(), 2);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_request_advice_single_node() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_request_advice_single_node() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        lb.update_node_load(&"solo-node".to_string(), 0.5)
-            .await
-            .unwrap();
+        lb.update_node_load(&"solo-node".to_string(), 0.5).await?;
 
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(advice.recommended_nodes, vec!["solo-node".to_string()]);
         assert_eq!(advice.load_distribution.get("solo-node"), Some(&0.5));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_update_node_load() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_update_node_load() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        let result = lb.update_node_load(&"n1".to_string(), 0.85).await;
-        assert!(result.is_ok());
+        lb.update_node_load(&"n1".to_string(), 0.85).await?;
 
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(advice.load_distribution.get("n1"), Some(&0.85));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_update_node_load_clamps_above_one() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_update_node_load_clamps_above_one() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        lb.update_node_load(&"overload".to_string(), 1.5)
-            .await
-            .unwrap();
+        lb.update_node_load(&"overload".to_string(), 1.5).await?;
 
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(advice.load_distribution.get("overload"), Some(&1.0));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_rebalance_if_needed_not_needed() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_rebalance_if_needed_not_needed() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        lb.update_node_load(&"n1".to_string(), 0.5).await.unwrap();
-        lb.update_node_load(&"n2".to_string(), 0.6).await.unwrap();
+        lb.update_node_load(&"n1".to_string(), 0.5).await?;
+        lb.update_node_load(&"n2".to_string(), 0.6).await?;
 
-        let needed = lb.rebalance_if_needed().await.unwrap();
+        let needed = lb.rebalance_if_needed().await?;
         assert!(!needed);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_rebalance_if_needed_when_overloaded() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_rebalance_if_needed_when_overloaded() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        lb.update_node_load(&"busy".to_string(), 0.9).await.unwrap();
+        lb.update_node_load(&"busy".to_string(), 0.9).await?;
 
-        let needed = lb.rebalance_if_needed().await.unwrap();
+        let needed = lb.rebalance_if_needed().await?;
         assert!(needed);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_rebalance_empty_snapshot() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_rebalance_empty_snapshot() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        let needed = lb.rebalance_if_needed().await.unwrap();
+        let needed = lb.rebalance_if_needed().await?;
         assert!(!needed);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_load_balancing_advice_has_reasoning() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_load_balancing_advice_has_reasoning() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
-        lb.update_node_load(&"a".to_string(), 0.1).await.unwrap();
-        lb.update_node_load(&"b".to_string(), 0.9).await.unwrap();
+        lb.update_node_load(&"a".to_string(), 0.1).await?;
+        lb.update_node_load(&"b".to_string(), 0.9).await?;
 
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(advice.recommended_nodes, vec!["a".to_string()]);
         assert!(advice.reasoning.contains("10%") || advice.reasoning.contains("10"));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_performance_metrics_recorded() {
-        let config = make_load_balancer_config();
-        let connection = Arc::new(make_mock_connection());
-        let lb = CoordinationLoadBalancer::new(config, connection)
-            .await
-            .unwrap();
+    async fn test_performance_metrics_recorded() -> ToadStoolResult<()> {
+        let lb = setup_load_balancer().await?;
 
         let _ = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
         let _ = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
 
         let advice = lb
             .request_advice(&ResourceRequirements::default())
-            .await
-            .unwrap();
+            .await?;
         assert!(!advice.reasoning.is_empty());
+        Ok(())
     }
 }

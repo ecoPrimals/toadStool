@@ -107,16 +107,19 @@ impl NetworkConfig {
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            listen_address: env_var_or("TOADSTOOL_LISTEN_ADDRESS", IpAddr::V4(Ipv4Addr::LOCALHOST)),
-            service_port: env_var_or("TOADSTOOL_SERVICE_PORT", ports::toadstool::SERVER),
-            api_port: env_var_or("TOADSTOOL_API_PORT", ports::toadstool::SERVER),
-            metrics_port: env_var_or("TOADSTOOL_METRICS_PORT", ports::toadstool::METRICS),
-            health_port: env_var_or("TOADSTOOL_HEALTH_PORT", ports::toadstool::HEALTH),
+            listen_address: env_var_or(
+                socket_env::TOADSTOOL_LISTEN_ADDRESS,
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+            ),
+            service_port: env_var_or(socket_env::TOADSTOOL_SERVICE_PORT, ports::toadstool::SERVER),
+            api_port: env_var_or(socket_env::TOADSTOOL_API_PORT, ports::toadstool::SERVER),
+            metrics_port: env_var_or(socket_env::TOADSTOOL_METRICS_PORT, ports::toadstool::METRICS),
+            health_port: env_var_or(socket_env::TOADSTOOL_HEALTH_PORT, ports::toadstool::HEALTH),
             // Deep Debt: Only use discovery endpoints from environment
             // No hardcoded fallbacks - rely on mDNS or explicit configuration
-            discovery_endpoints: env_var_list_or("TOADSTOOL_DISCOVERY_ENDPOINTS", vec![]),
-            enable_mdns: env_var_or("TOADSTOOL_ENABLE_MDNS", true),
-            bind_mode: env_var_or("TOADSTOOL_BIND_MODE", BindMode::Localhost),
+            discovery_endpoints: env_var_list_or(socket_env::TOADSTOOL_DISCOVERY_ENDPOINTS, vec![]),
+            enable_mdns: env_var_or(socket_env::TOADSTOOL_ENABLE_MDNS, true),
+            bind_mode: env_var_or(socket_env::TOADSTOOL_BIND_MODE, BindMode::Localhost),
         }
     }
 

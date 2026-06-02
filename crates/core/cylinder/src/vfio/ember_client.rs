@@ -23,7 +23,7 @@ const MAX_RESPONSE: usize = 4096;
 
 /// Resolves the default ember socket path.
 ///
-/// Priority: `TOADSTOOL_EMBER_SOCKET` → `CORALREEF_EMBER_SOCKET` (deprecated) →
+/// Priority: `TOADSTOOL_EMBER_SOCKET` →
 /// `{XDG_RUNTIME_DIR}/{namespace}/toadstool-ember-{family}.sock`.
 fn default_ember_socket_path_without_env_override() -> String {
     use std::path::PathBuf;
@@ -41,16 +41,11 @@ fn default_ember_socket_path_without_env_override() -> String {
 
 /// Default ember socket path.
 ///
-/// Priority: `TOADSTOOL_EMBER_SOCKET` → `CORALREEF_EMBER_SOCKET` (deprecated) → default path.
+/// Priority: `TOADSTOOL_EMBER_SOCKET` → default path.
 pub(super) fn default_socket() -> String {
     use toadstool_common::interned_strings::socket_env;
 
     if let Some(v) = std::env::var(socket_env::TOADSTOOL_EMBER_SOCKET).ok().filter(|s| !s.is_empty()) {
-        return v;
-    }
-    #[expect(deprecated, reason = "legacy env-var fallback for migration")]
-    if let Some(v) = std::env::var(socket_env::CORALREEF_EMBER_SOCKET).ok().filter(|s| !s.is_empty()) {
-        tracing::warn!("deprecated env var CORALREEF_EMBER_SOCKET — migrate to TOADSTOOL_EMBER_SOCKET");
         return v;
     }
     default_ember_socket_path_without_env_override()
@@ -209,7 +204,7 @@ mod tests {
     fn connect_fails_gracefully_when_no_ember() {
         // SAFETY: single-threaded test; no other thread reads this env var concurrently.
         unsafe {
-            std::env::set_var("CORALREEF_EMBER_SOCKET", "/tmp/nonexistent-ember-test.sock");
+            std::env::set_var("TOADSTOOL_EMBER_SOCKET", "/tmp/nonexistent-ember-test.sock");
         }
         let result = EmberSession::connect("0000:99:00.0");
         assert!(result.is_err());

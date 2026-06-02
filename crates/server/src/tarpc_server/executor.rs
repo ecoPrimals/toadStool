@@ -13,9 +13,9 @@ use crate::rpc_types::{
     WorkloadResult, WorkloadStatus, WorkloadSubmission,
 };
 
-#[cfg(any(test, feature = "test-mocks"))]
+#[cfg(test)]
 mod test_doubles;
-#[cfg(any(test, feature = "test-mocks"))]
+#[cfg(test)]
 pub use test_doubles::TestWorkloadDouble;
 
 /// Workload executor trait (capability-based, not hardcoded)

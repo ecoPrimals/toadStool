@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![cfg(any(test, feature = "test-mocks"))]
-//! Shared [`MockCloudProvider`] for unit tests and `tests/*.rs` integration tests.
+//! Shared [`MockCloudProvider`] for unit tests (`#[cfg(test)]` only).
 
 use std::future::Future;
 use std::time::SystemTime;

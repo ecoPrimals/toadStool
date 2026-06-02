@@ -98,8 +98,8 @@ pub use tarpc_server::TestExecutor;
 // See pure_jsonrpc::connection::serve_unix() and tarpc_server::serve_unix()
 // for correct implementations.
 
-// EVOLVED: Test exports properly isolated (optional `test-mocks` for integration tests / tools)
-#[cfg(any(test, feature = "test-mocks"))]
+// Test-only mocks (not compiled in production library builds)
+#[cfg(test)]
 pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
 
 // RESOLVED (S155b): SIGSEGV on process exit (Vulkan+Nvidia+Linux)
@@ -128,8 +128,8 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 // manual_jsonrpc: REMOVED S94 — fully replaced by pure_jsonrpc
 // handlers: REMOVED — HTTP REST is out of scope here; use pure_jsonrpc
 
-// ✅ EVOLVED: Mocks isolated to testing (deep debt principle)
-#[cfg(any(test, feature = "test-mocks"))]
+// Test-only mocks (see also `toadstool_testing::mocks` for integration test helpers)
+#[cfg(test)]
 pub mod mocks;
 
 pub mod glowplug_client;

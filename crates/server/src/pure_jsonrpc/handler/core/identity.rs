@@ -276,7 +276,9 @@ mod tests {
     #[tokio::test]
     async fn test_capabilities_list_structure() {
         let reg = empty_registry();
-        let result = capabilities_list(&reg, "0.1.0").await.unwrap();
+        let result = capabilities_list(&reg, "0.1.0")
+            .await
+            .expect("capabilities_list");
         assert_eq!(result["primal"], PRIMAL_NAME);
         assert_eq!(result["version"], "0.1.0");
         assert_eq!(result["protocol"], "jsonrpc-2.0");
@@ -285,7 +287,7 @@ mod tests {
         assert!(result["consumed_capabilities"].is_array());
         assert!(result["cost_estimates"].is_object());
         assert!(result["operation_dependencies"].is_object());
-        let transport = result["transport"].as_array().unwrap();
+        let transport = result["transport"].as_array().expect("transport array");
         assert!(transport.iter().any(|t| t == "uds"));
         assert!(transport.iter().any(|t| t == "tcp"));
     }
@@ -293,8 +295,12 @@ mod tests {
     #[tokio::test]
     async fn test_capabilities_list_provided_types() {
         let reg = empty_registry();
-        let result = capabilities_list(&reg, "0.1.0").await.unwrap();
-        let provided = result["provided_capabilities"].as_array().unwrap();
+        let result = capabilities_list(&reg, "0.1.0")
+            .await
+            .expect("capabilities_list");
+        let provided = result["provided_capabilities"]
+            .as_array()
+            .expect("provided_capabilities");
         let types: Vec<&str> = provided.iter().filter_map(|c| c["type"].as_str()).collect();
         assert!(types.contains(&"compute"));
         assert!(types.contains(&PRIMAL_NAME));
@@ -308,10 +314,14 @@ mod tests {
     #[tokio::test]
     async fn test_discover_capabilities_structure() {
         let reg = empty_registry();
-        let result = discover_capabilities(&reg, "0.1.0").await.unwrap();
+        let result = discover_capabilities(&reg, "0.1.0")
+            .await
+            .expect("discover_capabilities");
         assert_eq!(result["primal"], PRIMAL_NAME);
         assert_eq!(result["version"], "0.1.0");
-        let caps = result["node_capabilities"].as_array().unwrap();
+        let caps = result["node_capabilities"]
+            .as_array()
+            .expect("node_capabilities");
         assert!(caps.iter().any(|c| c == "compute"));
         assert!(caps.iter().any(|c| c == "gpu"));
         assert!(caps.iter().any(|c| c == "wasm"));
@@ -320,22 +330,22 @@ mod tests {
     #[tokio::test]
     async fn test_identity_get_structure() {
         let reg = empty_registry();
-        let result = identity_get("0.1.0", &reg).await.unwrap();
+        let result = identity_get("0.1.0", &reg).await.expect("identity_get");
         assert_eq!(result["primal"], PRIMAL_NAME);
         assert_eq!(result["version"], "0.1.0");
         assert_eq!(result["domain"], "compute");
         assert_eq!(result["license"], "AGPL-3.0-or-later");
         assert_eq!(result["protocol"], "JSON-RPC 2.0");
         assert_eq!(result["transport"], "unix-socket");
-        let caps = result["capabilities"].as_array().unwrap();
+        let caps = result["capabilities"].as_array().expect("capabilities");
         assert!(caps.iter().any(|c| c == "compute"));
     }
 
     #[tokio::test]
     async fn test_identity_get_socket_name() {
         let reg = empty_registry();
-        let result = identity_get("0.1.0", &reg).await.unwrap();
-        let sock = result["socket_name"].as_str().unwrap();
+        let result = identity_get("0.1.0", &reg).await.expect("identity_get");
+        let sock = result["socket_name"].as_str().expect("socket_name");
         assert!(
             std::path::Path::new(sock)
                 .extension()
@@ -347,17 +357,15 @@ mod tests {
     #[tokio::test]
     async fn test_capabilities_list_stadial_envelope() {
         let reg = empty_registry();
-        let result = capabilities_list(&reg, "0.2.0").await.unwrap();
+        let result = capabilities_list(&reg, "0.2.0")
+            .await
+            .expect("capabilities_list");
         assert!(result["capabilities"].is_array());
-        let count = result["count"].as_u64().unwrap();
+        let count = result["count"].as_u64().expect("count");
         assert!(count > 0);
-        assert_eq!(
-            count as usize,
-            result["capabilities"].as_array().unwrap().len()
-        );
-        let cap_types: Vec<&str> = result["capabilities"]
-            .as_array()
-            .unwrap()
+        let capabilities = result["capabilities"].as_array().expect("capabilities");
+        assert_eq!(count as usize, capabilities.len());
+        let cap_types: Vec<&str> = capabilities
             .iter()
             .filter_map(|c| c["type"].as_str())
             .collect();
@@ -368,34 +376,36 @@ mod tests {
     #[tokio::test]
     async fn test_primal_announce_structure() {
         let reg = empty_registry();
-        let result = primal_announce("0.2.0", &reg).await.unwrap();
+        let result = primal_announce("0.2.0", &reg).await.expect("primal_announce");
         assert_eq!(result["primal"], PRIMAL_NAME);
         assert_eq!(result["version"], "0.2.0");
         assert_eq!(result["domain"], "compute");
         assert_eq!(result["status"], "ready");
         assert!(result["capabilities"].is_array());
         assert!(result["methods"].is_array());
-        let count = result["count"].as_u64().unwrap();
-        assert_eq!(count as usize, result["methods"].as_array().unwrap().len());
-        let transport = result["transport"].as_array().unwrap();
+        let count = result["count"].as_u64().expect("count");
+        let methods = result["methods"].as_array().expect("methods");
+        assert_eq!(count as usize, methods.len());
+        let transport = result["transport"].as_array().expect("transport");
         assert!(transport.iter().any(|t| t == "uds"));
     }
 
     #[tokio::test]
     async fn test_primal_announce_wave43_neural_api_fields() {
         let reg = empty_registry();
-        let result = primal_announce("0.2.0", &reg).await.unwrap();
+        let result = primal_announce("0.2.0", &reg).await.expect("primal_announce");
 
         assert!(result["socket"].is_string());
-        assert!(result["socket"].as_str().unwrap().contains("compute.sock"));
+        let socket = result["socket"].as_str().expect("socket path");
+        assert!(socket.contains("compute.sock"));
 
-        let caps = result["capabilities"].as_array().unwrap();
+        let caps = result["capabilities"].as_array().expect("capabilities");
         let cap_strs: Vec<&str> = caps.iter().filter_map(|v| v.as_str()).collect();
         assert!(cap_strs.contains(&"compute"));
         assert!(cap_strs.contains(&"science"));
         assert!(cap_strs.contains(&"inference"));
 
-        let tiers = result["signal_tiers"].as_array().unwrap();
+        let tiers = result["signal_tiers"].as_array().expect("signal_tiers");
         assert!(tiers.iter().any(|t| t == "node"));
 
         let cost = &result["cost_hints"];

@@ -437,11 +437,11 @@ pub(crate) async fn run() {
     }).cloned().collect();
     if !vga_gpus.is_empty() {
         let all_bdfs = vga_gpus.join(",");
-        match toadstool_cylinder::vfio::guarded_sysfs::suppress_bus_reset(&all_bdfs) {
+        match toadstool_cylinder::vfio::guarded_sysfs::suppress_all_resets(&all_bdfs) {
             Ok(()) => info!(bdfs = %all_bdfs, count = vga_gpus.len(),
-                           "startup SBR suppression: PCI_DEV_FLAGS_NO_BUS_RESET set (Exp 226)"),
+                           "startup SBR+FLR suppression: NO_BUS_RESET + NO_FLR_RESET + NO_PM_RESET set (Exp 226/235)"),
             Err(e) => warn!(bdfs = %all_bdfs, error = %e,
-                           "startup SBR suppression failed — warm handoff may trigger bus reset (Exp 226)"),
+                           "startup reset suppression failed — VFIO FLR may destroy warm GPU state"),
         }
     }
 

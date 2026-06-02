@@ -11,7 +11,6 @@
 //! standalone usage without ember is unaffected.
 //!
 //! Disable with `TOADSTOOL_EMBER_GATE=off` for debugging.
-//! Legacy `CORALREEF_EMBER_GATE` accepted as fallback with deprecation warning.
 
 use std::os::unix::net::UnixStream;
 
@@ -121,16 +120,7 @@ pub fn check_channel(bdf: &str) -> Result<(), ChannelError> {
 fn is_gate_disabled() -> bool {
     use toadstool_common::interned_strings::socket_env;
 
-    #[expect(deprecated, reason = "legacy env-var fallback for migration")]
-    let val = std::env::var(socket_env::TOADSTOOL_EMBER_GATE)
-        .ok()
-        .or_else(|| {
-            let v = std::env::var(socket_env::CORALREEF_EMBER_GATE).ok();
-            if v.is_some() {
-                tracing::warn!("deprecated env var CORALREEF_EMBER_GATE — migrate to TOADSTOOL_EMBER_GATE");
-            }
-            v
-        });
+    let val = std::env::var(socket_env::TOADSTOOL_EMBER_GATE).ok();
     val.is_some_and(|v| v.eq_ignore_ascii_case("off") || v == "0" || v.eq_ignore_ascii_case("false"))
 }
 

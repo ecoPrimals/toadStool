@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S282 (Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization + Panic Elimination. Zero libc. Zero unsafe without SAFETY. Zero production panics. ~97% env centralized. 178 lib tests. Zero clippy.)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,156+ lib-only) | **88+ JSON-RPC methods** | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects** (S282: 4 paths evolved to Result) | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented, S282: 28 gaps closed) | **rustix 1.x workspace-wide** | **~97% env centralized** (410+ reads via socket_env constants) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V**
-**Latest**: S282 — **Deep Debt V**: 28 unsafe SAFETY gaps closed. 4 panic paths → Result. 110 env::var sites migrated (+56 constants). libc::mmap→rustix::mm. 8+13 clippy fixes. PatchStrategy → impl FromStr.
-**Previous**: S281 — libc eliminated from cylinder. S280 — Wave 59 env centralization (+73 constants). S279 — Panic path elimination + Exp 229 catalyst channel. S278 — Module extraction + C→Rust. S277 — Wave 54. S276 — Deep Debt II. S275 — Wave 49.
+**Updated**: Jun 2026 — S283 (Deep Debt Evolution VI: 6 large files refactored, `bear_dog`→`security_client`, `CORALREEF_*` removed, 167 unwraps eliminated, mocks isolated to `#[cfg(test)]`, capability-based primal discovery. ~98% env centralized. Zero libc. Zero unsafe without SAFETY. Zero production panics. Zero clippy.)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,156+ lib-only) | **88+ JSON-RPC methods** | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V**
+**Latest**: S283 — **Deep Debt Evolution VI**: 6 large files refactored. `bear_dog`→`security_client`. `CORALREEF_*` env removed. 167 unwraps eliminated. Mocks gated to `#[cfg(test)]`. Capability-based primal discovery. `sovereign_stages/experiment.rs` extraction.
+**Previous**: S282 — Deep Debt V: 28 unsafe SAFETY gaps closed. 4 panic paths → Result. 110 env::var sites migrated (+56 constants). libc::mmap→rustix::mm. S281 — libc eliminated from cylinder. S280 — Wave 59 env centralization (+73 constants). S279 — Panic path elimination + Exp 229 catalyst channel. S278 — Module extraction + C→Rust.
 
 ---
 
@@ -63,7 +63,17 @@ names directly. Deprecated API definitions retained for backward compatibility o
 |-------|--------|
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
-| **Phase D: Mixed command streams** | Planned — blocked on coralReef FECS firmware loading; extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+| **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 2, 2026 — S283 Deep Debt Evolution VI
+
+| Item | Status |
+|------|--------|
+| 6 large files refactored (`kernel_health`, `kmod_build`, `pmu_investigate`, `nv_gsp_bridge`, etc.) | **DONE** |
+| `bear_dog` → `security_client` rename | **DONE** |
+| `CORALREEF_*` env aliases removed | **DONE** |
+| 167 production unwraps eliminated | **DONE** |
+| Mocks isolated to test-only paths | **DONE** |
 
 ### S273 Deep Debt Evolution
 
@@ -112,11 +122,11 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | Item | Status |
 |------|--------|
 | Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
-| Phase D mixed command streams | Planned — requires coralReef FECS firmware loading |
-| VFIO PBDMA dispatch | **VALIDATED** (S258–S263) — GPFIFO + QMD dispatch works e2e on Titan V via warm handoff. FECS alive via CPUCTL_ALIAS. DMA roundtrip confirmed. |
+| Phase D mixed command streams | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)) |
+| VFIO PBDMA dispatch | **PIPELINE WIRED, RUNLIST BLOCKED** (S258–S263; Jun 1 RCA) — channel, DMA, GPFIFO + QMD submission work on Titan V; **GP_GET never advances** because `PFIFO_RUNLIST_BASE=0` (runlist never configured). Not e2e dispatch. RCA: [HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md](infra/wateringHole/handoffs/HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md). Frontier spec: [COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md). |
 | PCIe bridge keepalive | **VALIDATED + EVOLVED** (S264→S266) — Phase 1 (S264): `pin_bridge_hierarchy()` + `SwapGuard` burst CfgRd during swaps. Phase 2 (S266): Root cause fix — PLX D3cold caused by **inactivity** (not swaps). `PlxKeepalive` (ember): continuous CfgRd every 5s on device + all upstream bridges. `PlxGuardian` (glowplug): fleet-level auto-detect via `scan_and_protect()`. 98 ember tests, 95 glowplug tests. |
 | E2E sovereign pipeline test | **VALIDATED** (S263) — warm handoff → VFIO open → channel → dispatch → readback. Pending: real shader execution (FECS PENDING_CTX_RELOAD frontier). |
-| FECS golden context mapping | **ACTIVE** — FECS scheduler stuck at PENDING_CTX_RELOAD. GR context buffer allocated but FECS needs golden context from VRAM. Next: map VRAM identity region or extract context init sequence from nouveau. |
+| FECS golden context mapping | **ACTIVE** — **Prerequisite: PBDMA runlist** (`PFIFO_RUNLIST_BASE` non-zero, `GP_GET` advancing per Jun 1 RCA). FECS scheduler stuck at PENDING_CTX_RELOAD until runlist configured. GR context buffer allocated but FECS needs golden context from VRAM. Next: runlist per [COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md), then map VRAM identity region or extract context init sequence from nouveau. |
 | No-FLR warm swap | **VALIDATED + IMPLEMENTED** (Exp 194, S265r) — `reset_method=""` disables FLR during vfio-pci bind. Titan V: 13/15 registers alive through nouveau→vfio-pci swap. Full BAR access verified. `WarmInitPlan` with containment architecture: bare-metal (nouveau, host-safe) vs contained (nvidia-470, agentReagents VM). `SysfsSwapExecutor::execute_warm_init()` bare-metal only — contained plans dispatch through agentReagents. Host DRM sacred. 77 tests pass. |
 | Phase 2 dep migration: procfs → toadstool-sysmon | **RESOLVED** — `procfs` default features disabled (S129); dead `procfs` dep removed where unused (S160); runtime discovery uses `toadstool-sysmon` where applicable |
 | Phase 3: tarpc binary transport | **RESOLVED** S203t — MessagePack binary framing for Rust-to-Rust peers |

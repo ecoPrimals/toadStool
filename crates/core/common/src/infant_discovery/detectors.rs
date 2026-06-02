@@ -149,17 +149,6 @@ pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
     vec![Box::new(BareMetalDetector::new())]
 }
 
-// ============================================================================
-// Legacy type aliases for backward compatibility
-// ============================================================================
-
-/// `CloudEnvironment` is deprecated - use `HardwareEnvironment`
-#[deprecated(
-    since = "0.16.0",
-    note = "Use HardwareEnvironment instead - vendor detection removed"
-)]
-pub type CloudEnvironment = HardwareEnvironment;
-
 #[cfg(test)]
 mod tests {
     use super::*;

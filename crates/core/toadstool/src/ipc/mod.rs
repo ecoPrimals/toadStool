@@ -39,11 +39,6 @@ pub use server::IpcServer;
 
 // Re-export legacy helpers for backward compatibility
 // These will gradually migrate to use the new platform layer
-#[expect(
-    deprecated,
-    reason = "re-export kept for callers migrating to register_with_discovery"
-)]
-pub use crate::ipc_helpers::register_with_coordination;
 pub use crate::ipc_helpers::{
     find_by_capability, get_default_coordination_socket, get_semantic_name, is_semantic_method,
     list_semantic_methods, register_with_discovery, resolve_method_name, self_announce_to_biomeos,

@@ -147,7 +147,7 @@ fn test_storage_error_from_io() {
 
 #[test]
 fn test_storage_result_ok() {
-    let result: NestGateResult<i32> = Ok(42);
+    let result: StorageServiceResult<i32> = Ok(42);
     assert!(result.is_ok());
     if let Ok(val) = result {
         assert_eq!(val, 42);
@@ -156,28 +156,28 @@ fn test_storage_result_ok() {
 
 #[test]
 fn test_storage_result_err() {
-    let result: NestGateResult<i32> = Err(StorageError::Internal("test".to_string()));
+    let result: StorageServiceResult<i32> = Err(StorageError::Internal("test".to_string()));
     assert!(result.is_err());
 }
 
 #[test]
 fn test_storage_result_map() {
-    let result: NestGateResult<i32> = Ok(10);
+    let result: StorageServiceResult<i32> = Ok(10);
     let mapped = result.map(|x| x * 2);
     assert_eq!(mapped.unwrap(), 20);
 }
 
 #[test]
 fn test_storage_result_and_then() {
-    let result: NestGateResult<i32> = Ok(10);
+    let result: StorageServiceResult<i32> = Ok(10);
     let chained = result.map(|x| x + 5);
     assert_eq!(chained.unwrap(), 15);
 }
 
 #[test]
 fn test_storage_result_or_else() {
-    let result: NestGateResult<i32> = Err(StorageError::Internal("test".to_string()));
-    let recovered: NestGateResult<i32> = result.or(Ok(42));
+    let result: StorageServiceResult<i32> = Err(StorageError::Internal("test".to_string()));
+    let recovered: StorageServiceResult<i32> = result.or(Ok(42));
     assert_eq!(recovered.unwrap(), 42);
 }
 
@@ -185,7 +185,7 @@ fn test_storage_result_or_else() {
 // Error Propagation Tests
 // ============================================================================
 
-fn function_that_returns_storage_result(should_fail: bool) -> NestGateResult<String> {
+fn function_that_returns_storage_result(should_fail: bool) -> StorageServiceResult<String> {
     if should_fail {
         Err(StorageError::Connection("failed".to_string()))
     } else {
@@ -212,7 +212,7 @@ fn test_error_propagation_failure() {
 
 #[test]
 fn test_error_propagation_with_question_mark() {
-    fn inner() -> NestGateResult<i32> {
+    fn inner() -> StorageServiceResult<i32> {
         let _ = function_that_returns_storage_result(false)?;
         Ok(42)
     }

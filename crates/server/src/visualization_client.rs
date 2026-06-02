@@ -21,6 +21,8 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use toadstool_common::constants::primal_identity::capability;
+use toadstool_common::primal_sockets::{SocketPathEnv, resolve_capability_socket_fallback};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use tokio::sync::RwLock;
 use tracing::debug;
@@ -83,7 +85,7 @@ impl VisualizationClient {
     async fn discover() -> Option<UnixJsonRpcClient> {
         match toadstool_common::capability_provider::CapabilityProvider::discover(
             toadstool_common::primal_identity::Capability::Custom {
-                name: "shader".to_string(),
+                name: capability::SHADER_COMPILER.to_string(),
                 version: "1.0".to_string(),
             },
         )
@@ -113,6 +115,8 @@ impl VisualizationClient {
     /// Filesystem fallback for [`discover`]: Tier 0 (`TOADSTOOL_SHADER_COMPILER_ADDR`), Tier 2
     /// (`biomeos/shader.sock`), Tier 3 (`ecoPrimals/shader_compile.sock`, then `shader*.sock` scan).
     fn discover_blocking() -> Option<UnixJsonRpcClient> {
+        let env = SocketPathEnv::from_env();
+
         if let Ok(addr) = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SHADER_COMPILER_ADDR) {
             let path = PathBuf::from(&addr);
             if path.exists() {
@@ -121,15 +125,15 @@ impl VisualizationClient {
             }
         }
 
+        let capability_sock = resolve_capability_socket_fallback(capability::SHADER_COMPILER, &env);
+        if capability_sock.exists() {
+            debug!(path = %capability_sock.display(), "shader compiler discovered via capability socket fallback");
+            return Some(UnixJsonRpcClient::new(capability_sock));
+        }
+
         let runtime_dir = std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR).ok()?;
         let runtime = PathBuf::from(&runtime_dir);
         let biomeos = runtime.join("biomeos");
-
-        let capability_sock = biomeos.join("shader.sock");
-        if capability_sock.exists() {
-            debug!(path = %capability_sock.display(), "shader compiler discovered via capability socket");
-            return Some(UnixJsonRpcClient::new(capability_sock));
-        }
 
         let eco_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
         if eco_sock.exists() {
@@ -137,7 +141,7 @@ impl VisualizationClient {
             return Some(UnixJsonRpcClient::new(eco_sock));
         }
 
-        if let Some(sock) = scan_dir_for_socket(&biomeos, "shader") {
+        if let Some(sock) = scan_dir_for_socket(&biomeos, capability::SHADER_COMPILER) {
             debug!(path = %sock.display(), "shader compiler discovered via capability socket scan");
             return Some(UnixJsonRpcClient::new(sock));
         }

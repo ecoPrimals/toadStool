@@ -7,3 +7,6 @@ mod capacity;
 mod config;
 mod deployment;
 mod internal_branches;
+
+#[path = "../../../../tests/cloud_orchestrator_coverage_tests.rs"]
+mod coverage_expansion;

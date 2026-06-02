@@ -318,92 +318,84 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_allocate_resources_success() {
+    async fn test_allocate_resources_success() -> ToadStoolResult<()> {
         let config = ResourceConfig::default();
         let coordinator = ComputeResourceCoordinator::new(config);
         let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
-        coordinator.initialize_device_pool(&device).await.unwrap();
-
-        let requirements = DeviceRequirements::minimal();
-        let result = coordinator
-            .allocate_resources(&device.id, &requirements)
-            .await;
-        assert!(result.is_ok());
-        let alloc = result.unwrap();
-        assert_eq!(alloc.memory_bytes, 64 * 1024 * 1024);
-        assert_eq!(alloc.compute_units, 1);
-    }
-
-    #[tokio::test]
-    async fn test_allocate_resources_insufficient_memory() {
-        let config = ResourceConfig::default();
-        let coordinator = ComputeResourceCoordinator::new(config);
-        let device = make_device("gpu-0", 32 * 1024 * 1024, 16); // 32MB only
-        coordinator.initialize_device_pool(&device).await.unwrap();
-
-        let requirements = DeviceRequirements::minimal();
-        let result = coordinator
-            .allocate_resources(&device.id, &requirements)
-            .await;
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Insufficient memory")
-        );
-    }
-
-    #[tokio::test]
-    async fn test_allocate_resources_insufficient_compute() {
-        let config = ResourceConfig::default();
-        let coordinator = ComputeResourceCoordinator::new(config);
-        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 1);
-        coordinator.initialize_device_pool(&device).await.unwrap();
-
-        let mut requirements = DeviceRequirements::minimal();
-        requirements.min_compute_units = Some(4);
-        let result = coordinator
-            .allocate_resources(&device.id, &requirements)
-            .await;
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Insufficient compute")
-        );
-    }
-
-    #[tokio::test]
-    async fn test_release_resources() {
-        let config = ResourceConfig::default();
-        let coordinator = ComputeResourceCoordinator::new(config);
-        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
-        coordinator.initialize_device_pool(&device).await.unwrap();
+        coordinator.initialize_device_pool(&device).await?;
 
         let requirements = DeviceRequirements::minimal();
         let alloc = coordinator
             .allocate_resources(&device.id, &requirements)
-            .await
-            .unwrap();
-        let result = coordinator.release_resources(&device.id, &alloc).await;
-        assert!(result.is_ok());
+            .await?;
+        assert_eq!(alloc.memory_bytes, 64 * 1024 * 1024);
+        assert_eq!(alloc.compute_units, 1);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_pool_stats() {
+    async fn test_allocate_resources_insufficient_memory() -> ToadStoolResult<()> {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 32 * 1024 * 1024, 16); // 32MB only
+        coordinator.initialize_device_pool(&device).await?;
+
+        let requirements = DeviceRequirements::minimal();
+        let err = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await
+            .expect_err("allocation should fail with insufficient memory");
+        assert!(err.to_string().contains("Insufficient memory"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_allocate_resources_insufficient_compute() -> ToadStoolResult<()> {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 1);
+        coordinator.initialize_device_pool(&device).await?;
+
+        let mut requirements = DeviceRequirements::minimal();
+        requirements.min_compute_units = Some(4);
+        let err = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await
+            .expect_err("allocation should fail with insufficient compute units");
+        assert!(err.to_string().contains("Insufficient compute"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_release_resources() -> ToadStoolResult<()> {
         let config = ResourceConfig::default();
         let coordinator = ComputeResourceCoordinator::new(config);
         let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
-        coordinator.initialize_device_pool(&device).await.unwrap();
+        coordinator.initialize_device_pool(&device).await?;
 
-        let stats = coordinator.get_pool_stats(&device.id).await;
-        assert!(stats.is_some());
-        let s = stats.unwrap();
+        let requirements = DeviceRequirements::minimal();
+        let alloc = coordinator
+            .allocate_resources(&device.id, &requirements)
+            .await?;
+        coordinator.release_resources(&device.id, &alloc).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_pool_stats() -> ToadStoolResult<()> {
+        let config = ResourceConfig::default();
+        let coordinator = ComputeResourceCoordinator::new(config);
+        let device = make_device("gpu-0", 8 * 1024 * 1024 * 1024, 16);
+        coordinator.initialize_device_pool(&device).await?;
+
+        let s = coordinator
+            .get_pool_stats(&device.id)
+            .await
+            .expect("pool stats should exist after initialization");
         assert_eq!(s.total_memory, 8 * 1024 * 1024 * 1024);
         assert_eq!(s.total_compute_units, 16);
         assert_eq!(s.allocated_memory, 0);
+        Ok(())
     }
 
     #[tokio::test]

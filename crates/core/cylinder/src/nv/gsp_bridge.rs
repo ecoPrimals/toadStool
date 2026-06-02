@@ -172,10 +172,6 @@ pub struct NoopGspBridge {
     gr_init_sequence: Option<crate::nv::gr_init::GrInitSequence>,
 }
 
-/// Backward compatibility alias for code referencing the old name.
-#[deprecated(note = "renamed to NoopGspBridge — use NoopGspBridge instead")]
-pub type StubGspBridge = NoopGspBridge;
-
 impl NoopGspBridge {
     /// Create a noop bridge with a captured `GrInitSequence` for BAR0 init.
     pub fn with_gr_init_sequence(seq: crate::nv::gr_init::GrInitSequence) -> Self {
@@ -268,12 +264,6 @@ mod tests {
         assert!(!bridge.supports_pgob());
         assert!(!bridge.supports_pmu());
         assert!(!bridge.supports_gr_init());
-    }
-
-    #[test]
-    #[expect(deprecated)]
-    fn stub_alias_still_works() {
-        let _bridge = StubGspBridge::default();
     }
 
     #[test]

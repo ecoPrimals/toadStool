@@ -211,11 +211,25 @@ mod tests {
     #[test]
     fn test_capability_to_biomeos_fallback_crypto() {
         use crate::primal_identity::{Capability, CryptoCapability};
-        let path =
-            capability_to_biomeos_fallback(&Capability::Crypto(CryptoCapability::Encryption));
-        assert!(path.is_ok());
-        let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("crypto"));
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_SOCKET", None::<&str>),
+                ("BIOMEOS_CRYPTO_SOCKET", None::<&str>),
+                ("TOADSTOOL_SECURITY_SOCKET", None::<&str>),
+                ("BEARDOG_SOCKET", None::<&str>),
+                ("TOADSTOOL_SECURITY_ENDPOINT", None::<&str>),
+                ("SECURITY_URL", None::<&str>),
+                ("SECURITY_ENDPOINT", None::<&str>),
+            ],
+            || {
+                let path = capability_to_biomeos_fallback(&Capability::Crypto(
+                    CryptoCapability::Encryption,
+                ));
+                assert!(path.is_ok());
+                let path = path.expect("path");
+                assert!(path.to_string_lossy().contains("crypto"));
+            },
+        );
     }
 
     #[test]

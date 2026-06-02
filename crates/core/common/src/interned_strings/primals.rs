@@ -18,25 +18,14 @@ pub const LEGACY_STORAGE_LABEL: &str = "nestgate";
 /// Legacy IPC route string for intelligence / routing services.
 pub const LEGACY_INTELLIGENCE_LABEL: &str = "squirrel";
 
-/// Legacy IPC route label for crypto/security services
-/// **DEPRECATED**: Use [`LEGACY_SECURITY_LABEL`] or `capabilities::CRYPTO` for discovery
-#[deprecated(note = "use LEGACY_SECURITY_LABEL or capabilities::CRYPTO / SECURITY")]
-pub const BEARDOG: &str = LEGACY_SECURITY_LABEL;
+/// Legacy kebab-case route alias (manifest / DNS interop).
+pub const LEGACY_SECURITY_KEBAB: &str = "bear-dog";
 
-/// Legacy IPC route label for coordination / mesh
-/// **DEPRECATED**: Use [`LEGACY_COORDINATION_LABEL`] or `capabilities::COORDINATION`
-#[deprecated(note = "use LEGACY_COORDINATION_LABEL or capabilities::COORDINATION")]
-pub const SONGBIRD: &str = LEGACY_COORDINATION_LABEL;
+/// Legacy kebab-case route alias (manifest / DNS interop).
+pub const LEGACY_COORDINATION_KEBAB: &str = "song-bird";
 
-/// Legacy IPC route label for storage / artifacts
-/// **DEPRECATED**: Use [`LEGACY_STORAGE_LABEL`] or `capabilities::STORAGE`
-#[deprecated(note = "use LEGACY_STORAGE_LABEL or capabilities::STORAGE")]
-pub const NESTGATE: &str = LEGACY_STORAGE_LABEL;
-
-/// Legacy IPC route label for routing / agent IPC
-/// **DEPRECATED**: Use [`LEGACY_INTELLIGENCE_LABEL`] or `capabilities::ROUTING` / `INTELLIGENCE`
-#[deprecated(note = "use LEGACY_INTELLIGENCE_LABEL or capabilities::ROUTING / INTELLIGENCE")]
-pub const SQUIRREL: &str = LEGACY_INTELLIGENCE_LABEL;
+/// Legacy kebab-case route alias (manifest / DNS interop).
+pub const LEGACY_STORAGE_KEBAB: &str = "nest-gate";
 
 /// ToadStool compute service identifier
 pub const TOADSTOOL: &str = "toadstool";

@@ -363,7 +363,8 @@ pub fn is_selinux_enforcing() -> bool {
 }
 
 fn write_fleet_file(devices: &[String]) {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+    let runtime_dir =
+        std::env::var(socket_env::XDG_RUNTIME_DIR).unwrap_or_else(|_| "/tmp".to_string());
     let fleet_dir = std::path::PathBuf::from(&runtime_dir).join("biomeos");
     let fleet_path = fleet_dir.join("toadstool-ember-fleet.json");
 

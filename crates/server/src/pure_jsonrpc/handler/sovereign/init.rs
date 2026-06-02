@@ -389,7 +389,7 @@ pub fn sovereign_classify_tier(params: Option<&Value>) -> Result<Value, JsonRpcE
 /// for interactive exploration of Tier 1 → Tier 2 transitions.
 ///
 /// Stages 4 and 6 now use `NvGspBridge` with real GV100 firmware
-/// (`sw_nonctx.bin`) instead of `StubGspBridge`. Stage 6 is the full
+/// (`sw_nonctx.bin`) instead of `NoopGspBridge`. Stage 6 is the full
 /// 5-phase ungating sequence including PGRAPH reset (Exp 217).
 ///
 /// Params:

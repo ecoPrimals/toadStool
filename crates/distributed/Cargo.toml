@@ -14,7 +14,7 @@ default = []
 channels = []
 testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
 dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
-# `SecurityProviderFactory::create_mock` + `MockSecurityProvider` — not default
+# Stub for `security_provider` mock gates (`MockSecurityProvider`); cloud `test_mocks` uses `#[cfg(test)]` only
 test-mocks = []
 
 [dependencies]
@@ -63,14 +63,6 @@ name = "beardog_client_coverage_tests"
 
 [[test]]
 name = "access_control_coverage_tests"
-
-[[test]]
-name = "cloud_orchestrator_coverage_tests"
-required-features = ["test-mocks"]
-
-[[test]]
-name = "distributed_coverage_s155b_tests"
-required-features = ["test-mocks"]
 
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }

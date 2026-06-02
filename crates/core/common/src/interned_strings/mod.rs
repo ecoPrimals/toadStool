@@ -50,6 +50,11 @@ pub mod primals;
 pub mod protocols;
 pub mod socket_env;
 
+#[inline]
+fn label_eq(left: &str, right: &str) -> bool {
+    left == right
+}
+
 /// Typed capability domain — use instead of scattered string literals.
 ///
 /// Each variant carries the canonical `&str` constant so callers can go from
@@ -87,21 +92,91 @@ impl CapabilityDomain {
         }
     }
 
-    /// Resolve a legacy primal name or capability string to a domain.
+    /// Preferred explicit socket env var for this domain (capability-based naming).
+    #[must_use]
+    pub const fn biomeos_socket_env(self) -> &'static str {
+        match self {
+            Self::Security => socket_env::BIOMEOS_CRYPTO_SOCKET,
+            Self::Coordination => socket_env::BIOMEOS_COORDINATION_SOCKET,
+            Self::Storage => socket_env::BIOMEOS_STORAGE_SOCKET,
+            Self::Routing => socket_env::BIOMEOS_ROUTING_SOCKET,
+            Self::Compute => socket_env::TOADSTOOL_SOCKET,
+            Self::Intelligence => socket_env::TOADSTOOL_INTELLIGENCE_SOCKET,
+            Self::Monitoring => socket_env::TOADSTOOL_TELEMETRY,
+        }
+    }
+
+    /// Preferred toadStool-prefixed socket env var for this domain.
+    #[must_use]
+    pub const fn toadstool_socket_env(self) -> &'static str {
+        match self {
+            Self::Security => socket_env::TOADSTOOL_SECURITY_SOCKET,
+            Self::Coordination => socket_env::TOADSTOOL_COORDINATION_SOCKET,
+            Self::Storage => socket_env::TOADSTOOL_STORAGE_SOCKET,
+            Self::Routing => socket_env::TOADSTOOL_INTELLIGENCE_SOCKET,
+            Self::Compute => socket_env::TOADSTOOL_SOCKET,
+            Self::Intelligence => socket_env::TOADSTOOL_INTELLIGENCE_SOCKET,
+            Self::Monitoring => socket_env::TOADSTOOL_TELEMETRY,
+        }
+    }
+
+    /// Legacy identity-based socket env var (fallback only).
+    #[must_use]
+    #[deprecated(note = "use biomeos_socket_env() or capability discovery")]
+    #[expect(
+        deprecated,
+        reason = "legacy_socket_env intentionally references identity-based fallback env names"
+    )]
+    pub const fn legacy_socket_env(self) -> &'static str {
+        match self {
+            Self::Security => socket_env::LEGACY_BEARDOG_SOCKET_ENV,
+            Self::Coordination => socket_env::LEGACY_SONGBIRD_SOCKET_ENV,
+            Self::Storage => socket_env::LEGACY_NESTGATE_SOCKET_ENV,
+            Self::Routing | Self::Intelligence => socket_env::LEGACY_SQUIRREL_SOCKET_ENV,
+            Self::Compute => socket_env::PRIMAL_SOCKET,
+            Self::Monitoring => socket_env::TOADSTOOL_TELEMETRY,
+        }
+    }
+
+    /// Resolve a capability id or legacy route label to a domain.
+    ///
+    /// Capability strings (`capabilities::*`) are preferred; legacy primal route
+    /// labels (`primals::LEGACY_*_LABEL`) are accepted for older manifests.
     ///
     /// Returns `None` for unrecognised strings.
     #[must_use]
     pub fn from_label(s: &str) -> Option<Self> {
-        match s.to_ascii_lowercase().as_str() {
-            // legacy aliases — accepted for older manifests and labels
-            "crypto" | "security" | "beardog" | "bear-dog" | "pki" => Some(Self::Security),
-            "coordination" | "orchestration" | "songbird" | "song-bird" => Some(Self::Coordination),
-            "storage" | "nestgate" | "nest-gate" => Some(Self::Storage),
-            "compute" | "toadstool" | "toad-stool" => Some(Self::Compute),
-            "routing" | "squirrel" => Some(Self::Routing),
-            "intelligence" | "ai" => Some(Self::Intelligence),
-            "monitoring" | "metrics" => Some(Self::Monitoring),
-            _ => None,
+        let lower = s.to_ascii_lowercase();
+        let l = lower.as_str();
+        if label_eq(l, capabilities::CRYPTO)
+            || label_eq(l, capabilities::SECURITY)
+            || label_eq(l, capabilities::PKI)
+            || label_eq(l, primals::LEGACY_SECURITY_LABEL)
+            || label_eq(l, primals::LEGACY_SECURITY_KEBAB)
+        {
+            Some(Self::Security)
+        } else if label_eq(l, capabilities::COORDINATION)
+            || label_eq(l, capabilities::ORCHESTRATION)
+            || label_eq(l, primals::LEGACY_COORDINATION_LABEL)
+            || label_eq(l, primals::LEGACY_COORDINATION_KEBAB)
+        {
+            Some(Self::Coordination)
+        } else if label_eq(l, capabilities::STORAGE)
+            || label_eq(l, primals::LEGACY_STORAGE_LABEL)
+            || label_eq(l, primals::LEGACY_STORAGE_KEBAB)
+        {
+            Some(Self::Storage)
+        } else if label_eq(l, capabilities::COMPUTE) || label_eq(l, primals::TOADSTOOL) || l == "toad-stool"
+        {
+            Some(Self::Compute)
+        } else if label_eq(l, capabilities::ROUTING) || label_eq(l, primals::LEGACY_INTELLIGENCE_LABEL) {
+            Some(Self::Routing)
+        } else if label_eq(l, capabilities::INTELLIGENCE) || l == "ai" {
+            Some(Self::Intelligence)
+        } else if label_eq(l, capabilities::MONITORING) || l == "metrics" {
+            Some(Self::Monitoring)
+        } else {
+            None
         }
     }
 
@@ -120,6 +195,14 @@ impl CapabilityDomain {
 impl std::fmt::Display for CapabilityDomain {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+impl std::str::FromStr for CapabilityDomain {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_label(s).ok_or(())
     }
 }
 
@@ -282,28 +365,77 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_domain_from_label_legacy_names() {
+    fn test_capability_domain_from_label_capability_ids() {
         assert_eq!(
-            CapabilityDomain::from_label("beardog"),
+            CapabilityDomain::from_label(capabilities::CRYPTO),
             Some(CapabilityDomain::Security)
         );
         assert_eq!(
-            CapabilityDomain::from_label("songbird"),
+            CapabilityDomain::from_label(capabilities::COORDINATION),
             Some(CapabilityDomain::Coordination)
         );
         assert_eq!(
-            CapabilityDomain::from_label("nestgate"),
+            CapabilityDomain::from_label(capabilities::STORAGE),
             Some(CapabilityDomain::Storage)
         );
         assert_eq!(
-            CapabilityDomain::from_label("squirrel"),
+            CapabilityDomain::from_label(capabilities::ROUTING),
             Some(CapabilityDomain::Routing)
         );
         assert_eq!(
-            CapabilityDomain::from_label("toadstool"),
+            CapabilityDomain::from_label(capabilities::INTELLIGENCE),
+            Some(CapabilityDomain::Intelligence)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label(capabilities::MONITORING),
+            Some(CapabilityDomain::Monitoring)
+        );
+    }
+
+    #[test]
+    fn test_capability_domain_from_label_legacy_route_labels() {
+        assert_eq!(
+            CapabilityDomain::from_label(primals::LEGACY_SECURITY_LABEL),
+            Some(CapabilityDomain::Security)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label(primals::LEGACY_COORDINATION_LABEL),
+            Some(CapabilityDomain::Coordination)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label(primals::LEGACY_STORAGE_LABEL),
+            Some(CapabilityDomain::Storage)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label(primals::LEGACY_INTELLIGENCE_LABEL),
+            Some(CapabilityDomain::Routing)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label(primals::TOADSTOOL),
             Some(CapabilityDomain::Compute)
         );
         assert_eq!(CapabilityDomain::from_label("unknown-thing"), None);
+    }
+
+    #[test]
+    fn test_capability_domain_socket_env_names() {
+        assert_eq!(
+            CapabilityDomain::Security.biomeos_socket_env(),
+            socket_env::BIOMEOS_CRYPTO_SOCKET
+        );
+        assert_eq!(
+            CapabilityDomain::Coordination.toadstool_socket_env(),
+            socket_env::TOADSTOOL_COORDINATION_SOCKET
+        );
+    }
+
+    #[test]
+    fn test_capability_domain_from_str() {
+        assert_eq!(
+            capabilities::STORAGE.parse::<CapabilityDomain>(),
+            Ok(CapabilityDomain::Storage)
+        );
+        assert!("legacy-unknown".parse::<CapabilityDomain>().is_err());
     }
 
     #[test]

@@ -36,8 +36,6 @@ proptest = { workspace = true }
 
 [features]
 default = []
-# Exposes `mock_primal::MockPrimal` for tests / explicit consumers — not default
-test-mocks = []
 
 [lints]
 workspace = true

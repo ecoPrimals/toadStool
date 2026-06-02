@@ -14,15 +14,15 @@
 //! Pure Rust: Unix sockets for inter-service communication (no reqwest!)
 
 // Sub-modules
-pub mod bear_dog;
+pub mod security_client;
 pub mod client;
 pub mod config;
 pub mod tarpc_service;
 pub mod transport;
 pub mod types;
 
-// Re-export Security / PKI security types for backward compatibility
-pub use bear_dog::*;
+// Re-export Security / PKI security types at crate root
+pub use security_client::*;
 
 #[cfg(test)]
 mod tests {

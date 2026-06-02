@@ -244,12 +244,12 @@ fn test_beardog_permission_multiple_capabilities() {
 }
 
 // ============================================================================
-// NestGateMount Tests (2 tests)
+// StorageMount Tests (2 tests)
 // ============================================================================
 
 #[test]
 fn test_nestgate_mount_with_encryption() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "secure-research-data".to_string(),
         mount_point: std::path::PathBuf::from("/mnt/secure"),
         endpoint: "10.0.0.50:9000".to_string(),
@@ -266,7 +266,7 @@ fn test_nestgate_mount_with_encryption() {
 
 #[test]
 fn test_nestgate_mount_read_only() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "public-data".to_string(),
         mount_point: std::path::PathBuf::from("/mnt/public"),
         endpoint: "storage.local:9000".to_string(),

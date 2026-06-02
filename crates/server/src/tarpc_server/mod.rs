@@ -9,7 +9,7 @@ mod dispatch;
 mod executor;
 
 pub use dispatch::WorkloadExecutorDispatch;
-#[cfg(any(test, feature = "test-mocks"))]
+#[cfg(test)]
 pub use executor::TestWorkloadDouble;
 pub use executor::{StandaloneExecutor, WorkloadExecutor};
 
@@ -394,3 +394,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
 #[cfg(test)]
 #[path = "../tarpc_server_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../tarpc_server_coverage_expansion_tests.rs"]
+mod coverage_expansion_tests;

@@ -142,18 +142,6 @@ impl AgentDeploymentManager {
         }
     }
 
-    /// Create a new manager with a legacy direct endpoint (deprecated name).
-    ///
-    /// **DEPRECATED**: Use `with_intelligence_service()`, `with_ml_service()`, or `discover()`.
-    #[must_use]
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use with_intelligence_service(), with_ml_service(), or discover()"
-    )]
-    pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
-        Self::with_intelligence_service(config)
-    }
-
     /// Create a new manager with in-memory test backend
     #[must_use]
     #[cfg(any(test, feature = "test-mocks"))]
@@ -172,12 +160,6 @@ impl AgentDeploymentManager {
     /// Returns an error if the backend connection cannot be established.
     pub async fn initialize_intelligence_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
-    }
-
-    /// Legacy name for [`Self::initialize_intelligence_connection`].
-    #[deprecated(since = "0.3.0", note = "Use initialize_intelligence_connection()")]
-    pub async fn initialize_squirrel_connection(&self) -> ToadStoolResult<()> {
-        self.initialize_intelligence_connection().await
     }
 
     /// Deploy an AI agent from configuration

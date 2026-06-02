@@ -3,8 +3,12 @@
 //! DNS service discovery configuration types.
 //!
 //! Domain fields use **capability names** (coordination, security, storage, ai\_processing)
-//! per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2. Serde `alias` attributes accept
-//! older on-disk field names for compatibility.
+//! per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+//!
+//! **Serde alias deprecation:** `#[serde(alias = …)]` on [`ServiceDomainsConfig`] accepts
+//! legacy primal field names (`songbird`, `beardog`, `nestgate`, `squirrel`, `toadstool`)
+//! in on-disk config. These aliases are deprecated and will be removed in a future release;
+//! migrate configs to capability field names.
 
 use std::time::Duration;
 
@@ -33,7 +37,8 @@ pub struct DnsDiscoveryConfig {
 ///
 /// Fields are named by **capability domain**, not primal identity, per
 /// `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2. Serde aliases preserve
-/// backward compatibility with config files that still use primal names.
+/// backward compatibility with primal-named config files; aliases are deprecated
+/// and will be removed in a future release.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceDomainsConfig {
     /// Compute capability domain (self — toadStool)

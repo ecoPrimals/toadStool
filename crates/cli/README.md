@@ -29,14 +29,11 @@ toadstool init
 # Execute a workload
 toadstool exec --runtime native ./my_app
 
-# Run Python script
-toadstool exec --runtime python script.py
-
 # Execute WASM module
 toadstool exec --runtime wasm module.wasm
 
-# GPU compute
-toadstool exec --runtime gpu kernel.cu
+# GPU compute (sovereign wgpu path; enable `gpu` feature)
+toadstool exec --runtime gpu shader.wgsl
 
 # Monitor resources
 toadstool status
@@ -57,7 +54,7 @@ toadstool exec --runtime <RUNTIME> <PATH>
 toadstool exec --runtime native --memory 2GB --cpu 2.0 ./app
 
 # With timeout
-toadstool exec --runtime python --timeout 5m script.py
+toadstool exec --runtime wasm --timeout 5m module.wasm
 
 # Sandboxed execution
 toadstool exec --runtime wasm --sandbox module.wasm
@@ -145,21 +142,13 @@ export TOADSTOOL_DISCOVERY_METHOD=file
 toadstool exec --runtime native ./my_compiled_app
 ```
 
-### Run Python with Dependencies
-
-```bash
-toadstool exec --runtime python \
-    --deps numpy,pandas \
-    analysis.py
-```
-
 ### GPU Compute with Monitoring
 
 ```bash
 toadstool exec --runtime gpu \
     --monitor \
     --memory 4GB \
-    kernel.cu
+    shader.wgsl
 ```
 
 ### Secure Enclave (Zero-Knowledge Compute)

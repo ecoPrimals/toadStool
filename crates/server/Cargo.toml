@@ -84,9 +84,6 @@ tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
 btsp = ["toadstool-common/btsp"]
 # Cross-platform sandbox + policy enforcement (seccomp, capabilities, RBAC)
 sandbox = ["dep:toadstool-security-sandbox", "dep:toadstool-security-policies"]
-# Exposes `mocks` module (MockResourceMonitor, etc.) for integration tests / tools — not default
-test-mocks = []
-
 # UNIBIN EVOLUTION (Feb 2, 2026):
 # Removed [[bin]] section to make this a library-only crate.
 # The toadstool-server binary violated UniBin standard.
@@ -113,16 +110,6 @@ tempfile = { workspace = true }
 temp-env = { workspace = true }
 toadstool-testing = { path = "../testing" }
 proptest = { workspace = true }
-
-[[test]]
-name = "tarpc_server_tests"
-path = "tests/tarpc_server_tests.rs"
-required-features = ["test-mocks"]
-
-[[test]]
-name = "tarpc_server_coverage_expansion_tests"
-path = "tests/tarpc_server_coverage_expansion_tests.rs"
-required-features = ["test-mocks"]
 
 [lints]
 workspace = true

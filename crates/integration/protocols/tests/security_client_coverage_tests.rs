@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
-//! Comprehensive tests for Security protocol (`bear_dog.rs`)
-//! Target: `crates/integration/protocols/src/bear_dog.rs`
+//! Comprehensive tests for Security protocol (`security_client` module)
+//! Target: `crates/integration/protocols/src/security_client/`
 //! No real Unix socket - tests structs, `AuthResponse::standalone`, authenticate/authorize fallbacks.
 
 use std::collections::HashMap;

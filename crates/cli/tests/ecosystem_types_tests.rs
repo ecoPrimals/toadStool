@@ -272,12 +272,12 @@ fn test_beardog_permission_clone() {
 }
 
 // ============================================================================
-// NestGateMount Tests
+// StorageMount Tests
 // ============================================================================
 
 #[test]
 fn test_nestgate_mount_creation() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "my-dataset".to_string(),
         mount_point: PathBuf::from("/mnt/data"),
         endpoint: "http://nestgate:8080".to_string(),
@@ -292,7 +292,7 @@ fn test_nestgate_mount_creation() {
 
 #[test]
 fn test_nestgate_mount_with_encryption() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "secure-data".to_string(),
         mount_point: PathBuf::from("/mnt/secure"),
         endpoint: "https://nestgate:8443".to_string(),
@@ -307,7 +307,7 @@ fn test_nestgate_mount_with_encryption() {
 
 #[test]
 fn test_nestgate_mount_admin_mode() {
-    let mount = NestGateMount {
+    let mount = StorageMount {
         dataset_name: "admin-pool".to_string(),
         mount_point: PathBuf::from("/admin"),
         endpoint: "http://localhost:9000".to_string(),

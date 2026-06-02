@@ -18,15 +18,15 @@ pub const BIOME_OS: &str = "BiomeOS";
 
 /// Legacy manifest key (PascalCase product name).
 pub const LEGACY_SONGBIRD_PASCAL: &str = "Songbird";
-pub const LEGACY_SONGBIRD_LOWER: &str = "songbird";
+pub const LEGACY_SONGBIRD_LOWER: &str = super::primals::LEGACY_COORDINATION_LABEL;
 
 pub const LEGACY_BEARDOG_PASCAL: &str = "BearDog";
 pub const LEGACY_BEARDOG_CAMEL: &str = "bearDog";
 pub const LEGACY_BEARDOG_LOWER: &str = super::primals::LEGACY_SECURITY_LABEL;
 
 pub const LEGACY_NESTGATE_PASCAL: &str = "NestGate";
-pub const LEGACY_NESTGATE_LOWER: &str = "nestgate";
-pub const LEGACY_NESTGATE_KEBAB: &str = "nest-gate";
+pub const LEGACY_NESTGATE_LOWER: &str = super::primals::LEGACY_STORAGE_LABEL;
+pub const LEGACY_NESTGATE_KEBAB: &str = super::primals::LEGACY_STORAGE_KEBAB;
 
 pub const LEGACY_SQUIRREL_PASCAL: &str = "Squirrel";
-pub const LEGACY_SQUIRREL_LOWER: &str = "squirrel";
+pub const LEGACY_SQUIRREL_LOWER: &str = super::primals::LEGACY_INTELLIGENCE_LABEL;

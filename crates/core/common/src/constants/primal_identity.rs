@@ -90,6 +90,9 @@ pub mod capability {
 
     /// GPU/NPU compute execution.
     pub const COMPUTE_EXECUTION: &str = "compute.execution";
+
+    /// Native shader compilation (SPIR-V / WGSL pipelines).
+    pub const SHADER_COMPILER: &str = "shader";
 }
 
 // ==========================================================================
@@ -136,6 +139,11 @@ mod tests {
         assert!(capability::SERVICE_DISCOVERY.contains('.'));
         assert!(capability::NETWORK_GATEWAY.contains('.'));
         assert!(capability::STORAGE_PROVIDER.contains('.'));
+    }
+
+    #[test]
+    fn shader_compiler_capability_id() {
+        assert_eq!(capability::SHADER_COMPILER, "shader");
     }
 
     #[test]

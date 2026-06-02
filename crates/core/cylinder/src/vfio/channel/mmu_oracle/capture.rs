@@ -5,8 +5,11 @@ use std::borrow::Cow;
 use std::ptr::NonNull;
 
 use serde::{Deserialize, Serialize};
+use toadstool_hw_safe::{DeviceMmap, MmioError, VolatileMmio};
 
 use crate::error::ChannelError;
+use crate::mmio_region::MmioRegion;
+use crate::vfio::sysfs_bar0::{self, DEFAULT_BAR0_SIZE};
 
 use super::super::registers::{misc, pccsr, ramin};
 
@@ -14,15 +17,70 @@ const PRAMIN_OFFSET: usize = 0x0070_0000;
 
 // ─── BAR0 accessor ──────────────────────────────────────────────────────────
 
+enum Bar0Backing {
+    /// sysfs `resource0` mapping via [`DeviceMmap`] / [`MmioRegion`].
+    Owned {
+        _file: std::fs::File,
+        region: MmioRegion,
+    },
+    /// Borrowed VFIO [`MappedBar`](crate::vfio::device::MappedBar); not unmapped on drop.
+    Borrowed {
+        ptr: NonNull<u8>,
+        len: usize,
+    },
+}
+
 /// Read-write mmap of BAR0 for oracle page table walking.
 pub(crate) struct Bar0Rw {
-    ptr: NonNull<u8>,
-    size: usize,
-    _file: Option<std::fs::File>,
-    owned: bool,
+    backing: Bar0Backing,
+}
+
+fn mmio_err_read(offset: usize, map_size: usize, e: MmioError) -> ChannelError {
+    match e {
+        MmioError::OutOfBounds { .. } => ChannelError::Bar0ReadOutOfBounds { offset, map_size },
+        MmioError::Misaligned {
+            address,
+            alignment,
+        } => ChannelError::resource_io(
+            "read_u32",
+            format!("BAR0+{offset:#x} misaligned at {address:#x} (need {alignment})"),
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()),
+        ),
+    }
+}
+
+fn mmio_err_write(offset: usize, map_size: usize, e: MmioError) -> ChannelError {
+    match e {
+        MmioError::OutOfBounds { .. } => ChannelError::Bar0WriteOutOfBounds { offset, map_size },
+        MmioError::Misaligned {
+            address,
+            alignment,
+        } => ChannelError::resource_io(
+            "write_u32",
+            format!("BAR0+{offset:#x} misaligned at {address:#x} (need {alignment})"),
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()),
+        ),
+    }
 }
 
 impl Bar0Rw {
+    fn map_len(&self) -> usize {
+        match &self.backing {
+            Bar0Backing::Owned { region, .. } => region.len(),
+            Bar0Backing::Borrowed { len, .. } => *len,
+        }
+    }
+
+    fn borrowed_volatile(&self) -> Option<VolatileMmio<'_>> {
+        match &self.backing {
+            Bar0Backing::Borrowed { ptr, len } => {
+                // SAFETY: `from_raw` requires ptr/len valid for the lifetime of this `Bar0Rw`.
+                Some(unsafe { VolatileMmio::new(*ptr, *len) })
+            }
+            Bar0Backing::Owned { .. } => None,
+        }
+    }
+
     pub fn open(bdf: &str) -> Result<Self, ChannelError> {
         crate::vfio::ember_gate::check_channel(bdf)?;
         let path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
@@ -32,30 +90,18 @@ impl Bar0Rw {
             .open(&path)
             .map_err(|e| ChannelError::resource_io("open", path.clone(), e))?;
 
-        let size = 16 * 1024 * 1024; // 16 MiB BAR0
-        // SAFETY: mmap of PCI BAR0 sysfs resource with R/W for PRAMIN window sliding.
-        let raw = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &file,
-                0,
-            )
-        }
-        .map_err(|e| ChannelError::Bar0Mmap {
-            path: path.clone(),
-            source: e,
+        let mmap = DeviceMmap::map_shared_rw(&file, 0, DEFAULT_BAR0_SIZE).map_err(|e| {
+            ChannelError::Bar0Mmap {
+                path: path.clone(),
+                source: sysfs_bar0::device_mmap_err_to_errno(e),
+            }
         })?;
 
-        let ptr = NonNull::new(raw.cast::<u8>()).ok_or(ChannelError::Bar0MmapNull { path })?;
-
         Ok(Self {
-            ptr,
-            size,
-            _file: Some(file),
-            owned: true,
+            backing: Bar0Backing::Owned {
+                _file: file,
+                region: MmioRegion::from_device_mmap(mmap),
+            },
         })
     }
 
@@ -69,19 +115,12 @@ impl Bar0Rw {
     pub(crate) unsafe fn from_raw(ptr: *mut u8, size: usize) -> Result<Self, ChannelError> {
         let ptr = NonNull::new(ptr).ok_or(ChannelError::Bar0ExternalNull)?;
         Ok(Self {
-            ptr,
-            size,
-            _file: None,
-            owned: false,
+            backing: Bar0Backing::Borrowed { ptr, len: size },
         })
     }
 
     pub fn read_u32(&self, offset: usize) -> u32 {
-        if offset + 4 > self.size {
-            return 0xDEAD_DEAD;
-        }
-        // SAFETY: bounds checked, volatile for MMIO.
-        unsafe { std::ptr::read_volatile(self.ptr.as_ptr().add(offset).cast::<u32>()) }
+        self.try_read_u32(offset).unwrap_or(0xDEAD_DEAD)
     }
 
     /// Read a 32-bit MMIO register, returning an error for out-of-bounds access.
@@ -89,39 +128,48 @@ impl Bar0Rw {
     /// Prefer this over [`read_u32`] in new code (PMU probing, etc.) where
     /// sentinel ambiguity is unacceptable.
     pub fn try_read_u32(&self, offset: usize) -> Result<u32, ChannelError> {
-        if offset + 4 > self.size {
-            return Err(ChannelError::Bar0ReadOutOfBounds {
-                offset,
-                map_size: self.size,
-            });
+        let map_size = self.map_len();
+        if offset.checked_add(4).is_none_or(|end| end > map_size) {
+            return Err(ChannelError::Bar0ReadOutOfBounds { offset, map_size });
         }
-        // SAFETY: bounds checked, volatile for MMIO.
-        Ok(unsafe { std::ptr::read_volatile(self.ptr.as_ptr().add(offset).cast::<u32>()) })
+        match &self.backing {
+            Bar0Backing::Owned { region, .. } => region.read_u32(offset).map_err(|e| {
+                ChannelError::resource_io(
+                    "read_u32",
+                    format!("BAR0+{offset:#x}"),
+                    std::io::Error::other(e.to_string()),
+                )
+            }),
+            Bar0Backing::Borrowed { .. } => self.borrowed_volatile().expect("borrowed backing").read_u32(offset).map_err(|e| {
+                mmio_err_read(offset, map_size, e)
+            }),
+        }
     }
 
     pub fn write_u32(&self, offset: usize, val: u32) {
-        if offset + 4 > self.size {
-            return;
-        }
-        // SAFETY: bounds checked, volatile for MMIO.
-        unsafe {
-            std::ptr::write_volatile(self.ptr.as_ptr().add(offset).cast::<u32>(), val);
-        }
+        let _ = self.try_write_u32(offset, val);
     }
 
     /// Write a 32-bit MMIO register, returning an error for out-of-bounds access.
     pub fn try_write_u32(&self, offset: usize, val: u32) -> Result<(), ChannelError> {
-        if offset + 4 > self.size {
-            return Err(ChannelError::Bar0WriteOutOfBounds {
-                offset,
-                map_size: self.size,
-            });
+        let map_size = self.map_len();
+        if offset.checked_add(4).is_none_or(|end| end > map_size) {
+            return Err(ChannelError::Bar0WriteOutOfBounds { offset, map_size });
         }
-        // SAFETY: bounds checked, volatile for MMIO.
-        unsafe {
-            std::ptr::write_volatile(self.ptr.as_ptr().add(offset).cast::<u32>(), val);
+        match &self.backing {
+            Bar0Backing::Owned { region, .. } => region.write_u32(offset, val).map_err(|e| {
+                ChannelError::resource_io(
+                    "write_u32",
+                    format!("BAR0+{offset:#x}"),
+                    std::io::Error::other(e.to_string()),
+                )
+            }),
+            Bar0Backing::Borrowed { .. } => self
+                .borrowed_volatile()
+                .expect("borrowed backing")
+                .write_u32(offset, val)
+                .map_err(|e| mmio_err_write(offset, map_size, e)),
         }
-        Ok(())
     }
 
     fn read_pramin_u64(&self, offset_in_window: usize) -> u64 {
@@ -152,17 +200,6 @@ impl Bar0Rw {
         let offset = (vram_addr & 0xF_FFFF) as usize;
         self.set_window(page);
         self.read_pramin_u64(offset)
-    }
-}
-
-impl Drop for Bar0Rw {
-    fn drop(&mut self) {
-        if self.owned {
-            // SAFETY: unmapping the region mapped in open().
-            unsafe {
-                let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
-            }
-        }
     }
 }
 

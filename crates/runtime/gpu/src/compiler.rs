@@ -262,27 +262,26 @@ mod compiler_tests {
     }
 
     #[tokio::test]
-    async fn test_compile_kernel_basic() {
+    async fn test_compile_kernel_basic() -> ToadStoolResult<()> {
         let config = CompilationConfig::default();
         let compiler = UniversalKernelCompiler::new(config);
         let device = make_test_device();
         let kernel_source = "@compute @workgroup_size(64) fn main() {}";
-        let result = compiler
+        let compiled_kernel = compiler
             .compile_kernel(
                 kernel_source,
                 KernelFormat::Spirv,
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await;
-        assert!(result.is_ok());
-        let compiled_kernel = result.unwrap();
+            .await?;
         assert!(!compiled_kernel.binary.is_empty());
         assert_eq!(compiled_kernel.framework, GpuFramework::WebGpu);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_compile_kernel_caching() {
+    async fn test_compile_kernel_caching() -> ToadStoolResult<()> {
         let mut config = CompilationConfig::default();
         config.caching.enabled = true;
         let compiler = UniversalKernelCompiler::new(config);
@@ -290,17 +289,16 @@ mod compiler_tests {
         let source = "fn test() {}";
         let first_compiled = compiler
             .compile_kernel(source, KernelFormat::Glsl, GpuFramework::WebGpu, &device)
-            .await
-            .unwrap();
+            .await?;
         let second_compiled = compiler
             .compile_kernel(source, KernelFormat::Glsl, GpuFramework::WebGpu, &device)
-            .await
-            .unwrap();
+            .await?;
         assert!(Arc::ptr_eq(&first_compiled, &second_compiled));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_clear_cache() {
+    async fn test_clear_cache() -> ToadStoolResult<()> {
         let mut config = CompilationConfig::default();
         config.caching.enabled = true;
         let compiler = UniversalKernelCompiler::new(config);
@@ -312,21 +310,20 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         compiler.clear_cache().await;
         let stats = compiler.get_cache_stats().await;
         assert_eq!(stats.entries, 0);
+        Ok(())
     }
 
     #[test]
-    fn test_basic_kernel_optimizer() {
+    fn test_basic_kernel_optimizer() -> ToadStoolResult<()> {
         let opt = BasicKernelOptimizer;
         let kernel = "// comment\nfn main() {\n  x();\n}\n  \n";
-        let result = opt.optimize(kernel, &make_test_device());
-        assert!(result.is_ok());
-        let optimized_source = result.unwrap();
+        let optimized_source = opt.optimize(kernel, &make_test_device())?;
         assert!(!optimized_source.contains("//"));
+        Ok(())
     }
 
     #[test]
@@ -349,7 +346,7 @@ mod compiler_tests {
     }
 
     #[tokio::test]
-    async fn test_compile_kernel_caching_disabled() {
+    async fn test_compile_kernel_caching_disabled() -> ToadStoolResult<()> {
         let mut config = CompilationConfig::default();
         config.caching.enabled = false;
         let compiler = UniversalKernelCompiler::new(config);
@@ -361,8 +358,7 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         let second_result = compiler
             .compile_kernel(
                 "fn a() {}",
@@ -370,16 +366,16 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         assert!(
             !Arc::ptr_eq(&first_result, &second_result),
             "Caching disabled should produce new instances"
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_compile_kernel_different_formats_different_cache_keys() {
+    async fn test_compile_kernel_different_formats_different_cache_keys() -> ToadStoolResult<()> {
         let mut config = CompilationConfig::default();
         config.caching.enabled = true;
         let compiler = UniversalKernelCompiler::new(config);
@@ -391,8 +387,7 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         let wasm_result = compiler
             .compile_kernel(
                 "fn x() {}",
@@ -400,13 +395,13 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         assert!(!Arc::ptr_eq(&glsl_result, &wasm_result));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_compile_kernel_different_sources_different_output() {
+    async fn test_compile_kernel_different_sources_different_output() -> ToadStoolResult<()> {
         let config = CompilationConfig::default();
         let compiler = UniversalKernelCompiler::new(config);
         let device = make_test_device();
@@ -417,8 +412,7 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         let compiled_b = compiler
             .compile_kernel(
                 "source_b",
@@ -426,13 +420,13 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         assert_ne!(compiled_a.binary, compiled_b.binary);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_cache_stats_with_entries() {
+    async fn test_get_cache_stats_with_entries() -> ToadStoolResult<()> {
         let mut config = CompilationConfig::default();
         config.caching.enabled = true;
         let compiler = UniversalKernelCompiler::new(config);
@@ -444,10 +438,10 @@ mod compiler_tests {
                 GpuFramework::WebGpu,
                 &device,
             )
-            .await
-            .unwrap();
+            .await?;
         let stats = compiler.get_cache_stats().await;
         assert_eq!(stats.entries, 1);
         assert!(stats.memory_usage_bytes > 0);
+        Ok(())
     }
 }

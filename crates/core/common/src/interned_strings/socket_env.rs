@@ -5,9 +5,10 @@
 )]
 //! Environment variable names for runtime socket discovery (`SocketPathEnv::from_env`).
 //!
-//! Prefer capability-prefixed vars (`BIOMEOS_*_SOCKET`, `TOADSTOOL_*_SOCKET`). Legacy
-//! `LEGACY_*_SOCKET_ENV` names are identity-based fallbacks only; see
-//! `capabilities::*` and capability discovery in the wateringHole standards.
+//! Prefer capability-prefixed vars via [`super::CapabilityDomain::biomeos_socket_env`] /
+//! [`super::CapabilityDomain::toadstool_socket_env`] (`BIOMEOS_*_SOCKET`, `TOADSTOOL_*_SOCKET`).
+//! Legacy `LEGACY_*` names are identity-based fallbacks only — use
+//! [`super::CapabilityDomain::legacy_socket_env`] only when migrating older deployments.
 
 // POSIX / XDG Base Directory Specification.
 pub const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";
@@ -145,9 +146,35 @@ pub const TOADSTOOL_STORAGE_URL: &str = "TOADSTOOL_STORAGE_URL";
 pub const TOADSTOOL_COORDINATION_PORT: &str = "TOADSTOOL_COORDINATION_PORT";
 pub const TOADSTOOL_SECURITY_PORT: &str = "TOADSTOOL_SECURITY_PORT";
 pub const TOADSTOOL_STORAGE_PORT: &str = "TOADSTOOL_STORAGE_PORT";
+/// Platform / intelligence capability port override.
+pub const TOADSTOOL_INTELLIGENCE_PORT: &str = "TOADSTOOL_INTELLIGENCE_PORT";
+/// Platform capability port override (alias for intelligence routing).
+pub const TOADSTOOL_PLATFORM_PORT: &str = "TOADSTOOL_PLATFORM_PORT";
+/// Generic coordination port (non-prefixed fallback).
+pub const COORDINATION_PORT: &str = "COORDINATION_PORT";
+/// Generic security port (non-prefixed fallback).
+pub const SECURITY_PORT: &str = "SECURITY_PORT";
+/// Generic storage port (non-prefixed fallback).
+pub const STORAGE_PORT: &str = "STORAGE_PORT";
+/// Generic intelligence port (non-prefixed fallback).
+pub const INTELLIGENCE_PORT: &str = "INTELLIGENCE_PORT";
+/// Generic platform port (non-prefixed fallback).
+pub const PLATFORM_PORT: &str = "PLATFORM_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_PORT`.
 #[deprecated(note = "use TOADSTOOL_COORDINATION_PORT")]
 pub const TOADSTOOL_SONGBIRD_PORT: &str = "TOADSTOOL_SONGBIRD_PORT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_PORT` or `COORDINATION_PORT`.
+#[deprecated(note = "use TOADSTOOL_COORDINATION_PORT")]
+pub const SONGBIRD_PORT: &str = "SONGBIRD_PORT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_SECURITY_PORT` or `SECURITY_PORT`.
+#[deprecated(note = "use TOADSTOOL_SECURITY_PORT")]
+pub const BEARDOG_PORT: &str = "BEARDOG_PORT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_STORAGE_PORT` or `STORAGE_PORT`.
+#[deprecated(note = "use TOADSTOOL_STORAGE_PORT")]
+pub const NESTGATE_PORT: &str = "NESTGATE_PORT";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_INTELLIGENCE_PORT` or `INTELLIGENCE_PORT`.
+#[deprecated(note = "use TOADSTOOL_INTELLIGENCE_PORT")]
+pub const SQUIRREL_PORT: &str = "SQUIRREL_PORT";
 
 /// NUCLEUS discovery socket (Songbird). Highest-precedence path for `coordination`
 /// and `discovery` capability resolution — set by `composition_nucleus.sh`.
@@ -163,6 +190,22 @@ pub const TOADSTOOL_ENV: &str = "TOADSTOOL_ENV";
 pub const TOADSTOOL_BIND_HOST: &str = "TOADSTOOL_BIND_HOST";
 pub const BIND_HOST: &str = "BIND_HOST";
 pub const TOADSTOOL_BIND_ADDRESS: &str = "TOADSTOOL_BIND_ADDRESS";
+/// IP address override for service listen sockets (default loopback).
+pub const TOADSTOOL_LISTEN_ADDRESS: &str = "TOADSTOOL_LISTEN_ADDRESS";
+/// Primary ToadStool service port override.
+pub const TOADSTOOL_SERVICE_PORT: &str = "TOADSTOOL_SERVICE_PORT";
+/// HTTP/API port override (parallel to [`TOADSTOOL_SERVICE_PORT`]).
+pub const TOADSTOOL_API_PORT: &str = "TOADSTOOL_API_PORT";
+/// Metrics / Prometheus scrape port override.
+pub const TOADSTOOL_METRICS_PORT: &str = "TOADSTOOL_METRICS_PORT";
+/// Health check HTTP port override.
+pub const TOADSTOOL_HEALTH_PORT: &str = "TOADSTOOL_HEALTH_PORT";
+/// Comma-separated explicit discovery endpoint URLs.
+pub const TOADSTOOL_DISCOVERY_ENDPOINTS: &str = "TOADSTOOL_DISCOVERY_ENDPOINTS";
+/// Enable mDNS for local network discovery (`NetworkConfig::from_env`).
+pub const TOADSTOOL_ENABLE_MDNS: &str = "TOADSTOOL_ENABLE_MDNS";
+/// Network bind mode: `localhost`, `all`, or `specific`.
+pub const TOADSTOOL_BIND_MODE: &str = "TOADSTOOL_BIND_MODE";
 pub const TOADSTOOL_TCP_BIND_ADDRESS: &str = "TOADSTOOL_TCP_BIND_ADDRESS";
 /// Idle timeout (seconds) for Pure JSON-RPC TCP connections.
 pub const TOADSTOOL_TCP_IDLE_TIMEOUT_SECS: &str = "TOADSTOOL_TCP_IDLE_TIMEOUT_SECS";
@@ -354,22 +397,14 @@ pub const NESTGATE_PUBLIC_KEY: &str = "NESTGATE_PUBLIC_KEY";
 pub const SONGBIRD_PUBLIC_KEY: &str = "SONGBIRD_PUBLIC_KEY";
 
 // Cylinder hardware paths and ember lifecycle.
+/// sysfs mount root for portable deployments, tests, and mock trees.
+pub const TOADSTOOL_SYSFS_ROOT: &str = "TOADSTOOL_SYSFS_ROOT";
+/// procfs mount root for portable deployments and kernel release probing.
+pub const TOADSTOOL_PROC_ROOT: &str = "TOADSTOOL_PROC_ROOT";
 pub const TOADSTOOL_EMBER_GATE: &str = "TOADSTOOL_EMBER_GATE";
 pub const TOADSTOOL_DRI_RENDER_PREFIX: &str = "TOADSTOOL_DRI_RENDER_PREFIX";
 pub const TOADSTOOL_EMBER_SOCKET: &str = "TOADSTOOL_EMBER_SOCKET";
 pub const BIOMEOS_ECOSYSTEM_NAMESPACE: &str = "BIOMEOS_ECOSYSTEM_NAMESPACE";
-/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_EMBER_GATE`.
-#[deprecated(note = "use TOADSTOOL_EMBER_GATE")]
-pub const CORALREEF_EMBER_GATE: &str = "CORALREEF_EMBER_GATE";
-/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_DATA_DIR`.
-#[deprecated(note = "use TOADSTOOL_DATA_DIR")]
-pub const CORALREEF_DATA_DIR: &str = "CORALREEF_DATA_DIR";
-/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_DRI_RENDER_PREFIX`.
-#[deprecated(note = "use TOADSTOOL_DRI_RENDER_PREFIX")]
-pub const CORALREEF_DRI_RENDER_PREFIX: &str = "CORALREEF_DRI_RENDER_PREFIX";
-/// **Deprecated** (legacy naming). Prefer `TOADSTOOL_EMBER_SOCKET`.
-#[deprecated(note = "use TOADSTOOL_EMBER_SOCKET")]
-pub const CORALREEF_EMBER_SOCKET: &str = "CORALREEF_EMBER_SOCKET";
 
 // Vulkan / GPU tooling.
 pub const VK_ICD_FILENAMES: &str = "VK_ICD_FILENAMES";

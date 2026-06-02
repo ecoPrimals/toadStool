@@ -35,7 +35,7 @@ pub mod discovery;
 )]
 pub use types::{
     BearDogPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
-    EcosystemIntegrator, EcosystemService, NestGateMount, SecurityPermission, ServiceEndpoint,
+    EcosystemIntegrator, EcosystemService, SecurityPermission, ServiceEndpoint,
     ServiceSignature, ServiceType, SignedServiceResponse, StorageMount, TrustLevel,
 };
 

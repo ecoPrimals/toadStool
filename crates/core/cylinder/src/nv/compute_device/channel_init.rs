@@ -87,6 +87,67 @@ pub(crate) fn init_channel_buffers(
     })
 }
 
+/// Like [`init_channel_buffers`] but allows overriding the PFIFO warm_handoff
+/// independently from `fecs_ready`. Use after a PMC PFIFO reset when FECS is
+/// still alive but PFIFO needs cold initialization.
+pub(crate) fn init_channel_buffers_with_pfifo_config(
+    dma_backend: &DmaBackend,
+    bar0: &MappedBar,
+    profile: &GenerationProfile,
+    is_kepler: bool,
+    fecs_ready: bool,
+    pfifo_warm: bool,
+    bdf: &str,
+    log_context: &str,
+) -> DriverResult<ChannelInitResult> {
+    let gpfifo = DmaBuffer::new(dma_backend.clone(), 4096, GPFIFO_IOVA)?;
+    let userd = DmaBuffer::new(dma_backend.clone(), 4096, USERD_IOVA)?;
+
+    let gr_ctx = if !is_kepler && fecs_ready {
+        let ctx = DmaBuffer::new(dma_backend.clone(), GR_CTX_SIZE, GR_CTX_IOVA)?;
+        tracing::info!(
+            bdf = %bdf,
+            gr_ctx_iova = format_args!("{GR_CTX_IOVA:#x}"),
+            "GR context buffer allocated ({log_context})"
+        );
+        Some(ctx)
+    } else {
+        None
+    };
+
+    let mut ch = VfioChannel::create_for_profile(
+        dma_backend.clone(),
+        bar0,
+        GPFIFO_IOVA,
+        GPFIFO_ENTRIES,
+        USERD_IOVA,
+        0,
+        profile,
+        pfifo_warm,
+    )?;
+
+    let doorbell = if is_kepler {
+        DoorbellKind::Gk104 {
+            channel_id: ch.id(),
+        }
+    } else {
+        DoorbellKind::Usermode
+    };
+
+    if !is_kepler && gr_ctx.is_some() {
+        ch.write_gr_context_ptr(GR_CTX_IOVA, 4);
+        ch.resubmit_runlist(bar0)?;
+    }
+
+    Ok(ChannelInitResult {
+        gpfifo,
+        userd,
+        gr_ctx,
+        channel: ch,
+        doorbell,
+    })
+}
+
 /// Allocate optional semaphore buffer for Blackwell+ completion signaling.
 pub(crate) fn alloc_semaphore_buffer(
     dma_backend: &DmaBackend,

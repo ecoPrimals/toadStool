@@ -11,16 +11,16 @@ use toadstool::ExecutionRequest;
 use uuid::Uuid;
 
 use std::time::Duration;
-use toadstool_distributed::cloud::types::AvailabilityInfo;
-use toadstool_distributed::cloud::{
+use super::common::{MockCloudProvider, TestUniversalOrchestrator};
+use crate::cloud::types::AvailabilityInfo;
+use crate::cloud::{
     CloudOrchestratorConfig, ComplianceConfig, CostConfig, FederationConfig,
-    HybridSchedulingStrategy, LoadBalancerConfig, LoadBalancingAlgorithm, MockCloudProvider,
-    TestUniversalOrchestrator,
+    HybridSchedulingStrategy, LoadBalancerConfig, LoadBalancingAlgorithm,
 };
-use toadstool_distributed::types::resources::{
+use crate::types::resources::{
     CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
 };
-use toadstool_distributed::{ResourceRequirements, UniversalJob, UniversalJobType};
+use crate::{ResourceRequirements, UniversalJob, UniversalJobType};
 
 fn make_orchestrator_config() -> CloudOrchestratorConfig {
     CloudOrchestratorConfig {
@@ -91,15 +91,15 @@ fn make_job(job_type: UniversalJobType) -> UniversalJob {
         job_id: Uuid::new_v4(),
         job_type: Some(job_type),
         execution_request: ExecutionRequest::default(),
-        target: toadstool_distributed::ExecutionTarget::Local,
-        priority: toadstool_distributed::JobPriority::Normal,
+        target: crate::ExecutionTarget::Local,
+        priority: crate::JobPriority::Normal,
         dependencies: vec![],
         resource_requirements: make_requirements(
             4.0,
             8 * 1024 * 1024 * 1024,
             50 * 1024 * 1024 * 1024,
         ),
-        retry_config: toadstool_distributed::types::DistributedRetryConfig::default(),
+        retry_config: crate::types::DistributedRetryConfig::default(),
         created_at: SystemTime::now(),
     }
 }
@@ -196,15 +196,15 @@ async fn test_deploy_job_with_none_type() {
         job_id: Uuid::new_v4(),
         job_type: None,
         execution_request: ExecutionRequest::default(),
-        target: toadstool_distributed::ExecutionTarget::Local,
-        priority: toadstool_distributed::JobPriority::Normal,
+        target: crate::ExecutionTarget::Local,
+        priority: crate::JobPriority::Normal,
         dependencies: vec![],
         resource_requirements: make_requirements(
             4.0,
             8 * 1024 * 1024 * 1024,
             50 * 1024 * 1024 * 1024,
         ),
-        retry_config: toadstool_distributed::types::DistributedRetryConfig::default(),
+        retry_config: crate::types::DistributedRetryConfig::default(),
         created_at: SystemTime::now(),
     };
 
