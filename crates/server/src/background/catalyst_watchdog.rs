@@ -35,9 +35,27 @@ const PHASE_IDLE: u8 = 0;
 const PHASE_PIPELINE_ACTIVE: u8 = 1;
 const PHASE_MODULE_CLEANUP: u8 = 2;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    Idle,
+    PipelineActive,
+    ModuleCleanup,
+}
+
+impl Phase {
+    fn from_u8(v: u8) -> Self {
+        match v {
+            PHASE_PIPELINE_ACTIVE => Phase::PipelineActive,
+            PHASE_MODULE_CLEANUP => Phase::ModuleCleanup,
+            _ => Phase::Idle,
+        }
+    }
+}
+
 /// Shared state between the handoff pipeline and the watchdog thread.
 struct WatchdogState {
     active: AtomicBool,
+    thread_running: AtomicBool,
     last_heartbeat_ms: AtomicU64,
     timeout_ms: AtomicU64,
     bdf: std::sync::Mutex<String>,
@@ -49,6 +67,7 @@ struct WatchdogState {
 static WATCHDOG: std::sync::LazyLock<Arc<WatchdogState>> = std::sync::LazyLock::new(|| {
     Arc::new(WatchdogState {
         active: AtomicBool::new(false),
+        thread_running: AtomicBool::new(false),
         last_heartbeat_ms: AtomicU64::new(0),
         timeout_ms: AtomicU64::new(DEFAULT_WATCHDOG_TIMEOUT.as_millis() as u64),
         bdf: std::sync::Mutex::new(String::new()),
@@ -187,6 +206,80 @@ pub fn is_active() -> bool {
     WATCHDOG.active.load(Ordering::Acquire)
 }
 
+fn bdf_display() -> String {
+    let bdf = WATCHDOG
+        .bdf
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if bdf.is_empty() {
+        "none".into()
+    } else {
+        bdf.clone()
+    }
+}
+
+fn module_name_display() -> String {
+    let name = WATCHDOG
+        .module_name
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if name.is_empty() {
+        "none".into()
+    } else {
+        name.clone()
+    }
+}
+
+fn current_phase() -> Phase {
+    Phase::from_u8(WATCHDOG.phase.load(Ordering::Acquire))
+}
+
+/// Query defense status for external consumers (JSON-RPC handlers).
+///
+/// Reports both `available` (code path exists in the engine) and `armed`
+/// (currently active for an in-flight handoff). Validators should check
+/// `available` for baseline health and `armed` during live handoffs.
+pub fn defense_status() -> serde_json::Value {
+    let phase = current_phase();
+    let last_hb = WATCHDOG.last_heartbeat_ms.load(Ordering::Acquire);
+    let now = epoch_ms();
+    let elapsed_ms = now.saturating_sub(last_hb);
+    let watchdog_running = WATCHDOG.thread_running.load(Ordering::Acquire);
+    serde_json::json!({
+        "phase": format!("{phase:?}"),
+        "bdf": bdf_display(),
+        "mechanisms": {
+            "interrupt_quench": phase != Phase::Idle,
+            "post_exit_quench": phase != Phase::Idle,
+            "exclusion_guard": phase == Phase::PipelineActive || phase == Phase::ModuleCleanup,
+            "fire_and_poll_unbind": phase == Phase::ModuleCleanup,
+            "kernel_sentinel": true,
+        },
+        "available": {
+            "interrupt_quench": true,
+            "post_exit_quench": true,
+            "exclusion_guard": true,
+            "fire_and_poll_unbind": true,
+            "kernel_sentinel": watchdog_running,
+        },
+        "watchdog_running": watchdog_running,
+        "last_heartbeat_ms": elapsed_ms,
+    })
+}
+
+/// Query watchdog thread status for external consumers (JSON-RPC handlers).
+pub fn watchdog_status() -> serde_json::Value {
+    let phase = current_phase();
+    let timeout_ms = WATCHDOG.timeout_ms.load(Ordering::Acquire);
+    serde_json::json!({
+        "running": WATCHDOG.thread_running.load(Ordering::Acquire),
+        "timeout_s": timeout_ms / 1000,
+        "phase": format!("{phase:?}"),
+        "bdf": bdf_display(),
+        "module_name": module_name_display(),
+    })
+}
+
 /// Force an emergency interrupt quench from an external caller (e.g. kernel
 /// sentinel). Uses the currently registered BDF and interrupt profile.
 pub fn force_emergency_quench() {
@@ -207,6 +300,7 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
     std::thread::Builder::new()
         .name("catalyst-watchdog".into())
         .spawn(move || {
+            WATCHDOG.thread_running.store(true, Ordering::Release);
             info!("catalyst watchdog thread started");
             let mut last_module_state: Option<String> = None;
             let mut last_module_refcount: Option<i64> = None;

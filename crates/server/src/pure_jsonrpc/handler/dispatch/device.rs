@@ -403,6 +403,122 @@ impl DispatchHandler {
         }
     }
 
+    /// Check whether a BDF has an active ember device handle or cached VFIO session.
+    pub(crate) async fn has_device_handle(&self, bdf: &str) -> bool {
+        {
+            let pool = self.device_pool.read().await;
+            if pool.contains_key(bdf) {
+                return true;
+            }
+        }
+        let cache = self.cached_devices.lock().await;
+        cache.contains_key(bdf)
+    }
+
+    /// Internal VFIO open — acquire handle and ensure a cached compute device exists.
+    ///
+    /// Returns the DMA method label on success (`"vfio_cdev"` when DMA backend is live).
+    pub(crate) async fn device_vfio_open_internal(&self, bdf: &str) -> Result<String, String> {
+        self.pre_dispatch_resource_check(bdf)
+            .map_err(|e| e.message.to_string())?;
+        self.acquire_device_handle(bdf).await;
+        crate::background::pcie_keepalive::activity_tracker().record();
+
+        let cache = self
+            .get_or_create_device(bdf)
+            .await
+            .ok_or_else(|| {
+                String::from("device not available — FECS cold or not VFIO-bound")
+            })?;
+
+        let device = cache
+            .get(bdf)
+            .ok_or_else(|| String::from("device cache miss after insert"))?;
+
+        if device.dma_backend().is_some() {
+            Ok(String::from("vfio_cdev"))
+        } else {
+            Err(String::from(
+                "VFIO session open but DMA backend unavailable (caps-only mode)",
+            ))
+        }
+    }
+
+    /// `ember.prepare_dma` — prepare the DMA backend for a device by BDF.
+    pub(crate) async fn ember_prepare_dma(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
+        use crate::pure_jsonrpc::types::JsonRpcError;
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        if self.has_device_handle(bdf).await {
+            let cache = self.cached_devices.lock().await;
+            let dma_ready = cache
+                .get(bdf)
+                .is_some_and(|dev| dev.dma_backend().is_some());
+            drop(cache);
+            let in_pool = self.device_pool.read().await.contains_key(bdf);
+            let dma_ready = dma_ready || in_pool;
+            return Ok(serde_json::json!({
+                "bdf": bdf,
+                "dma_ready": dma_ready,
+                "ok": dma_ready,
+                "method": if dma_ready { "cached" } else { "pending" },
+            }));
+        }
+
+        match self.device_vfio_open_internal(bdf).await {
+            Ok(method) => Ok(serde_json::json!({
+                "bdf": bdf,
+                "dma_ready": true,
+                "ok": true,
+                "method": method,
+            })),
+            Err(e) => Ok(serde_json::json!({
+                "bdf": bdf,
+                "dma_ready": false,
+                "ok": false,
+                "error": e,
+            })),
+        }
+    }
+
+    /// `ember.cleanup_dma` — release DMA resources held for a device.
+    pub(crate) async fn ember_cleanup_dma(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
+        use crate::pure_jsonrpc::types::JsonRpcError;
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        {
+            let mut pool = self.device_pool.write().await;
+            pool.remove(bdf);
+        }
+        {
+            let mut cache = self.cached_devices.lock().await;
+            cache.remove(bdf);
+        }
+
+        #[cfg(target_os = "linux")]
+        toadstool_cylinder::nv::registers::pmc::disable_bus_master(bdf, "ember.cleanup_dma");
+
+        Ok(serde_json::json!({
+            "bdf": bdf,
+            "cleaned": true,
+            "ok": true,
+        }))
+    }
+
     /// `device.gr.init` — submit GR context init method entries to a VFIO device.
     ///
     /// Accepts `(register, value)` pairs captured from warm-catch experiments and

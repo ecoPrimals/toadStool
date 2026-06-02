@@ -105,14 +105,30 @@ where
     add_mapping("device.list", "ember_list");
     add_mapping("device.status", "ember_status");
     add_mapping("device.reacquire", "ember_reacquire");
+    add_mapping("ember.prepare_dma", "ember_prepare_dma");
+    add_mapping("device.prepare_dma", "ember_prepare_dma");
+    add_mapping("ember.cleanup_dma", "ember_cleanup_dma");
+    add_mapping("device.cleanup_dma", "ember_cleanup_dma");
+    add_mapping("ember.adopt_device", "ember_adopt_device");
+    add_mapping("device.adopt", "ember_adopt_device");
     add_mapping("device.swap", "device_swap");
     add_mapping("device.warm_catch", "device_warm_catch");
+    add_mapping("ember.experiment_lifecycle", "device_experiment_lifecycle");
+    add_mapping("ember.device.get", "device_get");
+    add_mapping("ember.warm_cycle", "ember_warm_cycle");
+    add_mapping("ember.fecs.state", "ember_fecs_state");
+    add_mapping("ember.device.health", "ember_device_health");
+    add_mapping("device.health", "ember_device_health");
+    add_mapping("ember.device.recover", "ember_device_recover");
+    add_mapping("ember.pramin.read", "pramin_read");
+    add_mapping("device.reset", "device_reset");
+    add_mapping("device.resurrect", "device_resurrect");
 
-    // Legacy coralReef/hotSpring names that route to device.swap.
-    // hotSpring's GlowplugClient calls these — without aliases they
-    // return `method_not_found`.
+    // Legacy coralReef/hotSpring name that routes to device.swap.
+    // hotSpring's GlowplugClient calls this — without the alias it
+    // returns `method_not_found`.
     add_mapping("ember.swap", "device_swap");
-    add_mapping("sovereign.boot", "device_swap");
+    add_mapping("sovereign.boot", "sovereign_init_ember");
 
     // VFIO dispatch surface — direct PBDMA dispatch on VFIO-bound GPUs.
     add_mapping("device.vfio.open", "device_vfio_open");
@@ -140,6 +156,11 @@ where
     add_mapping("ember.health.drain", "health_drain");
     add_mapping("sovereign.health.drain", "health_drain");
 
+    add_mapping("ember.defense_status", "sovereign_defense_status");
+    add_mapping("diesel.defense_status", "sovereign_defense_status");
+    add_mapping("ember.watchdog_status", "sovereign_watchdog_status");
+    add_mapping("diesel.watchdog_status", "sovereign_watchdog_status");
+
     // ═══════════════════════════════════════════════════════════
     // MMIO DOMAIN — BAR0 register access and falcon status
     //
@@ -153,6 +174,11 @@ where
     add_mapping("ember.mmio.pramin.read32", "mmio_pramin_read32");
     add_mapping("ember.bar0.probe", "mmio_bar0_probe");
     add_mapping("ember.falcon.status", "mmio_falcon_status");
+    add_mapping("sovereign.falcon.upload_imem", "falcon_upload_imem");
+    add_mapping("sovereign.falcon.upload_dmem", "falcon_upload_dmem");
+    add_mapping("sovereign.falcon.start_cpu", "falcon_start_cpu");
+    add_mapping("sovereign.falcon.poll", "falcon_poll");
+    add_mapping("sovereign.pramin.write", "pramin_write");
 
     // ═══════════════════════════════════════════════════════════
     // COMPUTE DISPATCH DOMAIN - GPU binary dispatch (PG-15 compliance)

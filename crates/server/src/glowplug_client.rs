@@ -17,7 +17,8 @@
 //! - This module: server-side JSON-RPC service exposing ember to the ecosystem
 
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use toadstool_glowplug::boot::BootResult;
 use toadstool_glowplug::device_id::DeviceId;
 use toadstool_glowplug::sysfs_executor::SysfsSwapExecutor;
@@ -29,6 +30,25 @@ use tracing::debug;
 pub struct EmberDeviceList {
     /// PCI BDF addresses of held devices.
     pub devices: Vec<String>,
+}
+
+/// Enriched device info for `ember.list` / `device.list`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmberDeviceInfo {
+    pub bdf: String,
+    pub name: Option<String>,
+    pub vendor_id: u16,
+    pub personality: String,
+    #[serde(default)]
+    pub protected: bool,
+    pub vram_alive: bool,
+    pub domains_faulted: usize,
+}
+
+/// Enriched list response from `ember.list` / `device.list`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmberDeviceListEnriched {
+    pub devices: Vec<EmberDeviceInfo>,
 }
 
 /// Status response from `ember.status`.
@@ -60,6 +80,21 @@ pub struct DeviceSwapResult {
     pub steps: Vec<DeviceSwapStep>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExperimentSession {
+    pub bdf: String,
+    pub started_at: u64,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExperimentLifecycleResult {
+    pub bdf: String,
+    pub action: String,
+    pub success: bool,
+    pub session: Option<ExperimentSession>,
+}
+
 /// Single step in a device swap lifecycle.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceSwapStep {
@@ -83,6 +118,7 @@ pub struct DeviceSwapStep {
 pub struct GlowPlugClient {
     start_time: std::time::Instant,
     orchestrator: SwapOrchestrator<SysfsSwapExecutor>,
+    experiments: Mutex<HashMap<String, ExperimentSession>>,
 }
 
 impl Default for GlowPlugClient {
@@ -97,6 +133,7 @@ impl GlowPlugClient {
         Self {
             start_time: std::time::Instant::now(),
             orchestrator: SwapOrchestrator::new(SysfsSwapExecutor),
+            experiments: Mutex::new(HashMap::new()),
         }
     }
 
@@ -107,11 +144,16 @@ impl GlowPlugClient {
         true
     }
 
-    /// List all GPU devices visible via PCI sysfs.
-    pub fn list_devices(&self) -> EmberDeviceList {
-        let devices = discover_gpu_bdfs();
+    /// List all GPU devices visible via PCI sysfs with enriched metadata.
+    pub fn list_devices(&self) -> EmberDeviceListEnriched {
+        let devices = discover_gpu_devices();
         debug!(count = devices.len(), "ember.list: enumerated GPU devices");
-        EmberDeviceList { devices }
+        EmberDeviceListEnriched { devices }
+    }
+
+    /// Fetch enriched metadata for a single GPU by BDF.
+    pub fn get_device(&self, bdf: &str) -> Option<EmberDeviceInfo> {
+        discover_single_device(bdf)
     }
 
     /// Query service status (held devices + uptime).
@@ -206,6 +248,41 @@ impl GlowPlugClient {
         })
     }
 
+    pub fn experiment_lifecycle(&self, bdf: &str, action: &str) -> ExperimentLifecycleResult {
+        let mut experiments = self.experiments.lock().unwrap_or_else(|e| e.into_inner());
+        match action {
+            "start" => {
+                let session = ExperimentSession {
+                    bdf: bdf.to_string(),
+                    started_at: self.start_time.elapsed().as_secs(),
+                    active: true,
+                };
+                experiments.insert(bdf.to_string(), session.clone());
+                ExperimentLifecycleResult {
+                    bdf: bdf.to_string(),
+                    action: "start".to_string(),
+                    success: true,
+                    session: Some(session),
+                }
+            }
+            "end" => {
+                let session = experiments.remove(bdf);
+                ExperimentLifecycleResult {
+                    bdf: bdf.to_string(),
+                    action: "end".to_string(),
+                    success: session.is_some(),
+                    session,
+                }
+            }
+            _ => ExperimentLifecycleResult {
+                bdf: bdf.to_string(),
+                action: action.to_string(),
+                success: false,
+                session: None,
+            },
+        }
+    }
+
     /// Reacquire a device (rebind to vfio-pci via orchestrated lifecycle).
     pub async fn reacquire(&self, bdf: &str) -> EmberReacquireResult {
         let result = self.swap_device_orchestrated(bdf, "vfio-pci").await;
@@ -282,8 +359,127 @@ fn read_bar0_registers(bdf: &str) -> (u32, u32) {
     (pmc_enable, fecs_cpuctl)
 }
 
+/// Discover enriched GPU device info for all visible GPUs.
+fn discover_gpu_devices() -> Vec<EmberDeviceInfo> {
+    discover_gpu_bdfs()
+        .into_iter()
+        .filter_map(|bdf| discover_single_device(&bdf))
+        .collect()
+}
+
+/// Probe enriched metadata for a single GPU BDF.
+fn discover_single_device(bdf: &str) -> Option<EmberDeviceInfo> {
+    let pci_path = toadstool_cylinder::linux_paths::sysfs_pci_device_path(bdf);
+    if !std::path::Path::new(&pci_path).exists() || !is_gpu_bdf(bdf) {
+        return None;
+    }
+
+    Some(EmberDeviceInfo {
+        bdf: bdf.to_string(),
+        name: read_device_name(bdf),
+        vendor_id: toadstool_ember::sysfs::read_pci_id(bdf, "vendor"),
+        personality: read_current_driver(bdf).unwrap_or_else(|| "unbound".into()),
+        protected: is_display_connected(bdf),
+        vram_alive: probe_vram_alive(bdf),
+        domains_faulted: 0,
+    })
+}
+
+fn is_gpu_bdf(bdf: &str) -> bool {
+    let class_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "class");
+    let Ok(class) = std::fs::read_to_string(class_path) else {
+        return false;
+    };
+    let class_trimmed = class.trim();
+    class_trimmed.starts_with("0x0302") || class_trimmed.starts_with("0x0300")
+}
+
+fn read_device_name(bdf: &str) -> Option<String> {
+    let label_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "label");
+    if let Ok(label) = std::fs::read_to_string(&label_path) {
+        let trimmed = label.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    let device_id = toadstool_ember::sysfs::read_pci_id(bdf, "device");
+    if device_id == 0 {
+        None
+    } else {
+        Some(format!("0x{device_id:04x}"))
+    }
+}
+
+fn probe_vram_alive(bdf: &str) -> bool {
+    let Ok(bar0) = nvpmu::bar0::Bar0Access::open(bdf) else {
+        return false;
+    };
+    match bar0.read_u32(0) {
+        Ok(val) => val != 0xFFFF_FFFF,
+        Err(_) => false,
+    }
+}
+
+/// True when a physical display connector is connected on this GPU's DRM card.
+fn is_display_connected(bdf: &str) -> bool {
+    let drm_dir = std::path::Path::new("/sys/class/drm");
+    let Ok(entries) = std::fs::read_dir(drm_dir) else {
+        return false;
+    };
+
+    let mut card_names = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.contains('-') || !name_str.starts_with("card") {
+            continue;
+        }
+        let device_link = entry.path().join("device");
+        if pci_bdf_matches(&device_link, bdf) {
+            card_names.push(name_str.into_owned());
+        }
+    }
+
+    if card_names.is_empty() {
+        return false;
+    }
+
+    let Ok(entries) = std::fs::read_dir(drm_dir) else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if !name_str.contains('-') {
+            continue;
+        }
+        let is_connector = card_names
+            .iter()
+            .any(|card| name_str.starts_with(&format!("{card}-")));
+        if !is_connector {
+            continue;
+        }
+        let status_path = entry.path().join("status");
+        if let Ok(status) = std::fs::read_to_string(status_path) {
+            if status.trim() == "connected" {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn pci_bdf_matches(device_link: &std::path::Path, bdf: &str) -> bool {
+    let Ok(canonical) = std::fs::canonicalize(device_link) else {
+        return false;
+    };
+    canonical
+        .file_name()
+        .is_some_and(|name| name.to_string_lossy() == bdf)
+}
+
 /// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).
-fn discover_gpu_bdfs() -> Vec<String> {
+pub fn discover_gpu_bdfs() -> Vec<String> {
     let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
         return Vec::new();
     };
@@ -339,9 +535,12 @@ mod tests {
 
     #[test]
     fn ember_device_list_deserialization() {
-        let json = r#"{"devices":["0000:01:00.0","0000:03:00.0"]}"#;
-        let list: EmberDeviceList = serde_json::from_str(json).unwrap();
+        let json = r#"{"devices":[{"bdf":"0000:01:00.0","name":"0x1b06","vendor_id":4318,"personality":"vfio-pci","protected":false,"vram_alive":true,"domains_faulted":0},{"bdf":"0000:03:00.0","name":null,"vendor_id":4318,"personality":"unbound","protected":true,"vram_alive":false,"domains_faulted":0}]}"#;
+        let list: EmberDeviceListEnriched = serde_json::from_str(json).unwrap();
         assert_eq!(list.devices.len(), 2);
+        assert_eq!(list.devices[0].bdf, "0000:01:00.0");
+        assert!(list.devices[0].vram_alive);
+        assert!(list.devices[1].protected);
     }
 
     #[test]

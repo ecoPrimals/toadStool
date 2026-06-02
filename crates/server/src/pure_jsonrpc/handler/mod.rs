@@ -419,8 +419,17 @@ impl JsonRpcHandler {
             "ember.list" => return Ok(self.ember_list()),
             "ember.status" => return Ok(self.ember_status()),
             "ember.reacquire" => return self.ember_reacquire(params).await,
+            "ember.warm_cycle" => return self.ember_warm_cycle(params).await,
+            "ember.prepare_dma" => return self.dispatch.ember_prepare_dma(params).await,
+            "ember.cleanup_dma" => return self.dispatch.ember_cleanup_dma(params).await,
+            "ember.adopt_device" => return self.ember_adopt_device(params).await,
             "device.swap" => return self.device_swap(params).await,
             "device.warm_catch" => return self.device_warm_catch(params),
+            "device.get" => return self.device_get(params),
+            "device.experiment_lifecycle" => return self.device_experiment_lifecycle(params),
+            "device.reset" => return self.device_reset(params),
+            "device.resurrect" => return self.device_resurrect(params).await,
+            "device.health" => return mmio::ember_device_health(params),
             "device.vfio.open" => return self.dispatch.device_vfio_open(params).await,
             "device.vfio.roundtrip" => {
                 return self.dispatch.device_vfio_roundtrip(params).await;
@@ -436,11 +445,18 @@ impl JsonRpcHandler {
                 // group, which causes acr_no_dma failures.
                 return self.dispatch.sovereign_init_ember(params).await;
             }
+            "sovereign.boot" => return self.dispatch.sovereign_init_ember(params).await,
             "sovereign.profile" => {
                 return self.dispatch.sovereign_profile_ember(params).await;
             }
             "sovereign.warm_status" => {
                 return self.dispatch.sovereign_warm_status().await;
+            }
+            "sovereign.defense_status" => {
+                return Ok(crate::background::catalyst_watchdog::defense_status());
+            }
+            "sovereign.watchdog_status" => {
+                return Ok(crate::background::catalyst_watchdog::watchdog_status());
             }
             "sovereign.ce_validate" | "ce.validate" => {
                 return self.dispatch.sovereign_ce_validate_ember(params).await;
@@ -473,6 +489,15 @@ impl JsonRpcHandler {
             "mmio.pramin.read32" => return mmio::mmio_pramin_read32(params),
             "mmio.bar0.probe" => return mmio::mmio_bar0_probe(params),
             "mmio.falcon.status" => return mmio::mmio_falcon_status(params),
+            "ember.falcon.upload_imem" => return mmio::falcon_upload_imem(params),
+            "ember.falcon.upload_dmem" => return mmio::falcon_upload_dmem(params),
+            "ember.falcon.start_cpu" => return mmio::falcon_start_cpu(params),
+            "ember.falcon.poll" => return mmio::falcon_poll(params),
+            "ember.pramin.write" => return mmio::pramin_write(params),
+            "ember.pramin.read" => return mmio::pramin_read(params),
+            "ember.fecs.state" => return mmio::ember_fecs_state(params),
+            "ember.device.health" => return mmio::ember_device_health(params),
+            "ember.device.recover" => return mmio::ember_device_recover(params),
 
             "compute.performance_surface.report" => {
                 return self.silicon.report(params).await;
@@ -586,19 +611,45 @@ impl JsonRpcHandler {
             "ember_list" => Ok(self.ember_list()),
             "ember_status" => Ok(self.ember_status()),
             "ember_reacquire" => self.ember_reacquire(params).await,
+            "ember_warm_cycle" => self.ember_warm_cycle(params).await,
+            "ember_prepare_dma" => self.dispatch.ember_prepare_dma(params).await,
+            "ember_cleanup_dma" => self.dispatch.ember_cleanup_dma(params).await,
+            "ember_adopt_device" => self.ember_adopt_device(params).await,
             "device_swap" => self.device_swap(params).await,
             "device_warm_catch" => self.device_warm_catch(params),
+            "device_get" => self.device_get(params),
+            "device_experiment_lifecycle" => self.device_experiment_lifecycle(params),
+            "device_reset" => self.device_reset(params),
+            "device_resurrect" => self.device_resurrect(params).await,
+            "ember_device_health" => mmio::ember_device_health(params),
             "device_vfio_open" => self.dispatch.device_vfio_open(params).await,
             "device_vfio_roundtrip" => self.dispatch.device_vfio_roundtrip(params).await,
             "device_gr_init" => self.dispatch.device_gr_init(params).await,
             "sovereign_init" => sovereign::sovereign_init(params),
+            "sovereign_init_ember" | "sovereign_boot" => {
+                self.dispatch.sovereign_init_ember(params).await
+            }
             "sovereign_devinit" => sovereign::sovereign_devinit(params),
+            "sovereign_defense_status" => {
+                Ok(crate::background::catalyst_watchdog::defense_status())
+            }
+            "sovereign_watchdog_status" => {
+                Ok(crate::background::catalyst_watchdog::watchdog_status())
+            }
             "mmio_read32" => mmio::mmio_read32(params),
             "mmio_write32" => mmio::mmio_write32(params),
             "mmio_batch" => mmio::mmio_batch(params),
             "mmio_pramin_read32" => mmio::mmio_pramin_read32(params),
             "mmio_bar0_probe" => mmio::mmio_bar0_probe(params),
             "mmio_falcon_status" => mmio::mmio_falcon_status(params),
+            "falcon_upload_imem" => mmio::falcon_upload_imem(params),
+            "falcon_upload_dmem" => mmio::falcon_upload_dmem(params),
+            "falcon_start_cpu" => mmio::falcon_start_cpu(params),
+            "falcon_poll" => mmio::falcon_poll(params),
+            "pramin_write" => mmio::pramin_write(params),
+            "pramin_read" => mmio::pramin_read(params),
+            "ember_fecs_state" => mmio::ember_fecs_state(params),
+            "ember_device_recover" => mmio::ember_device_recover(params),
             "auth_check" => auth::auth_check(&self.gate, params),
             "auth_mode" => auth::auth_mode(&self.gate),
             "auth_peer_info" => auth::auth_peer_info(ctx),
@@ -646,6 +697,58 @@ impl JsonRpcHandler {
             .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
     }
 
+    /// `ember.adopt_device` — claim a device under toadStool ember management.
+    ///
+    /// Ensures the BDF is visible in `ember.list`, swaps to `vfio-pci` when needed,
+    /// and acquires a dispatch device handle.
+    async fn ember_adopt_device(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let list = self.glowplug.list_devices();
+        let device = list
+            .devices
+            .iter()
+            .find(|d| d.bdf == bdf)
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params(format!("Device not found in ember.list: {bdf}"))
+            })?;
+
+        let personality = if device.personality == "vfio-pci" {
+            device.personality.clone()
+        } else {
+            let swap = self
+                .device_swap(Some(&serde_json::json!({
+                    "bdf": bdf,
+                    "target": "vfio-pci",
+                })))
+                .await?;
+            if !swap
+                .get("success")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false)
+            {
+                return Err(JsonRpcError::internal_error(format!(
+                    "swap to vfio-pci failed for {bdf}"
+                )));
+            }
+            String::from("vfio-pci")
+        };
+
+        let _ = self.dispatch.device_vfio_open_internal(bdf).await;
+
+        Ok(serde_json::json!({
+            "bdf": bdf,
+            "adopted": true,
+            "personality": personality,
+        }))
+    }
+
     /// `device.swap` — swap a GPU to a target personality (e.g. "vfio-pci", "nouveau").
     async fn device_swap(
         &self,
@@ -678,6 +781,188 @@ impl JsonRpcHandler {
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
         Ok(self.glowplug.warm_detect(bdf))
+    }
+
+    fn device_experiment_lifecycle(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+        let action = params
+            .and_then(|p| p.get("action"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'action' string parameter"))?;
+        let result = self.glowplug.experiment_lifecycle(bdf, action);
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
+
+    /// `device.get` — enriched metadata for a single GPU by BDF.
+    fn device_get(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+        match self.glowplug.get_device(bdf) {
+            Some(info) => serde_json::to_value(&info)
+                .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}"))),
+            None => Err(JsonRpcError::invalid_params(format!("Device not found: {bdf}"))),
+        }
+    }
+
+    /// `ember.warm_cycle` — warm driver handoff cycle (seeder → wait → vfio-pci).
+    async fn ember_warm_cycle(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+        let seeder = params
+            .and_then(|p| p.get("seeder_driver"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("nouveau");
+
+        let _keepalive_guard = crate::background::pcie_keepalive::SwapGuard::enter();
+        let mut stages = Vec::new();
+
+        let seeder_start = std::time::Instant::now();
+        let seeder_result = self.glowplug.swap_device_orchestrated(bdf, seeder).await;
+        stages.push(serde_json::json!({
+            "name": format!("swap_to_{seeder}"),
+            "success": seeder_result.success,
+            "duration_ms": seeder_start.elapsed().as_millis() as u64,
+        }));
+
+        if !seeder_result.success {
+            return Ok(serde_json::json!({
+                "bdf": bdf,
+                "success": false,
+                "seeder_used": seeder,
+                "stages": stages,
+            }));
+        }
+
+        let wait_start = std::time::Instant::now();
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        stages.push(serde_json::json!({
+            "name": "wait_init",
+            "success": true,
+            "duration_ms": wait_start.elapsed().as_millis() as u64,
+        }));
+
+        let vfio_start = std::time::Instant::now();
+        let vfio_result = self
+            .glowplug
+            .swap_device_orchestrated(bdf, "vfio-pci")
+            .await;
+        stages.push(serde_json::json!({
+            "name": "swap_to_vfio-pci",
+            "success": vfio_result.success,
+            "duration_ms": vfio_start.elapsed().as_millis() as u64,
+        }));
+
+        Ok(serde_json::json!({
+            "bdf": bdf,
+            "success": vfio_result.success,
+            "seeder_used": seeder,
+            "stages": stages,
+        }))
+    }
+
+    /// `device.reset` — secondary bus reset via PCI sysfs.
+    fn device_reset(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+        let reset_path =
+            toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "reset");
+        std::fs::write(&reset_path, "1").map_err(|e| {
+            JsonRpcError::internal_error(format!("SBR failed for {bdf}: {e}"))
+        })?;
+        debug!(bdf, "device.reset via sysfs SBR");
+        Ok(serde_json::json!({
+            "bdf": bdf,
+            "reset_issued": true,
+            "method": "sbr",
+        }))
+    }
+
+    /// `device.resurrect` — SBR, re-probe BOOT0, and rebind to vfio-pci if alive.
+    async fn device_resurrect(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let mut stages = Vec::new();
+
+        let reset = self.device_reset(params)?;
+        let reset_issued = reset
+            .get("reset_issued")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        stages.push(serde_json::json!({
+            "name": "device.reset",
+            "success": reset_issued,
+        }));
+
+        let wait_start = std::time::Instant::now();
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        stages.push(serde_json::json!({
+            "name": "wait",
+            "success": true,
+            "duration_ms": wait_start.elapsed().as_millis() as u64,
+        }));
+
+        let probe = mmio::mmio_bar0_probe(params)?;
+        let boot0 = probe
+            .get("boot0")
+            .and_then(serde_json::Value::as_u64)
+            .and_then(|v| u32::try_from(v).ok())
+            .unwrap_or(0xFFFF_FFFF);
+        let alive = probe
+            .get("responsive")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        stages.push(serde_json::json!({
+            "name": "probe_boot0",
+            "success": alive,
+            "boot0": boot0,
+        }));
+
+        let mut success = reset_issued && alive;
+        if alive {
+            let _keepalive_guard = crate::background::pcie_keepalive::SwapGuard::enter();
+            let swap_start = std::time::Instant::now();
+            let swap = self.glowplug.swap_device_orchestrated(bdf, "vfio-pci").await;
+            stages.push(serde_json::json!({
+                "name": "swap_to_vfio-pci",
+                "success": swap.success,
+                "duration_ms": swap_start.elapsed().as_millis() as u64,
+            }));
+            success = success && swap.success;
+        }
+
+        Ok(serde_json::json!({
+            "bdf": bdf,
+            "success": success,
+            "stages": stages,
+        }))
     }
 }
 

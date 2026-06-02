@@ -306,6 +306,18 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         cost("medium", true, 30, "medium", "device"),
     );
     map.insert(
+        "ember.prepare_dma".into(),
+        cost("medium", true, 50, "medium", "device"),
+    );
+    map.insert(
+        "ember.cleanup_dma".into(),
+        cost("medium", true, 30, "medium", "device"),
+    );
+    map.insert(
+        "ember.adopt_device".into(),
+        cost("high", true, 200, "high", "device"),
+    );
+    map.insert(
         "device.swap".into(),
         cost("high", true, 200, "high", "device"),
     );

@@ -7,6 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::CoordinatorExecutor;
 use crate::errors::{ServerError, ServerResult};
+use crate::glowplug_client::discover_gpu_bdfs;
 use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix, serve_unix_prebound};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch};
 
@@ -243,6 +244,8 @@ async fn try_unix_servers(
     info!("   Socket (JSON-RPC): {:?}", jsonrpc_socket);
     info!("   Socket (tarpc): {:?}", socket_path);
 
+    write_fleet_file(&discover_gpu_bdfs());
+
     let jsonrpc_handler = Arc::clone(jsonrpc_handler);
     if let Some(listener) = jsonrpc_listener {
         tokio::spawn(async move {
@@ -294,6 +297,8 @@ async fn start_tcp_servers(
 
     write_tcp_discovery_file("toadstool-ipc-port", &tarpc_addr)?;
     write_tcp_discovery_file("toadstool-jsonrpc-port", &jsonrpc_addr)?;
+
+    write_fleet_file(&discover_gpu_bdfs());
 
     tokio::spawn(async move {
         if let Err(e) = serve_tcp(jsonrpc_handler, jsonrpc_listener).await {
@@ -355,6 +360,55 @@ pub fn is_selinux_enforcing() -> bool {
         .ok()
         .and_then(|s| s.trim().parse::<u8>().ok())
         .is_some_and(|enforce| enforce == 1)
+}
+
+fn write_fleet_file(devices: &[String]) {
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+    let fleet_dir = std::path::PathBuf::from(&runtime_dir).join("biomeos");
+    let fleet_path = fleet_dir.join("toadstool-ember-fleet.json");
+
+    if let Err(e) = std::fs::create_dir_all(&fleet_dir) {
+        tracing::warn!("Failed to create fleet dir {}: {e}", fleet_dir.display());
+        return;
+    }
+
+    let mut routes = serde_json::Map::new();
+    let socket_path = fleet_dir.join("compute.sock");
+    for bdf in devices {
+        routes.insert(
+            bdf.clone(),
+            serde_json::Value::String(socket_path.to_string_lossy().into_owned()),
+        );
+    }
+
+    let fleet = serde_json::json!({
+        "mode": "fleet",
+        "routes": routes,
+        "standby_count": 0,
+        "devices": devices.iter().map(|bdf| {
+            serde_json::json!({
+                "bdf": bdf,
+                "socket": socket_path.to_string_lossy(),
+                "vendor": "NVIDIA Corporation",
+                "health": "Alive",
+                "physics_domains": ["default"],
+                "hot_standby_of": null,
+                "experiment_dirty": false,
+                "needs_warm_cycle": false
+            })
+        }).collect::<Vec<_>>(),
+    });
+
+    match serde_json::to_string_pretty(&fleet) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&fleet_path, json) {
+                tracing::warn!("Failed to write fleet file {}: {e}", fleet_path.display());
+            } else {
+                tracing::info!("Fleet file written: {}", fleet_path.display());
+            }
+        }
+        Err(e) => tracing::warn!("Failed to serialize fleet file: {e}"),
+    }
 }
 
 /// Wait for shutdown signal (SIGINT or SIGTERM)
