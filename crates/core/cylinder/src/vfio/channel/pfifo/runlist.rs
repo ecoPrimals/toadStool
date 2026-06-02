@@ -108,6 +108,27 @@ impl VfioChannel {
         bar0.write_u32(registers::pfifo::runlist_base(self.runlist_id), rl_base)
             .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("runlist base: {e}"))))?;
         bar0.write_u32(registers::pfifo::runlist_submit(self.runlist_id), rl_submit)
-            .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("runlist submit: {e}"))))
+            .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("runlist submit: {e}"))))?;
+
+        let readback = bar0
+            .read_u32(registers::pfifo::runlist_base(self.runlist_id))
+            .unwrap_or(0xDEAD_DEAD);
+        if readback == 0 {
+            tracing::warn!(
+                runlist_id = self.runlist_id,
+                wrote = format_args!("{rl_base:#010x}"),
+                readback = format_args!("{readback:#010x}"),
+                "RUNLIST_BASE readback is ZERO — write did not stick (PRI fault?)"
+            );
+        } else {
+            tracing::info!(
+                runlist_id = self.runlist_id,
+                readback = format_args!("{readback:#010x}"),
+                expected = format_args!("{rl_base:#010x}"),
+                "RUNLIST_BASE verified"
+            );
+        }
+
+        Ok(())
     }
 }
