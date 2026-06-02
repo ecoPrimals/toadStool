@@ -21,6 +21,7 @@ mod sovereign;
 mod state;
 mod submit;
 mod types;
+mod wgpu_dispatch;
 
 #[cfg(test)]
 mod tests;

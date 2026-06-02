@@ -166,6 +166,45 @@ impl DispatchHandler {
             }
         }
 
+        // Phase E: try wgpu dispatch for DRM-bound GPUs (Vulkan compute path).
+        if needs_shader_service {
+            if let Some(wgpu_result) = super::wgpu_dispatch::try_wgpu_dispatch(
+                &binary_bytes,
+                workgroup_size,
+                &buffer_descs,
+            ) {
+                match wgpu_result {
+                    Ok(wgpu_output) => {
+                        let mut jobs = self.jobs.write().await;
+                        if let Some(job) = jobs.get_mut(&job_id) {
+                            job.status = DispatchStatus::Completed;
+                            job.result = Some(wgpu_output.clone());
+                        }
+                        return Ok(serde_json::json!({
+                            "domain": "compute.dispatch",
+                            "operation": "shader",
+                            "job_id": job_id,
+                            "status": "completed",
+                            "output": wgpu_output,
+                            "error": null,
+                            "metadata": {
+                                "bdf": bdf,
+                                "dispatch_mode": "wgpu",
+                                "binary_size": binary_bytes.len(),
+                                "arch": source_arch,
+                                "thermal_checked": thermal.is_some(),
+                                "workgroup_size": workgroup_size,
+                                "readback": readback,
+                            },
+                        }));
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "wgpu dispatch failed — falling through to coral_client");
+                    }
+                }
+            }
+        }
+
         if needs_shader_service && !self.coral_client.is_available().await {
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
