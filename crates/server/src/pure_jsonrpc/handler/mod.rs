@@ -96,8 +96,20 @@ impl JsonRpcHandler {
             _ => method_gate::MethodGate::permissive(),
         };
 
+        let coral_client = crate::visualization_client::create_visualization_client();
+
+        // Spawn ipc.watch background poller — watches songBird for shader
+        // capability registrations and invalidates the visualization client
+        // cache so dispatch can discover coralReef at any time (GAP-HS-119).
+        {
+            let watch_client = Arc::clone(&coral_client);
+            tokio::spawn(async move {
+                crate::background::ipc_watch::run(watch_client).await;
+            });
+        }
+
         let mut dispatch = DispatchHandler::new(
-            crate::visualization_client::create_visualization_client(),
+            coral_client,
             Self::try_connect_security_client(),
         );
         #[cfg(target_os = "linux")]

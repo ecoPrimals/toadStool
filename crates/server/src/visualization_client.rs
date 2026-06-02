@@ -5,6 +5,14 @@
 //! Used by the dispatch handler to check compiler availability and coordinate compile-then-dispatch
 //! pipelines. Gracefully degrades when no provider is available.
 //!
+//! ## Live re-discovery via `ipc.watch`
+//!
+//! When songBird reports a new `shader` capability registration via `ipc.watch`,
+//! the background watcher calls [`VisualizationClient::invalidate`] to trigger
+//! re-discovery on the next `is_available()` / `client_ref()` call. This replaces
+//! the previous `OnceCell`-based permanent cache that could never recover if
+//! coralReef registered after toadStool startup.
+//!
 //! Discovery tiers (per `wateringHole/CAPABILITY_BASED_DISCOVERY_STANDARD.md`):
 //! - **Tier 0:** `TOADSTOOL_SHADER_COMPILER_ADDR` (explicit override; evaluated in the blocking fallback after Tier 1 does not yield a usable socket).
 //! - **Tier 1:** Coordination plane — `capability.discover("shader")` via `CapabilityProvider::discover`.
@@ -14,14 +22,22 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-use tokio::sync::OnceCell;
+use tokio::sync::RwLock;
 use tracing::debug;
 
 /// Client for the native shader compilation pipeline (discovered via the `shader` capability).
 ///
-/// Uses capability-based discovery; falls back gracefully when no compiler is available.
+/// Uses capability-based discovery with live invalidation support. When songBird's
+/// `ipc.watch` reports a new shader provider, `invalidate()` clears the cache so
+/// the next call triggers fresh discovery.
 pub struct VisualizationClient {
-    inner: OnceCell<Option<UnixJsonRpcClient>>,
+    inner: RwLock<CachedClient>,
+}
+
+#[derive(Default)]
+struct CachedClient {
+    client: Option<UnixJsonRpcClient>,
+    initialized: bool,
 }
 
 impl Default for VisualizationClient {
@@ -34,7 +50,7 @@ impl VisualizationClient {
     /// Creates a new shader-compiler client.
     pub fn new() -> Self {
         Self {
-            inner: OnceCell::new(),
+            inner: RwLock::new(CachedClient::default()),
         }
     }
 
@@ -42,23 +58,29 @@ impl VisualizationClient {
     /// Used in tests that require deterministic behavior regardless of the host environment.
     #[cfg(test)]
     pub fn unavailable() -> Self {
-        let cell = OnceCell::new();
-        cell.set(None).expect("fresh OnceCell");
-        Self { inner: cell }
+        Self {
+            inner: RwLock::new(CachedClient {
+                client: None,
+                initialized: true,
+            }),
+        }
+    }
+
+    /// Invalidate the cached client, forcing re-discovery on next access.
+    ///
+    /// Called by the `ipc.watch` background watcher when songBird reports a new
+    /// shader capability registration (e.g. coralReef coming online after toadStool).
+    pub async fn invalidate(&self) {
+        let mut cache = self.inner.write().await;
+        if cache.initialized {
+            debug!("visualization client cache invalidated — will re-discover on next access");
+            cache.client = None;
+            cache.initialized = false;
+        }
     }
 
     /// Attempt to discover a shader compiler via capability-based discovery.
-    ///
-    /// Per `wateringHole/CAPABILITY_BASED_DISCOVERY_STANDARD.md`, toadStool
-    /// discovers the "shader" capability, not a specific primal. The caller
-    /// never needs to know which primal implements the capability.
-    ///
-    /// Tier 1 (`capability.discover`) is tried first. If that does not yield a
-    /// usable socket, [`discover_blocking`] runs the Tier 0 / 2 / 3 chain (env
-    /// override, then well-known capability paths, then capability-named dir scan).
     async fn discover() -> Option<UnixJsonRpcClient> {
-        // Tier 1: Ask the coordination service who provides "shader" capability.
-        // This is the preferred path per CAPABILITY_BASED_DISCOVERY_STANDARD.md.
         match toadstool_common::capability_provider::CapabilityProvider::discover(
             toadstool_common::primal_identity::Capability::Custom {
                 name: "shader".to_string(),
@@ -82,7 +104,6 @@ impl VisualizationClient {
             }
         }
 
-        // Tiers 0, 2, 3: filesystem probing on the blocking pool
         tokio::task::spawn_blocking(Self::discover_blocking)
             .await
             .ok()
@@ -92,7 +113,6 @@ impl VisualizationClient {
     /// Filesystem fallback for [`discover`]: Tier 0 (`TOADSTOOL_SHADER_COMPILER_ADDR`), Tier 2
     /// (`biomeos/shader.sock`), Tier 3 (`ecoPrimals/shader_compile.sock`, then `shader*.sock` scan).
     fn discover_blocking() -> Option<UnixJsonRpcClient> {
-        // Tier 0: Explicit override (first check in this fallback chain)
         if let Ok(addr) = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SHADER_COMPILER_ADDR) {
             let path = PathBuf::from(&addr);
             if path.exists() {
@@ -105,21 +125,18 @@ impl VisualizationClient {
         let runtime = PathBuf::from(&runtime_dir);
         let biomeos = runtime.join("biomeos");
 
-        // Tier 2: Capability-named socket (per discovery standard v1.1)
         let capability_sock = biomeos.join("shader.sock");
         if capability_sock.exists() {
             debug!(path = %capability_sock.display(), "shader compiler discovered via capability socket");
             return Some(UnixJsonRpcClient::new(capability_sock));
         }
 
-        // Tier 3a: ecoPrimals capability socket
         let eco_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
         if eco_sock.exists() {
             debug!(path = %eco_sock.display(), "shader compiler discovered via ecoPrimals capability socket");
             return Some(UnixJsonRpcClient::new(eco_sock));
         }
 
-        // Tier 3b: capability-named scan under biomeos (e.g. `shader-*.sock`)
         if let Some(sock) = scan_dir_for_socket(&biomeos, "shader") {
             debug!(path = %sock.display(), "shader compiler discovered via capability socket scan");
             return Some(UnixJsonRpcClient::new(sock));
@@ -129,21 +146,58 @@ impl VisualizationClient {
         None
     }
 
-    async fn client(&self) -> Option<&UnixJsonRpcClient> {
-        self.inner
-            .get_or_init(|| async { Self::discover().await })
-            .await
-            .as_ref()
+    async fn ensure_initialized(&self) -> tokio::sync::RwLockReadGuard<'_, CachedClient> {
+        {
+            let cache = self.inner.read().await;
+            if cache.initialized {
+                return cache;
+            }
+        }
+
+        {
+            let mut cache = self.inner.write().await;
+            if !cache.initialized {
+                cache.client = Self::discover().await;
+                cache.initialized = true;
+                if cache.client.is_some() {
+                    tracing::info!("shader compiler discovered and cached");
+                }
+            }
+        }
+
+        self.inner.read().await
     }
 
     /// Public accessor for the underlying client (for dispatch handler).
-    pub async fn client_ref(&self) -> Option<&UnixJsonRpcClient> {
-        self.client().await
+    pub async fn client_ref(&self) -> Option<ClientGuard<'_>> {
+        let guard = self.ensure_initialized().await;
+        if guard.client.is_some() {
+            Some(ClientGuard(guard))
+        } else {
+            None
+        }
     }
 
     /// Whether a shader compiler was discovered and is reachable.
     pub async fn is_available(&self) -> bool {
-        self.client().await.is_some()
+        let guard = self.ensure_initialized().await;
+        guard.client.is_some()
+    }
+}
+
+/// RAII guard that holds the read lock and provides access to the client.
+pub struct ClientGuard<'a>(tokio::sync::RwLockReadGuard<'a, CachedClient>);
+
+impl<'a> ClientGuard<'a> {
+    pub fn get(&self) -> &UnixJsonRpcClient {
+        self.0.client.as_ref().expect("ClientGuard only constructed when client is Some")
+    }
+}
+
+impl<'a> std::ops::Deref for ClientGuard<'a> {
+    type Target = UnixJsonRpcClient;
+    fn deref(&self) -> &Self::Target {
+        self.get()
     }
 }
 
@@ -180,8 +234,7 @@ mod tests {
 
     #[test]
     fn test_client_creation() {
-        let client = VisualizationClient::new();
-        assert!(!client.inner.initialized());
+        let _client = VisualizationClient::new();
     }
 
     #[test]
@@ -203,6 +256,15 @@ mod tests {
             },
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn test_invalidate_resets_cache() {
+        let client = VisualizationClient::unavailable();
+        assert!(!client.is_available().await);
+        client.invalidate().await;
+        let cache = client.inner.read().await;
+        assert!(!cache.initialized);
     }
 
     #[test]

@@ -21,6 +21,7 @@ pub(crate) mod catalyst_watchdog;
 mod capability;
 mod cleanup;
 mod health;
+pub(crate) mod ipc_watch;
 pub(crate) mod kernel_sentinel;
 pub(crate) mod pcie_keepalive;
 mod resource;
