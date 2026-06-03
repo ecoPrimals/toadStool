@@ -24,7 +24,7 @@ fn test_handler() -> JsonRpcHandler {
 async fn test_process_request_valid_health() {
     let handler = test_handler();
     let body = br#"{"jsonrpc":"2.0","method":"toadstool.health","id":1}"#;
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -36,7 +36,7 @@ async fn test_process_request_valid_health() {
 async fn test_process_request_invalid_json() {
     let handler = test_handler();
     let body = b"this is not json";
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -48,7 +48,7 @@ async fn test_process_request_invalid_json() {
 async fn test_process_request_empty_body() {
     let handler = test_handler();
     let body = b"";
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -60,7 +60,7 @@ async fn test_process_request_empty_body() {
 async fn test_process_request_method_not_found() {
     let handler = test_handler();
     let body = br#"{"jsonrpc":"2.0","method":"nonexistent.method","id":42}"#;
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -396,7 +396,7 @@ async fn test_ndjson_unix_persistent_multi_request() {
 async fn test_process_request_partial_json() {
     let handler = test_handler();
     let body = b"{\"jsonrpc\":\"2.0\",\"method\":";
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -408,7 +408,7 @@ async fn test_process_request_partial_json() {
 async fn test_process_request_null_id() {
     let handler = test_handler();
     let body = br#"{"jsonrpc":"2.0","method":"toadstool.health","id":null}"#;
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -419,7 +419,7 @@ async fn test_process_request_null_id() {
 async fn test_process_request_string_id() {
     let handler = test_handler();
     let body = br#"{"jsonrpc":"2.0","method":"toadstool.health","id":"req-1"}"#;
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -430,7 +430,7 @@ async fn test_process_request_string_id() {
 async fn test_process_request_invalid_method_params() {
     let handler = test_handler();
     let body = br#"{"jsonrpc":"2.0","method":"toadstool.health","params":{"bad":true},"id":1}"#;
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -441,7 +441,7 @@ async fn test_process_request_invalid_method_params() {
 async fn test_process_request_whitespace_only() {
     let handler = test_handler();
     let body = b"   \t\n  ";
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
@@ -452,7 +452,7 @@ async fn test_process_request_whitespace_only() {
 async fn test_process_request_array_not_supported() {
     let handler = test_handler();
     let body = br#"[{"jsonrpc":"2.0","method":"toadstool.health","id":1}]"#;
-    let result = process_request(&handler, body).await;
+    let result = process_request(&handler, body, Default::default()).await;
     assert!(result.is_ok());
     let bytes = result.expect("ok");
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");

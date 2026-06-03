@@ -3,6 +3,7 @@
 
 use super::submit;
 use super::DispatchHandler;
+use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_ember::VfioAnchor;
@@ -246,6 +247,7 @@ impl DispatchHandler {
     pub(crate) async fn device_vfio_open(
         &self,
         params: Option<&serde_json::Value>,
+        ctx: &CallerContext,
     ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
         use crate::pure_jsonrpc::types::JsonRpcError;
 
@@ -254,7 +256,8 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
-        self.pre_dispatch_resource_check(bdf)?;
+        self.pre_dispatch_resource_check(bdf, Some(ctx), params)
+            .await?;
         self.acquire_device_handle(bdf).await;
         crate::background::pcie_keepalive::activity_tracker().record();
 
@@ -295,6 +298,7 @@ impl DispatchHandler {
     pub(crate) async fn device_vfio_roundtrip(
         &self,
         params: Option<&serde_json::Value>,
+        ctx: &CallerContext,
     ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
         use crate::pure_jsonrpc::types::JsonRpcError;
         use std::sync::atomic::Ordering;
@@ -315,7 +319,8 @@ impl DispatchHandler {
             return Err(JsonRpcError::invalid_params("binary must not be empty"));
         }
 
-        self.pre_dispatch_resource_check(bdf)?;
+        self.pre_dispatch_resource_check(bdf, Some(ctx), params)
+            .await?;
         self.acquire_device_handle(bdf).await;
         crate::background::pcie_keepalive::activity_tracker().record();
 
@@ -418,8 +423,14 @@ impl DispatchHandler {
     /// Internal VFIO open — acquire handle and ensure a cached compute device exists.
     ///
     /// Returns the DMA method label on success (`"vfio_cdev"` when DMA backend is live).
-    pub(crate) async fn device_vfio_open_internal(&self, bdf: &str) -> Result<String, String> {
-        self.pre_dispatch_resource_check(bdf)
+    pub(crate) async fn device_vfio_open_internal(
+        &self,
+        bdf: &str,
+        ctx: Option<&CallerContext>,
+        params: Option<&serde_json::Value>,
+    ) -> Result<String, String> {
+        self.pre_dispatch_resource_check(bdf, ctx, params)
+            .await
             .map_err(|e| e.message.to_string())?;
         self.acquire_device_handle(bdf).await;
         crate::background::pcie_keepalive::activity_tracker().record();
@@ -472,7 +483,7 @@ impl DispatchHandler {
             }));
         }
 
-        match self.device_vfio_open_internal(bdf).await {
+        match self.device_vfio_open_internal(bdf, None, params).await {
             Ok(method) => Ok(serde_json::json!({
                 "bdf": bdf,
                 "dma_ready": true,

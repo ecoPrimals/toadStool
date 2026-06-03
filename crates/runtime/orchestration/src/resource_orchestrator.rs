@@ -46,6 +46,21 @@ pub struct ResourceRequest {
     pub min_vram_bytes: u64,
     /// Estimated execution duration.
     pub estimated_duration: Duration,
+    /// Gate id of the dispatch caller (yield-to-owner bypass when equal to owner).
+    pub caller_gate_id: Option<String>,
+    /// Gate id that owns the hardware being scheduled.
+    pub hardware_owner_gate_id: Option<String>,
+}
+
+impl ResourceRequest {
+    /// Whether the caller is the hardware owner and may bypass guest-load yield.
+    #[must_use]
+    pub fn caller_is_hardware_owner(&self) -> bool {
+        match (&self.caller_gate_id, &self.hardware_owner_gate_id) {
+            (Some(caller), Some(owner)) => caller == owner,
+            _ => false,
+        }
+    }
 }
 
 /// A granted resource allocation.
@@ -462,6 +477,10 @@ impl ResourceOrchestrator {
         current: &TenantUsage,
         policy: &GuestLoadPolicy,
     ) -> Result<(), OrchestrationError> {
+        if request.caller_is_hardware_owner() {
+            return Ok(());
+        }
+
         let gpu_workloads = u32::try_from(current.device_allocations.len()).unwrap_or(u32::MAX);
         if gpu_workloads < policy.max_concurrent_gpu {
             return Ok(());

@@ -16,12 +16,16 @@
 //! is better for quick inference. The router picks the right gate automatically.
 
 mod dispatcher;
+mod ownership;
 mod router;
 mod types;
 
 #[cfg(test)]
+mod ownership_tests;
+#[cfg(test)]
 mod tests;
 
 pub use dispatcher::RemoteDispatcher;
+pub use ownership::GateOwnership;
 pub use router::JobRouter;
 pub use types::{GateGpuInfo, RemoteDispatchError, RoutingDecision, RoutingReason};

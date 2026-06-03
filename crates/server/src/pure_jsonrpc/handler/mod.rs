@@ -27,6 +27,10 @@ use toadstool::semantic_methods::SemanticMethodRegistry;
 use toadstool_common::interned_strings::socket_env;
 use tracing::{debug, error, info};
 
+pub use method_gate::{
+    CallerContext, ConnectionTrustHints, ConnectionTransport, DispatchTrustLevel,
+};
+
 use super::types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
 use dispatch::DispatchHandler;
@@ -84,6 +88,7 @@ impl JsonRpcHandler {
             .or_else(|_| std::env::var(socket_env::HOSTNAME))
             .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
             .unwrap_or_else(|_| String::from("local"));
+        let gate_ownership = Arc::new(crate::cross_gate::GateOwnership::new(&local_gate_id));
 
         let gate = match std::env::var(socket_env::TOADSTOOL_AUTH_MODE)
             .unwrap_or_default()
@@ -155,6 +160,8 @@ impl JsonRpcHandler {
             );
         }
 
+        dispatch.set_gate_ownership(Arc::clone(&gate_ownership));
+
         let anchor_store = dispatch.anchor_store();
 
         Self {
@@ -168,7 +175,7 @@ impl JsonRpcHandler {
             dispatch,
             anchor_store,
             hw_learn: HwLearnHandler::new(),
-            job: JobHandler::new(local_gate_id),
+            job: JobHandler::new(Arc::clone(&gate_ownership)),
             workload: WorkloadHandler::new(executor),
             resources: ResourceHandler::new(),
             transport: TransportHandler::new(),
@@ -215,6 +222,16 @@ impl JsonRpcHandler {
     ///
     /// Pattern: parse → validate → resolve → route → execute → respond
     pub async fn handle_request(&self, request: &JsonRpcRequest<'_>) -> JsonRpcResponse {
+        self.handle_request_with_connection(request, ConnectionTrustHints::default())
+            .await
+    }
+
+    /// Handle a JSON-RPC request with per-connection trust hints.
+    pub async fn handle_request_with_connection(
+        &self,
+        request: &JsonRpcRequest<'_>,
+        conn: ConnectionTrustHints,
+    ) -> JsonRpcResponse {
         if request.jsonrpc != JSONRPC_VERSION {
             self.error_count.fetch_add(1, Ordering::Relaxed);
             return JsonRpcResponse {
@@ -232,7 +249,7 @@ impl JsonRpcHandler {
         info!(method = %request.method.as_ref(), "JSON-RPC request");
 
         match self
-            .handle_method(request.method.as_ref(), request.params.as_ref())
+            .handle_method(request.method.as_ref(), request.params.as_ref(), conn)
             .await
         {
             Ok(result) => JsonRpcResponse {
@@ -268,9 +285,9 @@ impl JsonRpcHandler {
         &self,
         method: &str,
         params: Option<&serde_json::Value>,
+        conn: ConnectionTrustHints,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        // JH-2: extract caller context from request (anonymous until BearDog JH-1 ships)
-        let caller_ctx = method_gate::CallerContext::anonymous();
+        let caller_ctx = extract_caller_context(conn);
 
         // JH-0/JH-2: pre-dispatch capability gate with caller context
         self.gate.check_with_context(method, &caller_ctx)?;
@@ -367,6 +384,9 @@ impl JsonRpcHandler {
             "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
             "compute.dispatch.forward" => return self.dispatch.dispatch_forward(params).await,
+            "dispatch.verify_trust" => {
+                return Ok(dispatch::trust::verify_trust(&caller_ctx, params));
+            }
             "compute.dispatch.capabilities" => {
                 return self.dispatch.dispatch_capabilities(params).await;
             }
@@ -378,6 +398,9 @@ impl JsonRpcHandler {
             }
             "compute.dispatch.pipeline.status" => {
                 return self.dispatch.pipeline_status(params).await;
+            }
+            "dispatch.telemetry.schema" => {
+                return Ok(dispatch::telemetry::telemetry_schema());
             }
 
             "gpu.query_info" | "gpu.info" => return core::gpu_info().await,
@@ -435,9 +458,14 @@ impl JsonRpcHandler {
             "device.reset" => return self.device_reset(params),
             "device.resurrect" => return self.device_resurrect(params).await,
             "device.health" => return mmio::ember_device_health(params),
-            "device.vfio.open" => return self.dispatch.device_vfio_open(params).await,
+            "device.vfio.open" => {
+                return self.dispatch.device_vfio_open(params, &caller_ctx).await;
+            }
             "device.vfio.roundtrip" => {
-                return self.dispatch.device_vfio_roundtrip(params).await;
+                return self
+                    .dispatch
+                    .device_vfio_roundtrip(params, &caller_ctx)
+                    .await;
             }
             "device.gr.init" | "compute.context.init" => {
                 return self.dispatch.device_gr_init(params).await;
@@ -627,8 +655,8 @@ impl JsonRpcHandler {
             "device_reset" => self.device_reset(params),
             "device_resurrect" => self.device_resurrect(params).await,
             "ember_device_health" => mmio::ember_device_health(params),
-            "device_vfio_open" => self.dispatch.device_vfio_open(params).await,
-            "device_vfio_roundtrip" => self.dispatch.device_vfio_roundtrip(params).await,
+            "device_vfio_open" => self.dispatch.device_vfio_open(params, ctx).await,
+            "device_vfio_roundtrip" => self.dispatch.device_vfio_roundtrip(params, ctx).await,
             "device_gr_init" => self.dispatch.device_gr_init(params).await,
             "sovereign_init" => sovereign::sovereign_init(params),
             "sovereign_init_ember" | "sovereign_boot" => {
@@ -673,6 +701,30 @@ impl JsonRpcHandler {
     async fn toadstool_provenance() -> Result<serde_json::Value, JsonRpcError> {
         Ok(toadstool::cross_spring_provenance::provenance_json())
     }
+}
+
+/// Extract caller provenance from connection-level trust hints.
+///
+/// Defaults to anonymous. Unix connections without BTSP get
+/// [`DispatchTrustLevel::LocalTransport`]. Completed BTSP handshakes set
+/// [`DispatchTrustLevel::BtspVerified`] (BearDog JH-1 will add mutual auth).
+fn extract_caller_context(conn: ConnectionTrustHints) -> CallerContext {
+    let mut ctx = CallerContext::anonymous();
+    if conn.btsp_verified {
+        ctx.trust_level = DispatchTrustLevel::BtspVerified;
+        ctx.gate_id = resolve_local_gate_id();
+    } else if conn.transport == ConnectionTransport::Unix {
+        ctx.trust_level = DispatchTrustLevel::LocalTransport;
+        ctx.gate_id = resolve_local_gate_id();
+    }
+    ctx
+}
+
+fn resolve_local_gate_id() -> Option<String> {
+    std::env::var(socket_env::TOADSTOOL_GATE_ID)
+        .or_else(|_| std::env::var(socket_env::HOSTNAME))
+        .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
+        .ok()
 }
 
 #[cfg(test)]

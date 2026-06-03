@@ -17,6 +17,7 @@ use tracing::{error, info, warn};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::JsonRpcHandler;
+use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 
 use super::process_request;
 
@@ -249,7 +250,8 @@ async fn handle_http_keepalive_unix(
     let mut request_line = first_request_line;
     loop {
         let (headers, body) = read_http_request_continuation_unix(reader).await?;
-        let response_body = process_request(&handler, &body).await?;
+        let response_body =
+            process_request(&handler, &body, ConnectionTrustHints::UNIX_LOCAL).await?;
 
         let client_wants_close = headers
             .get("connection")
@@ -294,7 +296,9 @@ async fn handle_ndjson_unix(
     loop {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
-            let response_body = process_request(&handler, trimmed.as_bytes()).await?;
+            let response_body =
+                process_request(&handler, trimmed.as_bytes(), ConnectionTrustHints::UNIX_LOCAL)
+                    .await?;
             writer
                 .write_all(&response_body)
                 .await
@@ -432,7 +436,8 @@ pub(super) async fn handle_btsp_connection(
     loop {
         match btsp::framing::read_frame(&mut stream).await {
             Ok(frame) => {
-                let response_body = process_request(&handler, &frame).await?;
+                let response_body =
+                    process_request(&handler, &frame, ConnectionTrustHints::UNIX_BTSP).await?;
                 if let Err(e) = btsp::framing::write_frame(&mut stream, &response_body).await {
                     warn!("BTSP write error: {e}");
                     break;
@@ -562,7 +567,12 @@ async fn handle_encrypted_session(
     loop {
         match framing::read_encrypted_frame(reader, &keys).await {
             Ok(plaintext) => {
-                let response_body = process_request(&handler, &plaintext).await?;
+                let response_body = process_request(
+                    &handler,
+                    &plaintext,
+                    ConnectionTrustHints::UNIX_BTSP,
+                )
+                .await?;
                 if let Err(e) = framing::write_encrypted_frame(writer, &keys, &response_body).await
                 {
                     warn!(target: "btsp", "Phase 3 encrypted write error: {e}");

@@ -66,6 +66,48 @@ impl ResourceEnvelope {
     }
 }
 
+/// Trust level established for a dispatch request (Dark Forest Invariant 3).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DispatchTrustLevel {
+    #[default]
+    Anonymous,
+    LocalTransport,
+    BtspVerified,
+    MutuallyAuthenticated,
+}
+
+/// Per-connection transport hints for provenance extraction.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ConnectionTrustHints {
+    pub transport: ConnectionTransport,
+    pub btsp_verified: bool,
+}
+
+/// Transport kind for the active JSON-RPC connection.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ConnectionTransport {
+    #[default]
+    Unknown,
+    Unix,
+    Tcp,
+}
+
+impl ConnectionTrustHints {
+    pub const UNIX_LOCAL: Self = Self {
+        transport: ConnectionTransport::Unix,
+        btsp_verified: false,
+    };
+    pub const UNIX_BTSP: Self = Self {
+        transport: ConnectionTransport::Unix,
+        btsp_verified: true,
+    };
+    pub const TCP: Self = Self {
+        transport: ConnectionTransport::Tcp,
+        btsp_verified: false,
+    };
+}
+
 /// Caller identity and resource context extracted from a request (JH-2).
 ///
 /// Threaded through the dispatch path so that handlers can enforce
@@ -76,12 +118,20 @@ pub struct CallerContext {
     pub identity: Option<String>,
     /// Resource envelope from the ionic token. `None` = no token presented.
     pub envelope: Option<ResourceEnvelope>,
+    /// Gate identity of the requesting node (from BTSP session or gate.update).
+    pub gate_id: Option<String>,
+    /// Trust level established during BTSP handshake.
+    pub trust_level: DispatchTrustLevel,
 }
 
 impl CallerContext {
     /// Anonymous caller with no token (permissive-mode default).
     pub fn anonymous() -> Self {
-        Self::default()
+        Self {
+            gate_id: None,
+            trust_level: DispatchTrustLevel::Anonymous,
+            ..Self::default()
+        }
     }
 
     /// Whether this caller presented a token with an envelope.
@@ -201,6 +251,9 @@ pub fn classify_method(method: &str) -> MethodVisibility {
             MethodVisibility::Public
         }
 
+        // Dispatch telemetry schema — public introspection for ml.mlp_train
+        "dispatch.telemetry.schema" => MethodVisibility::Public,
+
         // Auth methods — must be public so callers can check their own status
         m if m.starts_with("auth.") => MethodVisibility::Public,
 
@@ -236,6 +289,7 @@ mod tests {
         assert!(gate.check("auth.check").is_ok());
         assert!(gate.check("auth.mode").is_ok());
         assert!(gate.check("auth.peer_info").is_ok());
+        assert!(gate.check("dispatch.telemetry.schema").is_ok());
     }
 
     #[test]
@@ -261,6 +315,7 @@ mod tests {
         let ctx = CallerContext {
             identity: Some("did:key:z6Mk_test".into()),
             envelope: Some(ResourceEnvelope::default()),
+            ..CallerContext::anonymous()
         };
         assert!(gate
             .check_with_context("compute.dispatch.submit", &ctx)
@@ -276,6 +331,7 @@ mod tests {
                 method_allowlist: vec!["shader.dispatch".into()],
                 ..ResourceEnvelope::default()
             }),
+            ..CallerContext::anonymous()
         };
         let err = gate
             .check_with_context("compute.dispatch.submit", &ctx)
@@ -295,6 +351,7 @@ mod tests {
                 method_allowlist: vec!["shader.dispatch".into()],
                 ..ResourceEnvelope::default()
             }),
+            ..CallerContext::anonymous()
         };
         let err = gate
             .check_with_context("compute.dispatch.submit", &ctx)
@@ -328,6 +385,7 @@ mod tests {
             "provenance.query",
             "provenance.get",
             "toadstool.provenance",
+            "dispatch.telemetry.schema",
             "auth.check",
             "auth.mode",
             "auth.peer_info",
@@ -344,6 +402,7 @@ mod tests {
     #[test]
     fn classify_protected_methods() {
         let protected_methods = [
+            "dispatch.verify_trust",
             "compute.dispatch.submit",
             "compute.dispatch.status",
             "compute.dispatch.result",
@@ -433,5 +492,7 @@ mod tests {
         let ctx = CallerContext::anonymous();
         assert!(ctx.identity.is_none());
         assert!(!ctx.has_envelope());
+        assert!(ctx.gate_id.is_none());
+        assert_eq!(ctx.trust_level, DispatchTrustLevel::Anonymous);
     }
 }

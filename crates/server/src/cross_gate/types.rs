@@ -45,6 +45,12 @@ pub struct GateGpuInfo {
     /// Only present for remote gates — local gate has `None`.
     #[serde(default)]
     pub endpoint: Option<String>,
+    /// When true, this gate claims ownership of the GPUs it advertises.
+    ///
+    /// Guest nodes use `gate.update` from the owner to set
+    /// [`crate::cross_gate::GateOwnership`] for yield-to-owner bypass.
+    #[serde(default)]
+    pub is_owner: bool,
 }
 
 /// Routing decision for a compute job

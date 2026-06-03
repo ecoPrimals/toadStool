@@ -72,7 +72,10 @@ impl JsonRpcHandler {
             String::from("vfio-pci")
         };
 
-        let _ = self.dispatch.device_vfio_open_internal(bdf).await;
+        let _ = self
+            .dispatch
+            .device_vfio_open_internal(bdf, None, None)
+            .await;
 
         Ok(serde_json::json!({
             "bdf": bdf,

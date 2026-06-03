@@ -20,6 +20,8 @@ mod shader_dispatch;
 mod sovereign;
 mod state;
 mod submit;
+pub(crate) mod trust;
+pub mod telemetry;
 mod types;
 mod wgpu_dispatch;
 
@@ -78,6 +80,8 @@ pub struct DispatchHandler {
     anchor_store: AnchorStore,
     /// Multi-tenant GPU resource orchestrator (`None` = LocalDirect, zero overhead).
     resource_orchestrator: Option<Arc<toadstool_runtime_orchestration::ResourceOrchestrator>>,
+    /// Hardware owner gate id for yield-to-owner bypass (shared with `JobHandler`).
+    gate_ownership: Option<Arc<crate::cross_gate::GateOwnership>>,
 }
 
 /// Create a local device factory for Phase D sovereign dispatch.

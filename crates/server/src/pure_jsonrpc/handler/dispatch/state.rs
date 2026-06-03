@@ -25,7 +25,12 @@ impl DispatchHandler {
             cached_devices: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             anchor_store,
             resource_orchestrator: None,
+            gate_ownership: None,
         }
+    }
+
+    pub fn set_gate_ownership(&mut self, ownership: Arc<crate::cross_gate::GateOwnership>) {
+        self.gate_ownership = Some(ownership);
     }
 
     /// Get a clone of the anchor store for use in the SIGTERM handler.
@@ -53,12 +58,11 @@ impl DispatchHandler {
     }
 
     /// Pre-dispatch resource check via the orchestrator (no-op when unset).
-    ///
-    /// Caller identity is always `"anonymous"` until BearDog JH-1 ships
-    /// `CallerContext` through these entry points.
-    pub(super) fn pre_dispatch_resource_check(
+    pub(super) async fn pre_dispatch_resource_check(
         &self,
         bdf: &str,
+        ctx: Option<&super::super::method_gate::CallerContext>,
+        params: Option<&serde_json::Value>,
     ) -> Result<
         Option<toadstool_runtime_orchestration::ResourceAllocation>,
         crate::pure_jsonrpc::types::JsonRpcError,
@@ -76,12 +80,21 @@ impl DispatchHandler {
             .map(|gpu| vec![gpu.card_index])
             .unwrap_or_default();
 
+        let caller_gate_id = resolve_caller_gate_id(ctx, params);
+        let hardware_owner_gate_id = if let Some(ownership) = self.gate_ownership.as_ref() {
+            Some(ownership.hardware_owner_gate_id().await.as_ref().to_string())
+        } else {
+            None
+        };
+
         let request = toadstool_runtime_orchestration::ResourceRequest {
             tenant_id: String::from("anonymous"),
             priority: 3,
             preferred_devices,
             min_vram_bytes: 0,
             estimated_duration: std::time::Duration::from_mins(1),
+            caller_gate_id,
+            hardware_owner_gate_id,
         };
 
         match orchestrator.allocate(&request) {
@@ -101,7 +114,25 @@ impl DispatchHandler {
             Err(err) => Err(JsonRpcError::internal_error(err.to_string())),
         }
     }
+}
 
+/// Resolve caller gate id from BTSP/unix transport or mesh `_dispatch_trust`.
+fn resolve_caller_gate_id(
+    ctx: Option<&super::super::method_gate::CallerContext>,
+    params: Option<&serde_json::Value>,
+) -> Option<String> {
+    if let Some(id) = ctx.and_then(|c| c.gate_id.clone()) {
+        return Some(id);
+    }
+    params.and_then(|p| {
+        p.get("_dispatch_trust")
+            .and_then(|t| t.get("source_gate_id"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string)
+    })
+}
+
+impl DispatchHandler {
     /// Dup VFIO fds from the anchor store into `ReceivedVfioFds` for
     /// device adoption. Returns `None` if no anchor exists for this BDF.
     pub(super) async fn dup_received_fds_from_anchor(

@@ -354,6 +354,8 @@ pub const LISTEN_FDNAMES: &str = "LISTEN_FDNAMES";
 pub const TOADSTOOL_GATE_ID: &str = "TOADSTOOL_GATE_ID";
 pub const TOADSTOOL_AUTH_MODE: &str = "TOADSTOOL_AUTH_MODE";
 pub const TOADSTOOL_DEPLOYMENT_MODEL: &str = "TOADSTOOL_DEPLOYMENT_MODEL";
+/// Gate id that owns GPUs on this node (guest nodes set to the remote owner).
+pub const TOADSTOOL_HARDWARE_OWNER_GATE_ID: &str = "TOADSTOOL_HARDWARE_OWNER_GATE_ID";
 
 // Domain discovery (DNS-based fallback naming).
 pub const COMPUTE_DOMAIN: &str = "COMPUTE_DOMAIN";

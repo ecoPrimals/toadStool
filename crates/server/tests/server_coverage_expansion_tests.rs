@@ -151,6 +151,7 @@ fn test_route_unreachable_gates_excluded() {
         queue_depth: 0,
         reachable: false,
         endpoint: None,
+        is_owner: false,
     };
     router.update_gate(gate);
 
@@ -171,6 +172,7 @@ fn test_route_local_fallback_when_no_vram_candidates() {
         queue_depth: 5,
         reachable: true,
         endpoint: None,
+        is_owner: false,
     };
     router.update_gate(gate);
 

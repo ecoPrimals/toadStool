@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: June 3, 2026 — S285
+**Date**: June 3, 2026 — S286
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S286 (Cross-Gate Trust Verification + Dispatch Telemetry + Yield Audit)**:
+Implemented Dark Forest Invariant 3 (Provenance) via `dispatch.verify_trust`
+RPC and `CallerContext` evolution (gate_id + trust_level). Added 36-dim
+`DispatchTelemetryRecord` schema for barraCuda ml.mlp_train. Audited and
+fixed yield-to-owner: owner gate bypasses guest load limits, `GateGpuInfo`
+tracks ownership, `GateOwnership` shared state + env override. Cross-gate
+forwarding injects source gate provenance. All tests pass, clippy clean.
 
 **S285 (Deep Debt Evolution VII: Security Migration + Stub Evolution)**:
 Migrated server JSON-RPC crypto off deprecated `distributed::security` to

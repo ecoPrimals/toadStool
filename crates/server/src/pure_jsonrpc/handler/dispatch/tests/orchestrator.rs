@@ -5,6 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::{DispatchHandler, test_handler};
+use crate::cross_gate::GateOwnership;
+use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use toadstool_common::constants::jsonrpc::error_codes;
 use toadstool_runtime_orchestration::{
     AvailableDevice, DeploymentModel, GuestLoadPolicy, ResourceOrchestrator, TenantQuota,
@@ -15,6 +17,7 @@ fn multi_handler(devices: Vec<AvailableDevice>) -> DispatchHandler {
     let mut handler = test_handler();
     let orchestrator = ResourceOrchestrator::new(DeploymentModel::LocalMulti, devices);
     handler.set_resource_orchestrator(Arc::new(orchestrator));
+    handler.set_gate_ownership(Arc::new(GateOwnership::new("guest-gate")));
     handler
 }
 
@@ -32,7 +35,9 @@ fn fake_gpu(index: u32) -> AvailableDevice {
 #[tokio::test]
 async fn no_orchestrator_pre_dispatch_is_noop() {
     let handler = test_handler();
-    let result = handler.pre_dispatch_resource_check("0000:03:00.0");
+    let result = handler
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await;
     assert!(result.is_ok());
     assert!(result.unwrap().is_none());
 }
@@ -46,7 +51,9 @@ async fn orchestrator_allows_dispatch_within_quota() {
     orch.register_tenant("anonymous", TenantQuota::default())
         .unwrap();
 
-    let result = handler.pre_dispatch_resource_check("0000:03:00.0");
+    let result = handler
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await;
     assert!(result.is_ok());
     assert!(result.unwrap().is_some());
 }
@@ -70,7 +77,8 @@ async fn guest_load_reject_returns_capability_not_available() {
     .unwrap();
 
     let err = handler
-        .pre_dispatch_resource_check("0000:03:00.0")
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await
         .expect_err("should reject");
     assert_eq!(err.code, error_codes::CAPABILITY_NOT_AVAILABLE);
 }
@@ -94,7 +102,8 @@ async fn guest_load_queue_returns_capability_not_available() {
     .unwrap();
 
     let err = handler
-        .pre_dispatch_resource_check("0000:03:00.0")
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await
         .expect_err("should queue");
     assert_eq!(err.code, error_codes::CAPABILITY_NOT_AVAILABLE);
 }
@@ -118,7 +127,8 @@ async fn quota_exceeded_returns_resource_exhausted() {
     .unwrap();
 
     let err = handler
-        .pre_dispatch_resource_check("0000:03:00.0")
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await
         .expect_err("should reject quota");
     assert_eq!(err.code, error_codes::RESOURCE_EXHAUSTED);
 }
@@ -129,7 +139,9 @@ async fn quota_exceeded_returns_resource_exhausted() {
 async fn local_direct_handler_has_no_orchestrator() {
     let handler = test_handler();
     assert!(handler.resource_orchestrator.is_none());
-    let result = handler.pre_dispatch_resource_check("0000:03:00.0");
+    let result = handler
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await;
     assert!(result.unwrap().is_none());
 }
 
@@ -160,7 +172,9 @@ async fn guest_load_under_threshold_allows_dispatch() {
     )
     .unwrap();
 
-    let result = handler.pre_dispatch_resource_check("0000:03:00.0");
+    let result = handler
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await;
     assert!(result.is_ok());
     assert!(result.unwrap().is_some());
 }
@@ -184,7 +198,72 @@ async fn guest_load_defer_power_cycle_returns_error() {
     .unwrap();
 
     let err = handler
-        .pre_dispatch_resource_check("0000:03:00.0")
+        .pre_dispatch_resource_check("0000:03:00.0", None, None)
+        .await
         .expect_err("should defer");
     assert_eq!(err.code, error_codes::CAPABILITY_NOT_AVAILABLE);
+}
+
+// --- owner gate bypasses guest load when caller matches hardware owner ---
+
+#[tokio::test]
+async fn owner_gate_bypasses_guest_load_via_caller_context() {
+    let mut handler = multi_handler(vec![fake_gpu(0)]);
+    let ownership = Arc::new(GateOwnership::new("owner-gate"));
+    handler.set_gate_ownership(ownership);
+    let orch = handler.resource_orchestrator.as_ref().unwrap();
+    orch.register_tenant(
+        "anonymous",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 0,
+                yield_strategy: YieldStrategy::Reject,
+            }),
+            ..TenantQuota::default()
+        },
+    )
+    .unwrap();
+
+    let ctx = CallerContext {
+        gate_id: Some(String::from("owner-gate")),
+        ..CallerContext::anonymous()
+    };
+    let result = handler
+        .pre_dispatch_resource_check("0000:03:00.0", Some(&ctx), None)
+        .await;
+    assert!(result.is_ok(), "owner dispatch should bypass guest load");
+}
+
+#[tokio::test]
+async fn owner_gate_bypasses_guest_load_via_dispatch_trust_params() {
+    let mut handler = multi_handler(vec![fake_gpu(0)]);
+    let ownership = Arc::new(GateOwnership::new("guest-gate"));
+    ownership
+        .note_gate_update(&Arc::from("owner-gate"), true)
+        .await;
+    handler.set_gate_ownership(ownership);
+    let orch = handler.resource_orchestrator.as_ref().unwrap();
+    orch.register_tenant(
+        "anonymous",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 0,
+                yield_strategy: YieldStrategy::Reject,
+            }),
+            ..TenantQuota::default()
+        },
+    )
+    .unwrap();
+
+    let params = serde_json::json!({
+        "bdf": "0000:03:00.0",
+        "_dispatch_trust": { "source_gate_id": "owner-gate" },
+    });
+    let result = handler
+        .pre_dispatch_resource_check("0000:03:00.0", None, Some(&params))
+        .await;
+    assert!(
+        result.is_ok(),
+        "remote owner provenance should bypass guest load"
+    );
 }

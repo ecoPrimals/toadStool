@@ -10,6 +10,7 @@ use tracing::{debug, error, info};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::JsonRpcHandler;
+use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 use toadstool_common::interned_strings::socket_env;
 
 use super::process_request;
@@ -100,7 +101,8 @@ async fn handle_http_keepalive_tcp(
     let mut request_line = first_request_line;
     loop {
         let (headers, body) = read_http_request_continuation_tcp(reader).await?;
-        let response_body = process_request(&handler, &body).await?;
+        let response_body =
+            process_request(&handler, &body, ConnectionTrustHints::TCP).await?;
 
         let client_wants_close = headers
             .get("connection")
@@ -151,7 +153,8 @@ async fn handle_ndjson_tcp(
     loop {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
-            let response_body = process_request(&handler, trimmed.as_bytes()).await?;
+            let response_body =
+                process_request(&handler, trimmed.as_bytes(), ConnectionTrustHints::TCP).await?;
             writer
                 .write_all(&response_body)
                 .await

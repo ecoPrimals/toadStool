@@ -16,6 +16,7 @@ fn tower_gpu() -> GateGpuInfo {
         queue_depth: 2,
         reachable: true,
         endpoint: None,
+        is_owner: false,
     }
 }
 
@@ -29,6 +30,7 @@ fn gate2_gpu() -> GateGpuInfo {
         queue_depth: 0,
         reachable: true,
         endpoint: None,
+        is_owner: false,
     }
 }
 
@@ -237,6 +239,7 @@ fn test_gate_gpu_info_serialization_roundtrip() {
         queue_depth: 2,
         reachable: true,
         endpoint: None,
+        is_owner: false,
     };
     let json = serde_json::to_string(&info).expect("serialize");
     let parsed: GateGpuInfo = serde_json::from_str(&json).expect("deserialize");
@@ -301,6 +304,7 @@ fn test_gate_gpu_info_endpoint_serializes() {
         queue_depth: 0,
         reachable: true,
         endpoint: Some("127.0.0.1:9999".to_string()),
+        is_owner: false,
     };
     let json = serde_json::to_string(&info).expect("serialize");
     assert!(json.contains("127.0.0.1:9999"));

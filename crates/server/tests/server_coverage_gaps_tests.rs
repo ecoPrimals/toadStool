@@ -383,6 +383,7 @@ fn test_route_shortest_queue_when_no_vram_candidates() {
         queue_depth: 10,
         reachable: true,
         endpoint: None,
+        is_owner: false,
     };
     router.update_gate(gate);
 

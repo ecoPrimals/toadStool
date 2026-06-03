@@ -22,6 +22,7 @@ fn ctx_with(env: ResourceEnvelope) -> CallerContext {
     CallerContext {
         identity: Some("did:key:z6Mk_test".into()),
         envelope: Some(env),
+        ..CallerContext::anonymous()
     }
 }
 

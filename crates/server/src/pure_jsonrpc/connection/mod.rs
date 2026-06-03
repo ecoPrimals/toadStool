@@ -13,6 +13,7 @@ pub use tcp::serve_tcp;
 pub use unix::{prebind_unix_listener, serve_unix, serve_unix_prebound, spawn_early_health_responder};
 
 use crate::errors::{ServerError, ServerResult};
+use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use crate::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
 
@@ -20,7 +21,11 @@ use crate::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
 ///
 /// Uses owned body so JsonRpcRequest can borrow from it via `serde_json::from_slice`.
 #[cfg_attr(test, allow(dead_code))]
-pub async fn process_request(handler: &JsonRpcHandler, body: &[u8]) -> ServerResult<Vec<u8>> {
+pub async fn process_request(
+    handler: &JsonRpcHandler,
+    body: &[u8],
+    conn: ConnectionTrustHints,
+) -> ServerResult<Vec<u8>> {
     let request: JsonRpcRequest = match serde_json::from_slice(body) {
         Ok(r) => r,
         Err(e) => {
@@ -34,7 +39,9 @@ pub async fn process_request(handler: &JsonRpcHandler, body: &[u8]) -> ServerRes
         }
     };
 
-    let response = handler.handle_request(&request).await;
+    let response = handler
+        .handle_request_with_connection(&request, conn)
+        .await;
 
     serde_json::to_vec(&response).map_err(|e| ServerError::Internal(e.to_string()))
 }

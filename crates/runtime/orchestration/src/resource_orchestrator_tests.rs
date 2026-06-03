@@ -26,6 +26,8 @@ fn test_request(tenant: &str, priority: u8) -> ResourceRequest {
         preferred_devices: vec![],
         min_vram_bytes: 1_000_000_000,
         estimated_duration: Duration::from_secs(60),
+        caller_gate_id: None,
+        hardware_owner_gate_id: None,
     }
 }
 
@@ -149,6 +151,29 @@ fn test_free_vram_saturates() {
         current_tenant: None,
     };
     assert_eq!(dev.free_vram_bytes(), 0);
+}
+
+#[test]
+fn test_guest_load_owner_bypasses_yield() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-a",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 0,
+                yield_strategy: YieldStrategy::Reject,
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let mut req = test_request("guest-a", 3);
+    req.caller_gate_id = Some(String::from("tower"));
+    req.hardware_owner_gate_id = Some(String::from("tower"));
+    let _alloc1 = orch.allocate(&req).unwrap();
+    let alloc2 = orch.allocate(&req);
+    assert!(alloc2.is_ok(), "owner gate should bypass guest load yield");
 }
 
 #[test]

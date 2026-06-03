@@ -2,6 +2,8 @@
 
 use std::path::Path;
 
+use toadstool_common::interned_strings::socket_env;
+
 use super::types::RemoteDispatchError;
 
 /// Dispatches a compute job to a remote toadStool gate via Unix socket or TCP.
@@ -25,6 +27,7 @@ impl RemoteDispatcher {
         method: &str,
         params: serde_json::Value,
     ) -> Result<serde_json::Value, RemoteDispatchError> {
+        let params = enrich_params_with_gate_provenance(params, &local_gate_id());
         let path = Path::new(endpoint);
         if path.exists()
             && (endpoint.contains('/')
@@ -97,5 +100,34 @@ impl RemoteDispatcher {
         } else {
             Err(RemoteDispatchError::Remote("unexpected response".into()))
         }
+    }
+}
+
+/// Local gate identity for cross-gate provenance metadata.
+fn local_gate_id() -> String {
+    std::env::var(socket_env::TOADSTOOL_GATE_ID)
+        .or_else(|_| std::env::var(socket_env::HOSTNAME))
+        .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
+        .unwrap_or_else(|_| String::from("local"))
+}
+
+/// Attach source gate identity so the remote gate can verify provenance.
+fn enrich_params_with_gate_provenance(
+    params: serde_json::Value,
+    source_gate_id: &str,
+) -> serde_json::Value {
+    let trust = serde_json::json!({
+        "source_gate_id": source_gate_id,
+    });
+    match params {
+        serde_json::Value::Object(mut map) => {
+            map.entry("_dispatch_trust".to_string())
+                .or_insert(trust);
+            serde_json::Value::Object(map)
+        }
+        other => serde_json::json!({
+            "payload": other,
+            "_dispatch_trust": trust,
+        }),
     }
 }

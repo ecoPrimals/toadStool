@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::cross_gate::JobRouter;
+use crate::cross_gate::{GateOwnership, JobRouter};
 use crate::gpu_job_queue::{GpuJobQueue, JobQueueConfig, JobQueueError};
 
 use crate::pure_jsonrpc::types::JsonRpcError;
@@ -14,13 +14,17 @@ use crate::pure_jsonrpc::types::JsonRpcError;
 pub(super) struct JobHandler {
     pub(super) job_queue: GpuJobQueue,
     pub(super) router: Arc<tokio::sync::RwLock<JobRouter>>,
+    pub(super) gate_ownership: Arc<GateOwnership>,
 }
 
 impl JobHandler {
-    pub(super) fn new(local_gate_id: String) -> Self {
+    pub(super) fn new(gate_ownership: Arc<GateOwnership>) -> Self {
         Self {
             job_queue: GpuJobQueue::new(JobQueueConfig::default()),
-            router: Arc::new(tokio::sync::RwLock::new(JobRouter::new(local_gate_id))),
+            router: Arc::new(tokio::sync::RwLock::new(JobRouter::new(
+                gate_ownership.local_gate_id.as_ref(),
+            ))),
+            gate_ownership,
         }
     }
 
@@ -218,6 +222,11 @@ impl JobHandler {
         let gate_info: crate::cross_gate::GateGpuInfo = serde_json::from_value(params.clone())
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid gate info: {e}")))?;
         let gate_id = std::sync::Arc::clone(&gate_info.gate_id);
+        if gate_info.is_owner {
+            self.gate_ownership
+                .note_gate_update(&gate_id, true)
+                .await;
+        }
         self.router.write().await.update_gate(gate_info);
         Ok(serde_json::json!({"updated": true, "gate_id": gate_id.as_ref()}))
     }
@@ -265,7 +274,7 @@ mod tests {
     use super::*;
 
     fn handler() -> JobHandler {
-        JobHandler::new("local-test".to_string())
+        JobHandler::new(Arc::new(GateOwnership::new("local-test")))
     }
 
     #[tokio::test]
@@ -418,6 +427,31 @@ mod tests {
         assert_eq!(
             err.code,
             toadstool_common::constants::jsonrpc::error_codes::WORKLOAD_NOT_FOUND
+        );
+    }
+
+    #[tokio::test]
+    async fn gate_update_is_owner_sets_hardware_owner() {
+        let h = handler();
+        assert_eq!(
+            h.gate_ownership.hardware_owner_gate_id().await.as_ref(),
+            "local-test"
+        );
+
+        let gate_info = serde_json::json!({
+            "gate_id": "remote-owner",
+            "gpu_model": "RTX 4090",
+            "vram_total_mb": 24576,
+            "vram_available_mb": 20000,
+            "loaded_models": [],
+            "queue_depth": 0,
+            "reachable": true,
+            "is_owner": true,
+        });
+        h.gate_update(Some(&gate_info)).await.unwrap();
+        assert_eq!(
+            h.gate_ownership.hardware_owner_gate_id().await.as_ref(),
+            "remote-owner"
         );
     }
 

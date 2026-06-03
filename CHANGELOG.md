@@ -5,7 +5,23 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 3, 2026 (Sessions 43-285)
+## [Unreleased] - Jun 3, 2026 (Sessions 43-286)
+
+### Session S286 (Jun 3, 2026) — Cross-Gate Trust Verification + Dispatch Telemetry Schema + Yield-to-Owner Audit
+
+Software-only evolution while biomeGate hardware is offline. Implements Dark Forest Invariant 3 (Provenance) for dispatch, adds structured 36-dim telemetry schema for barraCuda ml.mlp_train, and audits yield-to-owner for multi-gate mesh correctness.
+
+- **IMPLEMENTED**: `dispatch.verify_trust` JSON-RPC method — pre-validates trust level before forwarding workloads. Returns `trust_level`, `gate_id`, `verified`, `btsp_required`. Classified as Protected.
+- **EVOLVED**: `CallerContext` — added `gate_id: Option<String>` and `trust_level: DispatchTrustLevel` fields. New `DispatchTrustLevel` enum: `Anonymous`, `LocalTransport`, `BtspVerified`, `MutuallyAuthenticated`.
+- **IMPLEMENTED**: Connection-level trust extraction — Unix sockets get `LocalTransport`, BTSP-verified connections get `BtspVerified`. Threaded through all dispatch paths.
+- **IMPLEMENTED**: `DispatchTelemetryRecord` — 36-field struct covering identity, timing, workload shape, hardware, resource envelope, outcome, and mesh context dimensions. `dispatch.telemetry.schema` RPC returns field list for ml.mlp_train consumption.
+- **IMPLEMENTED**: `RemoteDispatcher::forward()` provenance — injects `_dispatch_trust.source_gate_id` from local gate identity into forwarded requests.
+- **EVOLVED**: `GateGpuInfo` — added `is_owner: bool` field. `gate.update` with `is_owner: true` updates hardware ownership state.
+- **IMPLEMENTED**: `GateOwnership` — shared state tracking local vs hardware owner gate identity. `TOADSTOOL_HARDWARE_OWNER_GATE_ID` env override for static guest-node config.
+- **EVOLVED**: `ResourceRequest` — added `caller_gate_id`, `hardware_owner_gate_id` fields with `caller_is_hardware_owner()` method.
+- **EVOLVED**: `check_guest_load` — owner gate bypasses guest load limits (yield-to-owner correctness in multi-gate mesh).
+- **EVOLVED**: `pre_dispatch_resource_check` — async, takes `CallerContext` + params, wires gate identity and `_dispatch_trust.source_gate_id` into orchestrator.
+- METRICS: 19 new tests pass (trust/ownership/gate). 3 telemetry tests pass. 9 yield tests pass (including owner bypass). Full workspace clippy -D warnings clean.
 
 ### Session S285 (Jun 3, 2026) — Deep Debt Evolution VII: Security Migration + Stub Evolution + Capability Naming
 

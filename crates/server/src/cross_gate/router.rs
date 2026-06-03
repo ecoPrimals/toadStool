@@ -143,6 +143,7 @@ mod tests {
             queue_depth,
             reachable,
             endpoint: endpoint.map(String::from),
+            is_owner: false,
         }
     }
 

@@ -145,6 +145,7 @@ mod tests {
                 max_timeout_ms: Some(30_000),
                 method_allowlist: vec!["compute.dispatch.submit".into()],
             }),
+            ..super::super::method_gate::CallerContext::anonymous()
         };
         let result = auth_peer_info(&ctx).unwrap();
         assert_eq!(result["authenticated"], true);
