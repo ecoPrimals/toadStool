@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S283 (Deep Debt Evolution VI: 6 large files refactored, `bear_dog`→`security_client`, `CORALREEF_*` removed, 167 unwraps eliminated, mocks isolated to `#[cfg(test)]`, capability-based primal discovery. ~98% env centralized. Zero libc. Zero unsafe without SAFETY. Zero production panics. Zero clippy.)
+**Updated**: Jun 2026 — S285 (Deep Debt Evolution VII: server crypto → `crypto_integration`, typed stub errors, `embedded-placeholder-impls` opt-in, `PRIMAL_NAME` naming, dead code removal, last `expect()` eliminated. S284: 0 production files >800L, final library panics eliminated. ~98% env centralized. Zero libc. Zero unsafe without SAFETY. Zero production panics. Zero clippy.)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,156+ lib-only) | **88+ JSON-RPC methods** | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V**
-**Latest**: S283 — **Deep Debt Evolution VI**: 6 large files refactored. `bear_dog`→`security_client`. `CORALREEF_*` env removed. 167 unwraps eliminated. Mocks gated to `#[cfg(test)]`. Capability-based primal discovery. `sovereign_stages/experiment.rs` extraction.
-**Previous**: S282 — Deep Debt V: 28 unsafe SAFETY gaps closed. 4 panic paths → Result. 110 env::var sites migrated (+56 constants). libc::mmap→rustix::mm. S281 — libc eliminated from cylinder. S280 — Wave 59 env centralization (+73 constants). S279 — Panic path elimination + Exp 229 catalyst channel. S278 — Module extraction + C→Rust.
+**Latest**: S285 — **Deep Debt Evolution VII**: Server encrypt/decrypt → `crypto_integration`. `NoopCryptoProvider`/`StubRuntimeEngine` → typed errors. `embedded-placeholder-impls` removed from defaults. `PRIMAL_NAME` constant. ~100L dead code removed.
+**Previous**: S284 — **Deep Debt Evolution VI**: Last 3 files >800L split (`sovereign_init`, `open_vfio`, `experiment`). Final library panics eliminated. Deprecated symbols pruned. S283 — 6 large files refactored, `bear_dog`→`security_client`, mocks `#[cfg(test)]`. S282 — unsafe SAFETY gaps + env centralization. S281 — libc eliminated.
 
 ---
 
@@ -65,7 +65,27 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
 
-### Jun 2, 2026 — S283 Deep Debt Evolution VI
+### Jun 3, 2026 — S285 Deep Debt Evolution VII
+
+| Item | Status |
+|------|--------|
+| Server crypto: `distributed::security` → `crypto_integration` | **DONE** |
+| `NoopCryptoProvider` / `StubRuntimeEngine` → typed errors | **DONE** |
+| `embedded-placeholder-impls` removed from specialty defaults | **DONE** |
+| Hardcoded `"toadstool"` → `PRIMAL_NAME` | **DONE** |
+| Last production `expect()` → safe patterns | **DONE** |
+| ~100L dead code removed (catalyst_watchdog, module_patch, driver_ops) | **DONE** |
+
+### Jun 3, 2026 — S284 Deep Debt Evolution VI
+
+| Item | Status |
+|------|--------|
+| Last 3 production files >800L split (`sovereign_init`, `open_vfio`, `experiment`) | **DONE** |
+| Final library panics eliminated (`kernel_sentinel`, `visualization_client`) | **DONE** |
+| Dead deprecated symbols removed (BearDogBackend, legacy capability helpers) | **DONE** |
+| 33 server clippy warnings fixed + test compilation fixes | **DONE** |
+
+### Jun 2, 2026 — S283 Deep Debt Evolution VI (wave)
 
 | Item | Status |
 |------|--------|
@@ -147,7 +167,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | Sovereign compiler Phase 4+ | barraCuda team | naga-IR optimizer, register pressure, peepholes |
 | barraCuda budding Phases 1-4 | barraCuda team | API audit, SemVer 1.0, Springs rewire |
 | ComputeDispatch migration (D-CD) | barraCuda team | 144/280+ done; ~139 remaining; lives in barraCuda crate |
-| `crypto.sign_contract` (PG-60+) | BearDog team | Cross-family ionic bond contract signing — expose as JSON-RPC method (proposer, acceptor, capabilities, duration). primalSpring `bonding::ionic_rpc` ready to consume. Phase 60+, no urgency. |
+| `crypto.sign_contract` (PG-60+) | crypto service team | Cross-family ionic bond contract signing — expose as JSON-RPC method (proposer, acceptor, capabilities, duration). primalSpring `bonding::ionic_rpc` ready to consume. Phase 60+, no urgency. |
 
 ---
 

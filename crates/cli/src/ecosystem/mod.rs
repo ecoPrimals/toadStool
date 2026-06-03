@@ -21,7 +21,6 @@ pub mod capabilities;
 pub mod config;
 pub mod constants; // Zero-copy constants
 pub mod service_type;
-pub mod services;
 pub mod types;
 
 // Internal modules

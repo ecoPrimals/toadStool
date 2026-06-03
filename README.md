@@ -45,9 +45,9 @@ Nest    = Tower  + Storage            <- storage
 | `cargo test --workspace` | **23,000+ tests, 0 failures** (9,156+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S282: 28 gaps closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
-| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282: 4 panic paths evolved to Result) |
-| Production stubs / test mocks | Stubs evolved to real implementations (edge USB/BT/IPv6, scheduler queuing, monitoring via sysmon+statvfs); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
+| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
+| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282–S285: all paths evolved to Result) |
+| Production stubs / test mocks | Stubs evolved to real implementations or typed errors (`NoProviderRegistered`, `NoEngineRegistered`); **embedded-placeholder** opt-in via `embedded-placeholder-impls` feature (S285 — removed from default features); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
@@ -59,7 +59,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | JSON-RPC surface | **88** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | Non-hardware production files target **< 500 lines**. 11 files >800L remain — all in `cylinder` VFIO hardware init (single-concern GPU bring-up sequences: pipeline, pfifo, pmu_investigate, sovereign_init, kernel_health, generation profiles, nv_gsp_bridge, reagent). S278 split 7 oversized files (~12,500L) into module dirs. |
+| File size limit | Non-hardware production files target **< 500 lines**. **0 production files >800L** (S284 split last 3: `sovereign_init`, `open_vfio`, `experiment`); test-only files in `tests/` directories may exceed limit. S278+S284 split oversized production files into module dirs. |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -276,16 +276,16 @@ toadStool/
 | Workspace tests | **23,000+**, 0 failures (9,156+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S282: 28 gaps closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
-| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282: 4 panic paths evolved to Result) |
+| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282–S285: all paths evolved to Result) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
-| Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
+| Production stubs | Typed error returns (`NoProviderRegistered`, `NoEngineRegistered`, etc.); test-only mocks **`#[cfg(test)]`** only |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
 | External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif` |
-| Env centralization | **~97%** (~410+ env reads via `socket_env::` constants); <10 raw `env::var("...")` remaining (S282) |
+| Env centralization | **~98%** (~410+ env reads via `socket_env::` constants); <10 raw `env::var("...")` remaining (S282–S285) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -300,10 +300,12 @@ toadStool/
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
-- **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
+- **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
-- **S282 (May 28, 2026)**: **Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization + Panic Elimination** — 28 unsafe SAFETY doc gaps closed (12 files). 4 production panic paths evolved to Result. 110 raw env::var sites migrated (+56 new socket_env constants). libc::mmap→rustix::mm. 8 cylinder + 13 server clippy fixes. `PatchStrategy` → idiomatic `impl FromStr`. **178 lib tests, zero clippy, zero libc, ~97% env centralized.**
+- **S285 (Jun 3, 2026)**: **Deep Debt Evolution VII: Security Migration + Stub Evolution + Capability Naming** — Server encrypt/decrypt migrated `distributed::security` → `crypto_integration` (zero deprecated security callers). `NoopCryptoProvider`/`StubRuntimeEngine` → typed errors (`NoProviderRegistered`, `NoEngineRegistered`). `embedded-placeholder-impls` removed from specialty defaults. Hardcoded `"toadstool"` → `PRIMAL_NAME`. ~100L dead code removed; last production `expect()` → safe patterns. **Full workspace clippy clean, all tests pass.**
+- **S284 (Jun 3, 2026)**: **Deep Debt Evolution VI: Large File Splits + Deprecated Cleanup + Final Panic Elimination** — Last 3 production files >800L split by concern (`sovereign_init` 991→7 modules, `open_vfio` 949→6, `experiment` 911→5). Final 2 library panics eliminated (`kernel_sentinel`, `visualization_client`). Dead deprecated symbols removed (BearDogBackend, legacy capability helpers). 33 server clippy fixes + test compilation fixes. **0 production files >800L, zero production library panics.**
+- **S282 (May 28, 2026)**: **Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization + Panic Elimination** — 28 unsafe SAFETY doc gaps closed (12 files). 4 production panic paths evolved to Result. 110 raw env::var sites migrated (+56 new socket_env constants). libc::mmap→rustix::mm. 8 cylinder + 13 server clippy fixes. `PatchStrategy` → idiomatic `impl FromStr`. **178 lib tests, zero clippy, zero libc, ~98% env centralized.**
 - **S281 (May 28, 2026)**: **Deep Debt Evolution IV: libc Elimination + Workspace Consolidation** — libc eliminated from cylinder (last C binding on hardware path). rm_trigger.rs → rustix::ioctl. rustix consolidated to workspace dep across 10 crates. +33 socket_env constants, 47 env::var sites migrated. **Zero libc in workspace.**
 - **S280 (May 28, 2026)**: **Wave 59 Env Centralization + Clippy Allow Evolution** — Deleted orphan env_overrides.rs (342L). +73 socket_env constants. 117 env::var sites migrated across 30 files. Fixed 5 P0 bare #[allow(clippy::)].
 - **S279 (May 27, 2026)**: **Deep Debt Evolution III: Panic Path Elimination + Capability Hardening** — All P0/P1 production panic paths eliminated. Legacy capability→primal roundtrip helpers deprecated. **9,156+ lib tests, zero clippy.**
@@ -401,7 +403,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S282. **23,000+** workspace tests, 0 failures (9,156+ lib-only). ~83.6% lib-only line coverage (target 90%). **88 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). Zero userspace C. **46 unsafe blocks** — all SAFETY-documented (S282: 28 gaps closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics** (S282: 4 paths evolved to Result). Zero production TODO/FIXME/HACK. **~97% env centralized** (410+ reads via `socket_env::` constants). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
+**Last Updated**: Jun 2026 — S285. **23,000+** workspace tests, 0 failures (9,156+ lib-only). ~83.6% lib-only line coverage (target 90%). **88 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). Zero userspace C. **46 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics** (S284–S285: all paths evolved to Result). Zero production TODO/FIXME/HACK. **~98% env centralized** (410+ reads via `socket_env::` constants). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
 
 ---
 

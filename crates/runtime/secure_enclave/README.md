@@ -21,11 +21,11 @@ The secure enclave runtime enables **zero-knowledge compute**: process sensitive
 ## Architecture
 
 ```text
-Compressed (NestGate) → Encrypted (BearDog) → Isolated Compute → Re-encrypted Result
+Compressed (NestGate) → Encrypted (crypto service) → Isolated Compute → Re-encrypted Result
 ```
 
 - **NestGate**: 88% compression, 70-80% energy savings
-- **BearDog**: AES-256-GCM encryption, BTSP key exchange
+- **crypto service**: AES-256-GCM encryption, BTSP key exchange via `security_client`
 - **ToadStool**: Isolated execution, memory protection
 - **Songbird**: Secure BTSP communication
 
@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
 - [x] **SAFETY Documentation** - 100% of unsafe blocks documented
 - [x] **Comprehensive Tests** - Unit + integration tests
 - [ ] **Decompression Support** - NestGate integration (Week 2)
-- [ ] **BTSP Client** - BearDog integration (Week 3)
+- [ ] **BTSP Client** - crypto service / `security_client` integration (Week 3)
 - [ ] **Audit Logging** - Tamper-evident logs (Week 3)
 - [ ] **Proof Generation** - Cryptographic isolation proofs (Week 4)
 

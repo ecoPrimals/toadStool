@@ -9,12 +9,6 @@ fully integrated**. They are quarantined here so they do not block CI.
 |---|---|---|
 | `e2e_composition_workflow.rs` | Composition engine E2E path | APIs exist (`CompositionEngine`, `CompositionRequest`, `Constraint`); needs E2E wiring |
 
-## Archived (FHE out of scope — S282)
-
-| File | Reason |
-|---|---|
-| `archived/fhe_integration_example.rs` | FHE NTT math moved to barraCuda (separate primal). No FHE crate/feature in toadStool. Example preserved for reference only; not compiled into CI. |
-
 ## Removed (S41 — stale API)
 
 | File | Reason |
