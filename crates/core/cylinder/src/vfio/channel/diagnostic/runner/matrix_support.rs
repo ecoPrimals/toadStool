@@ -156,12 +156,9 @@ pub(super) fn log_first_experiment_dma_buffers(
     userd_iova: u64,
     gpfifo_iova: u64,
 ) {
-    let rd = |off: usize| {
-        u32::from_le_bytes(
-            instance[off..off + 4]
-                .try_into()
-                .expect("DMA buffer slice is always 4 bytes"),
-        )
+    let rd = |off: usize| match instance[off..off + 4] {
+        [a, b, c, d] => u32::from_le_bytes([a, b, c, d]),
+        _ => 0,
     };
     tracing::debug!("║ ── DMA Buffer Verification (first experiment) ──");
     tracing::debug!(
@@ -181,12 +178,9 @@ pub(super) fn log_first_experiment_dma_buffers(
         "║   RAMFC[0x048] GP_BASE_LO = {:#010x}",
         rd(ramfc::GP_BASE_LO)
     );
-    let rr = |off: usize| {
-        u32::from_le_bytes(
-            runlist[off..off + 4]
-                .try_into()
-                .expect("DMA buffer slice is always 4 bytes"),
-        )
+    let rr = |off: usize| match runlist[off..off + 4] {
+        [a, b, c, d] => u32::from_le_bytes([a, b, c, d]),
+        _ => 0,
     };
     tracing::debug!(
         "║   RL[0x010] ChanDW0       = {:#010x} (USERD_PTR|tgts|runq)",

@@ -158,68 +158,6 @@ pub fn sysfs_write_guarded(
     wait_for_child(child_pid, path, timeout)
 }
 
-/// Sysfs read via forked child with timeout. If the child doesn't
-/// complete within `timeout`, it is killed and `Timeout` is returned.
-///
-/// Reads from certain sysfs attributes (e.g. `power/runtime_status` on a
-/// D3cold device) can block indefinitely in kernel D-state. This provides
-/// the same fork isolation as [`sysfs_write_guarded`] but for reads.
-///
-/// Returns the file contents as a trimmed string on success.
-#[allow(dead_code)]
-pub(crate) fn sysfs_read_guarded(
-    path: &str,
-    timeout: Duration,
-) -> Result<String, GuardedSysfsError> {
-    tracing::debug!(path, timeout_ms = timeout.as_millis() as u64, "guarded sysfs read");
-
-    let path_c = CString::new(path).map_err(|_| GuardedSysfsError::WriteFailed {
-        path: path.into(),
-        reason: "path contains NUL byte".into(),
-    })?;
-
-    let (pipe_read, pipe_write) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)
-        .map_err(|e| GuardedSysfsError::WriteFailed {
-            path: path.into(),
-            reason: format!("pipe creation failed: {e}"),
-        })?;
-
-    // SAFETY: fork in multi-threaded context. Child calls only
-    // open/read/write(pipe)/close/exit_group — all async-signal-safe.
-    let fork_result = unsafe { rustix::runtime::kernel_fork() };
-
-    match fork_result {
-        Err(e) => Err(GuardedSysfsError::WriteFailed {
-            path: path.into(),
-            reason: format!("fork failed: {e}"),
-        }),
-        Ok(rustix::runtime::Fork::Child(_)) => {
-            drop(pipe_read);
-            use rustix::fs::{open, Mode, OFlags};
-            let fd = match open(path_c.as_c_str(), OFlags::RDONLY, Mode::empty()) {
-                Ok(fd) => fd,
-                Err(_) => rustix::runtime::exit_group(1),
-            };
-            let mut buf = [0u8; 4096];
-            let n = match rustix::io::read(&fd, &mut buf) {
-                Ok(n) => n,
-                Err(_) => { drop(fd); rustix::runtime::exit_group(2) },
-            };
-            drop(fd);
-            let _ = rustix::io::write(&pipe_write, &buf[..n]);
-            drop(pipe_write);
-            rustix::runtime::exit_group(0)
-        }
-        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
-            drop(pipe_write);
-            wait_for_child(child_pid, path, timeout)?;
-            let mut buf = [0u8; 4096];
-            let n = rustix::io::read(&pipe_read, &mut buf).unwrap_or_default();
-            Ok(String::from_utf8_lossy(&buf[..n]).trim().to_string())
-        }
-    }
-}
-
 /// Fire-and-forget unbind with driver-state polling.
 ///
 /// For nvidia catalyst teardown, the kernel-side `remove` callback takes

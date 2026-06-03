@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC over Unix socket operations against a discovered crypto service.
 
+use std::path::Path;
 use std::time::Duration;
 
+use base64::Engine;
 use toadstool_common::constants::timeouts;
-use toadstool_common::primal_identity::ServiceEndpoint;
+use toadstool_common::primal_identity::{Capability, CryptoCapability, ServiceEndpoint};
 use toadstool_common::service_discovery::DiscoveredService;
 use toadstool_common::{NetworkError, ToadStoolError, ToadStoolResult};
 
@@ -69,6 +71,28 @@ impl CryptoServiceClient {
         let mut client = Self::new(service)?;
         client.timeout = timeout;
         Ok(client)
+    }
+
+    /// Connect to a local crypto capability unix socket (startup / NUCLEUS composition).
+    pub fn from_local_socket(socket: &Path) -> ToadStoolResult<Self> {
+        let service = DiscoveredService {
+            id: "local-crypto".to_string(),
+            name: "crypto".to_string(),
+            version: "1.0.0".to_string(),
+            capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
+            endpoints: vec![ServiceEndpoint {
+                protocol: "unix".to_string(),
+                address: socket.display().to_string(),
+                port: 0,
+                path: None,
+                metadata: std::collections::HashMap::new(),
+            }],
+            metadata: Default::default(),
+            discovered_at: std::time::SystemTime::now(),
+            last_seen: std::time::SystemTime::now(),
+            healthy: true,
+        };
+        Self::new(&service)
     }
 
     /// Encrypt data via unix socket
@@ -153,6 +177,75 @@ impl CryptoServiceClient {
                 reason: format!("Key management failed: {e}"),
             })
         })
+    }
+
+    /// Retrieve a purpose key from BearDog secrets store.
+    ///
+    /// Key name: `"nucleus:{family}:purpose:{purpose}"`. When `family` is `None`,
+    /// reads `TOADSTOOL_FAMILY_ID` (or related env vars).
+    pub async fn retrieve_purpose_key(
+        &self,
+        purpose: &str,
+        family: Option<&str>,
+    ) -> ToadStoolResult<toadstool::encryption::EncryptionKey> {
+        let family_id = match family {
+            Some(f) => f.to_string(),
+            None => std::env::var(
+                toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY_ID,
+            )
+            .or_else(|_| {
+                std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY)
+            })
+            .or_else(|_| {
+                std::env::var(toadstool_common::interned_strings::socket_env::BIOMEOS_FAMILY_ID)
+            })
+            .map_err(|_| {
+                ToadStoolError::configuration(
+                    "TOADSTOOL_FAMILY_ID not set — cannot derive purpose key name",
+                )
+            })?,
+        };
+
+        let key_name = format!("nucleus:{family_id}:purpose:{purpose}");
+
+        let params = serde_json::json!({ "name": key_name });
+        let response: serde_json::Value = self
+            .rpc_client
+            .call_typed("secrets.retrieve", params)
+            .await
+            .map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("secrets.retrieve(\"{key_name}\") failed: {e}"),
+                })
+            })?;
+
+        let key_material_b64 = response["key"]
+            .as_str()
+            .or_else(|| response["value"].as_str())
+            .or_else(|| response.as_str())
+            .ok_or_else(|| {
+                ToadStoolError::runtime(format!(
+                    "secrets.retrieve(\"{key_name}\") returned no key material"
+                ))
+            })?;
+
+        let key_material = base64::engine::general_purpose::STANDARD
+            .decode(key_material_b64)
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("purpose key base64 decode failed: {e}"))
+            })?;
+
+        let algorithm = response["algorithm"]
+            .as_str()
+            .unwrap_or("chacha20-poly1305")
+            .to_string();
+
+        Ok(toadstool::encryption::EncryptionKey::new(
+            key_name,
+            key_material,
+            algorithm,
+            toadstool::encryption::SecurityLevel::Enhanced,
+        ))
     }
 
     /// Health check via unix socket

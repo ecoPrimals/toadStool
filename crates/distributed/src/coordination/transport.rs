@@ -132,6 +132,7 @@ mod tests {
     };
     use crate::universal::{UniversalScheduler, UniversalSchedulerConfig};
     use toadstool_common::constants::network::LOCALHOST_IPV4;
+    use toadstool_common::constants::PRIMAL_NAME;
 
     fn connection_with_protocol(protocol: CoordinationTransport) -> CoordinationConnection {
         let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, 50051_u16);
@@ -154,7 +155,7 @@ mod tests {
                 },
                 message_queue: MessageQueueProtocolConfig {
                     queue_name: "jobs".to_string(),
-                    exchange: "toadstool".to_string(),
+                    exchange: PRIMAL_NAME.to_string(),
                     routing_key: "compute".to_string(),
                 },
             },

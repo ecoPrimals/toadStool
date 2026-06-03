@@ -111,7 +111,7 @@ impl JsonRpcHandler {
 
         let mut dispatch = DispatchHandler::new(
             coral_client,
-            Self::try_connect_security_client(),
+            Self::try_connect_crypto_client(),
         );
         #[cfg(target_os = "linux")]
         {
@@ -182,22 +182,14 @@ impl JsonRpcHandler {
         self.anchor_store.clone()
     }
 
-    /// Attempt to connect to the Tower security client (BearDog) for crypto
-    /// delegation. Returns `None` in standalone mode (no `BEARDOG_SOCKET`).
-    #[expect(
-        deprecated,
-        reason = "SecurityClient delegates to crypto.encrypt/decrypt on the wire; crypto_integration migration tracked"
-    )]
-    fn try_connect_security_client()
-    -> Option<Arc<toadstool_distributed::security::client::SecurityClient>> {
+    /// Attempt to connect to the Tower crypto client (BearDog) for crypto
+    /// delegation. Returns `None` in standalone mode (no crypto capability socket).
+    fn try_connect_crypto_client(
+    ) -> Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>> {
         let socket = toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
         if socket.exists() {
-            #[expect(
-                deprecated,
-                reason = "sync new() is used at startup; async discovery is for hot-path"
-            )]
-            match toadstool_distributed::security::client::SecurityClient::new(
-                toadstool_distributed::security::SecurityConfig::default(),
+            match toadstool_distributed::crypto_integration::CryptoServiceClient::from_local_socket(
+                &socket,
             ) {
                 Ok(client) => {
                     info!("Tower crypto client connected — compute payloads will be encrypted");

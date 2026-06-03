@@ -9,9 +9,10 @@
 //! This is step 2.5 in the credential resolution chain, between file-based
 //! credentials and the security provider JSON-RPC fallback.
 
+use crate::constants::PRIMAL_NAME;
 use crate::secret_string::SecretString;
 
-const SERVICE_NAME: &str = "toadstool";
+const SERVICE_NAME: &str = PRIMAL_NAME;
 
 /// Query the OS keyring for a named credential.
 ///

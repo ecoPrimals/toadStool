@@ -118,9 +118,10 @@ pub use ecosystem::{
     ServiceChannel, ServiceClient, ServiceInstance, ServiceStatus,
 };
 pub use encryption::{
-    CryptoCapability, CryptoProvider, CryptoProviderRegistry, EncryptedInput, EncryptedOutput,
-    EncryptedPayload, EncryptionConfig, EncryptionContext, EncryptionContextBuilder, EncryptionKey,
-    EncryptionMetadata, NoopCryptoProvider, SecurityLevel as EncryptionSecurityLevel,
+    CryptoCapability, CryptoError, CryptoProvider, CryptoProviderRegistry, EncryptedInput,
+    EncryptedOutput, EncryptedPayload, EncryptionConfig, EncryptionContext,
+    EncryptionContextBuilder, EncryptionKey, EncryptionMetadata, NoopCryptoProvider,
+    SecurityLevel as EncryptionSecurityLevel,
 };
 pub use error::{
     ConfigError, ConfigResult, ExecutionError, ExecutionResult, IntegrationError,

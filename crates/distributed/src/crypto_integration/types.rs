@@ -154,6 +154,18 @@ pub enum KeyType {
     Kek,
 }
 
+/// Map a wire-format algorithm name (purpose keys, legacy security clients) to [`EncryptionAlgorithm`].
+pub fn encryption_algorithm_from_wire(name: &str) -> EncryptionAlgorithm {
+    match name.to_lowercase().as_str() {
+        "aes-256-gcm" | "aes256gcm" => EncryptionAlgorithm::Aes256Gcm,
+        "aes-128-gcm" | "aes128gcm" => EncryptionAlgorithm::Aes128Gcm,
+        "chacha20-poly1305" | "chacha20poly1305" | "chacha20" => {
+            EncryptionAlgorithm::ChaCha20Poly1305
+        }
+        other => EncryptionAlgorithm::Custom(other.to_string()),
+    }
+}
+
 /// Security level requirement
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SecurityLevel {

@@ -5,7 +5,20 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 3, 2026 (Sessions 43-284)
+## [Unreleased] - Jun 3, 2026 (Sessions 43-285)
+
+### Session S285 (Jun 3, 2026) — Deep Debt Evolution VII: Security Migration + Stub Evolution + Capability Naming
+
+Top-priority evolution pass: migrated server JSON-RPC crypto off deprecated `distributed::security` to `crypto_integration`, evolved all production Noop/Stub sentinels to return typed errors, replaced hardcoded primal name literals with `PRIMAL_NAME` constant, removed dead code, evolved last `expect()` to safe patterns, removed `embedded-placeholder-impls` from default features.
+
+- **MIGRATED**: Server encrypt/decrypt dispatch — `SecurityClient` → `CryptoServiceClient`, `EncryptionRequest` → `CryptoRequest`, `EncryptionOperation` → `CryptoOperation`, `SecurityLevel::Enhanced` → `SecurityLevel::High`. All `#[expect(deprecated)]` suppressions on crypto path removed. `distributed::security` now has zero production callers outside its own module.
+- **EVOLVED**: `NoopCryptoProvider` — all crypto ops now return `CryptoError::NoProviderRegistered` instead of silently succeeding. `health_check` returns `ProviderHealth::unhealthy(...)`. New `CryptoError` variant + crate re-export.
+- **EVOLVED**: `StubRuntimeEngine` — `execute` and `get_metrics` return `ExecutionError::NoEngineRegistered` instead of synthetic defaults. Initialize/shutdown remain no-ops.
+- **EVOLVED**: `embedded-placeholder-impls` — removed from `runtime/specialty` default features. Production builds no longer register placeholder programmers/emulators. `Unregistered` dispatch variant returns typed `AdapterNotRegistered` errors. Structs conditionally allow dead fields when feature is off.
+- **REPLACED**: Hardcoded `"toadstool"` literals → `PRIMAL_NAME` constant in health endpoint, OS keyring `SERVICE_NAME`, coordination transport exchange.
+- **REMOVED**: Dead code — `catalyst_watchdog::routine_quench()` + `read_intr_en_safe()` (Exp 233 disabled), `module_patch::patch_module()` (superseded by `patch_module_with_rename`), `driver_ops::sysfs_read_guarded()` (~100 lines removed).
+- **EVOLVED**: `regions.rs` — `expect("4-byte slice")` → `let [a, b, c, d] = ...` pattern match with `MemoryError::OutOfBounds`. `matrix_support.rs` — `expect` → match with safe fallback.
+- METRICS: Zero deprecated security callers in production. Zero silent-success stubs. Zero dead `#[allow(dead_code)]` in production. Full workspace clippy -D warnings clean. All tests pass.
 
 ### Session S284 (Jun 3, 2026) — Deep Debt Evolution VI: Large File Splits + Deprecated Cleanup + Final Panic Elimination
 

@@ -55,6 +55,7 @@ mod tests {
     use crate::{ExecutionTarget, UniversalScheduler, UniversalSchedulerConfig};
     use std::time::{Duration, SystemTime};
     use toadstool_common::constants::network::LOCALHOST_IPV4;
+    use toadstool_common::constants::PRIMAL_NAME;
     use uuid::Uuid;
 
     fn grpc_connection() -> CoordinationConnection {
@@ -78,7 +79,7 @@ mod tests {
                 },
                 message_queue: MessageQueueProtocolConfig {
                     queue_name: "jobs".to_string(),
-                    exchange: "toadstool".to_string(),
+                    exchange: PRIMAL_NAME.to_string(),
                     routing_key: "compute".to_string(),
                 },
             },

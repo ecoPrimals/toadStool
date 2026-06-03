@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 use crate::rpc_types::HealthStatus;
+use toadstool_common::constants::PRIMAL_NAME;
 
 use super::JsonRpcResult;
 
@@ -53,7 +54,7 @@ pub(crate) async fn health_version(version: &str) -> JsonRpcResult {
         "version": version,
         "session": env!("CARGO_PKG_VERSION"),
         "build_hash": option_env!("GIT_HASH").unwrap_or("dev"),
-        "service": "toadstool",
+        "service": PRIMAL_NAME,
     }))
 }
 

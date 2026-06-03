@@ -69,7 +69,7 @@ toadstool-common = { path = "../../core/common" }
 toadstool-config = { path = "../../core/config" }
 
 [features]
-default = ["embedded-placeholder-impls"]
+default = []
 # Optional: trait impls for embedded programmer/emulator types (`ProgrammerInterface`, `EmbeddedEmulator`).
 # Disable for minimal builds that do not register placeholder adapters (see `embedded::adapters`).
 embedded-placeholder-impls = []

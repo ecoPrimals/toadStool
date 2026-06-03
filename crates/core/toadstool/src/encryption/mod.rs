@@ -11,6 +11,7 @@
 mod builder;
 mod config;
 mod context;
+pub mod error;
 mod security;
 
 pub mod capability;
@@ -21,6 +22,7 @@ pub mod types;
 mod tests;
 
 pub use builder::EncryptionContextBuilder;
+pub use error::CryptoError;
 pub use capability::CryptoCapability;
 pub use config::{EncryptedInput, EncryptedOutput, EncryptionConfig};
 pub use context::EncryptionContext;

@@ -4,6 +4,7 @@
 
 use std::future::Future;
 
+use crate::ExecutionError;
 use crate::ToadStoolResult;
 use crate::execution::{
     ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
@@ -18,7 +19,8 @@ use crate::execution::{
 /// that still needs registration via `compute.engine.register`. When no
 /// backend is present, it returns a diagnostic listing everything probed.
 /// [`initialize`](RuntimeEngine::initialize) and [`shutdown`](RuntimeEngine::shutdown)
-/// succeed as no-ops.
+/// succeed as no-ops. [`get_metrics`](RuntimeEngine::get_metrics) returns
+/// [`ExecutionError::NoEngineRegistered`].
 #[derive(Debug, Default, Clone, Copy)]
 pub struct StubRuntimeEngine;
 
@@ -69,6 +71,10 @@ impl RuntimeBackendProbe {
 
 fn yes_no(v: bool) -> &'static str {
     if v { "available" } else { "unavailable" }
+}
+
+fn no_engine_err_response(reason: impl Into<String>) -> ToadStoolResult<ExecutionResponse> {
+    Err(ExecutionError::no_engine_registered(reason).into())
 }
 
 fn probe_wgpu() -> BackendProbe {
@@ -177,17 +183,17 @@ impl RuntimeEngine for StubRuntimeEngine {
                     detail = backend.detail,
                     "StubRuntimeEngine: backend detected but no engine registered"
                 );
-                return Err(crate::ToadStoolError::configuration(format!(
+                return no_engine_err_response(format!(
                     "{} backend available ({}) but no runtime engine registered; \
                      register via compute.engine.register capability",
                     backend.name, backend.detail
-                )));
+                ));
             }
 
-            Err(crate::ToadStoolError::configuration(format!(
+            no_engine_err_response(format!(
                 "no runtime engine registered and no backend available; probed: {}",
                 probe.probe_report()
-            )))
+            ))
         }
     }
 
@@ -214,7 +220,12 @@ impl RuntimeEngine for StubRuntimeEngine {
     fn get_metrics(
         &self,
     ) -> impl Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_ {
-        async { Ok(crate::RuntimeMetrics::default()) }
+        async {
+            Err(ExecutionError::no_engine_registered(
+                "no runtime engine registered; register via compute.engine.register capability",
+            )
+            .into())
+        }
     }
 
     fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
@@ -235,7 +246,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(
-            err.contains("no runtime engine registered"),
+            err.contains("No runtime engine registered"),
             "unexpected error: {err}"
         );
         // When a host backend is present, error names it; otherwise lists all probes.
@@ -278,11 +289,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_metrics_returns_defaults() {
+    async fn get_metrics_returns_no_engine_registered() {
         let engine = StubRuntimeEngine;
-        let metrics = engine.get_metrics().await.unwrap();
-        assert!(metrics.cpu.usage_percent.abs() < f64::EPSILON);
-        assert_eq!(metrics.memory.used_bytes, 0);
+        let result = engine.get_metrics().await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("No runtime engine registered"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]

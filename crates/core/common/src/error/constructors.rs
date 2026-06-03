@@ -45,6 +45,14 @@ impl ExecutionError {
             operation: operation.into(),
         }
     }
+
+    /// Create a no-engine-registered error (sentinel / bootstrap state)
+    #[must_use]
+    pub fn no_engine_registered(reason: impl Into<String>) -> Self {
+        Self::NoEngineRegistered {
+            reason: reason.into(),
+        }
+    }
 }
 
 impl ConfigError {

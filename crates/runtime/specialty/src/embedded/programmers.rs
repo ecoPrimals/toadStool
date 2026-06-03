@@ -10,12 +10,20 @@ use crate::embedded::protocol_engine::ProtocolEngine;
 
 /// Generic programmer for ISP / ICSP targets (AVR, PIC, …).
 #[derive(Debug)]
+#[cfg_attr(
+    not(feature = "embedded-placeholder-impls"),
+    allow(dead_code, reason = "fields used only when adapter impls are compiled")
+)]
 pub struct GenericProgrammer {
     pub(crate) inner: Option<GenericProgrammerInner>,
 }
 
 /// Parsed programmer state after successful [`GenericProgrammer`] initialization.
 #[derive(Debug)]
+#[cfg_attr(
+    not(feature = "embedded-placeholder-impls"),
+    allow(dead_code, reason = "fields used only when adapter impls are compiled")
+)]
 pub(crate) struct GenericProgrammerInner {
     pub avr: Option<&'static AvrChipInfo>,
     pub pic: Option<&'static PicChipInfo>,
@@ -44,11 +52,19 @@ impl Default for GenericProgrammer {
 
 /// EPROM / parallel ROM programmer (abstract parallel bus protocol).
 #[derive(Debug)]
+#[cfg_attr(
+    not(feature = "embedded-placeholder-impls"),
+    allow(dead_code, reason = "fields used only when adapter impls are compiled")
+)]
 pub struct EPROMProgrammer {
     pub(crate) inner: Option<EpromProgrammerInner>,
 }
 
 #[derive(Debug)]
+#[cfg_attr(
+    not(feature = "embedded-placeholder-impls"),
+    allow(dead_code, reason = "fields used only when adapter impls are compiled")
+)]
 pub(crate) struct EpromProgrammerInner {
     pub device_name: String,
     pub size_bytes: u32,

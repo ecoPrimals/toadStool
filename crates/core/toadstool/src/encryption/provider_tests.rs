@@ -5,6 +5,37 @@ use crate::ToadStoolResult;
 
 use super::*;
 
+#[tokio::test]
+async fn noop_crypto_provider_returns_no_provider_registered() {
+    let provider = NoopCryptoProvider;
+    let key = EncryptionKey::default();
+    let data = b"test";
+
+    let encrypt = provider.encrypt(data, &key).await;
+    assert!(encrypt.is_err());
+    assert!(
+        encrypt
+            .unwrap_err()
+            .to_string()
+            .contains("no crypto provider registered")
+    );
+
+    let decrypt = provider
+        .decrypt(&EncryptedPayload::default(), &key, &EncryptionMetadata::default())
+        .await;
+    assert!(decrypt.is_err());
+
+    let gen_key = provider.generate_key(SecurityLevel::Standard).await;
+    assert!(gen_key.is_err());
+
+    let get = provider.get_key("key-id").await;
+    assert!(get.is_err());
+
+    let health = provider.health_check().await.unwrap();
+    assert!(!health.available);
+    assert!(health.error.is_some());
+}
+
 // Mock provider for testing
 struct MockProvider {
     id: String,

@@ -1,12 +1,23 @@
 # Active Technical Debt Register
 
-**Date**: June 3, 2026 — S284
+**Date**: June 3, 2026 — S285
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S285 (Deep Debt Evolution VII: Security Migration + Stub Evolution)**:
+Migrated server JSON-RPC crypto off deprecated `distributed::security` to
+`crypto_integration` (zero deprecated security callers in production).
+Evolved all production Noop/Stub sentinels (NoopCryptoProvider,
+StubRuntimeEngine) to return typed errors instead of silent success.
+Replaced hardcoded "toadstool" literals with PRIMAL_NAME constant.
+Removed ~100L dead code (catalyst_watchdog, module_patch, driver_ops).
+Evolved last 3 production `expect()` to safe pattern matches. Removed
+`embedded-placeholder-impls` from specialty default features. All tests
+pass, full workspace clippy clean.
 
 **S284 (Deep Debt Evolution VI: Large File Splits + Deprecated Cleanup)**:
 Refactored all 3 remaining >800L production files by concern (sovereign_init

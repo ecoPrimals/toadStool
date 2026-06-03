@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security Integration Module
 //!
+//! **Deprecation**: Production code should use [`crate::crypto_integration`]. This module
+//! remains for integration tests, coverage tests, and the `security_provider` bridge.
+//!
 //! **Design Philosophy**:
 //! - Runtime discovery: No hardcoded URLs or endpoints
 //! - Capability-based: Discover Security by encryption capability

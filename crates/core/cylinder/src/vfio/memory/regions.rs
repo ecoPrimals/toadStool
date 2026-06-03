@@ -97,11 +97,13 @@ impl MemoryRegion for DmaRegion {
                 size: slice.len(),
             });
         }
-        Ok(u32::from_le_bytes(
-            slice[offset..offset + 4]
-                .try_into()
-                .expect("4-byte slice always fits [u8; 4]"),
-        ))
+        let [a, b, c, d] = slice[offset..offset + 4] else {
+            return Err(MemoryError::OutOfBounds {
+                offset,
+                size: slice.len(),
+            });
+        };
+        Ok(u32::from_le_bytes([a, b, c, d]))
     }
 
     fn write_u32(&mut self, offset: usize, val: u32) -> Result<(), MemoryError> {

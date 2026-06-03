@@ -84,18 +84,6 @@ fn epoch_ms() -> u64 {
         .as_millis() as u64
 }
 
-/// Emergency interrupt quench — uses generation-aware register writes via
-/// `InterruptProfile`, plus PCI INTx disable as belt-and-suspenders.
-/// Routine quench — suppress GPU interrupt assertion without disrupting DMA.
-/// Used during INTR_EN monitoring when RM is still running and needs Bus Master.
-/// Disabled at Exp 233 checkpoint — kept for re-activation if INTR_EN monitoring is restored.
-#[allow(dead_code)]
-fn routine_quench(bdf: &str, profile: &InterruptProfile) {
-    warn!(bdf, "WATCHDOG: performing routine interrupt quench");
-    toadstool_cylinder::nv::registers::pmc::quench_interrupts(bdf, profile, "watchdog-routine");
-    toadstool_cylinder::nv::registers::pmc::intx_disable(bdf, "watchdog-routine");
-}
-
 /// Emergency quench — full nuclear shutdown including Bus Master disable.
 /// Only called on heartbeat timeout (pipeline is hung, RM is unresponsive).
 fn emergency_quench(bdf: &str, profile: &InterruptProfile) {
@@ -428,12 +416,4 @@ pub fn start_watchdog_thread() -> std::io::Result<()> {
             }
         })
         .map(|_| ())
-}
-
-/// Best-effort read of INTR_EN_0 (0x140) from BAR0 via sysfs resource0.
-/// Returns None if the GPU is owned by vfio-pci or the read fails.
-/// Disabled at Exp 233 checkpoint — kept for re-activation if INTR_EN monitoring is restored.
-#[allow(dead_code)]
-fn read_intr_en_safe(bdf: &str) -> Option<u32> {
-    toadstool_cylinder::vfio::sysfs_bar0::read_u32_best_effort(bdf, 0x140, 0x200)
 }

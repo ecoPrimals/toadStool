@@ -123,6 +123,13 @@ pub enum ExecutionError {
         reason: String,
     },
 
+    /// No runtime engine registered (sentinel / bootstrap state)
+    #[error("No runtime engine registered: {reason}")]
+    NoEngineRegistered {
+        /// Guidance for registering an engine via capabilities
+        reason: String,
+    },
+
     /// Invalid execution request
     #[error("Invalid execution request: {reason}")]
     InvalidRequest {

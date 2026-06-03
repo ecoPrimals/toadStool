@@ -46,7 +46,10 @@ pub mod client;
 pub mod types;
 
 pub use client::{CryptoServiceClient, CryptoServiceDiscovery};
-pub use types::{CryptoRequest, CryptoResponse, EncryptionAlgorithm, KeyType, SecurityLevel};
+pub use types::{
+    CryptoOperation, CryptoRequest, CryptoResponse, EncryptionAlgorithm, KeyType, SecurityLevel,
+    encryption_algorithm_from_wire,
+};
 
 /// Crypto service discovery configuration
 ///

@@ -6,19 +6,16 @@ use crate::visualization_client::SharedVisualizationClient;
 use std::collections::HashMap;
 use std::os::fd::AsFd;
 use std::sync::Arc;
-#[expect(
-    deprecated,
-    reason = "SecurityClient delegates to crypto.encrypt/decrypt; crypto_integration migration tracked"
-)]
+
 impl DispatchHandler {
     pub fn new(
         coral_client: SharedVisualizationClient,
-        security_client: Option<Arc<toadstool_distributed::security::client::SecurityClient>>,
+        crypto_client: Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>>,
     ) -> Self {
         let anchor_store: super::AnchorStore = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
         Self {
             coral_client,
-            security_client,
+            crypto_client,
             cached_purpose_key: Arc::new(tokio::sync::RwLock::new(None)),
             jobs: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             pipelines: Arc::new(tokio::sync::RwLock::new(HashMap::new())),

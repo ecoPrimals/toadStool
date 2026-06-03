@@ -52,16 +52,12 @@ pub(super) type LocalDeviceFactory =
 /// and ordered pipeline dispatch (`compute.dispatch.pipeline.submit`) for
 /// multi-stage workloads like ML inference (tokenize → attention → FFN).
 ///
-/// When a Tower security client is available (NUCLEUS composition), payloads are
+/// When a Tower crypto client is available (NUCLEUS composition), payloads are
 /// encrypted via `crypto.encrypt` using the `compute` purpose key before dispatch,
 /// and results are decrypted via `crypto.decrypt` on return.
-#[expect(
-    deprecated,
-    reason = "SecurityClient delegates to crypto.encrypt/decrypt; crypto_integration migration tracked"
-)]
 pub struct DispatchHandler {
     coral_client: SharedVisualizationClient,
-    security_client: Option<Arc<toadstool_distributed::security::client::SecurityClient>>,
+    crypto_client: Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>>,
     /// Cached compute purpose key (lazily fetched on first encrypted dispatch).
     cached_purpose_key: Arc<RwLock<Option<toadstool::encryption::EncryptionKey>>>,
     jobs: Arc<RwLock<HashMap<String, DispatchJob>>>,

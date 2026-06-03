@@ -23,7 +23,7 @@
 //!
 //! let stock_ko = std::path::Path::new("/lib/modules/6.17.9/nouveau.ko");
 //! let patch_set = PatchSet::volta_warm_handoff();
-//! let patched_path = patch_module(stock_ko, &patch_set).unwrap();
+//! let patched_path = patch_module_with_rename(stock_ko, &patch_set, None).unwrap();
 //! // patched_path is now ready for insmod
 //! ```
 
@@ -229,14 +229,6 @@ pub(crate) fn patch_module_with_rename(
         applied_count,
         total_count: patch_set.targets.len(),
     })
-}
-
-/// Patch a stock kernel module and write the result to a temporary file.
-///
-/// Convenience wrapper around [`patch_module_with_rename`] without renaming.
-#[allow(dead_code)]
-pub(crate) fn patch_module(source_ko: &Path, patch_set: &PatchSet) -> Result<ModulePatchResult, PatchError> {
-    patch_module_with_rename(source_ko, patch_set, None)
 }
 
 /// Get the path where a patched module would be written.

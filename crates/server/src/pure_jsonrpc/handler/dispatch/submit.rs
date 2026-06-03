@@ -165,10 +165,10 @@ fn resource_exhausted(msg: impl Into<String>) -> JsonRpcError {
     }
 }
 
-#[expect(
-    deprecated,
-    reason = "SecurityClient delegates to crypto.encrypt/decrypt; crypto_integration migration tracked"
-)]
+use toadstool_distributed::crypto_integration::{
+    CryptoOperation, CryptoRequest, SecurityLevel, encryption_algorithm_from_wire,
+};
+
 impl DispatchHandler {
     /// Lazily fetch and cache the `compute` purpose key from BearDog secrets.
     async fn get_purpose_key(&self) -> Result<toadstool::encryption::EncryptionKey, JsonRpcError> {
@@ -179,8 +179,8 @@ impl DispatchHandler {
             }
         }
 
-        let client = self.security_client.as_ref().ok_or_else(|| {
-            JsonRpcError::internal_error("security client unavailable for purpose key retrieval")
+        let client = self.crypto_client.as_ref().ok_or_else(|| {
+            JsonRpcError::internal_error("crypto client unavailable for purpose key retrieval")
         })?;
 
         let key = client
@@ -196,25 +196,22 @@ impl DispatchHandler {
     }
 
     /// Encrypt binary payload via Tower `crypto.encrypt`.
-    /// Returns the original bytes unchanged if no security client is present.
-    #[expect(
-        deprecated,
-        reason = "SecurityClient types are deprecated in favor of crypto_integration; wire protocol is the same"
-    )]
+    /// Returns the original bytes unchanged if no crypto client is present.
     async fn encrypt_payload(&self, data: &[u8]) -> Result<Vec<u8>, JsonRpcError> {
-        let Some(ref client) = self.security_client else {
+        let Some(ref client) = self.crypto_client else {
             return Ok(data.to_vec());
         };
 
         let key = self.get_purpose_key().await?;
 
-        let request = toadstool_distributed::security::types::EncryptionRequest {
+        let request = CryptoRequest {
             request_id: uuid::Uuid::new_v4(),
-            operation: toadstool_distributed::security::types::EncryptionOperation::Encrypt,
+            operation: CryptoOperation::Encrypt,
             data: data.to_vec(),
             key_id: Some(key.id.clone()),
-            algorithm: Some(key.algorithm.clone()),
-            security_level: toadstool_distributed::security::types::SecurityLevel::Enhanced,
+            algorithm: Some(encryption_algorithm_from_wire(&key.algorithm)),
+            security_level: SecurityLevel::High,
+            metadata: serde_json::Value::Null,
         };
 
         let response = client
@@ -242,16 +239,12 @@ impl DispatchHandler {
     }
 
     /// Decrypt result payload from Tower `crypto.decrypt`.
-    /// Returns the value unchanged if no security client is present.
-    #[expect(
-        deprecated,
-        reason = "SecurityClient types are deprecated in favor of crypto_integration; wire protocol is the same"
-    )]
+    /// Returns the value unchanged if no crypto client is present.
     async fn decrypt_result(
         &self,
         result: &serde_json::Value,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let Some(ref client) = self.security_client else {
+        let Some(ref client) = self.crypto_client else {
             return Ok(result.clone());
         };
 
@@ -265,13 +258,14 @@ impl DispatchHandler {
 
         let key = self.get_purpose_key().await?;
 
-        let request = toadstool_distributed::security::types::EncryptionRequest {
+        let request = CryptoRequest {
             request_id: uuid::Uuid::new_v4(),
-            operation: toadstool_distributed::security::types::EncryptionOperation::Decrypt,
+            operation: CryptoOperation::Decrypt,
             data: ciphertext,
             key_id: Some(key.id.clone()),
-            algorithm: Some(key.algorithm.clone()),
-            security_level: toadstool_distributed::security::types::SecurityLevel::Enhanced,
+            algorithm: Some(encryption_algorithm_from_wire(&key.algorithm)),
+            security_level: SecurityLevel::High,
+            metadata: serde_json::Value::Null,
         };
 
         let response = client
@@ -448,7 +442,7 @@ impl DispatchHandler {
         }
 
         if self.coral_client.is_available().await {
-            let encrypted = self.security_client.is_some();
+            let encrypted = self.crypto_client.is_some();
             let dispatch_binary = if encrypted {
                 self.encrypt_payload(&binary_bytes).await?
             } else {

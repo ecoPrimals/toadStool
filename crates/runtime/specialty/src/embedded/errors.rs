@@ -8,6 +8,12 @@
 /// Failure modes for [`super::types::ProgrammerInterface`] when no backend is wired.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum EmbeddedProgrammerError {
+    /// Placeholder programmer adapters were not registered (feature disabled).
+    #[error(
+        "embedded placeholder programmer adapters not registered; enable `embedded-placeholder-impls` feature"
+    )]
+    AdapterNotRegistered,
+
     /// Serial / parallel / USB transport was never configured for this interface.
     #[error("transport not configured for interface `{interface}`")]
     TransportNotConfigured {
@@ -77,6 +83,12 @@ pub enum EmbeddedProgrammerError {
 /// Failure modes for [`super::types::EmbeddedEmulator`] when no CPU core is present.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum EmbeddedEmulatorError {
+    /// Placeholder emulator adapters were not registered (feature disabled).
+    #[error(
+        "embedded placeholder emulator adapters not registered; enable `embedded-placeholder-impls` feature"
+    )]
+    AdapterNotRegistered,
+
     /// Emulator core / memory map not loaded for this platform build.
     #[error("CPU core not available for platform `{platform}`")]
     CoreNotAvailable {

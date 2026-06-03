@@ -9,6 +9,10 @@ use crate::embedded::types::EmulationStatus;
 
 /// 6502 emulator: [`Cpu6502`] core, breakpoints, and lifecycle flags.
 #[derive(Debug)]
+#[cfg_attr(
+    not(feature = "embedded-placeholder-impls"),
+    allow(dead_code, reason = "fields used only when adapter impls are compiled")
+)]
 pub struct Emulator6502 {
     pub(crate) cpu: Cpu6502,
     pub(crate) breakpoints: HashSet<u32>,
@@ -20,6 +24,10 @@ pub struct Emulator6502 {
 
 /// Z80 emulator.
 #[derive(Debug)]
+#[cfg_attr(
+    not(feature = "embedded-placeholder-impls"),
+    allow(dead_code, reason = "fields used only when adapter impls are compiled")
+)]
 pub struct EmulatorZ80 {
     pub(crate) cpu: Z80Cpu,
     pub(crate) breakpoints: HashSet<u32>,

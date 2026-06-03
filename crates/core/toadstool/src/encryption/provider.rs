@@ -13,6 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
+use super::error::CryptoError;
 use super::{CryptoCapability, EncryptedPayload, EncryptionKey, EncryptionMetadata, SecurityLevel};
 
 /// Trait for crypto service providers
@@ -61,13 +62,18 @@ pub trait CryptoProvider: Send + Sync {
 /// types before a real provider is discovered at runtime.
 ///
 /// This is **not** a test mock. It is the complete implementation of the
-/// "no provider registered" state. All methods return
-/// [`ToadStoolError::configuration`] with capability-based guidance.
+/// "no provider registered" state. All crypto operations return
+/// [`CryptoError::NoProviderRegistered`]; [`health_check`](CryptoProvider::health_check)
+/// reports [`ProviderHealth::unhealthy`].
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopCryptoProvider;
 
 const NOOP_MSG: &str =
     "no crypto provider registered; register a provider via crypto.provider.register capability";
+
+fn noop_crypto_err() -> ToadStoolError {
+    CryptoError::NoProviderRegistered(NOOP_MSG.to_string()).into()
+}
 
 impl CryptoProvider for NoopCryptoProvider {
     fn provider_id(&self) -> &'static str {
@@ -89,7 +95,7 @@ impl CryptoProvider for NoopCryptoProvider {
         _key: &'a EncryptionKey,
     ) -> impl Future<Output = ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>> + Send + 'a
     {
-        async { Err(ToadStoolError::configuration(NOOP_MSG)) }
+        async { Err(noop_crypto_err()) }
     }
 
     fn decrypt<'a>(
@@ -98,21 +104,21 @@ impl CryptoProvider for NoopCryptoProvider {
         _key: &'a EncryptionKey,
         _metadata: &'a EncryptionMetadata,
     ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a {
-        async { Err(ToadStoolError::configuration(NOOP_MSG)) }
+        async { Err(noop_crypto_err()) }
     }
 
     fn generate_key(
         &self,
         _security_level: SecurityLevel,
     ) -> impl Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_ {
-        async { Err(ToadStoolError::configuration(NOOP_MSG)) }
+        async { Err(noop_crypto_err()) }
     }
 
     fn get_key<'a>(
         &'a self,
         _key_id: &'a str,
     ) -> impl Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a {
-        async { Err(ToadStoolError::configuration(NOOP_MSG)) }
+        async { Err(noop_crypto_err()) }
     }
 
     fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
