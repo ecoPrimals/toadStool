@@ -123,13 +123,13 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
 }
 
 impl<S: ComputeSubstrate> SubstrateAdapter<S> {
-    /// Reinterpret `Vec<f32>` as `Vec<u8>` without copying (zero-copy).
-    ///
-    /// Uses `bytemuck::allocation::cast_vec` which is safe and zero-copy.
-    /// Falls back to byte-level copy if the cast fails (shouldn't happen
-    /// for f32 → u8 on any platform, but we handle it for correctness).
+    /// Convert `Vec<f32>` to `Vec<u8>` via `bytemuck` zero-copy when
+    /// alignment permits, falling back to `cast_slice` + copy otherwise.
     fn vec_f32_to_u8(v: Vec<f32>) -> Vec<u8> {
-        bytemuck::allocation::cast_vec(v)
+        match bytemuck::allocation::try_cast_vec::<f32, u8>(v) {
+            Ok(bytes) => bytes,
+            Err((_err, original)) => bytemuck::cast_slice::<f32, u8>(&original).to_vec(),
+        }
     }
 
     #[expect(

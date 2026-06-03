@@ -239,7 +239,6 @@ async fn substrate_adapter_execute_custom_data() {
 }
 
 #[tokio::test]
-#[ignore = "F32VecPair uses bytemuck cast_vec which can AlignmentMismatch on some platforms"]
 async fn substrate_adapter_execute_f32_pair() {
     let substrate = MockSubstrate {
         name: "Test",
