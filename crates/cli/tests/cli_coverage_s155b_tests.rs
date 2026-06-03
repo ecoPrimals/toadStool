@@ -304,15 +304,17 @@ mod daemon_tests {
 }
 
 // ============================================================================
-// Network Config - SongbirdNetworkConfigurator, generate_configuration_summary
+// Network Config - OrchestrationNetworkConfigurator, generate_configuration_summary
 // ============================================================================
 
 mod network_config_tests {
-    use toadstool_cli::network_config::{OrchestrationConfigurator, SongbirdNetworkConfigurator};
+    use toadstool_cli::network_config::{
+        OrchestrationConfigurator, OrchestrationNetworkConfigurator,
+    };
 
     #[test]
-    fn test_songbird_network_configurator_new() {
-        let configurator = SongbirdNetworkConfigurator::new();
+    fn test_orchestration_network_configurator_new() {
+        let configurator = OrchestrationNetworkConfigurator::new();
         let _ = configurator.config.service_mesh.enabled;
     }
 
@@ -326,7 +328,7 @@ mod network_config_tests {
 
     #[test]
     fn test_network_configurator_default() {
-        let configurator = SongbirdNetworkConfigurator::default();
+        let configurator = OrchestrationNetworkConfigurator::default();
         assert!(
             configurator.config.service_mesh.mesh_type == "native"
                 || !configurator.config.service_mesh.mesh_type.is_empty()

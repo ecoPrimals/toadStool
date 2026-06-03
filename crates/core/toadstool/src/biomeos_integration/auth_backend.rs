@@ -208,10 +208,6 @@ pub struct SecurityBackend {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
-/// Legacy alias for [`SecurityBackend`].
-#[deprecated(since = "0.3.0", note = "Use SecurityBackend directly")]
-pub type BearDogBackend = SecurityBackend;
-
 impl SecurityBackend {
     /// Create crypto auth backend with capability-based discovery (RECOMMENDED)
     ///

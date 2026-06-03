@@ -17,6 +17,7 @@ mod permissions;
 mod verification;
 
 use error::{Result, SetupError};
+use toadstool_common::interned_strings::socket_env;
 use pcie::{discover_akida_devices, enable_pcie_device, is_module_loaded, load_kernel_module};
 use permissions::{
     list_device_nodes, setup_device_permissions, setup_pcie_permissions, setup_udev_rules,
@@ -40,7 +41,7 @@ impl Default for SetupConfig {
         Self {
             module_path: Some(format!(
                 "{}/Development/ecoPrimals/akida_dw_edma/akida-pcie.ko",
-                std::env::var("HOME").unwrap_or_default()
+                std::env::var(socket_env::HOME).unwrap_or_default()
             )),
             persistent_permissions: true,
             skip_verification: false,

@@ -469,9 +469,11 @@ impl DispatchHandler {
             }
 
             let client = &self.coral_client;
-            if let Some(inner) = client.client_ref().await {
+            if let Some(inner) = client.client_ref().await
+                && let Some(compiler) = inner.get()
+            {
                 let pre_dispatch = std::time::Instant::now();
-                match inner
+                match compiler
                     .call("compute.dispatch.submit", dispatch_params)
                     .await
                 {

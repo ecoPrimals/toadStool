@@ -67,7 +67,7 @@ pub async fn run(shader_client: SharedVisualizationClient) {
                     discovery_available = true;
                 }
 
-                if let Some(new_rev) = response.get("revision").and_then(|v| v.as_u64()) {
+                if let Some(new_rev) = response.get("revision").and_then(serde_json::Value::as_u64) {
                     revision = new_rev;
                 }
 

@@ -122,7 +122,7 @@ impl CapabilityDomain {
 
     /// Legacy identity-based socket env var (fallback only).
     #[must_use]
-    #[deprecated(note = "use biomeos_socket_env() or capability discovery")]
+    #[deprecated(since = "0.4.0", note = "use biomeos_socket_env() or capability discovery")]
     #[expect(
         deprecated,
         reason = "legacy_socket_env intentionally references identity-based fallback env names"

@@ -175,7 +175,7 @@ fn run_wgpu_dispatch(
     // feeding non-SPIR-V to the Vulkan driver causes immediate device loss.
     let is_valid_spirv = binary.len() >= 4 && {
         let magic = u32::from_le_bytes([binary[0], binary[1], binary[2], binary[3]]);
-        magic == 0x07230203
+        magic == 0x0723_0203
     };
 
     let shader = if ctx.spirv_passthrough && is_valid_spirv {
@@ -246,7 +246,7 @@ fn run_wgpu_dispatch(
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main",
-            compilation_options: Default::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
 
@@ -294,12 +294,12 @@ fn run_wgpu_dispatch(
                 mapped_at_creation: false,
             });
 
-            if needs_upload {
-                if let Some(data) = desc.get("data").and_then(serde_json::Value::as_array) {
-                    let bytes: Vec<u8> =
-                        data.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect();
-                    ctx.queue.write_buffer(&gpu_buf, 0, &bytes);
-                }
+            if needs_upload
+                && let Some(data) = desc.get("data").and_then(serde_json::Value::as_array)
+            {
+                let bytes: Vec<u8> =
+                    data.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect();
+                ctx.queue.write_buffer(&gpu_buf, 0, &bytes);
             }
 
             let staging = if needs_readback {
@@ -346,10 +346,8 @@ fn run_wgpu_dispatch(
     }
 
     for (idx, (_meta_idx, size, needs_readback)) in readback_meta.iter().enumerate() {
-        if *needs_readback {
-            if let Some(staging) = &staging_buffers[idx] {
-                encoder.copy_buffer_to_buffer(&gpu_buffers[idx], 0, staging, 0, *size);
-            }
+        if *needs_readback && let Some(staging) = &staging_buffers[idx] {
+            encoder.copy_buffer_to_buffer(&gpu_buffers[idx], 0, staging, 0, *size);
         }
     }
 
@@ -362,38 +360,36 @@ fn run_wgpu_dispatch(
 
     let mut readback_results: Vec<serde_json::Value> = Vec::new();
     for (idx, (_meta_idx, size, needs_readback)) in readback_meta.iter().enumerate() {
-        if *needs_readback {
-            if let Some(staging) = &staging_buffers[idx] {
-                let slice = staging.slice(..);
-                let (tx, rx) = std::sync::mpsc::channel();
-                slice.map_async(wgpu::MapMode::Read, move |result| {
-                    let _ = tx.send(result);
-                });
-                ctx.device.poll(wgpu::Maintain::Wait);
+        if *needs_readback && let Some(staging) = &staging_buffers[idx] {
+            let slice = staging.slice(..);
+            let (tx, rx) = std::sync::mpsc::channel();
+            slice.map_async(wgpu::MapMode::Read, move |result| {
+                let _ = tx.send(result);
+            });
+            ctx.device.poll(wgpu::Maintain::Wait);
 
-                match rx.recv() {
-                    Ok(Ok(())) => {
-                        let data = slice.get_mapped_range();
-                        let b64 = base64::engine::general_purpose::STANDARD.encode(&*data);
-                        drop(data);
-                        staging.unmap();
-                        readback_results.push(serde_json::json!({
-                            "size": size,
-                            "data_b64": b64,
-                        }));
-                    }
-                    Ok(Err(e)) => {
-                        readback_results.push(serde_json::json!({
-                            "size": size,
-                            "error": format!("map failed: {e}"),
-                        }));
-                    }
-                    Err(e) => {
-                        readback_results.push(serde_json::json!({
-                            "size": size,
-                            "error": format!("recv failed: {e}"),
-                        }));
-                    }
+            match rx.recv() {
+                Ok(Ok(())) => {
+                    let data = slice.get_mapped_range();
+                    let b64 = base64::engine::general_purpose::STANDARD.encode(&*data);
+                    drop(data);
+                    staging.unmap();
+                    readback_results.push(serde_json::json!({
+                        "size": size,
+                        "data_b64": b64,
+                    }));
+                }
+                Ok(Err(e)) => {
+                    readback_results.push(serde_json::json!({
+                        "size": size,
+                        "error": format!("map failed: {e}"),
+                    }));
+                }
+                Err(e) => {
+                    readback_results.push(serde_json::json!({
+                        "size": size,
+                        "error": format!("recv failed: {e}"),
+                    }));
                 }
             }
         }

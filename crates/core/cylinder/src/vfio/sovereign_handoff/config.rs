@@ -4,19 +4,10 @@ use std::time::Duration;
 
 use super::types::{HandoffConfig, ModuleSourceConfig};
 
-/// Fallback DKMS version when discovery from `/var/lib/dkms/` fails.
-const FALLBACK_DKMS_VERSION: &str = "470.256.02";
-
 /// nvidia-470 is the last driver branch that supports GV100 (Titan V).
 /// nvidia-580+ dropped GV100 support entirely. Catalyst strategies for
 /// Titan V MUST use this version regardless of what's installed.
 const NVIDIA_470_DKMS_VERSION: &str = "470.256.02";
-
-/// Resolve the installed nvidia DKMS version, falling back to [`FALLBACK_DKMS_VERSION`].
-fn discovered_nvidia_dkms_version() -> String {
-    crate::vfio::kmod::discover_dkms_version("nvidia")
-        .unwrap_or_else(|| FALLBACK_DKMS_VERSION.to_owned())
-}
 
 impl HandoffConfig {
     /// Create a config for Titan V warm handoff via patched nouveau.

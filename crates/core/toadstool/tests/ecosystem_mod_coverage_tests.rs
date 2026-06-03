@@ -143,56 +143,6 @@ async fn test_ecosystem_discover_services_no_required() {
     assert!(services.is_empty() || !services.is_empty());
 }
 
-// ── get_primal_capabilities (deprecated) when found ────────────────────────────
-
-#[expect(deprecated)]
-#[tokio::test]
-async fn test_ecosystem_get_primal_capabilities_found() {
-    let coordinator = EcosystemCoordinator::new().await.unwrap();
-    let endpoint = ServiceEndpoint::http("127.0.0.1", 8888);
-    let cap = Capability::Compute(toadstool_common::primal_identity::ComputeCapability::GpuCompute);
-    let service =
-        make_discovered_service("primal-svc", "MyPrimal", vec![endpoint], vec![cap.clone()]);
-    coordinator.integrate_services(vec![service]).await.unwrap();
-    let caps = coordinator.get_primal_capabilities("MyPrimal").await;
-    assert!(caps.is_ok());
-    let cap_strs = caps.unwrap();
-    assert!(!cap_strs.is_empty());
-}
-
-#[expect(deprecated)]
-#[tokio::test]
-async fn test_ecosystem_get_primal_capabilities_not_found() {
-    let coordinator = EcosystemCoordinator::new().await.unwrap();
-    let result = coordinator
-        .get_primal_capabilities("NonexistentPrimal")
-        .await;
-    assert!(result.is_err());
-}
-
-// ── is_primal_available (deprecated) ───────────────────────────────────────────
-
-#[expect(deprecated)]
-#[tokio::test]
-async fn test_ecosystem_is_primal_available_when_registered() {
-    let coordinator = EcosystemCoordinator::new().await.unwrap();
-    let endpoint = ServiceEndpoint::http("127.0.0.1", 7777);
-    let service = make_discovered_service("avail-svc", "AvailablePrimal", vec![endpoint], vec![]);
-    coordinator.integrate_services(vec![service]).await.unwrap();
-    let available = coordinator.is_primal_available("AvailablePrimal").await;
-    let _ = available;
-}
-
-// ── get_primal_status (deprecated) ────────────────────────────────────────────
-
-#[expect(deprecated)]
-#[tokio::test]
-async fn test_ecosystem_get_primal_status() {
-    let coordinator = EcosystemCoordinator::new().await.unwrap();
-    let statuses = coordinator.get_primal_status().await.unwrap();
-    assert!(statuses.is_empty());
-}
-
 // ── integrate_services: register_service error path (continue) ───────────────
 
 #[tokio::test]

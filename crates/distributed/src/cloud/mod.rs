@@ -14,8 +14,10 @@ mod federation;
 mod load_balancing;
 mod orchestrator;
 mod scheduling;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 mod test_mocks;
+#[cfg(any(test, feature = "testing"))]
+pub use test_mocks::MockCloudProvider;
 /// Shared cloud configuration, capabilities, deployment, and cost types.
 pub mod types;
 

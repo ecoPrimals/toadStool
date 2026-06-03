@@ -198,9 +198,9 @@ fn read_gpu_registers_safe(bdf: &str) -> Option<Vec<(&'static str, u32)>> {
 }
 
 /// Start the kernel sentinel background thread. Call once at daemon startup.
-pub fn start_sentinel_thread() {
+pub fn start_sentinel_thread() -> std::io::Result<()> {
     if SENTINEL_ACTIVE.swap(true, Ordering::SeqCst) {
-        return; // already running
+        return Ok(()); // already running
     }
 
     std::thread::Builder::new()
@@ -308,5 +308,8 @@ pub fn start_sentinel_thread() {
             SENTINEL_ACTIVE.store(false, Ordering::SeqCst);
             info!("kernel sentinel thread exited");
         })
-        .expect("failed to spawn kernel sentinel thread");
+        .map(|_| ())
+        .inspect_err(|_| {
+            SENTINEL_ACTIVE.store(false, Ordering::SeqCst);
+        })
 }

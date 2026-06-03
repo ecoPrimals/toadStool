@@ -38,6 +38,16 @@ mod open_anchor;
 #[cfg(target_os = "linux")]
 mod open_vfio;
 #[cfg(target_os = "linux")]
+mod open_vfio_catalyst;
+#[cfg(target_os = "linux")]
+mod open_vfio_fecs_probe;
+#[cfg(target_os = "linux")]
+mod open_vfio_pfifo_recovery;
+#[cfg(target_os = "linux")]
+mod open_vfio_pgraph;
+#[cfg(target_os = "linux")]
+mod open_vfio_readiness;
+#[cfg(target_os = "linux")]
 mod pbdma;
 #[cfg(target_os = "linux")]
 mod warm_probe;

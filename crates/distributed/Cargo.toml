@@ -55,6 +55,10 @@ toadstool-sysmon = { workspace = true }
 # Configuration
 config = { workspace = true }
 [[test]]
+name = "cloud_orchestrator_coverage_tests"
+required-features = ["testing"]
+
+[[test]]
 name = "coordination_rpc_coverage_tests"
 required-features = ["testing"]
 

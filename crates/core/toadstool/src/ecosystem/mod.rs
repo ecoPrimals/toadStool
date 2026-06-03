@@ -312,58 +312,6 @@ impl EcosystemCoordinator {
     pub async fn service_count(&self) -> usize {
         self.management.service_count().await
     }
-
-    // ========================================================================
-    // Legacy Compatibility (Deprecated)
-    // ========================================================================
-
-    /// Get primal status (LEGACY)
-    ///
-    /// # ⚠️ Deprecated
-    /// Use `get_service_statuses()` instead.
-    ///
-    /// # Errors
-    ///
-    /// This function currently always returns `Ok`.
-    #[deprecated(since = "0.4.0", note = "Use get_service_statuses()")]
-    pub async fn get_primal_status(&self) -> ToadStoolResult<HashMap<String, ServiceStatus>> {
-        Ok(self.get_service_statuses().await)
-    }
-
-    /// Check if a primal is available (LEGACY)
-    ///
-    /// # ⚠️ Deprecated
-    /// Use `is_capability_available()` instead.
-    #[deprecated(since = "0.4.0", note = "Use is_capability_available()")]
-    pub async fn is_primal_available(&self, primal_name: &str) -> bool {
-        let services = self.management.get_all_services().await;
-        services.iter().any(|s| s.name == primal_name && s.healthy)
-    }
-
-    /// Get primal capabilities (LEGACY)
-    ///
-    /// # ⚠️ Deprecated
-    /// Use `get_service_capabilities()` instead.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if no service matches `primal_name`.
-    #[deprecated(since = "0.4.0", note = "Use get_service_capabilities()")]
-    pub async fn get_primal_capabilities(&self, primal_name: &str) -> ToadStoolResult<Vec<String>> {
-        let services = self.management.get_all_services().await;
-        let service = services
-            .iter()
-            .find(|s| s.name == primal_name)
-            .ok_or_else(|| {
-                ToadStoolError::not_found(format!("Service not found: {primal_name}"))
-            })?;
-
-        Ok(service
-            .capabilities
-            .iter()
-            .map(|c| format!("{c:?}"))
-            .collect())
-    }
 }
 
 #[cfg(test)]
@@ -449,11 +397,4 @@ mod tests {
         assert!(coordinator.is_ok());
     }
 
-    #[expect(deprecated, reason = "tests exercise deprecated is_primal_available API")]
-    #[tokio::test]
-    async fn test_deprecated_primal_available() {
-        let coordinator = EcosystemCoordinator::new().await.unwrap();
-        let available = coordinator.is_primal_available("unknown-primal").await;
-        assert!(!available);
-    }
 }

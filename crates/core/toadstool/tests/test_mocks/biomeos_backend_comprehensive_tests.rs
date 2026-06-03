@@ -14,31 +14,31 @@ use toadstool::biomeos_integration::storage_backend::*;
 use toadstool::biomeos_integration::types::*;
 
 // ============================================================================
-// BearDogBackend Tests - Authentication Backend (15 tests)
+// SecurityBackend Tests - Authentication Backend (15 tests)
 // ============================================================================
 
 #[test]
-fn test_beardog_backend_creation() {
-    let _backend = BearDogBackend::new("http://beardog:8081");
+fn test_security_backend_creation() {
+    let _backend = SecurityBackend::new("http://beardog:8081");
     // Backend should be constructed successfully
     // (We can't test internal fields directly, but construction validates the API)
 }
 
 #[test]
-fn test_beardog_backend_creation_with_string() {
+fn test_security_backend_creation_with_string() {
     let endpoint = String::from("http://beardog:8081");
-    let _backend = BearDogBackend::new(endpoint);
+    let _backend = SecurityBackend::new(endpoint);
     // Backend should accept String as endpoint
 }
 
 #[test]
-fn test_beardog_backend_creation_with_str() {
-    let _backend = BearDogBackend::new("http://beardog:8081");
+fn test_security_backend_creation_with_str() {
+    let _backend = SecurityBackend::new("http://beardog:8081");
     // Backend should accept &str as endpoint
 }
 
 #[test]
-fn test_beardog_backend_creation_various_endpoints() {
+fn test_security_backend_creation_various_endpoints() {
     // Test different endpoint formats
     let endpoints = vec![
         "http://localhost:8081",
@@ -48,7 +48,7 @@ fn test_beardog_backend_creation_various_endpoints() {
     ];
 
     for endpoint in endpoints {
-        let _backend = BearDogBackend::new(endpoint);
+        let _backend = SecurityBackend::new(endpoint);
         // Each endpoint should create a valid backend
     }
 }

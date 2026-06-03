@@ -53,24 +53,24 @@ pub const TOADSTOOL_INTELLIGENCE_SOCKET: &str = "TOADSTOOL_INTELLIGENCE_SOCKET";
 
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_CRYPTO_SOCKET` or capability discovery
 /// (`interned_strings::capabilities::CRYPTO`).
-#[deprecated(note = "use BIOMEOS_CRYPTO_SOCKET or capability discovery")]
+#[deprecated(since = "0.4.0", note = "use BIOMEOS_CRYPTO_SOCKET or capability discovery")]
 pub const LEGACY_BEARDOG_SOCKET_ENV: &str = "BEARDOG_SOCKET";
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_COORDINATION_SOCKET` or
 /// `interned_strings::capabilities::COORDINATION`.
-#[deprecated(note = "use BIOMEOS_COORDINATION_SOCKET or capability discovery")]
+#[deprecated(since = "0.4.0", note = "use BIOMEOS_COORDINATION_SOCKET or capability discovery")]
 pub const LEGACY_SONGBIRD_SOCKET_ENV: &str = "SONGBIRD_SOCKET";
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_STORAGE_SOCKET` or
 /// `interned_strings::capabilities::STORAGE`.
-#[deprecated(note = "use BIOMEOS_STORAGE_SOCKET or capability discovery")]
+#[deprecated(since = "0.4.0", note = "use BIOMEOS_STORAGE_SOCKET or capability discovery")]
 pub const LEGACY_NESTGATE_SOCKET_ENV: &str = "NESTGATE_SOCKET";
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_ROUTING_SOCKET` or
 /// `interned_strings::capabilities::ROUTING`.
-#[deprecated(note = "use BIOMEOS_ROUTING_SOCKET or capability discovery")]
+#[deprecated(since = "0.4.0", note = "use BIOMEOS_ROUTING_SOCKET or capability discovery")]
 pub const LEGACY_SQUIRREL_SOCKET_ENV: &str = "SQUIRREL_SOCKET";
 
 pub const TOADSTOOL_SOCKET: &str = "TOADSTOOL_SOCKET";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_SOCKET` or capability discovery.
-#[deprecated(note = "use TOADSTOOL_SOCKET or capability discovery")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_SOCKET or capability discovery")]
 pub const PRIMAL_SOCKET: &str = "PRIMAL_SOCKET";
 pub const TOADSTOOL_TARPC_SOCKET: &str = "TOADSTOOL_TARPC_SOCKET";
 pub const BIOMEOS_SOCKET_PATH: &str = "BIOMEOS_SOCKET_PATH";
@@ -84,46 +84,46 @@ pub const TOADSTOOL_COORDINATION_ENDPOINT: &str = "TOADSTOOL_COORDINATION_ENDPOI
 pub const COORDINATION_URL: &str = "COORDINATION_URL";
 pub const COORDINATION_ENDPOINT: &str = "COORDINATION_ENDPOINT";
 /// **Deprecated** (identity-based). Prefer `COORDINATION_URL`.
-#[deprecated(note = "use COORDINATION_URL")]
+#[deprecated(since = "0.4.0", note = "use COORDINATION_URL")]
 pub const LEGACY_SONGBIRD_URL: &str = "SONGBIRD_URL";
 /// **Deprecated** (identity-based). Prefer `COORDINATION_ENDPOINT`.
-#[deprecated(note = "use COORDINATION_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use COORDINATION_ENDPOINT")]
 pub const LEGACY_SONGBIRD_ENDPOINT: &str = "SONGBIRD_ENDPOINT";
 
 pub const TOADSTOOL_SECURITY_ENDPOINT: &str = "TOADSTOOL_SECURITY_ENDPOINT";
 pub const SECURITY_URL: &str = "SECURITY_URL";
 pub const SECURITY_ENDPOINT: &str = "SECURITY_ENDPOINT";
 /// **Deprecated** (identity-based). Prefer `SECURITY_URL`.
-#[deprecated(note = "use SECURITY_URL")]
+#[deprecated(since = "0.4.0", note = "use SECURITY_URL")]
 pub const LEGACY_BEARDOG_URL: &str = "BEARDOG_URL";
 /// **Deprecated** (identity-based). Prefer `SECURITY_ENDPOINT`.
-#[deprecated(note = "use SECURITY_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use SECURITY_ENDPOINT")]
 pub const LEGACY_BEARDOG_ENDPOINT: &str = "BEARDOG_ENDPOINT";
 
 pub const TOADSTOOL_STORAGE_ENDPOINT: &str = "TOADSTOOL_STORAGE_ENDPOINT";
 pub const STORAGE_URL: &str = "STORAGE_URL";
 pub const STORAGE_ENDPOINT: &str = "STORAGE_ENDPOINT";
 /// **Deprecated** (identity-based). Prefer `STORAGE_URL`.
-#[deprecated(note = "use STORAGE_URL")]
+#[deprecated(since = "0.4.0", note = "use STORAGE_URL")]
 pub const LEGACY_NESTGATE_URL: &str = "NESTGATE_URL";
 /// **Deprecated** (identity-based). Prefer `STORAGE_ENDPOINT`.
-#[deprecated(note = "use STORAGE_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use STORAGE_ENDPOINT")]
 pub const LEGACY_NESTGATE_ENDPOINT: &str = "NESTGATE_ENDPOINT";
 
 pub const TOADSTOOL_AI_ENDPOINT: &str = "TOADSTOOL_AI_ENDPOINT";
 pub const TOADSTOOL_INTELLIGENCE_ENDPOINT: &str = "TOADSTOOL_INTELLIGENCE_ENDPOINT";
 
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_ENDPOINT`.
-#[deprecated(note = "use TOADSTOOL_COORDINATION_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_COORDINATION_ENDPOINT")]
 pub const TOADSTOOL_SONGBIRD_ENDPOINT: &str = "TOADSTOOL_SONGBIRD_ENDPOINT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_SECURITY_ENDPOINT`.
-#[deprecated(note = "use TOADSTOOL_SECURITY_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_SECURITY_ENDPOINT")]
 pub const TOADSTOOL_BEARDOG_ENDPOINT: &str = "TOADSTOOL_BEARDOG_ENDPOINT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_STORAGE_ENDPOINT`.
-#[deprecated(note = "use TOADSTOOL_STORAGE_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_STORAGE_ENDPOINT")]
 pub const TOADSTOOL_NESTGATE_ENDPOINT: &str = "TOADSTOOL_NESTGATE_ENDPOINT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_AI_ENDPOINT`.
-#[deprecated(note = "use TOADSTOOL_AI_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_AI_ENDPOINT")]
 pub const TOADSTOOL_SQUIRREL_ENDPOINT: &str = "TOADSTOOL_SQUIRREL_ENDPOINT";
 pub const AI_PROCESSING_ENDPOINT: &str = "AI_PROCESSING_ENDPOINT";
 pub const TOADSTOOL_AI_PROCESSING_ENDPOINT: &str = "TOADSTOOL_AI_PROCESSING_ENDPOINT";
@@ -131,10 +131,10 @@ pub const INTELLIGENCE_URL: &str = "INTELLIGENCE_URL";
 pub const INTELLIGENCE_ENDPOINT: &str = "INTELLIGENCE_ENDPOINT";
 pub const AI_PROCESSING_URL: &str = "AI_PROCESSING_URL";
 /// **Deprecated** (identity-based). Prefer `INTELLIGENCE_URL`.
-#[deprecated(note = "use INTELLIGENCE_URL")]
+#[deprecated(since = "0.4.0", note = "use INTELLIGENCE_URL")]
 pub const LEGACY_SQUIRREL_URL: &str = "SQUIRREL_URL";
 /// **Deprecated** (identity-based). Prefer `INTELLIGENCE_ENDPOINT`.
-#[deprecated(note = "use INTELLIGENCE_ENDPOINT")]
+#[deprecated(since = "0.4.0", note = "use INTELLIGENCE_ENDPOINT")]
 pub const LEGACY_SQUIRREL_ENDPOINT: &str = "SQUIRREL_ENDPOINT";
 
 // HTTP URL overrides (parallel naming to `*_ENDPOINT`; used by discovery fallbacks and demos).
@@ -161,19 +161,19 @@ pub const INTELLIGENCE_PORT: &str = "INTELLIGENCE_PORT";
 /// Generic platform port (non-prefixed fallback).
 pub const PLATFORM_PORT: &str = "PLATFORM_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_PORT`.
-#[deprecated(note = "use TOADSTOOL_COORDINATION_PORT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_COORDINATION_PORT")]
 pub const TOADSTOOL_SONGBIRD_PORT: &str = "TOADSTOOL_SONGBIRD_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_PORT` or `COORDINATION_PORT`.
-#[deprecated(note = "use TOADSTOOL_COORDINATION_PORT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_COORDINATION_PORT")]
 pub const SONGBIRD_PORT: &str = "SONGBIRD_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_SECURITY_PORT` or `SECURITY_PORT`.
-#[deprecated(note = "use TOADSTOOL_SECURITY_PORT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_SECURITY_PORT")]
 pub const BEARDOG_PORT: &str = "BEARDOG_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_STORAGE_PORT` or `STORAGE_PORT`.
-#[deprecated(note = "use TOADSTOOL_STORAGE_PORT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_STORAGE_PORT")]
 pub const NESTGATE_PORT: &str = "NESTGATE_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_INTELLIGENCE_PORT` or `INTELLIGENCE_PORT`.
-#[deprecated(note = "use TOADSTOOL_INTELLIGENCE_PORT")]
+#[deprecated(since = "0.4.0", note = "use TOADSTOOL_INTELLIGENCE_PORT")]
 pub const SQUIRREL_PORT: &str = "SQUIRREL_PORT";
 
 /// NUCLEUS discovery socket (Songbird). Highest-precedence path for `coordination`
@@ -310,7 +310,7 @@ pub const FAMILY_SEED: &str = "FAMILY_SEED";
 // Auth tokens (coordination plane registration).
 pub const COORDINATION_AUTH_TOKEN: &str = "COORDINATION_AUTH_TOKEN";
 /// **Deprecated** (identity-based). Prefer `COORDINATION_AUTH_TOKEN`.
-#[deprecated(note = "use COORDINATION_AUTH_TOKEN")]
+#[deprecated(since = "0.4.0", note = "use COORDINATION_AUTH_TOKEN")]
 pub const LEGACY_SONGBIRD_AUTH_TOKEN: &str = "SONGBIRD_AUTH_TOKEN";
 
 // Optional capability endpoint env names (not socket-specific).
@@ -364,16 +364,16 @@ pub const STORAGE_DOMAIN: &str = "STORAGE_DOMAIN";
 pub const AI_PROCESSING_DOMAIN: &str = "AI_PROCESSING_DOMAIN";
 pub const BIOMEOS_DOMAIN: &str = "BIOMEOS_DOMAIN";
 /// **Deprecated** (identity-based). Prefer `COORDINATION_DOMAIN`.
-#[deprecated(note = "use COORDINATION_DOMAIN")]
+#[deprecated(since = "0.4.0", note = "use COORDINATION_DOMAIN")]
 pub const SONGBIRD_DOMAIN: &str = "SONGBIRD_DOMAIN";
 /// **Deprecated** (identity-based). Prefer `SECURITY_DOMAIN`.
-#[deprecated(note = "use SECURITY_DOMAIN")]
+#[deprecated(since = "0.4.0", note = "use SECURITY_DOMAIN")]
 pub const BEARDOG_DOMAIN: &str = "BEARDOG_DOMAIN";
 /// **Deprecated** (identity-based). Prefer `STORAGE_DOMAIN`.
-#[deprecated(note = "use STORAGE_DOMAIN")]
+#[deprecated(since = "0.4.0", note = "use STORAGE_DOMAIN")]
 pub const NESTGATE_DOMAIN: &str = "NESTGATE_DOMAIN";
 /// **Deprecated** (identity-based). Prefer `AI_PROCESSING_DOMAIN`.
-#[deprecated(note = "use AI_PROCESSING_DOMAIN")]
+#[deprecated(since = "0.4.0", note = "use AI_PROCESSING_DOMAIN")]
 pub const SQUIRREL_DOMAIN: &str = "SQUIRREL_DOMAIN";
 
 // DNS and server config.
@@ -387,13 +387,13 @@ pub const CRYPTO_PROVIDER_PUBLIC_KEY: &str = "CRYPTO_PROVIDER_PUBLIC_KEY";
 pub const STORAGE_PROVIDER_PUBLIC_KEY: &str = "STORAGE_PROVIDER_PUBLIC_KEY";
 pub const DISCOVERY_PROVIDER_PUBLIC_KEY: &str = "DISCOVERY_PROVIDER_PUBLIC_KEY";
 /// **Deprecated** (identity-based). Prefer `CRYPTO_PROVIDER_PUBLIC_KEY`.
-#[deprecated(note = "use CRYPTO_PROVIDER_PUBLIC_KEY")]
+#[deprecated(since = "0.4.0", note = "use CRYPTO_PROVIDER_PUBLIC_KEY")]
 pub const BEARDOG_PUBLIC_KEY: &str = "BEARDOG_PUBLIC_KEY";
 /// **Deprecated** (identity-based). Prefer `STORAGE_PROVIDER_PUBLIC_KEY`.
-#[deprecated(note = "use STORAGE_PROVIDER_PUBLIC_KEY")]
+#[deprecated(since = "0.4.0", note = "use STORAGE_PROVIDER_PUBLIC_KEY")]
 pub const NESTGATE_PUBLIC_KEY: &str = "NESTGATE_PUBLIC_KEY";
 /// **Deprecated** (identity-based). Prefer `DISCOVERY_PROVIDER_PUBLIC_KEY`.
-#[deprecated(note = "use DISCOVERY_PROVIDER_PUBLIC_KEY")]
+#[deprecated(since = "0.4.0", note = "use DISCOVERY_PROVIDER_PUBLIC_KEY")]
 pub const SONGBIRD_PUBLIC_KEY: &str = "SONGBIRD_PUBLIC_KEY";
 
 // Cylinder hardware paths and ember lifecycle.

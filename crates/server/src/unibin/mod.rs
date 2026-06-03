@@ -296,7 +296,9 @@ pub async fn run_server_main(
 
     // Exp 232: kernel oops sentinel — monitors /dev/kmsg for crash signatures
     // and saves triage reports before the system goes down.
-    crate::background::kernel_sentinel::start_sentinel_thread();
+    if let Err(e) = crate::background::kernel_sentinel::start_sentinel_thread() {
+        error!(error = %e, "failed to spawn kernel sentinel thread; crash forensics disabled");
+    }
 
     // PG-62: discovery registration and biomeOS scan run AFTER listeners are
     // spawned so that health.liveness is reachable during initialization.

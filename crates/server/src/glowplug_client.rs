@@ -35,19 +35,27 @@ pub struct EmberDeviceList {
 /// Enriched device info for `ember.list` / `device.list`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmberDeviceInfo {
+    /// PCI BDF address.
     pub bdf: String,
+    /// Human-readable device name, if known.
     pub name: Option<String>,
+    /// PCI vendor ID.
     pub vendor_id: u16,
+    /// Active personality (e.g. compute, display).
     pub personality: String,
+    /// Whether the device is protected from experiment takeover.
     #[serde(default)]
     pub protected: bool,
+    /// Whether VRAM is responding to probes.
     pub vram_alive: bool,
+    /// Number of faulted engine domains.
     pub domains_faulted: usize,
 }
 
 /// Enriched list response from `ember.list` / `device.list`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmberDeviceListEnriched {
+    /// Held devices with enriched metadata.
     pub devices: Vec<EmberDeviceInfo>,
 }
 
@@ -80,18 +88,27 @@ pub struct DeviceSwapResult {
     pub steps: Vec<DeviceSwapStep>,
 }
 
+/// Active experiment session on a held device.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExperimentSession {
+    /// PCI BDF address under experiment.
     pub bdf: String,
+    /// Session start time (seconds since daemon start).
     pub started_at: u64,
+    /// Whether the session is still active.
     pub active: bool,
 }
 
+/// Result of `experiment.start` / `experiment.stop` lifecycle calls.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExperimentLifecycleResult {
+    /// PCI BDF address.
     pub bdf: String,
+    /// Lifecycle action performed (`start` or `stop`).
     pub action: String,
+    /// Whether the action succeeded.
     pub success: bool,
+    /// Current session state, if applicable.
     pub session: Option<ExperimentSession>,
 }
 
@@ -248,8 +265,9 @@ impl GlowPlugClient {
         })
     }
 
+    /// Start or stop an experiment session on a held device.
     pub fn experiment_lifecycle(&self, bdf: &str, action: &str) -> ExperimentLifecycleResult {
-        let mut experiments = self.experiments.lock().unwrap_or_else(|e| e.into_inner());
+        let mut experiments = self.experiments.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         match action {
             "start" => {
                 let session = ExperimentSession {
@@ -460,10 +478,10 @@ fn is_display_connected(bdf: &str) -> bool {
             continue;
         }
         let status_path = entry.path().join("status");
-        if let Ok(status) = std::fs::read_to_string(status_path) {
-            if status.trim() == "connected" {
-                return true;
-            }
+        if let Ok(status) = std::fs::read_to_string(status_path)
+            && status.trim() == "connected"
+        {
+            return true;
         }
     }
     false

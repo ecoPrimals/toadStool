@@ -11,7 +11,7 @@
 )]
 //! Week 2 Network Configurator Expansion Tests
 //!
-//! Comprehensive tests for `SongbirdNetworkConfigurator` covering:
+//! Comprehensive tests for `OrchestrationNetworkConfigurator` covering:
 //! - Core configurator functionality
 //! - Service mesh operations
 //! - Discovery mechanisms
@@ -28,21 +28,21 @@ use toadstool_cli::network_config::*;
 
 #[test]
 fn test_configurator_new_creates_default_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     assert!(configurator.config.service_mesh.enabled);
     assert_eq!(configurator.config.service_mesh.mesh_type, "native");
 }
 
 #[test]
 fn test_configurator_default_trait() {
-    let configurator = SongbirdNetworkConfigurator::default();
+    let configurator = OrchestrationNetworkConfigurator::default();
     assert!(configurator.config.service_mesh.enabled);
     assert!(configurator.config.dns_discovery.enabled);
 }
 
 #[test]
 fn test_configurator_generates_summary() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let summary = configurator.generate_configuration_summary();
     assert!(summary.contains("Orchestration network configuration"));
     assert!(summary.contains("Service Mesh"));
@@ -51,7 +51,7 @@ fn test_configurator_generates_summary() {
 
 #[test]
 fn test_configurator_summary_includes_status() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let summary = configurator.generate_configuration_summary();
     assert!(summary.contains("Status: active"));
     assert!(summary.contains("configured"));
@@ -59,7 +59,7 @@ fn test_configurator_summary_includes_status() {
 
 #[test]
 fn test_configurator_summary_reflects_mesh_state() {
-    let mut configurator = SongbirdNetworkConfigurator::new();
+    let mut configurator = OrchestrationNetworkConfigurator::new();
     configurator.config.service_mesh.enabled = false;
     let summary = configurator.generate_configuration_summary();
     assert!(summary.contains("disabled"));
@@ -71,7 +71,7 @@ fn test_configurator_summary_reflects_mesh_state() {
 
 #[test]
 fn test_service_mesh_sidecar_defaults() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let sidecar = &configurator.config.service_mesh.sidecar;
     assert!(sidecar.enabled);
     assert_eq!(sidecar.image, "toadstool/service-mesh-proxy:latest");
@@ -79,7 +79,7 @@ fn test_service_mesh_sidecar_defaults() {
 
 #[test]
 fn test_service_mesh_proxy_config_defaults() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let proxy = &configurator.config.service_mesh.sidecar.proxy;
     assert_eq!(proxy.proxy_type, "envoy");
     assert_eq!(proxy.listen_port, 15001);
@@ -89,7 +89,7 @@ fn test_service_mesh_proxy_config_defaults() {
 
 #[test]
 fn test_service_mesh_mtls_env_driven() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let mtls = &configurator.config.service_mesh.mtls;
     let expect_enabled = std::env::var("TOADSTOOL_CA_CERT").is_ok();
     assert_eq!(mtls.enabled, expect_enabled);
@@ -98,7 +98,7 @@ fn test_service_mesh_mtls_env_driven() {
 
 #[test]
 fn test_service_mesh_resource_limits() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let resources = &configurator.config.service_mesh.sidecar.resources;
     assert_eq!(resources.cpu_limit, "200m");
     assert_eq!(resources.memory_limit, "256Mi");
@@ -108,7 +108,7 @@ fn test_service_mesh_resource_limits() {
 
 #[test]
 fn test_service_mesh_telemetry_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let telemetry = &configurator.config.service_mesh.sidecar.telemetry;
     assert!(telemetry.metrics_enabled);
     assert!(telemetry.tracing_enabled);
@@ -122,13 +122,13 @@ fn test_service_mesh_telemetry_config() {
 
 #[test]
 fn test_dns_discovery_enabled_by_default() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     assert!(configurator.config.dns_discovery.enabled);
 }
 
 #[test]
 fn test_dns_discovery_has_dns_servers() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let discovery = &configurator.config.dns_discovery;
     // Check that dns_servers field exists and is configured
     assert!(!discovery.dns_servers.is_empty() || discovery.dns_servers.is_empty());
@@ -136,7 +136,7 @@ fn test_dns_discovery_has_dns_servers() {
 
 #[test]
 fn test_dns_discovery_search_domains() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let discovery = &configurator.config.dns_discovery;
     // Verify search_domains configuration exists and is accessible
     let _domains = &discovery.search_domains;
@@ -145,7 +145,7 @@ fn test_dns_discovery_search_domains() {
 
 #[test]
 fn test_dns_discovery_service_domains() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let discovery = &configurator.config.dns_discovery;
     // Verify service_domains configuration exists and is accessible
     let _domains = &discovery.service_domains;
@@ -154,7 +154,7 @@ fn test_dns_discovery_service_domains() {
 
 #[test]
 fn test_dns_discovery_resolution_timeout() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let discovery = &configurator.config.dns_discovery;
     // Verify resolution_timeout configuration exists
     assert!(discovery.resolution_timeout > Duration::from_secs(0));
@@ -166,13 +166,13 @@ fn test_dns_discovery_resolution_timeout() {
 
 #[test]
 fn test_cross_primal_security_enabled() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     assert!(configurator.config.cross_primal_security.enabled);
 }
 
 #[test]
 fn test_authentication_config_exists() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let auth = &configurator.config.cross_primal_security.authentication;
     // Verify authentication config exists and is accessible
     // The mere fact that this compiles proves the field structure is valid
@@ -182,7 +182,7 @@ fn test_authentication_config_exists() {
 
 #[test]
 fn test_authorization_config_exists() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let authz = &configurator.config.cross_primal_security.authorization;
     // Verify authorization config exists and is accessible
     // The mere fact that this compiles proves the field structure is valid
@@ -192,7 +192,7 @@ fn test_authorization_config_exists() {
 
 #[test]
 fn test_network_isolation_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let isolation = &configurator.config.cross_primal_security.network_isolation;
     // Verify network isolation config exists and is accessible
     let _enabled = isolation.enabled;
@@ -201,7 +201,7 @@ fn test_network_isolation_config() {
 
 #[test]
 fn test_audit_logging_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let audit = &configurator.config.cross_primal_security.audit_logging;
     // Verify audit logging config exists and is accessible
     let _enabled = audit.enabled;
@@ -214,21 +214,21 @@ fn test_audit_logging_config() {
 
 #[test]
 fn test_traffic_management_exists() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let _config = &configurator.config.traffic_management;
     // Test passes if compilation succeeds and no panic occurs
 }
 
 #[test]
 fn test_load_balancing_exists() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let _config = &configurator.config.load_balancing;
     // Test passes if compilation succeeds and no panic occurs
 }
 
 #[test]
 fn test_circuit_breaker_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let _config = &configurator.config.circuit_breaker;
     // Test passes if compilation succeeds and no panic occurs
 }
@@ -239,21 +239,21 @@ fn test_circuit_breaker_config() {
 
 #[test]
 fn test_network_policies_config_exists() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let _config = &configurator.config.network_policies;
     // Test passes if compilation succeeds and no panic occurs
 }
 
 #[test]
 fn test_health_monitoring_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let _config = &configurator.config.health_monitoring;
     // Test passes if compilation succeeds and no panic occurs
 }
 
 #[test]
 fn test_service_discovery_config() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let discovery = &configurator.config.service_mesh.service_discovery;
     assert!(discovery.enabled);
 }
@@ -264,28 +264,28 @@ fn test_service_discovery_config() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_configurator_validation_succeeds_with_defaults() {
-    let configurator = SongbirdNetworkConfigurator::new();
+    let configurator = OrchestrationNetworkConfigurator::new();
     let result = configurator.validate_configuration();
     assert!(result.is_ok());
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_configurator_can_be_cloned_and_used() {
-    let configurator1 = SongbirdNetworkConfigurator::new();
+    let configurator1 = OrchestrationNetworkConfigurator::new();
     let config = configurator1.config;
     assert!(config.service_mesh.enabled);
 }
 
 #[test]
 fn test_configurator_config_can_be_modified() {
-    let mut configurator = SongbirdNetworkConfigurator::new();
+    let mut configurator = OrchestrationNetworkConfigurator::new();
     configurator.config.service_mesh.enabled = false;
     assert!(!configurator.config.service_mesh.enabled);
 }
 
 #[test]
 fn test_configurator_maintains_consistency_after_modification() {
-    let mut configurator = SongbirdNetworkConfigurator::new();
+    let mut configurator = OrchestrationNetworkConfigurator::new();
     let original_port = configurator.config.service_mesh.sidecar.proxy.listen_port;
     configurator.config.service_mesh.sidecar.proxy.listen_port = 20000;
     assert_eq!(
@@ -300,7 +300,7 @@ fn test_configurator_maintains_consistency_after_modification() {
 
 #[test]
 fn test_configurator_summary_updates_with_config_changes() {
-    let mut configurator = SongbirdNetworkConfigurator::new();
+    let mut configurator = OrchestrationNetworkConfigurator::new();
     configurator.config.service_mesh.enabled = false;
     let summary = configurator.generate_configuration_summary();
     assert!(summary.contains("disabled"));

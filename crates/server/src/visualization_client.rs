@@ -25,7 +25,7 @@ use toadstool_common::constants::primal_identity::capability;
 use toadstool_common::primal_sockets::{SocketPathEnv, resolve_capability_socket_fallback};
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use tokio::sync::RwLock;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Client for the native shader compilation pipeline (discovered via the `shader` capability).
 ///
@@ -193,15 +193,21 @@ impl VisualizationClient {
 pub struct ClientGuard<'a>(tokio::sync::RwLockReadGuard<'a, CachedClient>);
 
 impl<'a> ClientGuard<'a> {
-    pub fn get(&self) -> &UnixJsonRpcClient {
-        self.0.client.as_ref().expect("ClientGuard only constructed when client is Some")
-    }
-}
-
-impl<'a> std::ops::Deref for ClientGuard<'a> {
-    type Target = UnixJsonRpcClient;
-    fn deref(&self) -> &Self::Target {
-        self.get()
+    /// Returns the cached shader compiler client, if still present.
+    ///
+    /// `None` indicates an invariant violation (guard created with a client that
+    /// was cleared before use) — callers should treat it like an unavailable compiler.
+    pub fn get(&self) -> Option<&UnixJsonRpcClient> {
+        if let Some(client) = self.0.client.as_ref() {
+            Some(client)
+        } else {
+            debug_assert!(
+                self.0.client.is_some(),
+                "ClientGuard only constructed when client is Some"
+            );
+            warn!("shader compiler client unavailable despite ClientGuard — skipping dispatch");
+            None
+        }
     }
 }
 

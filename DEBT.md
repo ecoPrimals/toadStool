@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: June 2, 2026 — S283
+**Date**: June 3, 2026 — S284
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S284 (Deep Debt Evolution VI: Large File Splits + Deprecated Cleanup)**:
+Refactored all 3 remaining >800L production files by concern (sovereign_init
+991→7 modules, open_vfio 949→6 modules, experiment 911→5 modules). Eliminated
+last 2 production library panics (kernel_sentinel, visualization_client).
+Removed dead deprecated symbols (BearDogBackend, 6 legacy capability helpers,
+3 ecosystem methods). Tightened 30 LEGACY_* deprecation annotations. Fixed 33
+server clippy warnings + test compilation errors. All tests pass, full
+workspace clippy -D warnings clean.
 
 **S282 (Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization)**:
 Closed all 28 unsafe SAFETY documentation gaps (12 files). Evolved 4

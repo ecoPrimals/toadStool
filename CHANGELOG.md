@@ -5,7 +5,28 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 28, 2026 (Sessions 43-282)
+## [Unreleased] - Jun 3, 2026 (Sessions 43-284)
+
+### Session S284 (Jun 3, 2026) — Deep Debt Evolution VI: Large File Splits + Deprecated Cleanup + Final Panic Elimination
+
+Production panic elimination, large file smart refactoring, deprecated item pruning, test compilation fixes, and full workspace clippy -D warnings clean. All 3 remaining >800L production files split by concern (not line count). Dead deprecated symbols removed. Test suite 100% pass.
+
+- **REFACTORED**: `sovereign_init.rs` (991L) → module directory: `mod.rs` (216L) + `pre_memory.rs` (215L) + `memory_path.rs` (332L) + `post_memory.rs` (181L) + `context.rs` (78L) + `result.rs` (60L) + `engine_ungate.rs` (34L). Three-phase pipeline by GPU init stage.
+- **REFACTORED**: `open_vfio.rs` (949L) → `open_vfio.rs` (232L) + 5 sibling modules: `open_vfio_fecs_probe.rs` (152L), `open_vfio_pgraph.rs` (149L), `open_vfio_pfifo_recovery.rs` (344L), `open_vfio_catalyst.rs` (136L), `open_vfio_readiness.rs` (55L). Split by VFIO subsystem concern.
+- **REFACTORED**: `experiment.rs` (911L) → `experiment.rs` (40L) + 4 sibling modules: `experiment_snapshot.rs` (250L), `experiment_chip.rs` (102L), `experiment_stage_init.rs` (160L), `experiment_stage_ungate.rs` (384L). Split by experiment lifecycle phase.
+- **EVOLVED**: `kernel_sentinel.rs` — `.expect()` on thread spawn → `std::io::Result<()>` return; callers log and continue.
+- **EVOLVED**: `visualization_client.rs` — `.expect()` on invariant → `Option<&T>` return with `debug_assert!` + fallback dispatch.
+- **MIGRATED**: `akida-setup/main.rs` — `env::var("HOME")` → `socket_env::HOME`.
+- **HARDENED**: `pmc.rs` mmap — added `// SAFETY:` comment on rustix::mm::mmap unsafe block.
+- **REMOVED**: Dead deprecated items with zero production callers: `BearDogBackend` alias, `capability_to_service`/`service_to_capability`/4 related helpers, `get_primal_status`/`is_primal_available`/`get_primal_capabilities`.
+- **TIGHTENED**: All 30 `LEGACY_*` socket_env deprecations now have `since = "0.4.0"`.
+- **FIXED**: `discovered_nvidia_dkms_version()` + `FALLBACK_DKMS_VERSION` dead code removed from `config.rs`.
+- **FIXED**: `channel_init.rs` too-many-arguments — `#[allow(clippy::too_many_arguments)]` with reason.
+- **FIXED**: 33 clippy warnings in toadstool-server: long literals, collapsible ifs, redundant closures, `map_err` → `inspect_err`, `u64 as u128` → `u128::from()`, unused const, single-pattern match → if-let, `PipelineCompilationOptions::default()`.
+- **FIXED**: `cloud_orchestrator_coverage_tests.rs` — removed duplicate `#[path]` inclusion causing E0432/E0433 errors.
+- **FIXED**: `basic_template_comprehensive_tests.rs` — updated `beardog` → `crypto` for capability-based naming.
+- **MIGRATED**: `discovery_engine` registry — `well_known::BIOMEOS` → `runtime_types::BIOMEOS`.
+- METRICS: Zero >800L production files (3 refactored). Zero production library panics. ~98% env centralized. Zero dead deprecated callers. Full workspace clippy -D warnings clean. All tests pass.
 
 ### Session S282 (May 28, 2026) — Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization + Panic Elimination
 

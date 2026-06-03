@@ -66,11 +66,7 @@ pub use agents::*;
 pub use auth::*;
 #[cfg(any(test, feature = "test-mocks"))]
 pub use auth_backend::InMemoryAuthBackend;
-#[expect(
-    deprecated,
-    reason = "legacy auth backends during capability migration"
-)]
-pub use auth_backend::{AuthBackend, BearDogBackend, SecurityBackend};
+pub use auth_backend::{AuthBackend, SecurityBackend};
 pub use storage::*;
 pub use storage_backend::{
     InMemoryBackend, SocketStorageBackend, StorageBackend, StorageBackendDispatch, VolumeStatus,

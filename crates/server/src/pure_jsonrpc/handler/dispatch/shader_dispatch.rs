@@ -247,8 +247,10 @@ impl DispatchHandler {
             }
 
             let client = &self.coral_client;
-            if let Some(inner) = client.client_ref().await {
-                match inner
+            if let Some(inner) = client.client_ref().await
+                && let Some(compiler) = inner.get()
+            {
+                match compiler
                     .call("compute.dispatch.submit", dispatch_params)
                     .await
                 {

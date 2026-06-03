@@ -31,7 +31,6 @@ mod falcon_offsets {
     pub const CPUCTL: u32 = 0x100;
     pub const BOOTVEC: u32 = 0x104;
     pub const HWCFG: u32 = 0x108;
-    pub const PC: u32 = 0x030;
     /// CPUCTL bit 1 — release falcon from HRESET (v4+).
     pub const CPUCTL_STARTCPU: u32 = 1 << 1;
     /// CPUCTL bit 5 — falcon halted.
@@ -379,7 +378,7 @@ pub fn falcon_poll(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     loop {
         cpuctl = bar.read_u32(base + falcon_offsets::CPUCTL as usize);
         let halted = cpuctl & falcon_offsets::CPUCTL_HALTED != 0;
-        if halted || start.elapsed().as_millis() >= timeout_ms as u128 {
+        if halted || start.elapsed().as_millis() >= u128::from(timeout_ms) {
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(1));

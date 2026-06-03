@@ -113,6 +113,8 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
         }
     };
 
+    // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC interrupt registers;
+    // MAP_SHARED with READ|WRITE is required for MMIO quench writes.
     let map = unsafe {
         rustix::mm::mmap(
             std::ptr::null_mut(),

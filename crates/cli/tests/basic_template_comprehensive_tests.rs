@@ -74,7 +74,7 @@ fn test_basic_template_beardog_source() {
             digest,
         } => {
             assert!(registry.contains("ecosystem.sovereignscience.org"));
-            assert_eq!(image, "beardog"); // Default implementation
+            assert_eq!(image, "crypto");
             assert_eq!(tag, "latest");
             assert!(digest.is_none());
         }

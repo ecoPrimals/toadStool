@@ -88,7 +88,9 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
 
     // Start kernel oops sentinel — monitors /dev/kmsg for crash signatures
     // and saves triage reports before the system goes down (Exp 232)
-    kernel_sentinel::start_sentinel_thread();
+    if let Err(e) = kernel_sentinel::start_sentinel_thread() {
+        error!(error = %e, "failed to spawn kernel sentinel thread; crash forensics disabled");
+    }
 
     info!("Background services started");
 

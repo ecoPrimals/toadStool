@@ -3,6 +3,10 @@
 
 mod devinit;
 mod experiment;
+mod experiment_chip;
+mod experiment_snapshot;
+mod experiment_stage_init;
+mod experiment_stage_ungate;
 mod gr;
 mod memory;
 mod pmc;

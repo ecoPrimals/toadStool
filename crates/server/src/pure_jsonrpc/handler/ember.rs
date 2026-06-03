@@ -210,6 +210,7 @@ impl JsonRpcHandler {
     }
 
     /// `device.reset` — secondary bus reset via PCI sysfs.
+    #[allow(clippy::unused_self)]
     pub(super) fn device_reset(
         &self,
         params: Option<&serde_json::Value>,

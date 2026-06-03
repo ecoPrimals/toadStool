@@ -71,7 +71,7 @@ impl PrimalCapabilitiesRegistry {
     }
 
     /// Get migration fallback URL (deprecated)
-    #[deprecated(note = "Use capability discovery instead of migration fallbacks")]
+    #[deprecated(since = "0.4.0", note = "Use capability discovery instead of migration fallbacks")]
     #[must_use]
     pub fn get_migration_fallback(&self, primal_name: &str) -> Option<&str> {
         self.migration
