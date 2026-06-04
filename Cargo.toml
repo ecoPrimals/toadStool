@@ -56,11 +56,7 @@ members = [
     "examples",
 ]
 
-# Archived crates (not workspace members — build individually or move to fossilRecord):
-#   crates/runtime/python       — pyo3 removed; Squirrel IPC owns Python integration
-#   crates/ml/burn-inference    — burn-wgpu v23 conflicts with workspace wgpu v22
-
-exclude = ["fuzz", "crates/ml/burn-inference", "crates/runtime/python"]
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "0.2.0"
