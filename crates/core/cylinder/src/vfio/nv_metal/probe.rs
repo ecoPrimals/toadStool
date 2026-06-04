@@ -31,53 +31,46 @@ impl NvVoltaProbe {
     /// Print human-readable summary.
     pub fn print_summary(&self) {
         let mut s = String::new();
-        writeln!(
+        let _ = writeln!(
             &mut s,
             "╠══ LIVE HARDWARE PROBE ═════════════════════════════════════╣"
-        )
-        .expect("writing to String is infallible");
-        writeln!(&mut s, "║ PMC_ENABLE = {:#010x}", self.pmc_enable)
-            .expect("writing to String is infallible");
+        );
+        let _ = writeln!(&mut s, "║ PMC_ENABLE = {:#010x}", self.pmc_enable);
         for (name, active) in &self.domain_states {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║   {name:<8} → {}",
                 if *active { "ACTIVE" } else { "gated" }
-            )
-            .expect("writing to String is infallible");
+            );
         }
         if let Some(t) = self.temperature_c {
-            writeln!(&mut s, "║ Temperature: ~{}°C", t).expect("writing to String is infallible");
+            let _ = writeln!(&mut s, "║ Temperature: ~{}°C", t);
         }
-        writeln!(
+        let _ = writeln!(
             &mut s,
             "║ Active: {} GPCs, {} TPCs, {} FBPs",
             self.active_gpcs, self.active_tpcs, self.active_fbps
-        )
-        .expect("writing to String is infallible");
+        );
         for (idx, alive) in &self.fbpa_alive {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║   FBPA{idx}: {}",
                 if *alive { "alive" } else { "dead" }
-            )
-            .expect("writing to String is infallible");
+            );
         }
         for (idx, alive) in &self.ltc_alive {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║   LTC{idx}: {}",
                 if *alive { "alive" } else { "dead" }
-            )
-            .expect("writing to String is infallible");
+            );
         }
         for (name, base, ctrl, halted) in &self.falcon_states {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║   {name:6} @ {base:#08x}: CTRL={ctrl:#010x} {}",
                 if *halted { "HALTED" } else { "running?" },
-            )
-            .expect("writing to String is infallible");
+            );
         }
         tracing::info!(summary = %s, "live hardware probe");
     }

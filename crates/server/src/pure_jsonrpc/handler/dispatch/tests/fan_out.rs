@@ -2,6 +2,9 @@
 //! Tests for `compute.fan_out` — parallel clone dispatch per S263 wire contract.
 
 use super::test_handler;
+use crate::pure_jsonrpc::handler::method_gate::{
+    CallerContext, DispatchTrustLevel, ResourceEnvelope,
+};
 
 #[tokio::test]
 async fn fan_out_assigns_single_unit() {
@@ -156,4 +159,70 @@ async fn fan_out_omits_dag_session_id_when_not_provided() {
         .await
         .expect("fan_out without dag_session_id");
     assert!(result.get("dag_session_id").is_none());
+}
+
+fn ctx_with_envelope(cpu_cores: u32) -> CallerContext {
+    CallerContext {
+        identity: Some("did:key:z6Mk_fan_out_test".into()),
+        envelope: Some(ResourceEnvelope {
+            cpu_cores: Some(cpu_cores),
+            ..ResourceEnvelope::default()
+        }),
+        ..CallerContext::anonymous()
+    }
+}
+
+fn work_units_json(count: usize) -> serde_json::Value {
+    let units: Vec<serde_json::Value> = (0..count)
+        .map(|i| serde_json::json!({ "unit_id": format!("unit-{i}") }))
+        .collect();
+    serde_json::json!({ "work_units": units })
+}
+
+#[tokio::test]
+async fn fan_out_envelope_rejects_excess_units() {
+    let handler = test_handler();
+    let ctx = ctx_with_envelope(1);
+    let params = work_units_json(5);
+    let err = handler
+        .fan_out(Some(&params), &ctx)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err.code,
+        toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED
+    );
+    assert!(err.message.contains("Fan-out unit count"));
+    assert!(err.message.contains("cpu_cores"));
+}
+
+#[tokio::test]
+async fn fan_out_no_envelope_allows_any_count() {
+    let handler = test_handler();
+    let ctx = CallerContext::anonymous();
+    let params = work_units_json(20);
+    let result = handler
+        .fan_out(Some(&params), &ctx)
+        .await
+        .expect("anonymous caller should not cap fan-out units");
+    assert_eq!(result["total_units"], 20);
+}
+
+#[tokio::test]
+async fn fan_out_includes_caller_context_in_response() {
+    let handler = test_handler();
+    let ctx = CallerContext {
+        gate_id: Some("gate-audit-01".into()),
+        trust_level: DispatchTrustLevel::BtspVerified,
+        ..CallerContext::anonymous()
+    };
+    let params = serde_json::json!({
+        "work_units": [{ "unit_id": "u1" }],
+    });
+    let result = handler
+        .fan_out(Some(&params), &ctx)
+        .await
+        .expect("fan_out should echo caller context");
+    assert_eq!(result["caller"]["gate_id"], "gate-audit-01");
+    assert_eq!(result["caller"]["trust_level"], "btsp_verified");
 }

@@ -563,8 +563,7 @@ pub(super) fn vram_full_dispatch(ctx: &mut ExperimentContext<'_>) -> DriverResul
     for off in (0x000..=0x0FF_usize).step_by(4) {
         let val = ctx.r(PB2 + off);
         if val != 0 {
-            write!(&mut pb2_post_db, " [{off:#05x}]={val:#010x}")
-                .expect("writing to String is infallible");
+            let _ = write!(&mut pb2_post_db, " [{off:#05x}]={val:#010x}");
         }
     }
     tracing::trace!(dump = %pb2_post_db, "Q pb2-post-db");
@@ -608,8 +607,7 @@ pub(super) fn vram_full_dispatch(ctx: &mut ExperimentContext<'_>) -> DriverResul
         for off in (0x000..=0x0FF_usize).step_by(4) {
             let val = ctx.r(PB2 + off);
             if val != 0 {
-                write!(&mut pb2_retry, " [{off:#05x}]={val:#010x}")
-                    .expect("writing to String is infallible");
+                let _ = write!(&mut pb2_retry, " [{off:#05x}]={val:#010x}");
             }
         }
         tracing::trace!(dump = %pb2_retry, "Q pb2-retry");

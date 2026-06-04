@@ -244,33 +244,29 @@ impl PciDeviceInfo {
     /// Print a human-readable summary of the device.
     pub fn print_summary(&self) {
         let mut s = String::new();
-        writeln!(
+        let _ = writeln!(
             &mut s,
             "╠══ PCI DEVICE INFO ═════════════════════════════════════════╣"
-        )
-        .expect("writing to String is infallible");
-        writeln!(&mut s, "║ BDF:     {}", self.bdf).expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(&mut s, "║ BDF:     {}", self.bdf);
+        let _ = writeln!(
             &mut s,
             "║ ID:      {:04x}:{:04x} ({})",
             self.vendor_id, self.device_id, self.vendor
-        )
-        .expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(
             &mut s,
             "║ Class:   {:#08x} (base {:#04x})",
             self.class_code,
             pci_class_base(self.class_code)
-        )
-        .expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(
             &mut s,
             "║ Power:   {} (PMCSR={:#06x})",
             self.power.current_state, self.power.pmcsr_raw
-        )
-        .expect("writing to String is infallible");
+        );
         for bar in &self.bars {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║ BAR{}:    {:#014x} ({} KB) {}{}{}",
                 bar.index,
@@ -279,24 +275,21 @@ impl PciDeviceInfo {
                 if bar.is_mmio { "MMIO" } else { "IO" },
                 if bar.is_64bit { " 64bit" } else { "" },
                 if bar.is_prefetchable { " prefetch" } else { "" },
-            )
-            .expect("writing to String is infallible");
+            );
         }
         for cap in &self.capabilities {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║ Cap:     [{:#04x}] {} @ {:#04x}",
                 cap.id, cap.name, cap.offset
-            )
-            .expect("writing to String is infallible");
+            );
         }
         if let Some(ref link) = self.pcie_link {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║ PCIe:    x{} @ {} (max x{} @ {})",
                 link.current_width, link.current_speed, link.max_width, link.max_speed,
-            )
-            .expect("writing to String is infallible");
+            );
         }
         tracing::info!(summary = %s, "PCI device info");
     }

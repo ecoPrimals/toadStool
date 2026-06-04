@@ -16,6 +16,8 @@ testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for in
 dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
 # Stub for `security_provider` mock gates (`MockSecurityProvider`); cloud `test_mocks` uses `#[cfg(test)]` only
 test-mocks = []
+# Deprecated `coordination` module (~6k LOC); production uses `coordination_integration`
+legacy-coordination = []
 
 [dependencies]
 # Core ToadStool dependencies
@@ -61,6 +63,14 @@ required-features = ["testing"]
 [[test]]
 name = "coordination_rpc_coverage_tests"
 required-features = ["testing"]
+
+[[test]]
+name = "distributed_coverage_s155b_tests"
+required-features = ["legacy-coordination"]
+
+[[test]]
+name = "songbird_integration_tests"
+required-features = ["legacy-coordination"]
 
 [[test]]
 name = "beardog_client_coverage_tests"

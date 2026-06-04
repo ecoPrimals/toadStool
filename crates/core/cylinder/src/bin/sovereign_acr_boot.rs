@@ -306,24 +306,22 @@ fn main() -> ExitCode {
             if sec2_sig.is_some() { "OK" } else { "MISSING" }
         );
 
-        if fecs_inst.is_none()
-            || fecs_data.is_none()
-            || fecs_bl.is_none()
-            || gpccs_inst.is_none()
-            || gpccs_data.is_none()
-            || gpccs_bl.is_none()
-        {
-            println!("  [FATAL] Missing critical firmware blobs.");
-            fatal = true;
-        } else {
+        if let (
+            Some(fecs_bl),
+            Some(fecs_inst),
+            Some(fecs_data),
+            Some(gpccs_bl),
+            Some(gpccs_inst),
+            Some(gpccs_data),
+        ) = (
+            fecs_bl,
+            fecs_inst,
+            fecs_data,
+            gpccs_bl,
+            gpccs_inst,
+            gpccs_data,
+        ) {
             println!("  [OK] All critical blobs loaded.\n");
-
-            let fecs_bl = fecs_bl.unwrap();
-            let fecs_inst = fecs_inst.unwrap();
-            let fecs_data = fecs_data.unwrap();
-            let gpccs_bl = gpccs_bl.unwrap();
-            let gpccs_inst = gpccs_inst.unwrap();
-            let gpccs_data = gpccs_data.unwrap();
 
             /* Phase 2: Stage firmware to VRAM via PRAMIN */
             println!("=== Phase 2: Stage Firmware to VRAM ===");
@@ -556,6 +554,9 @@ fn main() -> ExitCode {
                 });
                 println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
             }
+        } else {
+            println!("  [FATAL] Missing critical firmware blobs.");
+            fatal = true;
         }
 
         drop(acr_bl);

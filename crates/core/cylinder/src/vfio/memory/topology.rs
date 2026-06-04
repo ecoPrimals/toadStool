@@ -99,23 +99,20 @@ impl MemoryTopology {
     /// Emit a human-readable memory topology summary via `tracing`.
     pub fn print_summary(&self) {
         let mut s = String::new();
-        writeln!(
+        let _ = writeln!(
             &mut s,
             "╠══ Memory Topology ═══════════════════════════════╣"
-        )
-        .expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(
             &mut s,
             "║ VRAM: accessible={} probed_size={:#x}",
             self.vram_accessible, self.vram_size_probed
-        )
-        .expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(
             &mut s,
             "║ SysMem: dma_ok={}  BAR2: configured={}",
             self.sysmem_dma_ok, self.bar2_configured
-        )
-        .expect("writing to String is infallible");
+        );
         for path in &self.paths {
             let status_str = match &path.status {
                 PathStatus::Working { latency_us } => format!("OK ({latency_us}us)"),
@@ -125,12 +122,11 @@ impl MemoryTopology {
                 PathStatus::ErrorPattern { pattern } => format!("ERROR ({pattern:#010x})"),
                 PathStatus::Untested => "UNTESTED".to_string(),
             };
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║   {} → {} via {}: {}",
                 path.from, path.to, path.method, status_str
-            )
-            .expect("writing to String is infallible");
+            );
         }
         tracing::info!(summary = %s, "memory topology");
     }

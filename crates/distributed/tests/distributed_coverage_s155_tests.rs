@@ -605,6 +605,7 @@ fn test_hosting_resource_manager_serialization() {
 // Coordination Integration Types (deprecated but still exported)
 // ============================================================================
 
+#[cfg(feature = "legacy-coordination")]
 #[test]
 fn test_coordination_job_complexity_variants() {
     use toadstool_distributed::coordination::JobComplexity;
@@ -614,6 +615,7 @@ fn test_coordination_job_complexity_variants() {
     let _ = JobComplexity::UltraMassive;
 }
 
+#[cfg(feature = "legacy-coordination")]
 #[test]
 fn test_coordination_distribution_strategy_variants() {
     use toadstool_distributed::coordination::JobDistributionStrategy;

@@ -64,35 +64,26 @@ impl DevinitStatus {
 
     /// Append devinit status lines (shared with [`FalconDiagnostic::print_report`]).
     pub(crate) fn write_summary_lines(&self, s: &mut String) {
-        writeln!(
+        let _ = writeln!(
             s,
             "╠══ DEVINIT STATUS ══════════════════════════════════════════╣"
-        )
-        .expect("writing to String is infallible");
-        writeln!(s, "║ devinit_reg[0x2240c]  = {:#010x}", self.devinit_reg)
-            .expect("writing to String is infallible");
-        writeln!(s, "║ needs_post (bit1==0)  = {}", self.needs_post)
-            .expect("writing to String is infallible");
-        writeln!(s, "║ PMU FALCON ID         = {:#010x}", self.pmu_id)
-            .expect("writing to String is infallible");
-        writeln!(s, "║ PMU FALCON HWCFG      = {:#010x}", self.pmu_hwcfg)
-            .expect("writing to String is infallible");
-        writeln!(s, "║ PMU FALCON CTRL       = {:#010x}", self.pmu_ctrl)
-            .expect("writing to String is infallible");
-        writeln!(s, "║ PMU MBOX0             = {:#010x}", self.pmu_mbox0)
-            .expect("writing to String is infallible");
+        );
+        let _ = writeln!(s, "║ devinit_reg[0x2240c]  = {:#010x}", self.devinit_reg);
+        let _ = writeln!(s, "║ needs_post (bit1==0)  = {}", self.needs_post);
+        let _ = writeln!(s, "║ PMU FALCON ID         = {:#010x}", self.pmu_id);
+        let _ = writeln!(s, "║ PMU FALCON HWCFG      = {:#010x}", self.pmu_hwcfg);
+        let _ = writeln!(s, "║ PMU FALCON CTRL       = {:#010x}", self.pmu_ctrl);
+        let _ = writeln!(s, "║ PMU MBOX0             = {:#010x}", self.pmu_mbox0);
         if self.needs_post {
-            writeln!(
+            let _ = writeln!(
                 s,
                 "║ *** GPU REQUIRES DEVINIT POST (HBM2 training not done) ***"
-            )
-            .expect("writing to String is infallible");
+            );
         } else {
-            writeln!(
+            let _ = writeln!(
                 s,
                 "║ GPU devinit already complete — HBM2 should be trained."
-            )
-            .expect("writing to String is infallible");
+            );
         }
     }
 
@@ -217,102 +208,83 @@ impl FalconDiagnostic {
     /// Print a human-readable diagnostic report.
     pub fn print_report(&self) {
         let mut s = String::new();
-        writeln!(
+        let _ = writeln!(
             &mut s,
             "╠══ PMU FALCON DIAGNOSTIC ═══════════════════════════════════╣"
-        )
-        .expect("writing to String is infallible");
+        );
         self.status.write_summary_lines(&mut s);
-        writeln!(&mut s, "║").expect("writing to String is infallible");
-        writeln!(&mut s, "║ FALCON Security:").expect("writing to String is infallible");
-        writeln!(&mut s, "║   Secure boot required: {}", self.secure_boot)
-            .expect("writing to String is infallible");
-        writeln!(&mut s, "║   FALCON halted: {}", self.falcon_halted)
-            .expect("writing to String is infallible");
-        writeln!(&mut s, "║   FALCON PC: {:#010x}", self.falcon_pc)
-            .expect("writing to String is infallible");
-        writeln!(&mut s, "║   FALCON MBOX1: {:#010x}", self.falcon_mbox1)
-            .expect("writing to String is infallible");
-        writeln!(
+        let _ = writeln!(&mut s, "║");
+        let _ = writeln!(&mut s, "║ FALCON Security:");
+        let _ = writeln!(&mut s, "║   Secure boot required: {}", self.secure_boot);
+        let _ = writeln!(&mut s, "║   FALCON halted: {}", self.falcon_halted);
+        let _ = writeln!(&mut s, "║   FALCON PC: {:#010x}", self.falcon_pc);
+        let _ = writeln!(&mut s, "║   FALCON MBOX1: {:#010x}", self.falcon_mbox1);
+        let _ = writeln!(
             &mut s,
             "║   IMEM: {} KB, DMEM: {} KB",
             self.imem_size_kb, self.dmem_size_kb
-        )
-        .expect("writing to String is infallible");
-        writeln!(&mut s, "║").expect("writing to String is infallible");
-        writeln!(&mut s, "║ PROM Access:").expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(&mut s, "║");
+        let _ = writeln!(&mut s, "║ PROM Access:");
+        let _ = writeln!(
             &mut s,
             "║   Enable reg (0x1854): {:#010x}",
             self.prom_enable_reg
-        )
-        .expect("writing to String is infallible");
-        writeln!(
+        );
+        let _ = writeln!(
             &mut s,
             "║   PROM signature: {:#010x} ({})",
             self.prom_signature,
             if self.prom_accessible { "OK" } else { "FAIL" }
-        )
-        .expect("writing to String is infallible");
-        writeln!(&mut s, "║").expect("writing to String is infallible");
-        writeln!(&mut s, "║ VBIOS Sources:").expect("writing to String is infallible");
+        );
+        let _ = writeln!(&mut s, "║");
+        let _ = writeln!(&mut s, "║ VBIOS Sources:");
         for (name, ok, detail) in &self.vbios_sources {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║   {} {} — {}",
                 if *ok { "✓" } else { "✗" },
                 name,
                 detail
-            )
-            .expect("writing to String is infallible");
+            );
         }
-        writeln!(&mut s, "║").expect("writing to String is infallible");
+        let _ = writeln!(&mut s, "║");
 
         if self.status.needs_post {
             if self.secure_boot {
-                writeln!(&mut s, "║ RECOMMENDATION: PMU requires signed firmware.")
-                    .expect("writing to String is infallible");
-                writeln!(
+                let _ = writeln!(&mut s, "║ RECOMMENDATION: PMU requires signed firmware.");
+                let _ = writeln!(
                     &mut s,
                     "║   → Use host-side VBIOS interpreter (interpret_boot_scripts)"
-                )
-                .expect("writing to String is infallible");
-                writeln!(&mut s, "║   → Or use differential replay from oracle card")
-                    .expect("writing to String is infallible");
+                );
+                let _ = writeln!(&mut s, "║   → Or use differential replay from oracle card");
             } else if self.prom_accessible {
-                writeln!(&mut s, "║ RECOMMENDATION: FALCON upload should work.")
-                    .expect("writing to String is infallible");
-                writeln!(&mut s, "║   → Try execute_devinit() with PROM-read VBIOS")
-                    .expect("writing to String is infallible");
+                let _ = writeln!(&mut s, "║ RECOMMENDATION: FALCON upload should work.");
+                let _ = writeln!(&mut s, "║   → Try execute_devinit() with PROM-read VBIOS");
             } else {
-                writeln!(
+                let _ = writeln!(
                     &mut s,
                     "║ RECOMMENDATION: PROM inaccessible, FALCON unsigned."
-                )
-                .expect("writing to String is infallible");
+                );
                 if self.vbios_sources.iter().any(|(_, ok, _)| *ok) {
-                    writeln!(&mut s, "║   → Try execute_devinit() with file-based VBIOS")
-                        .expect("writing to String is infallible");
+                    let _ = writeln!(&mut s, "║   → Try execute_devinit() with file-based VBIOS");
                 } else {
-                    writeln!(
+                    let _ = writeln!(
                         &mut s,
                         "║   → No VBIOS source available — try oracle replay"
-                    )
-                    .expect("writing to String is infallible");
+                    );
                 }
             }
         } else {
-            writeln!(
+            let _ = writeln!(
                 &mut s,
                 "║ RECOMMENDATION: Devinit already complete, no action needed."
-            )
-            .expect("writing to String is infallible");
+            );
         }
-        writeln!(
+        let _ = writeln!(
             &mut s,
             "╚═══════════════════════════════════════════════════════════╝"
-        )
-        .expect("writing to String is infallible");
+        );
         tracing::info!(summary = %s, "PMU FALCON diagnostic");
     }
 

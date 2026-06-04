@@ -16,11 +16,10 @@ use std::sync::atomic::Ordering;
 
 impl DispatchHandler {
     /// Handle `compute.fan_out` — parallel dispatch of multiple work units.
-    #[expect(clippy::unused_async, reason = "async for wire contract consistency with other dispatch methods")]
     pub(crate) async fn fan_out(
         &self,
         params: Option<&serde_json::Value>,
-        _ctx: &CallerContext,
+        ctx: &CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| {
             JsonRpcError::invalid_params("compute.fan_out requires params")
@@ -50,6 +49,28 @@ impl DispatchHandler {
             .get("dag_session_id")
             .and_then(|v| v.as_str())
             .map(String::from);
+
+        if filter.gpu_required {
+            self.pre_dispatch_resource_check("auto", Some(ctx), Some(params))
+                .await?;
+        }
+
+        if let Some(ref env) = ctx.envelope
+            && let Some(cpu_cores) = env.cpu_cores
+        {
+            let max_concurrent = u64::from(cpu_cores) * 4;
+            if work_units.len() as u64 > max_concurrent {
+                return Err(JsonRpcError::server_error(
+                    toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,
+                    format!(
+                        "Fan-out unit count ({}) exceeds envelope cpu_cores ({}) × 4 = {} max concurrent",
+                        work_units.len(),
+                        cpu_cores,
+                        max_concurrent,
+                    ),
+                ));
+            }
+        }
 
         let dispatch_id = format!(
             "fan-{}",
@@ -105,6 +126,24 @@ impl DispatchHandler {
         if let Some(session_id) = dag_session_id {
             result["dag_session_id"] = serde_json::Value::String(session_id);
         }
+
+        result["caller"] = serde_json::json!({
+            "gate_id": ctx.gate_id,
+            "trust_level": ctx.trust_level,
+        });
+
+        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+            ctx,
+            method: "compute.fan_out",
+            dispatch_ms: 0,
+            readback_ms: 0,
+            dispatch_mode: if has_gpu { "local_cylinder" } else { "cpu" },
+            bdf: "auto",
+            binary_bytes: &[],
+            workgroup_size: [total_units as u32, 1, 1],
+            timeout_ms: 0,
+            success: true,
+        });
 
         Ok(result)
     }
