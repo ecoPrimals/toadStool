@@ -163,7 +163,7 @@ fn test_discovery_result_creation() {
 
 #[test]
 fn test_beardog_permission_creation() {
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: Uuid::new_v4(),
         granted_to: "test-service".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
@@ -324,9 +324,7 @@ fn test_ecosystem_integrator_default() {
 fn test_create_permission_message() {
     // NOTE: This test is kept for backward compatibility but the underlying
     // implementation now uses capability-based crypto adapters.
-    // The `BearDogPermission` type is maintained for legacy compatibility.
-
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: Uuid::new_v4(),
         granted_to: "test-service".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
@@ -516,7 +514,7 @@ fn test_beardog_permission_expiration() {
     let now = std::time::SystemTime::now();
     let future = now + std::time::Duration::from_secs(2 * 3600);
 
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: Uuid::new_v4(),
         granted_to: "test".to_string(),
         capabilities: vec!["read".to_string()],

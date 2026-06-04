@@ -81,6 +81,7 @@ unsafe impl Ioctl for DmaMapIoctl<'_> {
         _: IoctlOutput,
         _: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // SAFETY: No-op — body is intentionally empty (trait method stub for ioctl infrastructure).
         Ok(())
     }
 }
@@ -106,6 +107,7 @@ unsafe impl Ioctl for DmaUnmapIoctl<'_> {
         _: IoctlOutput,
         _: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // SAFETY: No-op — body is intentionally empty (trait method stub for ioctl infrastructure).
         Ok(())
     }
 }

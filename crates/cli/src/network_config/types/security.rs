@@ -81,9 +81,6 @@ pub struct SecurityServiceIntegrationConfig {
 /// Short alias for [`SecurityServiceIntegrationConfig`].
 pub type PkiSecurityConfig = SecurityServiceIntegrationConfig;
 
-/// Legacy alias — prefer [`SecurityServiceIntegrationConfig`].
-pub type BearDogIntegrationConfig = SecurityServiceIntegrationConfig;
-
 /// Authorization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthorizationConfig {

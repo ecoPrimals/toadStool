@@ -22,7 +22,7 @@ use super::read_hwmon_power;
 use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::capabilities::Capabilities;
 use crate::error::{AkidaError, Result};
-use crate::mmio::{Bar, MappedRegion, regs};
+use crate::mmio::{Bar, MappedRegion, MmioAccessError, regs};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, OwnedFd};
 use toadstool_hw_safe::vfio_setup;
@@ -31,6 +31,11 @@ use types::ioctls;
 
 fn vfio_err(op: &str, e: &std::io::Error) -> AkidaError {
     AkidaError::capability_query_failed(format!("VFIO {op}: {e}"))
+}
+
+#[allow(clippy::needless_pass_by_value, reason = "used as map_err closure target")]
+fn mmio_err(e: MmioAccessError) -> AkidaError {
+    AkidaError::hardware_error(format!("MMIO access: {e}"))
 }
 
 /// VFIO NPU backend with DMA support.
@@ -105,14 +110,24 @@ impl VfioBackend {
         size_reg: usize,
         iova: u64,
         size: usize,
-    ) {
-        self.control_regs.write32(addr_lo, iova as u32);
-        self.control_regs.write32(addr_hi, (iova >> 32) as u32);
-        self.control_regs.write32(size_reg, size as u32);
+    ) -> Result<()> {
+        self.control_regs
+            .try_write32(addr_lo, iova as u32)
+            .map_err(mmio_err)?;
+        self.control_regs
+            .try_write32(addr_hi, (iova >> 32) as u32)
+            .map_err(mmio_err)?;
+        self.control_regs
+            .try_write32(size_reg, size as u32)
+            .map_err(mmio_err)?;
+        Ok(())
     }
 
     fn check_not_busy(&self, op: &str) -> Result<()> {
-        let status = self.control_regs.read32(regs::STATUS);
+        let status = self
+            .control_regs
+            .try_read32(regs::STATUS)
+            .map_err(mmio_err)?;
         if status & regs::status::BUSY != 0 {
             return Err(AkidaError::hardware_error(format!(
                 "Device busy, cannot {op}"
@@ -132,7 +147,7 @@ impl VfioBackend {
             error_msg,
         } = cfg;
         for i in 0..max_polls {
-            let val = self.control_regs.read32(reg);
+            let val = self.control_regs.try_read32(reg).map_err(mmio_err)?;
             if val & done_mask != 0 {
                 return Ok(i + 1);
             }
@@ -262,8 +277,10 @@ impl NpuBackend for VfioBackend {
             regs::MODEL_SIZE,
             buffer.iova(),
             model.len(),
-        );
-        self.control_regs.write32(regs::MODEL_LOAD, 1);
+        )?;
+        self.control_regs
+            .try_write32(regs::MODEL_LOAD, 1)
+            .map_err(mmio_err)?;
 
         let polls = self.poll_register(PollConfig {
             reg: regs::STATUS,
@@ -304,8 +321,10 @@ impl NpuBackend for VfioBackend {
             regs::MODEL_SIZE,
             buffer.iova(),
             total_size,
-        );
-        self.control_regs.write32(regs::MODEL_LOAD, 1);
+        )?;
+        self.control_regs
+            .try_write32(regs::MODEL_LOAD, 1)
+            .map_err(mmio_err)?;
 
         let polls = self.poll_register(PollConfig {
             reg: regs::STATUS,
@@ -329,7 +348,10 @@ impl NpuBackend for VfioBackend {
         }
         self.check_not_busy("run inference")?;
 
-        let status = self.control_regs.read32(regs::STATUS);
+        let status = self
+            .control_regs
+            .try_read32(regs::STATUS)
+            .map_err(mmio_err)?;
         if status & regs::status::READY == 0 {
             return Err(AkidaError::hardware_error("Device not ready"));
         }
@@ -374,16 +396,18 @@ impl NpuBackend for VfioBackend {
             regs::INPUT_SIZE,
             input_iova,
             input_bytes.len(),
-        );
+        )?;
         self.write_iova_regs(
             regs::OUTPUT_ADDR_LO,
             regs::OUTPUT_ADDR_HI,
             regs::OUTPUT_SIZE,
             output_iova,
             output_size,
-        );
+        )?;
 
-        self.control_regs.write32(regs::INFER_START, 1);
+        self.control_regs
+            .try_write32(regs::INFER_START, 1)
+            .map_err(mmio_err)?;
         tracing::debug!(
             "Triggered inference: input_iova={input_iova:#x}, output_iova={output_iova:#x}"
         );
@@ -398,7 +422,10 @@ impl NpuBackend for VfioBackend {
             error_msg: "Inference failed with device error",
         })?;
 
-        let actual_output_size = self.control_regs.read32(regs::OUTPUT_SIZE) as usize;
+        let actual_output_size = self
+            .control_regs
+            .try_read32(regs::OUTPUT_SIZE)
+            .map_err(mmio_err)? as usize;
         let output_floats = actual_output_size.min(output_size) / std::mem::size_of::<f32>();
         tracing::debug!("Inference completed after {polls} polls, output: {output_floats} floats");
 
@@ -424,7 +451,9 @@ impl NpuBackend for VfioBackend {
     }
 
     fn is_ready(&self) -> bool {
-        let status = self.control_regs.read32(regs::STATUS);
+        let Ok(status) = self.control_regs.try_read32(regs::STATUS) else {
+            return false;
+        };
         let ready = status & regs::status::READY != 0;
         let not_busy = status & regs::status::BUSY == 0;
         let no_error = status & regs::status::ERROR == 0;

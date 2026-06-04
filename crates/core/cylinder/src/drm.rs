@@ -408,6 +408,7 @@ unsafe impl<T> rustix::ioctl::Ioctl for DrmIoctlCmd<'_, T> {
         _output: rustix::ioctl::IoctlOutput,
         _ptr: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // SAFETY: No-op — body is intentionally empty (trait method stub for ioctl infrastructure).
         Ok(())
     }
 }

@@ -261,6 +261,8 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
         _ioctl_ret: IoctlOutput,
         extract_output: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // SAFETY: No-op output extraction — kernel consumed/wrote the buffer at `as_ptr()`;
+        // `extract_output` matches that address (rustix invariant); we do not read `T` here.
         // `extract_output` is the same address passed to `ioctl` (see rustix `Ioctl`).
         debug_assert!(
             !extract_output.is_null(),

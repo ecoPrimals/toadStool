@@ -46,6 +46,12 @@ fn step_json(name: &str, ok: bool, detail: serde_json::Value) -> serde_json::Val
     serde_json::json!({"step": name, "ok": ok, "detail": detail})
 }
 
+fn ne_bytes<const N: usize>(slice: &[u8], field: &str) -> Result<[u8; N], String> {
+    slice
+        .try_into()
+        .map_err(|_| format!("card_info {field}: expected {N} bytes, got {}", slice.len()))
+}
+
 fn print_result(result: &serde_json::Value) {
     println!("{}", serde_json::to_string_pretty(result).unwrap_or_default());
 }
@@ -224,7 +230,7 @@ fn disable_pci_msi_config(bdf: &str) {
     }
 }
 
-fn run_card_info(fd: &impl AsFd) -> serde_json::Value {
+fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     const CARD_INFO_ENTRY: usize = 72;
     const MAX_CARDS: usize = 8;
     const CARD_INFO_OP: Opcode = iowr(NV_IOCTL_MAGIC, 0xC8, CARD_INFO_ENTRY * MAX_CARDS);
@@ -240,19 +246,19 @@ fn run_card_info(fd: &impl AsFd) -> serde_json::Value {
         let off = i * CARD_INFO_ENTRY;
         let valid = ci_buf[off];
         if valid == 0 { continue; }
-        let domain = u32::from_ne_bytes(ci_buf[off+4..off+8].try_into().unwrap());
+        let domain = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 4..off + 8], "domain")?);
         let bus = ci_buf[off+8];
         let slot = ci_buf[off+9];
         let func = ci_buf[off+10];
-        let vendor = u16::from_ne_bytes(ci_buf[off+12..off+14].try_into().unwrap());
-        let devid = u16::from_ne_bytes(ci_buf[off+14..off+16].try_into().unwrap());
-        let gpu_id = u32::from_ne_bytes(ci_buf[off+16..off+20].try_into().unwrap());
-        let irq = u16::from_ne_bytes(ci_buf[off+20..off+22].try_into().unwrap());
-        let reg_addr = u64::from_ne_bytes(ci_buf[off+24..off+32].try_into().unwrap());
-        let reg_size = u64::from_ne_bytes(ci_buf[off+32..off+40].try_into().unwrap());
-        let fb_addr = u64::from_ne_bytes(ci_buf[off+40..off+48].try_into().unwrap());
-        let fb_size = u64::from_ne_bytes(ci_buf[off+48..off+56].try_into().unwrap());
-        let minor = u32::from_ne_bytes(ci_buf[off+56..off+60].try_into().unwrap());
+        let vendor = u16::from_ne_bytes(ne_bytes(&ci_buf[off + 12..off + 14], "vendor")?);
+        let devid = u16::from_ne_bytes(ne_bytes(&ci_buf[off + 14..off + 16], "devid")?);
+        let gpu_id = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 16..off + 20], "gpu_id")?);
+        let irq = u16::from_ne_bytes(ne_bytes(&ci_buf[off + 20..off + 22], "irq")?);
+        let reg_addr = u64::from_ne_bytes(ne_bytes(&ci_buf[off + 24..off + 32], "reg_addr")?);
+        let reg_size = u64::from_ne_bytes(ne_bytes(&ci_buf[off + 32..off + 40], "reg_size")?);
+        let fb_addr = u64::from_ne_bytes(ne_bytes(&ci_buf[off + 40..off + 48], "fb_addr")?);
+        let fb_size = u64::from_ne_bytes(ne_bytes(&ci_buf[off + 48..off + 56], "fb_size")?);
+        let minor = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 56..off + 60], "minor")?);
         eprintln!("  card[{i}]: valid={valid} {domain:04x}:{bus:02x}:{slot:02x}.{func} vendor=0x{vendor:04x} dev=0x{devid:04x} gpu_id=0x{gpu_id:x} irq={irq} minor={minor}");
         eprintln!("    regs=0x{reg_addr:x}+0x{reg_size:x} fb=0x{fb_addr:x}+0x{fb_size:x}");
     }
@@ -261,7 +267,7 @@ fn run_card_info(fd: &impl AsFd) -> serde_json::Value {
         let off = i * CARD_INFO_ENTRY;
         let valid = ci_buf[off];
         if valid == 0 { continue; }
-        let domain = u32::from_ne_bytes(ci_buf[off+4..off+8].try_into().unwrap());
+        let domain = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 4..off + 8], "domain")?);
         let bus = ci_buf[off+8];
         let slot = ci_buf[off+9];
         let func = ci_buf[off+10];
@@ -296,7 +302,11 @@ fn run_card_info(fd: &impl AsFd) -> serde_json::Value {
         break;
     }
 
-    step_json("card_info", rc == 0, serde_json::json!({"rc": rc, "errno": errno}))
+    Ok(step_json(
+        "card_info",
+        rc == 0,
+        serde_json::json!({"rc": rc, "errno": errno}),
+    ))
 }
 
 fn run_attach_gpus_to_fd(fd: &impl AsFd, gpu_id: u32) -> serde_json::Value {
@@ -423,7 +433,18 @@ fn main() -> ExitCode {
         diag_gpu_fd_root_alloc(gpu_file);
     }
 
-    steps.push(run_card_info(fd));
+    match run_card_info(fd) {
+        Ok(step) => steps.push(step),
+        Err(e) => {
+            eprintln!("[Diag] NV_ESC_CARD_INFO parse failed: {e}");
+            steps.push(step_json(
+                "card_info",
+                false,
+                serde_json::json!({"error": e.to_string()}),
+            ));
+            success = false;
+        }
+    }
 
     let root_result = alloc_root_client(fd);
     let RootClientResult { root_test, rm_root, gpu_id, step, .. } = root_result;

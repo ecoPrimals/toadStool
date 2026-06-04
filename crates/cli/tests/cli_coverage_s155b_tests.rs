@@ -27,7 +27,7 @@ mod ecosystem_tests {
     use toadstool_cli::ecosystem::capabilities::StandardCapability;
     use toadstool_cli::ecosystem::service_type::ServiceType;
     use toadstool_cli::ecosystem::{
-        BearDogPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
+        SecurityPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
         EcosystemIntegrator, StorageMount, ServiceSignature, SignedServiceResponse, TrustLevel,
     };
     use uuid::Uuid;
@@ -70,7 +70,7 @@ mod ecosystem_tests {
 
     #[test]
     fn test_beardog_permission_creation() {
-        let permission = BearDogPermission {
+        let permission = SecurityPermission {
             permission_id: Uuid::new_v4(),
             granted_to: "test-service".to_string(),
             capabilities: vec!["read".to_string(), "write".to_string()],

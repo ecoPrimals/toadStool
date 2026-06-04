@@ -221,12 +221,12 @@ fn test_discovery_result_verified_ratio() {
 }
 
 // ============================================================================
-// BearDogPermission Tests
+// SecurityPermission Tests
 // ============================================================================
 
 #[test]
 fn test_beardog_permission_creation() {
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: Uuid::new_v4(),
         granted_to: "user@example.com".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
@@ -240,7 +240,7 @@ fn test_beardog_permission_creation() {
 
 #[test]
 fn test_beardog_permission_with_multiple_capabilities() {
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: Uuid::new_v4(),
         granted_to: "admin@example.com".to_string(),
         capabilities: vec![
@@ -259,7 +259,7 @@ fn test_beardog_permission_with_multiple_capabilities() {
 
 #[test]
 fn test_beardog_permission_clone() {
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: Uuid::new_v4(),
         granted_to: "test@test.com".to_string(),
         capabilities: vec![],

@@ -12,11 +12,10 @@ mod trait_;
 mod transport;
 
 pub use auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, TokenRefreshRequest};
-pub use client::{BearDogIntegration, SecurityServiceIntegration};
+pub use client::SecurityServiceIntegration;
 pub use config::SecurityConfig;
 pub use policy::{PolicyRule, SecurityAuditEvent, SecurityPolicy};
 pub use trait_::SecurityServiceIntegrationTrait;
-pub use trait_::SecurityServiceIntegrationTrait as BearDogIntegrationTrait;
 
 /// Type alias for security config.
 pub type SecurityServiceConfig = SecurityConfig;
@@ -97,7 +96,7 @@ mod tests {
             socket_path: "/nonexistent/security-test.sock".to_string(),
             ..SecurityConfig::default()
         };
-        let integration = BearDogIntegration::new(config).unwrap();
+        let integration = SecurityServiceIntegration::new(config).unwrap();
         let result = integration
             .authenticate(
                 "test",
@@ -116,7 +115,7 @@ mod tests {
             socket_path: "/nonexistent/security-authz.sock".to_string(),
             ..SecurityConfig::default()
         };
-        let integration = BearDogIntegration::new(config).unwrap();
+        let integration = SecurityServiceIntegration::new(config).unwrap();
         integration
             .authenticate(
                 "test",
@@ -138,7 +137,7 @@ mod tests {
             socket_path: "/nonexistent/zt-validation.sock".to_string(),
             ..SecurityConfig::default()
         };
-        let integration = BearDogIntegration::new(config).unwrap();
+        let integration = SecurityServiceIntegration::new(config).unwrap();
         let result = integration
             .zero_trust_validation(&SecurityContext::default())
             .await;

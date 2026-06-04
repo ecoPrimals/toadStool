@@ -11,7 +11,7 @@ use std::sync::Arc;
 use temp_env::with_var;
 use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::{
-    AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, BearDogIntegration, PolicyRule,
+    AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, SecurityServiceIntegration, PolicyRule,
     SecurityAuditEvent, SecurityConfig, SecurityPolicy, SecurityServiceConfig,
 };
 
@@ -136,7 +136,7 @@ fn test_security_audit_event_creation() {
 #[test]
 fn test_security_new() {
     let config = SecurityConfig::default();
-    let result = BearDogIntegration::new(config);
+    let result = SecurityServiceIntegration::new(config);
     assert!(result.is_ok());
 }
 
@@ -146,7 +146,7 @@ async fn test_authenticate_returns_standalone_when_unreachable() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
 
     let result = integration
         .authenticate(
@@ -168,7 +168,7 @@ async fn test_authorize_without_token_returns_err() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
 
     // Authorize without authenticating first - no token
     let result = integration
@@ -186,7 +186,7 @@ async fn test_zero_trust_validation_returns_true_when_unreachable() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
 
     let result = integration
         .zero_trust_validation(&SecurityContext::default())
@@ -334,7 +334,7 @@ fn test_security_service_config_alias() {
     let _config: SecurityServiceConfig = SecurityConfig::default();
 }
 
-// ─── BearDogIntegrationTrait (trait object) ───────────────────────────────────
+// ─── SecurityServiceIntegrationTrait (trait object) ───────────────────────────────────
 
 #[tokio::test]
 async fn test_trait_authenticate() {
@@ -342,7 +342,7 @@ async fn test_trait_authenticate() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
     let result = integration
         .authenticate(
             "svc",
@@ -361,7 +361,7 @@ async fn test_trait_authorize_without_token() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
     let result = integration
         .authorize("/resource", "read", HashMap::new())
         .await;
@@ -374,7 +374,7 @@ async fn test_trait_zero_trust_validation() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
     let result = integration
         .zero_trust_validation(&SecurityContext::default())
         .await;
@@ -391,7 +391,7 @@ async fn test_start_background_tasks() {
         continuous_monitoring: false,
         ..SecurityConfig::default()
     };
-    let integration = Arc::new(BearDogIntegration::new(config).unwrap());
+    let integration = Arc::new(SecurityServiceIntegration::new(config).unwrap());
     let result = integration.clone().start_background_tasks().await;
     assert!(result.is_ok());
 }

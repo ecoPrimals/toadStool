@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Security Integration Coverage Tests
 //!
-//! This test suite provides thorough coverage of the `BearDogIntegration` implementation
+//! This test suite provides thorough coverage of the `SecurityServiceIntegration` implementation
 //! to address the critical gap in lib.rs coverage (currently 10.83%).
 //!
 //! Coverage targets:
-//! - `BearDogIntegration::new()`
-//! - `BearDogIntegration::authenticate()`
-//! - `BearDogIntegration::authorize()`
-//! - `BearDogIntegration::zero_trust_validation()`
-//! - `BearDogIntegration::start_background_tasks()`
+//! - `SecurityServiceIntegration::new()`
+//! - `SecurityServiceIntegration::authenticate()`
+//! - `SecurityServiceIntegration::authorize()`
+//! - `SecurityServiceIntegration::zero_trust_validation()`
+//! - `SecurityServiceIntegration::start_background_tasks()`
 //! - Request helpers and error handling
 //! - Token management
 //! - Policy management
@@ -26,7 +26,7 @@ use toadstool_integration_protocols::*;
 #[test]
 fn test_security_new_with_default_config() {
     let config = SecurityConfig::default();
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 
@@ -41,7 +41,7 @@ fn test_security_new_with_custom_config() {
         continuous_monitoring: false,
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 
@@ -52,7 +52,7 @@ fn test_security_new_with_very_short_timeout() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 
@@ -63,7 +63,7 @@ fn test_security_new_with_monitoring_disabled() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 

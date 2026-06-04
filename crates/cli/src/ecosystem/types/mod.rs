@@ -16,8 +16,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use crypto::{
-    BearDogPermission, CryptoVerificationContext, SecurityPermission, ServiceSignature,
-    SignedServiceResponse,
+    CryptoVerificationContext, SecurityPermission, ServiceSignature, SignedServiceResponse,
 };
 pub use discovery::{DiscoveredService, DiscoveryResult, ServiceType};
 pub use endpoint::{EcosystemService, ServiceEndpoint, TrustLevel};

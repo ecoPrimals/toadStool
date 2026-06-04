@@ -32,8 +32,8 @@ fn create_test_certificate_validation_config() -> CertificateValidationConfig {
     }
 }
 
-fn create_test_security_config(enabled: bool) -> BearDogIntegrationConfig {
-    BearDogIntegrationConfig {
+fn create_test_security_config(enabled: bool) -> SecurityServiceIntegrationConfig {
+    SecurityServiceIntegrationConfig {
         enabled,
         endpoint: "http://beardog:9000".to_string(),
         auth_token: Some("test-token".to_string()),

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async Security Integration Tests
 //!
-//! Tests the async methods of `BearDogIntegration` including authentication,
+//! Tests the async methods of `SecurityServiceIntegration` including authentication,
 //! authorization, and zero-trust validation. These tests focus on initialization,
 //! error paths, and internal logic without requiring a live Security server.
 
@@ -16,7 +16,7 @@ use toadstool_integration_protocols::*;
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_initialization() {
     let config = SecurityConfig::default();
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
 
     // Should successfully create integration client
     assert!(integration.is_ok());
@@ -31,7 +31,7 @@ async fn test_security_with_custom_timeouts() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 
@@ -44,7 +44,7 @@ async fn test_security_authenticate_no_server() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
 
     // Should fail to connect (no socket listening)
     let result = integration
@@ -73,7 +73,7 @@ async fn test_security_authorize_no_token() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
 
     // Try to authorize without authenticating first
     let result = integration
@@ -93,7 +93,7 @@ async fn test_security_zero_trust_validation_no_server() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config).unwrap();
+    let integration = SecurityServiceIntegration::new(config).unwrap();
 
     // Should fail to validate (no socket listening)
     let security_context = SecurityContext::default();
@@ -121,7 +121,7 @@ async fn test_security_config_with_custom_socket() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 
@@ -132,7 +132,7 @@ async fn test_security_config_monitoring_disabled() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 
@@ -143,7 +143,7 @@ async fn test_security_config_very_long_timeout() {
         ..SecurityConfig::default()
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 

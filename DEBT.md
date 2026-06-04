@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: June 3, 2026 — S287
+**Date**: June 3, 2026 — S288
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S288 (Deep Debt VIII: Panic Elimination + Naming + Feature Gates + Safety Docs)**:
+Comprehensive deep debt pass. Evolved Akida MMIO to error-returning APIs
+(deprecated panicking wrappers), fixed cpu_resource degraded pool and
+rm_trigger binary unwraps. Removed BearDog*/SongBird type aliases (callers
+migrated to capability names). Feature-gated modbus dep. Added // SAFETY:
+to all Ioctl::output_from_ptr boilerplate. Zero production >800L files.
+Zero P0 panic paths. All tests pass, clippy clean.
 
 **S287 (S286 Consolidation + Telemetry Consumer + Trust Tests)**:
 Post-push consolidation. Fixed verify_trust verified semantics (BTSP+

@@ -25,9 +25,6 @@ pub struct SecurityPermission {
     pub signature: String,
 }
 
-/// Compatibility alias for [`SecurityPermission`] (prefer the canonical name in new code).
-pub type BearDogPermission = SecurityPermission;
-
 /// Cryptographic signature on a service response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceSignature {

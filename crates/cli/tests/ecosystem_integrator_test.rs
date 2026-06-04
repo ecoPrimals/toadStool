@@ -204,12 +204,12 @@ fn test_discovery_result_with_services() {
 }
 
 // ============================================================================
-// BearDogPermission Tests (2 tests)
+// SecurityPermission Tests (2 tests)
 // ============================================================================
 
 #[test]
 fn test_beardog_permission_creation() {
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: uuid::Uuid::new_v4(),
         granted_to: "toadstool-instance-001".to_string(),
         capabilities: vec!["read".to_string(), "execute".to_string()],
@@ -231,7 +231,7 @@ fn test_beardog_permission_multiple_capabilities() {
         "admin".to_string(),
     ];
 
-    let permission = BearDogPermission {
+    let permission = SecurityPermission {
         permission_id: uuid::Uuid::new_v4(),
         granted_to: "admin-service".to_string(),
         capabilities,

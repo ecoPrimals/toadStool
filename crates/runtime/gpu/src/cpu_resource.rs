@@ -105,7 +105,25 @@ impl CpuComputeResource {
                     rayon::ThreadPoolBuilder::new()
                         .use_current_thread()
                         .build()
-                        .expect("degraded CPU thread pool initialization failed"),
+                        .unwrap_or_else(|e| {
+                            tracing::error!(
+                                error = %e,
+                                "degraded current-thread CPU pool failed; retrying with num_threads(1)"
+                            );
+                            rayon::ThreadPoolBuilder::new()
+                                .num_threads(1)
+                                .build()
+                                .unwrap_or_else(|e2| {
+                                    tracing::error!(
+                                        error = %e2,
+                                        "minimal single-thread CPU pool failed; using zero-thread pool"
+                                    );
+                                    rayon::ThreadPoolBuilder::new()
+                                        .num_threads(0)
+                                        .build()
+                                        .expect("zero-thread pool")
+                                })
+                        }),
                 )
             });
 

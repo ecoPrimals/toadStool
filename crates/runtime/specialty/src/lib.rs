@@ -49,6 +49,8 @@ pub mod error;
 pub mod industrial;
 /// Mainframe system adapters (IBM, VAX, AS/400).
 pub mod mainframe;
+/// Modbus RTU/TCP transport (`modbus-transport` feature).
+pub mod modbus_transport;
 /// Real-time operating system support.
 pub mod realtime;
 /// Bridge between specialty runtime and core platform.

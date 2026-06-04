@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 3, 2026 (Sessions 43-287)
+## [Unreleased] - Jun 3, 2026 (Sessions 43-288)
+
+### Session S288 (Jun 3, 2026) — Deep Debt VIII: Panic Elimination + Naming + Feature Gates + Safety Docs
+
+Comprehensive deep debt pass across the workspace. Zero production files >800L remaining. All production panic paths audited and fixed.
+
+- **EVOLVED**: Akida MMIO `read32/write32/read64/write64` — deprecated panicking wrappers, migrated all callers in VFIO backend to `try_read32`/`try_write32` with `?` propagation. NPU inference/DMA paths no longer panic on OOB offsets.
+- **EVOLVED**: `cpu_resource.rs` degraded Rayon pool — replaced `.expect()` with cascading fallback chain (current_thread → num_threads(1) → num_threads(0)) with `tracing::error!` logging.
+- **EVOLVED**: `rm_trigger` binary — replaced `try_into().unwrap()` on ioctl buffers with `ne_bytes<N>()` helper returning descriptive errors. `run_card_info` now returns `Result`.
+- **REMOVED**: `BearDogIntegration` type alias (protocols) → callers use `SecurityServiceIntegration` directly. `BearDogPermission` (CLI) → `SecurityPermission`. `BearDogIntegrationConfig` (CLI) → `SecurityServiceIntegrationConfig`. Zero primal-name type aliases remain.
+- **FEATURE-GATED**: `modbus` dependency in `runtime/specialty` — now optional behind `modbus-transport` feature (not default). Stub module returns clear error when feature disabled.
+- **DOCUMENTED**: Added `// SAFETY:` comments to all `Ioctl::output_from_ptr` boilerplate impls across `cylinder/drm.rs`, `hw-safe/vfio_dma.rs`, `hw-safe/vfio_setup.rs`, `hw-learn/nouveau_drm.rs`, `nvpmu/vfio.rs`.
+- METRICS: Zero production files >800L. Zero P0 panic paths. Full workspace clippy -D warnings clean. All tests pass.
 
 ### Session S287 (Jun 3, 2026) — S286 Consolidation + Telemetry Consumer + Trust Test Coverage
 

@@ -171,6 +171,7 @@ impl MappedRegion {
     /// # Panics
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
+    #[deprecated(note = "use try_read32/try_write32 which return MmioError")]
     #[track_caller]
     pub fn read32(&self, offset: usize) -> u32 {
         self.try_read32(offset).expect("Register offset out of bounds")
@@ -190,6 +191,7 @@ impl MappedRegion {
     /// # Panics
     ///
     /// Panics if `offset + 4` exceeds the mapped region size.
+    #[deprecated(note = "use try_read32/try_write32 which return MmioError")]
     #[track_caller]
     pub fn write32(&self, offset: usize, value: u32) {
         self.try_write32(offset, value)
@@ -210,6 +212,7 @@ impl MappedRegion {
     /// # Panics
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
+    #[deprecated(note = "use try_read64/try_write64 which return MmioError")]
     #[track_caller]
     pub fn read64(&self, offset: usize) -> u64 {
         self.try_read64(offset).expect("Register offset out of bounds")
@@ -229,6 +232,7 @@ impl MappedRegion {
     /// # Panics
     ///
     /// Panics if `offset + 8` exceeds the mapped region size.
+    #[deprecated(note = "use try_read64/try_write64 which return MmioError")]
     #[track_caller]
     pub fn write64(&self, offset: usize, value: u64) {
         self.try_write64(offset, value)

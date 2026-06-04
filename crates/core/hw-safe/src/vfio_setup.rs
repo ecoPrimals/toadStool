@@ -108,6 +108,7 @@ unsafe impl<const OP: Opcode> Ioctl for VfioReturnIoctl<OP> {
         out: IoctlOutput,
         _: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // SAFETY: `out` is rustix's ioctl syscall return; `ptr` is unused (no dereference).
         Ok(out)
     }
 }
@@ -135,6 +136,7 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
         _: IoctlOutput,
         _: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // SAFETY: No-op — body is intentionally empty (trait method stub for ioctl infrastructure).
         Ok(())
     }
 }

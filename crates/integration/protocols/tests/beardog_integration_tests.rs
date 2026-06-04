@@ -330,7 +330,7 @@ fn test_audit_event_serialization() {
 #[test]
 fn test_security_creation() {
     let config = SecurityConfig::default();
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
 
     assert!(integration.is_ok());
 }
@@ -346,7 +346,7 @@ fn test_security_with_custom_config() {
         continuous_monitoring: true,
     };
 
-    let integration = BearDogIntegration::new(config);
+    let integration = SecurityServiceIntegration::new(config);
     assert!(integration.is_ok());
 }
 

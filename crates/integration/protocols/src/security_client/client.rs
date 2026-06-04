@@ -33,7 +33,7 @@ pub struct SecurityServiceIntegration {
     last_validation: Arc<Mutex<Instant>>,
 }
 
-impl BearDogIntegration {
+impl SecurityServiceIntegration {
     /// Create a new Security integration with the given config
     pub fn new(config: SecurityConfig) -> Result<Self, ToadStoolError> {
         Ok(Self {
@@ -488,6 +488,3 @@ impl BearDogIntegration {
         Ok(())
     }
 }
-
-/// Legacy alias for [`SecurityServiceIntegration`].
-pub type BearDogIntegration = SecurityServiceIntegration;
