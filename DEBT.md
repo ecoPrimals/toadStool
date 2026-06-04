@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: June 3, 2026 — S286
+**Date**: June 3, 2026 — S287
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S287 (S286 Consolidation + Telemetry Consumer + Trust Tests)**:
+Post-push consolidation. Fixed verify_trust verified semantics (BTSP+
+only), ownership lifecycle (revert_to_local_owner on gate.remove / is_owner
+false), auth.peer_info trust fields, local_gate_id alignment. Added
+to_feature_vector() for barraCuda consumption (FNV-1a hashed strings →
+f64). 27 targeted tests pass. Workspace clippy clean.
 
 **S286 (Cross-Gate Trust Verification + Dispatch Telemetry + Yield Audit)**:
 Implemented Dark Forest Invariant 3 (Provenance) via `dispatch.verify_trust`

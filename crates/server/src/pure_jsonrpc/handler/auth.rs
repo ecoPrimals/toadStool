@@ -6,7 +6,7 @@
 //! - `auth.mode` — what gate mode is active?
 //! - `auth.peer_info` — what does the server know about the caller?
 
-use super::method_gate::{MethodGate, classify_method};
+use super::method_gate::{DispatchTrustLevel, MethodGate, classify_method};
 #[cfg(test)]
 use super::method_gate::GateMode;
 use crate::pure_jsonrpc::types::JsonRpcError;
@@ -58,6 +58,15 @@ pub fn auth_mode(gate: &MethodGate) -> Result<serde_json::Value, JsonRpcError> {
 /// is present (JH-2). Without a token, returns anonymous defaults.
 ///
 /// Returns: `{"transport": "unknown", "authenticated": false, ...}`
+fn transport_from_trust(trust_level: DispatchTrustLevel) -> &'static str {
+    match trust_level {
+        DispatchTrustLevel::BtspVerified => "btsp",
+        DispatchTrustLevel::LocalTransport => "unix",
+        DispatchTrustLevel::MutuallyAuthenticated => "mutual_btsp",
+        DispatchTrustLevel::Anonymous => "unknown",
+    }
+}
+
 #[expect(
     clippy::unnecessary_wraps,
     reason = "Result return required for JSON-RPC handler dispatch consistency"
@@ -66,10 +75,12 @@ pub fn auth_peer_info(
     ctx: &super::method_gate::CallerContext,
 ) -> Result<serde_json::Value, JsonRpcError> {
     Ok(serde_json::json!({
-        "transport": "unknown",
+        "transport": transport_from_trust(ctx.trust_level),
         "authenticated": ctx.identity.is_some(),
         "identity": ctx.identity,
         "envelope": ctx.envelope,
+        "gate_id": ctx.gate_id,
+        "trust_level": ctx.trust_level,
     }))
 }
 
@@ -133,6 +144,8 @@ mod tests {
         assert_eq!(result["authenticated"], false);
         assert!(result["identity"].is_null());
         assert!(result["envelope"].is_null());
+        assert!(result["gate_id"].is_null());
+        assert_eq!(result["trust_level"], "anonymous");
     }
 
     #[test]
@@ -148,9 +161,12 @@ mod tests {
             ..super::super::method_gate::CallerContext::anonymous()
         };
         let result = auth_peer_info(&ctx).unwrap();
+        assert_eq!(result["transport"], "unknown");
         assert_eq!(result["authenticated"], true);
         assert_eq!(result["identity"], "did:key:z6Mk_test");
         assert_eq!(result["envelope"]["mem_mb"], 8192);
         assert_eq!(result["envelope"]["cpu_cores"], 4);
+        assert!(result["gate_id"].is_null());
+        assert_eq!(result["trust_level"], "anonymous");
     }
 }

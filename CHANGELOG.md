@@ -5,7 +5,25 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 3, 2026 (Sessions 43-286)
+## [Unreleased] - Jun 3, 2026 (Sessions 43-287)
+
+### Session S287 (Jun 3, 2026) — S286 Consolidation + Telemetry Consumer + Trust Test Coverage
+
+Post-push consolidation of S286 (33-file, 842-insertion push). Audited for rough edges, fixed P1 correctness gaps, added comprehensive trust/telemetry test coverage, and made telemetry consumable by barraCuda ml.mlp_train.
+
+- **FIXED**: `verify_trust` `verified` semantics — tightened to only `BtspVerified` or `MutuallyAuthenticated` (was any non-Anonymous).
+- **FIXED**: `verify_trust` `local_gate_id` — uses `resolve_local_gate_id()` (env → hostname) with `PRIMAL_NAME` fallback, aligned with rest of codebase.
+- **FIXED**: `auth.peer_info` — now returns `gate_id`, `trust_level`, and derived `transport` (btsp/unix/mutual_btsp/unknown) from `DispatchTrustLevel`.
+- **FIXED**: Ownership lifecycle — `revert_to_local_owner()` resets hardware owner. `gate.update` with `is_owner: false` reverts when that gate was the owner. `gate.remove` reverts if removed gate was hardware owner.
+- **FIXED**: `dispatch.telemetry.schema` added to `DIRECT_JSONRPC_METHODS` for discovery/introspection.
+- **ADDED**: `DispatchTelemetryRecord::to_feature_vector()` → `[f64; 36]` with FNV-1a hashing for string fields, consumable by barraCuda ml.mlp_train.
+- **ADDED**: Module-level consumer documentation with dimension table and usage guide.
+- **ADDED**: 6 `verify_trust` tests (anonymous, local_transport, btsp_verified, mutually_authenticated, with/without requested_gate_id).
+- **ADDED**: 4 `GateOwnership` lifecycle tests (anonymous caller, default owner, revert_to_local, false no-op).
+- **ADDED**: `GateGpuInfo.is_owner` serde default test.
+- **ADDED**: 3 feature vector tests (dimensionality, hash range, determinism).
+- **ADDED**: `#[must_use]` on `verify_trust`, `telemetry_schema`.
+- METRICS: 27 targeted tests pass. Full workspace clippy -D warnings clean.
 
 ### Session S286 (Jun 3, 2026) — Cross-Gate Trust Verification + Dispatch Telemetry Schema + Yield-to-Owner Audit
 

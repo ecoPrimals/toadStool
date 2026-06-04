@@ -1,4 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Dispatch telemetry for cross-primal consumption.
+//!
+//! # Consumer: barraCuda `ml.mlp_train` (36-dim perceptron)
+//!
+//! barraCuda trains a 36-dim perceptron over dispatch telemetry to predict
+//! optimal gate routing. The schema is organized into 6 groups:
+//!
+//! | Dims  | Group           | Fields                                                           | Encoding            |
+//! |-------|-----------------|------------------------------------------------------------------|---------------------|
+//! | 0–3   | Identity        | `gate_of_origin`, `trust_level`, `dispatch_mode`, `method`       | string → hash/onehot|
+//! | 4–8   | Timing          | `queue_wait_ms`, `dispatch_ms`, `readback_ms`, `total_ms`, `timeout_ms` | numeric (ms) |
+//! | 9–14  | Workload shape  | `binary_size_bytes`, `workgroup_{x,y,z}`, `buffer_count`, `total_buffer_bytes` | numeric   |
+//! | 15–20 | Hardware        | `gpu_vendor`, `gpu_device_id`, `bdf`, `vram_total_mb`, `vram_used_mb`, `thermal_throttled` | mixed |
+//! | 21–25 | Resource envelope | `mem_limit_mb`, `cpu_limit_cores`, `timeout_limit_ms`, `tenant_id`, `priority` | mixed     |
+//! | 26–30 | Outcome         | `success`, `error_code`, `retried`, `forwarded`, `remote_gate`   | bool/nullable       |
+//! | 31–35 | Mesh context    | `local_gate_id`, `mesh_hop_count`, `yield_strategy`, `guest_load_active`, `timestamp_unix_ms` | mixed |
+//!
+//! ## How to consume
+//!
+//! 1. **Schema discovery**: call `dispatch.telemetry.schema` JSON-RPC → returns field list + version.
+//! 2. **Feature vector**: call `DispatchTelemetryRecord::to_feature_vector()` to get a `[f64; 36]`
+//!    with string fields hashed to `f64` via FNV-1a for numeric stability.
+//! 3. **Normalization**: consumers should min-max normalize each dimension across their training set.
 
 use serde::{Deserialize, Serialize};
 
@@ -77,6 +100,59 @@ impl DispatchTelemetryRecord {
         }
     }
 
+    /// Convert to a 36-dimensional feature vector for ml.mlp_train consumption.
+    ///
+    /// String fields are hashed via FNV-1a to produce stable `f64` values.
+    /// Boolean fields map to `0.0` / `1.0`. Nullable fields use `0.0` for `None`.
+    #[must_use]
+    pub fn to_feature_vector(&self) -> [f64; 36] {
+        [
+            // dims 0-3: identity
+            fnv1a_hash_f64(self.gate_of_origin.as_deref().unwrap_or("")),
+            fnv1a_hash_f64(&self.trust_level),
+            fnv1a_hash_f64(&self.dispatch_mode),
+            fnv1a_hash_f64(&self.method),
+            // dims 4-8: timing
+            self.queue_wait_ms as f64,
+            self.dispatch_ms as f64,
+            self.readback_ms as f64,
+            self.total_ms as f64,
+            self.timeout_ms as f64,
+            // dims 9-14: workload shape
+            self.binary_size_bytes as f64,
+            f64::from(self.workgroup_x),
+            f64::from(self.workgroup_y),
+            f64::from(self.workgroup_z),
+            f64::from(self.buffer_count),
+            self.total_buffer_bytes as f64,
+            // dims 15-20: hardware
+            fnv1a_hash_f64(&self.gpu_vendor),
+            f64::from(self.gpu_device_id),
+            fnv1a_hash_f64(&self.bdf),
+            self.vram_total_mb as f64,
+            self.vram_used_mb as f64,
+            if self.thermal_throttled { 1.0 } else { 0.0 },
+            // dims 21-25: resource envelope
+            self.mem_limit_mb as f64,
+            f64::from(self.cpu_limit_cores),
+            self.timeout_limit_ms as f64,
+            fnv1a_hash_f64(&self.tenant_id),
+            f64::from(self.priority),
+            // dims 26-30: outcome
+            if self.success { 1.0 } else { 0.0 },
+            self.error_code.map_or(0.0, |c| c as f64),
+            if self.retried { 1.0 } else { 0.0 },
+            if self.forwarded { 1.0 } else { 0.0 },
+            fnv1a_hash_f64(self.remote_gate.as_deref().unwrap_or("")),
+            // dims 31-35: mesh context
+            fnv1a_hash_f64(&self.local_gate_id),
+            f64::from(self.mesh_hop_count),
+            fnv1a_hash_f64(&self.yield_strategy),
+            f64::from(self.guest_load_active),
+            self.timestamp_unix_ms as f64,
+        ]
+    }
+
     fn default_empty() -> Self {
         Self {
             gate_of_origin: None,
@@ -121,6 +197,7 @@ impl DispatchTelemetryRecord {
 
 /// JSON-RPC handler: `dispatch.telemetry.schema`
 /// Returns the 36-dim feature schema for ml.mlp_train consumption.
+#[must_use]
 pub fn telemetry_schema() -> serde_json::Value {
     serde_json::json!({
         "version": "1.0",
@@ -147,6 +224,16 @@ pub fn telemetry_schema() -> serde_json::Value {
     })
 }
 
+/// FNV-1a hash of a string, scaled to `f64` in `[0, 1)` for perceptron input stability.
+fn fnv1a_hash_f64(s: &str) -> f64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in s.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x0100_0000_01b3);
+    }
+    (hash >> 1) as f64 / (u64::MAX >> 1) as f64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,6 +258,32 @@ mod tests {
         assert_eq!(schema["dimensions"], 36);
         let fields = schema["fields"].as_array().expect("fields array");
         assert_eq!(fields.len(), 36);
+    }
+
+    #[test]
+    fn feature_vector_has_36_dimensions() {
+        let record = DispatchTelemetryRecord::new("compute.dispatch.submit", "gate-local-1");
+        let vec = record.to_feature_vector();
+        assert_eq!(vec.len(), 36);
+        assert!(vec.iter().all(|v| v.is_finite()));
+    }
+
+    #[test]
+    fn feature_vector_string_fields_in_unit_range() {
+        let record = DispatchTelemetryRecord::new("shader.dispatch", "gate-abc");
+        let vec = record.to_feature_vector();
+        // dims 0-3 are hashed strings — should be in [0, 1)
+        for &dim in &vec[0..4] {
+            assert!(dim >= 0.0 && dim < 1.0, "hash dim out of range: {dim}");
+        }
+    }
+
+    #[test]
+    fn feature_vector_deterministic() {
+        let record = DispatchTelemetryRecord::new("test.method", "gate-x");
+        let v1 = record.to_feature_vector();
+        let v2 = record.to_feature_vector();
+        assert_eq!(v1, v2);
     }
 
     #[test]

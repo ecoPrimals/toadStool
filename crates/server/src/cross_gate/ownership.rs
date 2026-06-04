@@ -53,4 +53,10 @@ impl GateOwnership {
             *self.hardware_owner_gate_id.write().await = Arc::clone(gate_id);
         }
     }
+
+    /// Reset hardware ownership to the local gate when the remote owner
+    /// goes offline or revokes ownership.
+    pub async fn revert_to_local_owner(&self) {
+        *self.hardware_owner_gate_id.write().await = Arc::clone(&self.local_gate_id);
+    }
 }

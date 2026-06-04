@@ -720,7 +720,7 @@ fn extract_caller_context(conn: ConnectionTrustHints) -> CallerContext {
     ctx
 }
 
-fn resolve_local_gate_id() -> Option<String> {
+pub(crate) fn resolve_local_gate_id() -> Option<String> {
     std::env::var(socket_env::TOADSTOOL_GATE_ID)
         .or_else(|_| std::env::var(socket_env::HOSTNAME))
         .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))

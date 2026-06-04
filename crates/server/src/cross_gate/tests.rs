@@ -294,6 +294,22 @@ fn test_gate_endpoint_returns_endpoint_for_known_gates() {
 }
 
 #[test]
+fn gate_gpu_info_is_owner_defaults_false() {
+    let json = serde_json::json!({
+        "gate_id": "test-gate",
+        "gpu_model": "RTX 4070",
+        "vram_total_mb": 12288,
+        "vram_available_mb": 8000,
+        "loaded_models": [],
+        "queue_depth": 0,
+        "reachable": true,
+        "endpoint": "unix:///tmp/test.sock"
+    });
+    let info: GateGpuInfo = serde_json::from_value(json).expect("deserialize");
+    assert!(!info.is_owner);
+}
+
+#[test]
 fn test_gate_gpu_info_endpoint_serializes() {
     let info = GateGpuInfo {
         gate_id: Arc::from("remote"),

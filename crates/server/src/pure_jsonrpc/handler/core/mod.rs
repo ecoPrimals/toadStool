@@ -62,6 +62,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "compute.dispatch.result",
     "compute.dispatch.forward",
     "dispatch.verify_trust",
+    "dispatch.telemetry.schema",
     "compute.dispatch.capabilities",
     "compute.dispatch.pipeline.submit",
     "compute.dispatch.pipeline.status",

@@ -226,6 +226,9 @@ impl JobHandler {
             self.gate_ownership
                 .note_gate_update(&gate_id, true)
                 .await;
+        } else if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id.as_ref()
+        {
+            self.gate_ownership.revert_to_local_owner().await;
         }
         self.router.write().await.update_gate(gate_info);
         Ok(serde_json::json!({"updated": true, "gate_id": gate_id.as_ref()}))
@@ -239,6 +242,9 @@ impl JobHandler {
             .and_then(|p| p.get("gate_id"))
             .and_then(|v| v.as_str())
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'gate_id' param"))?;
+        if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id {
+            self.gate_ownership.revert_to_local_owner().await;
+        }
         self.router.write().await.remove_gate(gate_id);
         Ok(serde_json::json!({"removed": true, "gate_id": gate_id}))
     }
