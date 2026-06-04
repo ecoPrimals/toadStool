@@ -21,7 +21,7 @@ toadstool-ember = { path = "../core/ember" }
 toadstool-glowplug = { path = "../core/glowplug" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols" }
-toadstool-runtime-container = { path = "../runtime/container" }
+toadstool-runtime-container = { path = "../runtime/container", features = ["docker"] }
 toadstool-runtime-gpu = { path = "../runtime/gpu" }
 toadstool-runtime-native = { path = "../runtime/native" }
 toadstool-runtime-specialty = { path = "../runtime/specialty" }

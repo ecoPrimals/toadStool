@@ -23,13 +23,17 @@
 //!    with string fields hashed to `f64` via FNV-1a for numeric stability.
 //! 3. **Normalization**: consumers should min-max normalize each dimension across their training set.
 
+/// Wire contract version for dispatch telemetry.
+/// Consumers (barraCuda, biomeOS) should validate this on connection.
+pub const TELEMETRY_SCHEMA_VERSION: &str = "1.1";
+
+use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use serde::{Deserialize, Serialize};
 
 /// Structured telemetry record for a single dispatch event.
 /// Schema aligns with barraCuda ml.mlp_train's 36-dim perceptron feature vector.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(
-    dead_code,
     clippy::struct_excessive_bools,
     reason = "schema type for downstream dispatch telemetry — populated when submit paths emit records"
 )]
@@ -85,7 +89,6 @@ pub struct DispatchTelemetryRecord {
     pub timestamp_unix_ms: u64,
 }
 
-#[allow(dead_code, reason = "constructor used by tests and future dispatch emission")]
 impl DispatchTelemetryRecord {
     /// Create a minimal record with defaults for unset fields.
     pub fn new(method: &str, local_gate_id: &str) -> Self {
@@ -104,6 +107,7 @@ impl DispatchTelemetryRecord {
     ///
     /// String fields are hashed via FNV-1a to produce stable `f64` values.
     /// Boolean fields map to `0.0` / `1.0`. Nullable fields use `0.0` for `None`.
+    #[cfg_attr(not(test), allow(dead_code, reason = "barraCuda ml.mlp_train consumer API"))]
     #[must_use]
     pub fn to_feature_vector(&self) -> [f64; 36] {
         [
@@ -153,6 +157,14 @@ impl DispatchTelemetryRecord {
         ]
     }
 
+    /// Serialize caller trust level for telemetry (snake_case, matches JSON-RPC).
+    pub fn trust_level_from_caller(ctx: &CallerContext) -> String {
+        serde_json::to_value(ctx.trust_level)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .unwrap_or_else(|| String::from("anonymous"))
+    }
+
     fn default_empty() -> Self {
         Self {
             gate_of_origin: None,
@@ -195,12 +207,69 @@ impl DispatchTelemetryRecord {
     }
 }
 
+/// Parameters for emitting dispatch-path telemetry at completion.
+pub struct DispatchTelemetryEmit<'a> {
+    pub ctx: &'a CallerContext,
+    pub method: &'static str,
+    pub dispatch_ms: u64,
+    pub readback_ms: u64,
+    pub dispatch_mode: &'a str,
+    pub bdf: &'a str,
+    pub binary_bytes: &'a [u8],
+    pub workgroup_size: [u32; 3],
+    pub timeout_ms: u64,
+    pub success: bool,
+}
+
+/// Build and emit a dispatch telemetry record from completion parameters.
+pub fn emit_dispatch_completion_telemetry(p: &DispatchTelemetryEmit<'_>) {
+    let mut telemetry = DispatchTelemetryRecord::new(
+        p.method,
+        &crate::pure_jsonrpc::handler::resolve_local_gate_id().unwrap_or_default(),
+    );
+    telemetry.gate_of_origin.clone_from(&p.ctx.gate_id);
+    telemetry.trust_level = DispatchTelemetryRecord::trust_level_from_caller(p.ctx);
+    p.dispatch_mode.clone_into(&mut telemetry.dispatch_mode);
+    telemetry.dispatch_ms = p.dispatch_ms;
+    telemetry.readback_ms = p.readback_ms;
+    telemetry.total_ms = p.dispatch_ms.saturating_add(p.readback_ms);
+    telemetry.timeout_ms = p.timeout_ms;
+    telemetry.binary_size_bytes = p.binary_bytes.len() as u64;
+    telemetry.workgroup_x = p.workgroup_size[0];
+    telemetry.workgroup_y = p.workgroup_size[1];
+    telemetry.workgroup_z = p.workgroup_size[2];
+    p.bdf.clone_into(&mut telemetry.bdf);
+    telemetry.success = p.success;
+    emit_telemetry_record(&telemetry);
+}
+
+/// Emit a telemetry record as structured tracing output.
+/// Consumers (barraCuda, biomeOS) can capture this via tracing subscribers.
+pub fn emit_telemetry_record(record: &DispatchTelemetryRecord) {
+    tracing::info!(
+        target: "dispatch.telemetry",
+        method = %record.method,
+        gate_of_origin = ?record.gate_of_origin,
+        trust_level = %record.trust_level,
+        dispatch_mode = %record.dispatch_mode,
+        dispatch_ms = record.dispatch_ms,
+        total_ms = record.total_ms,
+        success = record.success,
+        forwarded = record.forwarded,
+        local_gate_id = %record.local_gate_id,
+        "dispatch telemetry"
+    );
+}
+
 /// JSON-RPC handler: `dispatch.telemetry.schema`
 /// Returns the 36-dim feature schema for ml.mlp_train consumption.
 #[must_use]
 pub fn telemetry_schema() -> serde_json::Value {
     serde_json::json!({
-        "version": "1.0",
+        "contract": "dispatch.telemetry",
+        "version": TELEMETRY_SCHEMA_VERSION,
+        "previous_versions": ["1.0"],
+        "backward_compatible": true,
         "dimensions": 36,
         "fields": [
             // dims 0-3: identity
@@ -221,10 +290,36 @@ pub fn telemetry_schema() -> serde_json::Value {
             "local_gate_id", "mesh_hop_count", "yield_strategy",
             "guest_load_active", "timestamp_unix_ms",
         ],
+        "encoding": {
+            "string_fields": {
+                "method": "fnv1a_hash_f64",
+                "description": "FNV-1a hash scaled to [0, 1) for numeric stability",
+                "affected_dims": [0, 1, 2, 3, 15, 17, 24, 30, 31, 33]
+            },
+            "boolean_fields": {
+                "method": "binary",
+                "description": "false → 0.0, true → 1.0",
+                "affected_dims": [20, 26, 28, 29]
+            },
+            "nullable_fields": {
+                "method": "zero_default",
+                "description": "None → 0.0 (strings hash empty string)",
+                "affected_dims": [0, 27, 30]
+            },
+            "numeric_fields": {
+                "method": "raw_cast",
+                "description": "Direct u64/u32 → f64 cast",
+                "affected_dims": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 19, 21, 22, 23, 25, 27, 32, 34, 35]
+            }
+        },
+        "consumers": ["barraCuda:ml.mlp_train", "biomeOS:L5.perceptron"],
+        "normalization": "min_max_per_dimension",
+        "timestamp_epoch": "unix_ms",
     })
 }
 
 /// FNV-1a hash of a string, scaled to `f64` in `[0, 1)` for perceptron input stability.
+#[cfg_attr(not(test), allow(dead_code, reason = "used by to_feature_vector for ml.mlp_train"))]
 fn fnv1a_hash_f64(s: &str) -> f64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for byte in s.bytes() {
@@ -254,10 +349,18 @@ mod tests {
     #[test]
     fn telemetry_schema_has_36_fields() {
         let schema = telemetry_schema();
-        assert_eq!(schema["version"], "1.0");
+        assert_eq!(schema["contract"], "dispatch.telemetry");
+        assert_eq!(schema["version"], TELEMETRY_SCHEMA_VERSION);
         assert_eq!(schema["dimensions"], 36);
         let fields = schema["fields"].as_array().expect("fields array");
         assert_eq!(fields.len(), 36);
+        let encoding = schema["encoding"].as_object().expect("encoding object");
+        assert!(encoding.contains_key("string_fields"));
+        assert!(encoding.contains_key("boolean_fields"));
+        assert!(encoding.contains_key("nullable_fields"));
+        assert!(encoding.contains_key("numeric_fields"));
+        let consumers = schema["consumers"].as_array().expect("consumers array");
+        assert!(!consumers.is_empty());
     }
 
     #[test]

@@ -3,23 +3,33 @@
 //!
 //! Client creation, image management, container execution, and cleanup.
 
+#[cfg(feature = "docker")]
 use std::collections::HashMap;
+#[cfg(feature = "docker")]
 use std::time::Duration;
 
 #[cfg(feature = "docker")]
 use futures::TryStreamExt;
+#[cfg(feature = "docker")]
 use tracing::{debug, info, warn};
 
+#[cfg(feature = "docker")]
 use toadstool::resources::RuntimeMetrics;
 use toadstool::workload::RegistryAuth;
+#[cfg(feature = "docker")]
 use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeType,
     ToadStoolError, ToadStoolResult,
 };
+#[cfg(not(feature = "docker"))]
+use toadstool::{ExecutionRequest, ExecutionResponse, ToadStoolError, ToadStoolResult};
 
+#[cfg(feature = "docker")]
 use crate::types::{
     ContainerEngineType, ContainerExecutionConfig, ContainerRuntimeConfig, ImagePullPolicy,
 };
+#[cfg(not(feature = "docker"))]
+use crate::types::{ContainerExecutionConfig, ContainerRuntimeConfig};
 
 #[cfg(feature = "docker")]
 use bollard::{
@@ -112,6 +122,7 @@ pub async fn ensure_image(
 
 /// Ensure image (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
+#[allow(dead_code)]
 pub async fn ensure_image(
     _docker: &(),
     _config: &ContainerRuntimeConfig,
@@ -171,6 +182,7 @@ pub async fn execute_container(
 
 /// Execute container (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
+#[allow(dead_code)]
 pub async fn execute_container(
     _docker: &(),
     _runtime_config: &ContainerRuntimeConfig,

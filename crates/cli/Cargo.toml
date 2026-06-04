@@ -48,7 +48,7 @@ toadstool-server = { path = "../server" }  # UniBin Phase 2: Server library inte
 # CLI `zero_config/` is the deployment orchestration layer; this crate is the backend.
 toadstool-auto-config = { path = "../auto_config", optional = true }
 # Runtime engines
-toadstool-runtime-container = { path = "../runtime/container" }
+toadstool-runtime-container = { path = "../runtime/container", features = ["docker"] }
 toadstool-runtime-native = { path = "../runtime/native" }
 # EVOLVED: toadstool-runtime-python removed — pyo3 FFI violates ecoBin v3.0
 toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: pure Rust (wasmi)

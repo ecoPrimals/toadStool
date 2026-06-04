@@ -8,6 +8,7 @@ use std::future::Future;
 use std::time::SystemTime;
 
 use tracing::{debug, info};
+#[cfg(feature = "docker")]
 use uuid::Uuid;
 
 use toadstool::execution::RuntimeConfig;
@@ -20,6 +21,7 @@ use toadstool::{
 };
 
 use crate::ContainerRuntimeEngine;
+#[cfg(feature = "docker")]
 use crate::docker;
 use crate::types::{ContainerExecutionConfig, ContainerResourceLimits, ContainerSecurityConfig};
 
@@ -194,13 +196,12 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         async {
             info!("Shutting down container runtime engine");
 
-            let container_ids: Vec<Uuid> = {
-                let containers = self.active_containers.read().await;
-                containers.keys().copied().collect()
-            };
-
             #[cfg(feature = "docker")]
             if let Some(docker) = &self.docker {
+                let container_ids: Vec<Uuid> = {
+                    let containers = self.active_containers.read().await;
+                    containers.keys().copied().collect()
+                };
                 let ids: Vec<String> = {
                     let containers = self.active_containers.read().await;
                     container_ids

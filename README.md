@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S288 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S289 | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,156+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,204+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (confirmed S288); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
@@ -51,7 +51,7 @@ Nest    = Tower  + Storage            <- storage
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
-| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→security service RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed. S288: `modbus` (feature-gated `modbus-transport`, not default) |
+| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→security service RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed. S288: `modbus` (feature-gated `modbus-transport`, not default). S289: `bollard` (feature-gated `docker`, not default) |
 | Hardcoded primal names | **0** user-visible; **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
 | `async-trait` migration | **DEPRECATED** — fully removed and banned in `deny.toml` (S203r). **Stadial parity gate cleared (S203s)**: ~32 traits converted from `dyn` dispatch to **enum dispatch + RPITIT**. Zero finite-implementor `dyn` remaining. |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
@@ -273,7 +273,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (9,156+ lib-only) |
+| Workspace tests | **23,000+**, 0 failures (9,204+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -284,7 +284,7 @@ toadStool/
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif`. S288: `modbus` (feature-gated `modbus-transport`) |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif`. S288: `modbus` (feature-gated `modbus-transport`). S289: `bollard` (feature-gated `docker`, not default) |
 | Env centralization | **~98%** (~410+ env reads via `socket_env::` constants); <10 raw `env::var("...")` remaining (S282–S285) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
@@ -303,6 +303,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S289 (Jun 4, 2026)**: **Telemetry Wire Contract + Adversarial Trust Tests + Telemetry Emission + Bollard Feature Gate** — `dispatch.telemetry.schema` evolved to versioned wire contract v1.1 (encoding rules, backward compat, consumer list for barraCuda/biomeOS L5 perceptron). +8 adversarial `dispatch.verify_trust` tests (forged BTSP, gate_id mismatch, malformed params, trust level serialization roundtrip). `DispatchTelemetryRecord` now emitted from `compute.dispatch.submit` and `shader.dispatch` via structured tracing (`dispatch.telemetry` target). `bollard` removed from default features in `runtime/container` (opt-in via `docker` feature). **9,204+ lib tests. Full workspace clippy clean.**
 - **S288 (Jun 3, 2026)**: **Deep Debt Evolution VIII: Panic Elimination + Naming + Feature Gates + Safety Docs** — Akida MMIO panicking wrappers removed; VFIO callers use `try_read32`/`try_write32`. `cpu_resource` Rayon pool and `rm_trigger` ioctl buffers evolved to Result. BearDog type aliases removed (`SecurityServiceIntegration`, `SecurityPermission`). `modbus` feature-gated (`modbus-transport`). SAFETY docs on all `Ioctl::output_from_ptr` impls. **Zero P0 panic paths. Full workspace clippy clean.**
 - **S287 (Jun 3, 2026)**: **S286 Consolidation + Telemetry Consumer + Trust Test Coverage** — `verify_trust` semantics tightened; `auth.peer_info` returns `gate_id`/`trust_level`/`transport`. Ownership lifecycle fixes (`revert_to_local_owner`, `gate.update`/`gate.remove`). `DispatchTelemetryRecord::to_feature_vector()` for barraCuda ml.mlp_train. +16 targeted trust/telemetry tests.
 - **S286 (Jun 3, 2026)**: **Cross-Gate Trust Verification + Dispatch Telemetry + Yield-to-Owner** — `dispatch.verify_trust` + `dispatch.telemetry.schema` JSON-RPC methods. `DispatchTrustLevel` + connection-layer trust in `CallerContext`. `GateOwnership` + `TOADSTOOL_HARDWARE_OWNER_GATE_ID`. Owner gate bypasses guest load limits. Provenance injection on cross-gate forward.
@@ -367,7 +368,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S288. **23,000+** workspace tests, 0 failures (9,156+ lib-only). ~83.6% lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct, `DIRECT_JSONRPC_METHODS`; S286+ adds `dispatch.verify_trust`, `dispatch.telemetry.schema`) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). Zero userspace C. **46 unsafe blocks** — all SAFETY-documented (confirmed S288); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics** (S282–S288: all paths evolved to Result; Akida MMIO panicking wrappers removed). Zero production TODO/FIXME/HACK. **~98% env centralized** (410+ reads via `socket_env::` constants). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
+**Last Updated**: Jun 2026 — S289. **23,000+** workspace tests, 0 failures (9,204+ lib-only). ~83.6% lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct, `DIRECT_JSONRPC_METHODS`; S286+ adds `dispatch.verify_trust`, `dispatch.telemetry.schema`) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). Zero userspace C. **46 unsafe blocks** — all SAFETY-documented (confirmed S288); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics** (S282–S288: all paths evolved to Result; Akida MMIO panicking wrappers removed). Zero production TODO/FIXME/HACK. **~98% env centralized** (410+ reads via `socket_env::` constants). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. **Telemetry wire contract v1.1** — `dispatch.telemetry.schema` documented for barraCuda/biomeOS L5 consumption (S289).
 
 ---
 

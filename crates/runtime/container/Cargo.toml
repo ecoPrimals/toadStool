@@ -56,7 +56,7 @@ tracing-subscriber = { workspace = true }
 toml = { workspace = true }
 
 [features]
-default = ["docker"]
+default = []
 docker = ["bollard"]
 # containerd = ["containerd-client"] # REMOVED: protobuf dependency
 # PURE RUST: registry-auth feature removed (no HTTP!)

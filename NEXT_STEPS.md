@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S288 (Deep Debt VIII: Akida MMIO panic elimination, BearDog alias removal, `modbus` feature-gated, ioctl SAFETY docs). S287: trust/telemetry consolidation + ownership lifecycle fixes. S286: `dispatch.verify_trust`, `dispatch.telemetry.schema`, yield-to-owner audit. S285: crypto_integration migration, typed stub errors. ~98% env centralized. Zero libc. All unsafe SAFETY-documented (S288). Zero production panics. Zero clippy.)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,156+ lib-only) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented, confirmed S288) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V**
-**Latest**: S288 — **Deep Debt Evolution VIII**: Akida MMIO → `try_*` Result paths; BearDog type aliases removed; `modbus` feature-gated; ioctl SAFETY documentation complete. Zero P0 panic paths.
-**Previous**: S287 — trust/telemetry consolidation (`verify_trust`, `auth.peer_info`, `GateOwnership` lifecycle, `to_feature_vector`). S286 — cross-gate trust verification + 36-dim dispatch telemetry schema + yield-to-owner. S285 — server crypto → `crypto_integration`, typed stub errors, `PRIMAL_NAME`. S284 — last files >800L split, final library panics eliminated.
+**Updated**: Jun 2026 — S289 (Telemetry wire contract v1.1 + adversarial trust tests + telemetry emission + bollard feature-gated). S288: Akida MMIO panic elimination, BearDog alias removal, `modbus` feature-gated, ioctl SAFETY docs. S287: trust/telemetry consolidation + ownership lifecycle fixes. S286: `dispatch.verify_trust`, `dispatch.telemetry.schema`, yield-to-owner audit. ~98% env centralized. Zero libc. All unsafe SAFETY-documented. Zero production panics. Zero clippy.
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,204+ lib-only) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented, confirmed S288) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5)
+**Latest**: S289 — **Telemetry Wire Contract + Adversarial Trust Tests + Telemetry Emission**: `dispatch.telemetry.schema` → versioned wire contract v1.1 (encoding rules, backward compat, consumer list). +8 adversarial trust tests. `DispatchTelemetryRecord` emitted from dispatch paths. `bollard` feature-gated (not default).
+**Previous**: S288 — Akida MMIO → `try_*` Result paths; BearDog type aliases removed; `modbus` feature-gated; ioctl SAFETY docs. S287 — trust/telemetry consolidation. S286 — cross-gate trust verification + dispatch telemetry schema + yield-to-owner. S285 — crypto_integration migration.
 
 ---
 
@@ -34,7 +34,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **23,000+ tests** (0 failures, 9,156+ lib-only). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **23,000+ tests** (0 failures, 9,204+ lib-only). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -64,6 +64,15 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 4, 2026 — S289 Telemetry Wire Contract + Adversarial Trust Tests
+
+| Item | Status |
+|------|--------|
+| `dispatch.telemetry.schema` → versioned wire contract v1.1 (encoding, backward compat, consumers) | **DONE** |
+| +8 adversarial `dispatch.verify_trust` tests (forged BTSP, mismatch, malformed, serialization) | **DONE** |
+| `DispatchTelemetryRecord` emitted from `compute.dispatch.submit` + `shader.dispatch` via tracing | **DONE** |
+| `bollard` removed from default features in `runtime/container` (opt-in `docker` feature) | **DONE** |
 
 ### Jun 3, 2026 — S285 Deep Debt Evolution VII
 

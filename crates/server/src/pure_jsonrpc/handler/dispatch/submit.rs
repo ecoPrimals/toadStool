@@ -385,6 +385,22 @@ impl DispatchHandler {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
             match local_result {
                 Ok(local_output) => {
+                    let readback_ms = local_output
+                        .get("readback_ms")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                            ctx,
+                            method: "compute.dispatch.submit",
+                            dispatch_ms,
+                            readback_ms,
+                            dispatch_mode: "local_cylinder",
+                            bdf: &bdf,
+                            binary_bytes: &binary_bytes,
+                            workgroup_size,
+                            timeout_ms,
+                            success: true,
+                        });
                     let mut jobs = self.jobs.write().await;
                     if let Some(job) = jobs.get_mut(&job_id) {
                         job.status = DispatchStatus::Completed;
@@ -418,6 +434,18 @@ impl DispatchHandler {
 
         if needs_coral && !self.coral_client.is_available().await {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+            super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                    ctx,
+                    method: "compute.dispatch.submit",
+                    dispatch_ms,
+                    readback_ms: 0,
+                    dispatch_mode: &dispatch_mode,
+                    bdf: &bdf,
+                    binary_bytes: &binary_bytes,
+                    workgroup_size,
+                    timeout_ms,
+                    success: false,
+                });
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
@@ -476,6 +504,18 @@ impl DispatchHandler {
                         let readback_start = std::time::Instant::now();
                         let decrypted = self.decrypt_result(&result).await?;
                         let readback_ms = readback_start.elapsed().as_millis() as u64;
+                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                                ctx,
+                                method: "compute.dispatch.submit",
+                                dispatch_ms,
+                                readback_ms,
+                                dispatch_mode: &dispatch_mode,
+                                bdf: &bdf,
+                                binary_bytes: &binary_bytes,
+                                workgroup_size,
+                                timeout_ms,
+                                success: true,
+                            });
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
@@ -502,6 +542,18 @@ impl DispatchHandler {
                     }
                     Err(e) => {
                         let dispatch_ms = pre_dispatch.elapsed().as_millis() as u64;
+                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                                ctx,
+                                method: "compute.dispatch.submit",
+                                dispatch_ms,
+                                readback_ms: 0,
+                                dispatch_mode: &dispatch_mode,
+                                bdf: &bdf,
+                                binary_bytes: &binary_bytes,
+                                workgroup_size,
+                                timeout_ms,
+                                success: false,
+                            });
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Failed(e.to_string());
@@ -528,6 +580,18 @@ impl DispatchHandler {
         }
 
         let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+            ctx,
+            method: "compute.dispatch.submit",
+            dispatch_ms,
+            readback_ms: 0,
+            dispatch_mode: &dispatch_mode,
+            bdf: &bdf,
+            binary_bytes: &binary_bytes,
+            workgroup_size,
+            timeout_ms,
+            success: false,
+        });
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "submit",

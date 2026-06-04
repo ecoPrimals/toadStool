@@ -101,12 +101,13 @@ impl DispatchHandler {
             u64::from(workgroup_size[0]) * u64::from(workgroup_size[1]) * u64::from(workgroup_size[2]);
         enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
+        let submit_instant = std::time::Instant::now();
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {
             id: job_id.clone(),
             bdf: bdf.clone(),
             status: DispatchStatus::Submitted,
-            submitted_at: std::time::Instant::now(),
+            submitted_at: submit_instant,
             binary_size: binary_bytes.len(),
             result: None,
         };
@@ -136,6 +137,23 @@ impl DispatchHandler {
             {
                 match local_result {
                     Ok(local_output) => {
+                        let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+                        let readback_ms = local_output
+                            .get("readback_ms")
+                            .and_then(serde_json::Value::as_u64)
+                            .unwrap_or(0);
+                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                                ctx,
+                                method: "shader.dispatch",
+                                dispatch_ms,
+                                readback_ms,
+                                dispatch_mode: "local_cylinder",
+                                bdf: &bdf,
+                                binary_bytes: &binary_bytes,
+                                workgroup_size,
+                                timeout_ms,
+                                success: true,
+                            });
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
@@ -177,6 +195,19 @@ impl DispatchHandler {
             ) {
                 match wgpu_result {
                     Ok(wgpu_output) => {
+                        let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                                ctx,
+                                method: "shader.dispatch",
+                                dispatch_ms,
+                                readback_ms: 0,
+                                dispatch_mode: "wgpu",
+                                bdf: &bdf,
+                                binary_bytes: &binary_bytes,
+                                workgroup_size,
+                                timeout_ms,
+                                success: true,
+                            });
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
@@ -208,6 +239,19 @@ impl DispatchHandler {
         }
 
         if needs_shader_service && !self.coral_client.is_available().await {
+            let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+            super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                    ctx,
+                    method: "shader.dispatch",
+                    dispatch_ms,
+                    readback_ms: 0,
+                    dispatch_mode: &dispatch_mode,
+                    bdf: &bdf,
+                    binary_bytes: &binary_bytes,
+                    workgroup_size,
+                    timeout_ms,
+                    success: false,
+                });
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
@@ -255,6 +299,19 @@ impl DispatchHandler {
                     .await
                 {
                     Ok(result) => {
+                        let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                                ctx,
+                                method: "shader.dispatch",
+                                dispatch_ms,
+                                readback_ms: 0,
+                                dispatch_mode: &dispatch_mode,
+                                bdf: &bdf,
+                                binary_bytes: &binary_bytes,
+                                workgroup_size,
+                                timeout_ms,
+                                success: true,
+                            });
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
@@ -279,6 +336,19 @@ impl DispatchHandler {
                         }));
                     }
                     Err(e) => {
+                        let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                                ctx,
+                                method: "shader.dispatch",
+                                dispatch_ms,
+                                readback_ms: 0,
+                                dispatch_mode: &dispatch_mode,
+                                bdf: &bdf,
+                                binary_bytes: &binary_bytes,
+                                workgroup_size,
+                                timeout_ms,
+                                success: false,
+                            });
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Failed(e.to_string());
@@ -305,6 +375,19 @@ impl DispatchHandler {
             }
         }
 
+        let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+            ctx,
+            method: "shader.dispatch",
+            dispatch_ms,
+            readback_ms: 0,
+            dispatch_mode: &dispatch_mode,
+            bdf: &bdf,
+            binary_bytes: &binary_bytes,
+            workgroup_size,
+            timeout_ms,
+            success: false,
+        });
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "shader",

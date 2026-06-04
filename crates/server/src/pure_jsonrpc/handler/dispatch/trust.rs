@@ -106,4 +106,120 @@ mod tests {
         let result = verify_trust(&ctx, None);
         assert!(result["requested_gate_id"].is_null());
     }
+
+    #[test]
+    fn verify_trust_forged_btsp_no_gate_id() {
+        // A caller claims BtspVerified but provides no gate_id — suspicious.
+        // The handler should still report verified=true (trust is from transport
+        // layer, not from gate_id presence), but gate_id should be null.
+        let ctx = CallerContext {
+            gate_id: None,
+            trust_level: DispatchTrustLevel::BtspVerified,
+            ..CallerContext::anonymous()
+        };
+        let result = verify_trust(&ctx, None);
+        assert_eq!(result["trust_level"], "btsp_verified");
+        assert!(result["gate_id"].is_null());
+        assert_eq!(result["verified"], true);
+    }
+
+    #[test]
+    fn verify_trust_forged_mutual_auth_no_gate_id() {
+        // MutuallyAuthenticated without gate_id is even more suspicious.
+        let ctx = CallerContext {
+            gate_id: None,
+            trust_level: DispatchTrustLevel::MutuallyAuthenticated,
+            ..CallerContext::anonymous()
+        };
+        let result = verify_trust(&ctx, None);
+        assert_eq!(result["trust_level"], "mutually_authenticated");
+        assert!(result["gate_id"].is_null());
+        assert_eq!(result["verified"], true);
+    }
+
+    #[test]
+    fn verify_trust_gate_id_mismatch_with_requested() {
+        // Caller has gate_id "eastGate" but requests dispatch to "biomeGate".
+        // verify_trust should report both and let the caller decide.
+        let ctx = CallerContext {
+            gate_id: Some("eastGate".into()),
+            trust_level: DispatchTrustLevel::BtspVerified,
+            ..CallerContext::anonymous()
+        };
+        let params = serde_json::json!({"gate_id": "biomeGate"});
+        let result = verify_trust(&ctx, Some(&params));
+        assert_eq!(result["gate_id"], "eastGate");
+        assert_eq!(result["requested_gate_id"], "biomeGate");
+        assert_eq!(result["verified"], true);
+    }
+
+    #[test]
+    fn verify_trust_anonymous_with_gate_id() {
+        // Caller is Anonymous trust level but still has a gate_id
+        // (e.g., extracted from connection metadata without BTSP).
+        // Should NOT be verified.
+        let ctx = CallerContext {
+            gate_id: Some("rogue-gate".into()),
+            trust_level: DispatchTrustLevel::Anonymous,
+            ..CallerContext::anonymous()
+        };
+        let result = verify_trust(&ctx, None);
+        assert_eq!(result["trust_level"], "anonymous");
+        assert_eq!(result["gate_id"], "rogue-gate");
+        assert_eq!(result["verified"], false);
+    }
+
+    #[test]
+    fn verify_trust_malformed_params_non_string_gate_id() {
+        // Caller passes gate_id as a number instead of string.
+        let ctx = CallerContext::anonymous();
+        let params = serde_json::json!({"gate_id": 42});
+        let result = verify_trust(&ctx, Some(&params));
+        assert!(result["requested_gate_id"].is_null());
+    }
+
+    #[test]
+    fn verify_trust_empty_params_object() {
+        let ctx = CallerContext::anonymous();
+        let params = serde_json::json!({});
+        let result = verify_trust(&ctx, Some(&params));
+        assert!(result["requested_gate_id"].is_null());
+        assert_eq!(result["verified"], false);
+    }
+
+    #[test]
+    fn verify_trust_extra_unknown_params_ignored() {
+        // Unknown fields in params should not cause errors.
+        let ctx = CallerContext {
+            gate_id: Some("legit-gate".into()),
+            trust_level: DispatchTrustLevel::BtspVerified,
+            ..CallerContext::anonymous()
+        };
+        let params = serde_json::json!({
+            "gate_id": "target",
+            "unknown_field": "should be ignored",
+            "another_junk": [1, 2, 3]
+        });
+        let result = verify_trust(&ctx, Some(&params));
+        assert_eq!(result["requested_gate_id"], "target");
+        assert_eq!(result["verified"], true);
+    }
+
+    #[test]
+    fn all_trust_levels_serialize_to_snake_case() {
+        let levels = [
+            (DispatchTrustLevel::Anonymous, "anonymous"),
+            (DispatchTrustLevel::LocalTransport, "local_transport"),
+            (DispatchTrustLevel::BtspVerified, "btsp_verified"),
+            (DispatchTrustLevel::MutuallyAuthenticated, "mutually_authenticated"),
+        ];
+        for (level, expected) in levels {
+            let ctx = CallerContext {
+                trust_level: level,
+                ..CallerContext::anonymous()
+            };
+            let result = verify_trust(&ctx, None);
+            assert_eq!(result["trust_level"], expected, "trust level {expected}");
+        }
+    }
 }

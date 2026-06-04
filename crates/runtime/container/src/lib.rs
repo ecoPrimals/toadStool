@@ -44,6 +44,7 @@ pub use types::{
 
 /// Active container handle
 #[derive(Clone, Debug)]
+#[cfg_attr(not(feature = "docker"), allow(dead_code))]
 pub(crate) struct ContainerHandle {
     pub(crate) container_id: String,
     _image: String,
@@ -57,6 +58,7 @@ pub struct ContainerRuntimeEngine {
     #[cfg(feature = "docker")]
     docker: Option<Docker>,
     #[cfg(not(feature = "docker"))]
+    #[allow(dead_code)]
     docker: Option<()>,
     active_containers: Arc<RwLock<HashMap<Uuid, ContainerHandle>>>,
     resource_monitor: Option<Arc<ResourceMonitorDispatch>>,
