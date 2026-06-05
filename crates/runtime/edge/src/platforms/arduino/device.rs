@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Arduino device model, board profiles, and USB discovery helpers.
 
+#[cfg(feature = "serial-transport")]
 use serialport::SerialPortType;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+#[cfg(feature = "serial-transport")]
+use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use toadstool::error::ToadStoolResult;
@@ -16,6 +19,7 @@ use super::super::*;
 pub struct ArduinoDevice {
     pub(in crate::platforms::arduino) id: Uuid,
     pub(in crate::platforms::arduino) info: EdgeDeviceInfo,
+    #[cfg(feature = "serial-transport")]
     pub(in crate::platforms::arduino) serial_port:
         Arc<Mutex<Option<Box<dyn serialport::SerialPort>>>>,
     pub(in crate::platforms::arduino) compilation_cache: Arc<RwLock<HashMap<String, Vec<u8>>>>,
@@ -46,6 +50,7 @@ impl ArduinoDevice {
         Self {
             id: self.id,
             info: self.info.clone(),
+            #[cfg(feature = "serial-transport")]
             serial_port: Arc::clone(&self.serial_port),
             compilation_cache: Arc::clone(&self.compilation_cache),
             active_executions: Arc::clone(&self.active_executions),
@@ -89,6 +94,7 @@ impl ArduinoDevice {
         Ok(Self {
             id,
             info,
+            #[cfg(feature = "serial-transport")]
             serial_port: Arc::new(Mutex::new(None)),
             compilation_cache: Arc::new(RwLock::new(HashMap::new())),
             active_executions: Arc::new(RwLock::new(HashMap::new())),
@@ -230,25 +236,38 @@ impl ArduinoDevice {
 
     /// Discover Arduino devices
     pub fn discover_devices() -> ToadStoolResult<Vec<ArduinoDevice>> {
-        let mut devices = Vec::new();
+        #[cfg(feature = "serial-transport")]
+        {
+            let mut devices = Vec::new();
 
-        for port in serialport::available_ports().map_err(|e| {
-            toadstool::error::ToadStoolError::runtime(format!(
-                "Failed to enumerate serial ports: {e}"
-            ))
-        })? {
-            if let SerialPortType::UsbPort(usb_info) = &port.port_type {
-                // Check for Arduino vendor IDs
-                if Self::is_arduino_device(usb_info.vid, usb_info.pid) {
-                    let board = Self::detect_board_type(usb_info.vid, usb_info.pid);
-                    let device =
-                        ArduinoDevice::new(board, "1.0".to_string(), port.port_name.clone(), 9600)?;
-                    devices.push(device);
+            for port in serialport::available_ports().map_err(|e| {
+                toadstool::error::ToadStoolError::runtime(format!(
+                    "Failed to enumerate serial ports: {e}"
+                ))
+            })? {
+                if let SerialPortType::UsbPort(usb_info) = &port.port_type {
+                    if Self::is_arduino_device(usb_info.vid, usb_info.pid) {
+                        let board = Self::detect_board_type(usb_info.vid, usb_info.pid);
+                        let device = ArduinoDevice::new(
+                            board,
+                            "1.0".to_string(),
+                            port.port_name.clone(),
+                            9600,
+                        )?;
+                        devices.push(device);
+                    }
                 }
             }
+
+            Ok(devices)
         }
 
-        Ok(devices)
+        #[cfg(not(feature = "serial-transport"))]
+        {
+            Err(toadstool::error::ToadStoolError::runtime(
+                crate::serial_transport::SERIAL_TRANSPORT_UNAVAILABLE.to_string(),
+            ))
+        }
     }
 
     /// Check if device is Arduino based on vendor/product ID

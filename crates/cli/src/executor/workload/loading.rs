@@ -193,12 +193,14 @@ command = "/bin/echo"
 
     #[test]
     fn expand_mixed_vars() {
+        use toadstool_common::constants::primal_identity::PRIMAL_NAME;
+
         temp_env::with_vars(
-            [("APP_DIR", Some("/app")), ("APP_USER", Some("toadstool"))],
+            [("APP_DIR", Some("/app")), ("APP_USER", Some(PRIMAL_NAME))],
             || {
                 assert_eq!(
                     expand_env_vars("dir = \"${APP_DIR}\" user = \"$APP_USER\""),
-                    "dir = \"/app\" user = \"toadstool\""
+                    format!("dir = \"/app\" user = \"{PRIMAL_NAME}\"")
                 );
             },
         );

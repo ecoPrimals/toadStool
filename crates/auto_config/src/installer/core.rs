@@ -6,6 +6,8 @@ use std::path::Path;
 use tokio::fs;
 use tracing::info;
 
+use toadstool_common::constants::primal_identity::PRIMAL_BINARY_NAME;
+
 use crate::ToadStoolError;
 
 /// Ensure installation directory exists
@@ -67,9 +69,9 @@ echo "  help    - Show help"
     };
 
     let script_name = if cfg!(windows) {
-        "toadstool.bat"
+        format!("{PRIMAL_BINARY_NAME}.bat")
     } else {
-        "toadstool"
+        PRIMAL_BINARY_NAME.to_string()
     };
     let script_path = bin_dir.join(script_name);
 
@@ -141,9 +143,9 @@ mod tests {
         assert!(logs_dir.exists());
 
         let script_name = if cfg!(windows) {
-            "toadstool.bat"
+            format!("{PRIMAL_BINARY_NAME}.bat")
         } else {
-            "toadstool"
+            PRIMAL_BINARY_NAME.to_string()
         };
         let script_path = bin_dir.join(script_name);
         assert!(script_path.exists());

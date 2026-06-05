@@ -178,21 +178,6 @@ pub use primal_capabilities::{
 };
 pub use security_provider::ExternalTarget;
 
-// Re-export deprecated Coordination types for backward compatibility
-#[cfg(feature = "legacy-coordination")]
-#[expect(
-    deprecated,
-    reason = "re-exports kept for callers migrating to capability-based coordination"
-)]
-#[deprecated(
-    since = "2.0.0",
-    note = "use coordination_integration instead"
-)]
-pub use coordination::{
-    CoordinationIntegrationConfig, CoordinationJobRequest, CoordinationJobResponse,
-    CoordinationNetworkDiscovery, JobCoordinator,
-    NetworkRequirements as CoordinationNetworkRequirements,
-};
 pub use substrate_detection::{PlatformType, SubstrateCapabilities, SubstrateDetector};
 
 // Tests module

@@ -37,6 +37,12 @@
 /// should reference this constant.
 pub const PRIMAL_NAME: &str = "toadstool";
 
+/// Canonical UniBin executable name (build artifact on `$PATH`).
+///
+/// Distinct from [`PRIMAL_NAME`]: the binary filename may match the primal name
+/// today, but callers should use this constant for spawn/install lookups.
+pub const PRIMAL_BINARY_NAME: &str = "toadstool";
+
 /// Default instance identifier for this primal's primary/singleton instance.
 ///
 /// Used in `UniversalPrimalProvider::instance_id()` and display capability
@@ -130,6 +136,7 @@ mod tests {
     #[test]
     fn self_knowledge_is_consistent() {
         assert_eq!(PRIMAL_NAME, "toadstool");
+        assert_eq!(PRIMAL_BINARY_NAME, PRIMAL_NAME);
         assert!(PRIMAL_DISPLAY_NAME.to_lowercase().contains(PRIMAL_NAME));
     }
 

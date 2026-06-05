@@ -7,6 +7,9 @@
 mod deploy;
 mod device;
 mod edge_device;
+#[cfg(feature = "serial-transport")]
 mod serial;
+#[cfg(not(feature = "serial-transport"))]
+mod serial_stub;
 
 pub use device::ArduinoDevice;

@@ -19,7 +19,7 @@ use std::time::Duration;
 use tokio::sync::{RwLock, broadcast};
 
 use toadstool::{ExecutionStatus, RuntimeType};
-use toadstool_server::ToadStoolTarpcServer;
+use toadstool_server::tarpc_server::ToadStoolTarpcServer;
 use toadstool_server::unibin::{
     ShutdownSignal, UnibinExecutionConfig, create_executor, ensure_biomeos_directory, exit_codes,
     get_socket_path, is_platform_constraint_str, is_selinux_enforcing, resolve_family_id,

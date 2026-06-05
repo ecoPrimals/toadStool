@@ -37,9 +37,15 @@ macro_rules! v4l2_getter {
         #[doc = $doc]
         pub fn $name(fd: impl AsFd) -> Result<$ty, std::io::Error> {
             validate_v4l2_fd(&fd)?;
-            // SAFETY: fd is a valid V4L2 device (AsFd contract); opcode is a
-            // compile-time constant matching the V4L2 spec; Getter allocates
-            // output and kernel writes into it.
+            // SAFETY: `ioctl::ioctl` is the only FFI site in this module.
+            // Invariants:
+            // - `fd` refers to an open V4L2 character device (`validate_v4l2_fd` rejects negatives;
+            //   callers must pass a handle obtained from `open` on a V4L2 node).
+            // - The ioctl opcode is a compile-time `Getter` for `repr(C)` `$ty`, matching the
+            //   kernel V4L2 ABI for request `b'V'`, nr `$nr`.
+            // - Rust allocates a zeroed `$ty` on the stack; the kernel writes the output only.
+            // Maintained by: safe public wrappers that require `AsFd` and use spec-locked types.
+            // If violated: EINVAL/ENODEV from the kernel, or UB if `fd`/opcode/types are wrong.
             unsafe {
                 ioctl::ioctl(
                     fd,
@@ -56,8 +62,14 @@ macro_rules! v4l2_updater {
         #[doc = $doc]
         pub fn $name(fd: impl AsFd, arg: &mut $ty) -> Result<(), std::io::Error> {
             validate_v4l2_fd(&fd)?;
-            // SAFETY: fd valid; opcode matches V4L2 spec; arg points to a live,
-            // correctly-typed repr(C) struct the kernel reads/writes.
+            // SAFETY: `ioctl::ioctl` with `Updater` read/write semantics.
+            // Invariants:
+            // - `fd` is a valid V4L2 device handle (see `validate_v4l2_fd`).
+            // - `arg` is `&mut $ty` where `$ty` is `#[repr(C)]` and matches the kernel struct
+            //   for this ioctl; it remains borrowed for the full syscall (no concurrent alias).
+            // - Opcode `read_write::<$ty>(b'V', $nr)` matches the V4L2 spec field layout.
+            // Maintained by: callers pass stack- or heap-backed structs from `types.rs`.
+            // If violated: kernel may reject the ioctl or corrupt adjacent memory on layout drift.
             unsafe {
                 ioctl::ioctl(
                     fd,
@@ -76,7 +88,13 @@ macro_rules! v4l2_setter {
         #[doc = $doc]
         pub fn $name(fd: impl AsFd, val: $ty) -> Result<(), std::io::Error> {
             validate_v4l2_fd(&fd)?;
-            // SAFETY: fd valid; opcode matches V4L2 spec; val is the correct type.
+            // SAFETY: `ioctl::ioctl` with `Setter` write-only semantics.
+            // Invariants:
+            // - `fd` is a valid V4L2 device handle (see `validate_v4l2_fd`).
+            // - `val` is passed by value with type `$ty` matching the kernel argument for
+            //   `write::<$ty>(b'V', $nr)`; no Rust references cross the FFI boundary.
+            // Maintained by: opcode constants and `types.rs` definitions track the V4L2 UAPI.
+            // If violated: EINVAL from the kernel, or UB if `fd` is not a V4L2 device.
             unsafe {
                 ioctl::ioctl(
                     fd,

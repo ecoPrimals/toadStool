@@ -23,6 +23,7 @@ use std::path::PathBuf;
 use tokio::process::Command as AsyncCommand;
 use tracing::{info, warn};
 
+use toadstool_common::constants::primal_identity::PRIMAL_BINARY_NAME;
 use toadstool_common::platform_paths::Platform;
 
 use crate::ToadStoolError;
@@ -134,9 +135,9 @@ impl SmartInstaller {
         info!("🚀 Starting ToadStool services...");
 
         let bin_path = self.installation_path.join("bin").join(if cfg!(windows) {
-            "toadstool.bat"
+            format!("{PRIMAL_BINARY_NAME}.bat")
         } else {
-            "toadstool"
+            PRIMAL_BINARY_NAME.to_string()
         });
 
         if bin_path.exists() {
@@ -262,9 +263,9 @@ mod tests {
         assert!(install_path.join("logs").exists());
 
         let script_name = if cfg!(windows) {
-            "toadstool.bat"
+            format!("{PRIMAL_BINARY_NAME}.bat")
         } else {
-            "toadstool"
+            PRIMAL_BINARY_NAME.to_string()
         };
         assert!(install_path.join("bin").join(script_name).exists());
     }

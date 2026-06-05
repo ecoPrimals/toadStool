@@ -4,6 +4,7 @@
 //! Handles communication protocols for edge devices including serial, network, and wireless protocols.
 
 use std::collections::HashMap;
+#[cfg(feature = "serial-transport")]
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,6 +16,8 @@ use tracing::info;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
+#[cfg(not(feature = "serial-transport"))]
+use crate::serial_transport::SERIAL_TRANSPORT_UNAVAILABLE;
 use crate::EdgeRuntimeConfig;
 
 /// Communication Manager
@@ -83,14 +86,17 @@ impl CommunicationManager {
         let timeout_ms = Duration::from_millis(self.config.communication_timeout_ms);
 
         // Serial port protocol (for Arduino, ESP32, etc.)
-        let serial = SerialProtocol {
-            timeout: timeout_ms,
-            baud_rates: vec![9600, 115200, 57600, 38400],
-        };
-        if serial.is_available().await {
-            let mut protocols = self.protocols.write().await;
-            protocols.insert("serial".to_string(), Box::new(serial));
-            info!("Registered Serial communication protocol");
+        #[cfg(feature = "serial-transport")]
+        {
+            let serial = SerialProtocol {
+                timeout: timeout_ms,
+                baud_rates: vec![9600, 115200, 57600, 38400],
+            };
+            if serial.is_available().await {
+                let mut protocols = self.protocols.write().await;
+                protocols.insert("serial".to_string(), Box::new(serial));
+                info!("Registered Serial communication protocol");
+            }
         }
 
         // TCP network protocol (for Raspberry Pi, Linux edge, etc.)
@@ -108,14 +114,24 @@ impl CommunicationManager {
         Ok(())
     }
 
-    /// Send message via appropriate protocol (auto-detect from address format)
-    pub async fn send(&self, address: &str, message: &[u8]) -> ToadStoolResult<()> {
-        let key = if address.starts_with('/') || address.contains("tty") || address.contains("COM")
-        {
+    fn protocol_key_for_address(address: &str) -> &'static str {
+        if address.starts_with('/') || address.contains("tty") || address.contains("COM") {
             "serial"
         } else {
             "tcp"
-        };
+        }
+    }
+
+    /// Send message via appropriate protocol (auto-detect from address format)
+    pub async fn send(&self, address: &str, message: &[u8]) -> ToadStoolResult<()> {
+        let key = Self::protocol_key_for_address(address);
+        #[cfg(not(feature = "serial-transport"))]
+        if key == "serial" {
+            return Err(ToadStoolError::runtime(
+                SERIAL_TRANSPORT_UNAVAILABLE.to_string(),
+            ));
+        }
+
         let protocols = self.protocols.read().await;
         let protocol = protocols.get(key).ok_or_else(|| {
             ToadStoolError::runtime(format!("No suitable protocol for address: {}", address))
@@ -125,12 +141,14 @@ impl CommunicationManager {
 
     /// Receive message via appropriate protocol
     pub async fn receive(&self, address: &str) -> ToadStoolResult<Vec<u8>> {
-        let key = if address.starts_with('/') || address.contains("tty") || address.contains("COM")
-        {
-            "serial"
-        } else {
-            "tcp"
-        };
+        let key = Self::protocol_key_for_address(address);
+        #[cfg(not(feature = "serial-transport"))]
+        if key == "serial" {
+            return Err(ToadStoolError::runtime(
+                SERIAL_TRANSPORT_UNAVAILABLE.to_string(),
+            ));
+        }
+
         let protocols = self.protocols.read().await;
         let protocol = protocols.get(key).ok_or_else(|| {
             ToadStoolError::runtime(format!("No suitable protocol for address: {}", address))
@@ -139,12 +157,14 @@ impl CommunicationManager {
     }
 }
 
-/// Serial port communication protocol
+/// Serial port communication protocol (`serial-transport` feature).
+#[cfg(feature = "serial-transport")]
 struct SerialProtocol {
     timeout: Duration,
     baud_rates: Vec<u32>,
 }
 
+#[cfg(feature = "serial-transport")]
 impl CommunicationProtocol for SerialProtocol {
     fn get_name(&self) -> &str {
         "Serial"

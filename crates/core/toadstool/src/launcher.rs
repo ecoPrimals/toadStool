@@ -25,8 +25,9 @@
 use crate::error::{ToadStoolError, ToadStoolResult};
 use std::path::PathBuf;
 use std::time::Duration;
-use toadstool_common::interned_strings::socket_env;
+use toadstool_common::constants::primal_identity::{PRIMAL_BINARY_NAME, PRIMAL_NAME};
 use toadstool_common::constants::timeouts;
+use toadstool_common::interned_strings::socket_env;
 use tokio::process::Command;
 use tracing::info;
 
@@ -48,7 +49,7 @@ pub struct LaunchConfig {
 impl Default for LaunchConfig {
     fn default() -> Self {
         Self {
-            binary_path: PathBuf::from("toadstool"),
+            binary_path: PathBuf::from(PRIMAL_BINARY_NAME),
             args: vec!["daemon".to_string()],
             env: Vec::new(),
             startup_timeout: timeouts::CONNECTION_STARTUP_TIMEOUT,
@@ -134,12 +135,25 @@ fn get_toadstool_socket_paths() -> Vec<PathBuf> {
 
     // 2. Display-specific paths (XDG-compliant)
     if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
-        paths.push(PathBuf::from(&runtime_dir).join("toadstool/display.sock"));
+        paths.push(
+            PathBuf::from(&runtime_dir)
+                .join(PRIMAL_NAME)
+                .join("display.sock"),
+        );
     }
     if let Ok(home) = std::env::var(socket_env::HOME) {
-        paths.push(PathBuf::from(&home).join(".local/share/toadstool/display.sock"));
+        paths.push(
+            PathBuf::from(&home)
+                .join(".local/share")
+                .join(PRIMAL_NAME)
+                .join("display.sock"),
+        );
     }
-    paths.push(std::env::temp_dir().join("toadstool/display.sock"));
+    paths.push(
+        std::env::temp_dir()
+            .join(PRIMAL_NAME)
+            .join("display.sock"),
+    );
 
     paths
 }
@@ -152,16 +166,22 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
 
     // 1. XDG_RUNTIME_DIR (preferred)
     if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
-        paths.push(PathBuf::from(runtime_dir).join("toadstool-ipc-port"));
+        paths.push(
+            PathBuf::from(runtime_dir).join(format!("{PRIMAL_NAME}-ipc-port")),
+        );
     }
 
     // 2. HOME/.local/share (secondary)
     if let Ok(home) = std::env::var(socket_env::HOME) {
-        paths.push(PathBuf::from(home).join(".local/share/toadstool-ipc-port"));
+        paths.push(
+            PathBuf::from(home)
+                .join(".local/share")
+                .join(format!("{PRIMAL_NAME}-ipc-port")),
+        );
     }
 
     // 3. Temp dir (fallback - platform agnostic)
-    paths.push(std::env::temp_dir().join("toadstool-ipc-port"));
+    paths.push(std::env::temp_dir().join(format!("{PRIMAL_NAME}-ipc-port")));
 
     paths
 }
@@ -307,7 +327,7 @@ mod tests {
     #[test]
     fn test_launch_config_default() {
         let config = LaunchConfig::default();
-        assert_eq!(config.binary_path, PathBuf::from("toadstool"));
+        assert_eq!(config.binary_path, PathBuf::from(PRIMAL_BINARY_NAME));
         assert_eq!(config.args, vec!["daemon"]);
         assert_eq!(config.startup_timeout, Duration::from_secs(10));
     }
@@ -400,7 +420,7 @@ mod tests {
     fn test_get_discovery_file_paths_tmp_path() {
         let paths = get_tcp_discovery_file_paths();
         // Use std::env::temp_dir() for platform-agnostic test
-        let tmp_path = std::env::temp_dir().join("toadstool-ipc-port");
+        let tmp_path = std::env::temp_dir().join(format!("{PRIMAL_NAME}-ipc-port"));
         assert!(paths.contains(&tmp_path));
     }
 }

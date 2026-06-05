@@ -25,7 +25,7 @@ sha2 = { workspace = true }
 # Edge-specific dependencies
 # default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
 # Pure-Rust serial on top of OS TTY APIs; no practical no_std replacement for host USB-UART.
-serialport = { version = "4.3", default-features = false }
+serialport = { version = "4.3", default-features = false, optional = true }
 embedded-hal = "1.0"
 rppal = { version = "0.17", optional = true }
 esp-idf-sys = { version = "0.34", optional = true }
@@ -52,6 +52,8 @@ reqwest = { version = "0.13", optional = true, default-features = false, feature
 [features]
 # Default features: zero C dependencies for ecoBin compliance
 default = []
+# USB-UART serial discovery and communication (opt-in; not in `default`)
+serial-transport = ["serialport"]
 # Platform-specific features (enable as needed)
 raspberry-pi = ["rppal"]
 # ESP32 support requires esp-idf-sys (C dependency) - not in default

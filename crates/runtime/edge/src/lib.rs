@@ -14,6 +14,8 @@ pub mod communication;
 pub mod deployment;
 pub mod discovery;
 pub mod platforms;
+/// USB-UART serial transport (`serial-transport` feature).
+pub mod serial_transport;
 pub mod toolchain;
 
 #[cfg(target_os = "linux")]
@@ -46,6 +48,7 @@ pub use discovery::{
     SerialPortDiscovery, USBDiscovery,
 };
 pub use platforms::*;
+pub use serial_transport::serial_transport_available;
 pub use toolchain::{
     CompilationCache, CompilationTarget, CrossCompilationToolchain, OutputFormat, ToolchainInfo,
 };

@@ -72,20 +72,6 @@ pub use config::{
 pub use errors::{ServerError, ServerResult};
 pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics};
 
-// Re-export server functions for daemon
-#[cfg(feature = "tarpc")]
-#[deprecated(
-    since = "2.2.0",
-    note = "Use pure_jsonrpc::JsonRpcHandler — no TCP hardcoding"
-)]
-pub use tarpc_server::{
-    StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor, WorkloadExecutorDispatch,
-};
-
-#[cfg(all(test, feature = "tarpc"))]
-#[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
-pub use tarpc_server::TestExecutor;
-
 // ⚠️ IMPORTANT: Protocol Priority (wateringHole Standard)
 // 1. PRIMARY: JSON-RPC 2.0 over Unix sockets (universal, language-agnostic)
 // 2. OPTIONAL: tarpc over Unix sockets (binary RPC for performance-critical paths)
