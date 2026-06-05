@@ -20,6 +20,7 @@ pub use format::{
     socket_filename_for_family,
 };
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tracing::{error, info, warn};
@@ -92,6 +93,8 @@ pub async fn run_server_main(
     family_id_override: Option<String>,
     bind_override: Option<String>,
     tcp_port: Option<u16>,
+    socket_override: Option<PathBuf>,
+    biomeos_socket_override: Option<PathBuf>,
 ) -> Result<(), ServerError> {
     info!(
         "🍄 ToadStool Universal Compute Server v{}",
@@ -134,7 +137,12 @@ pub async fn run_server_main(
         std::env::var(socket_env::XDG_RUNTIME_DIR).ok()
     );
 
-    let jsonrpc_socket_path = format::get_socket_path(&family_id, &node_id)?;
+    let jsonrpc_socket_path = format::get_socket_path(
+        &family_id,
+        &node_id,
+        socket_override.as_deref(),
+        biomeos_socket_override.as_deref(),
+    )?;
     info!("✅ Final socket path: {:?}", jsonrpc_socket_path);
 
     // Wave 49/54 startup optimization: pre-bind JSON-RPC socket BEFORE heavy init
@@ -239,6 +247,7 @@ pub async fn run_server_main(
         version,
         Some(Arc::clone(&error_count)),
         Arc::clone(&ready),
+        Some(Arc::new(jsonrpc_socket.clone())),
     ));
 
     // Extract anchor store before handler moves into the server task

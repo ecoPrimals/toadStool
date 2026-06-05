@@ -82,6 +82,8 @@ pub enum DispatchTrustLevel {
 pub struct ConnectionTrustHints {
     pub transport: ConnectionTransport,
     pub btsp_verified: bool,
+    /// Completed mutual BTSP handshake (BearDog JH-1).
+    pub mutually_authenticated: bool,
 }
 
 /// Transport kind for the active JSON-RPC connection.
@@ -97,14 +99,22 @@ impl ConnectionTrustHints {
     pub const UNIX_LOCAL: Self = Self {
         transport: ConnectionTransport::Unix,
         btsp_verified: false,
+        mutually_authenticated: false,
     };
     pub const UNIX_BTSP: Self = Self {
         transport: ConnectionTransport::Unix,
         btsp_verified: true,
+        mutually_authenticated: false,
+    };
+    pub const UNIX_MUTUAL_BTSP: Self = Self {
+        transport: ConnectionTransport::Unix,
+        btsp_verified: true,
+        mutually_authenticated: true,
     };
     pub const TCP: Self = Self {
         transport: ConnectionTransport::Tcp,
         btsp_verified: false,
+        mutually_authenticated: false,
     };
 }
 

@@ -235,6 +235,7 @@ async fn start_servers_with_fallback_fails_on_non_platform_error() {
         "1.0.0".to_string(),
         None,
         Arc::new(AtomicBool::new(true)),
+        None,
     ));
 
     let result = start_servers_with_fallback(
@@ -492,6 +493,7 @@ async fn start_servers_platform_constraint_triggers_tcp_fallback() {
         "1.0.0".to_string(),
         None,
         Arc::new(AtomicBool::new(true)),
+        None,
     ));
     let result = start_servers_with_fallback(
         server,

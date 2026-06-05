@@ -204,3 +204,98 @@ fn dma_from_keepalive(
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::DispatchHandler;
+    use crate::cross_gate::GateOwnership;
+    use crate::pure_jsonrpc::handler::method_gate::CallerContext;
+    use crate::visualization_client::VisualizationClient;
+
+    fn test_handler() -> DispatchHandler {
+        DispatchHandler::new(Arc::new(VisualizationClient::unavailable()), None)
+    }
+
+    #[test]
+    fn new_handler_anchor_store_is_empty() {
+        let handler = test_handler();
+        let store = handler.anchor_store();
+        assert!(store.try_lock().is_ok());
+    }
+
+    #[test]
+    fn set_gate_ownership_accepts_ownership_handle() {
+        let mut handler = test_handler();
+        handler.set_gate_ownership(Arc::new(GateOwnership::new("owner-gate")));
+    }
+
+    #[test]
+    fn resolve_caller_gate_id_prefers_caller_context() {
+        let ctx = CallerContext {
+            gate_id: Some(String::from("ctx-gate")),
+            ..CallerContext::anonymous()
+        };
+        let params = serde_json::json!({
+            "_dispatch_trust": { "source_gate_id": "params-gate" }
+        });
+        assert_eq!(
+            super::resolve_caller_gate_id(Some(&ctx), Some(&params)).as_deref(),
+            Some("ctx-gate")
+        );
+    }
+
+    #[test]
+    fn resolve_caller_gate_id_falls_back_to_dispatch_trust_params() {
+        let params = serde_json::json!({
+            "_dispatch_trust": { "source_gate_id": "params-gate" }
+        });
+        assert_eq!(
+            super::resolve_caller_gate_id(None, Some(&params)).as_deref(),
+            Some("params-gate")
+        );
+    }
+
+    #[test]
+    fn resolve_caller_gate_id_returns_none_without_provenance() {
+        assert!(super::resolve_caller_gate_id(None, None).is_none());
+    }
+
+    #[tokio::test]
+    async fn pre_dispatch_resource_check_without_orchestrator_is_noop() {
+        let handler = test_handler();
+        let result = handler
+            .pre_dispatch_resource_check("0000:03:00.0", None, None)
+            .await
+            .expect("noop");
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_creates_lookupable_job() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "binary": [9u8, 8, 7],
+            "bdf": "0000:04:00.0",
+            "dispatch_mode": "passthrough",
+        });
+        let submit = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("submit");
+        let job_id = submit["job_id"].as_str().expect("job_id");
+
+        let status = handler
+            .dispatch_status(Some(&serde_json::json!({ "job_id": job_id })))
+            .await
+            .expect("status");
+        assert_eq!(status["job_id"], job_id);
+
+        let result = handler
+            .dispatch_result(Some(&serde_json::json!({ "job_id": job_id })))
+            .await
+            .expect("result");
+        assert_eq!(result["job_id"], job_id);
+    }
+}

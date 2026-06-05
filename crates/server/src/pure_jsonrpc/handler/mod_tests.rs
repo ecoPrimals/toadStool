@@ -11,7 +11,7 @@ fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(crate::tarpc_server::WorkloadExecutorDispatch::Standalone(
         crate::tarpc_server::StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)))
+    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)), None)
 }
 
 fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
@@ -76,7 +76,7 @@ async fn test_health_liveness_always_alive_readiness_tracks_boot() {
     let executor = Arc::new(crate::tarpc_server::WorkloadExecutorDispatch::Standalone(
         crate::tarpc_server::StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::clone(&ready));
+    let handler = JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::clone(&ready), None);
 
     let live = handler
         .handle_request(&mk_request("health.liveness", None, 20))
@@ -229,4 +229,102 @@ async fn test_auth_peer_info_returns_unknown() {
     let result = response.result.expect("result");
     assert_eq!(result["transport"], "unknown");
     assert_eq!(result["authenticated"], false);
+}
+
+// --- extract_caller_context / resolve_local_gate_id (P0) ---
+
+use super::method_gate::{ConnectionTrustHints, DispatchTrustLevel};
+use super::{extract_caller_context, resolve_local_gate_id};
+use toadstool_common::interned_strings::socket_env;
+
+#[test]
+fn extract_caller_context_anonymous_connection_yields_anonymous_context() {
+    let ctx = extract_caller_context(ConnectionTrustHints::default());
+    assert_eq!(ctx.trust_level, DispatchTrustLevel::Anonymous);
+    assert!(ctx.gate_id.is_none());
+}
+
+#[test]
+fn extract_caller_context_btsp_verified_sets_trust_level() {
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_BTSP);
+    assert_eq!(ctx.trust_level, DispatchTrustLevel::BtspVerified);
+}
+
+#[test]
+fn extract_caller_context_btsp_verified_gate_id_matches_resolve_local_gate_id() {
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_BTSP);
+    assert_eq!(ctx.gate_id, resolve_local_gate_id());
+}
+
+#[test]
+fn extract_caller_context_mutually_authenticated_sets_trust_level() {
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_MUTUAL_BTSP);
+    assert_eq!(ctx.trust_level, DispatchTrustLevel::MutuallyAuthenticated);
+}
+
+#[test]
+fn extract_caller_context_mutually_authenticated_gate_id_matches_resolve_local_gate_id() {
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_MUTUAL_BTSP);
+    assert_eq!(ctx.gate_id, resolve_local_gate_id());
+}
+
+#[test]
+fn extract_caller_context_unix_local_sets_local_transport() {
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_LOCAL);
+    assert_eq!(ctx.trust_level, DispatchTrustLevel::LocalTransport);
+}
+
+#[test]
+fn extract_caller_context_unix_local_gate_id_matches_resolve_local_gate_id() {
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_LOCAL);
+    assert_eq!(ctx.gate_id, resolve_local_gate_id());
+}
+
+#[test]
+fn extract_caller_context_anonymous_tcp_has_no_gate_id() {
+    let ctx = extract_caller_context(ConnectionTrustHints::TCP);
+    assert_eq!(ctx.trust_level, DispatchTrustLevel::Anonymous);
+    assert!(ctx.gate_id.is_none());
+}
+
+#[test]
+fn resolve_local_gate_id_is_stable_across_calls() {
+    let first = resolve_local_gate_id();
+    let second = resolve_local_gate_id();
+    assert_eq!(first, second);
+}
+
+#[test]
+fn resolve_local_gate_id_uses_toadstool_gate_id_when_set() {
+    if let Ok(expected) = std::env::var(socket_env::TOADSTOOL_GATE_ID) {
+        assert_eq!(resolve_local_gate_id().as_deref(), Some(expected.as_str()));
+    }
+}
+
+#[test]
+fn resolve_local_gate_id_falls_back_when_toadstool_gate_id_unset() {
+    if std::env::var(socket_env::TOADSTOOL_GATE_ID).is_err() {
+        let id = resolve_local_gate_id();
+        let from_host = std::env::var(socket_env::HOSTNAME).ok();
+        let from_sys = toadstool_sysmon::system::hostname();
+        assert_eq!(id.as_deref(), from_host.as_deref().or(from_sys.as_deref()));
+    }
+}
+
+#[tokio::test]
+async fn auth_peer_info_reflects_btsp_caller_context() {
+    let handler = test_handler();
+    let request = mk_request("auth.peer_info", None, 1);
+    let response = handler
+        .handle_request_with_connection(&request, ConnectionTrustHints::UNIX_BTSP)
+        .await;
+
+    assert!(response.error.is_none());
+    let result = response.result.expect("result");
+    assert_eq!(result["transport"], "btsp");
+    assert_eq!(result["trust_level"], "btsp_verified");
+    assert_eq!(
+        result["gate_id"].as_str(),
+        resolve_local_gate_id().as_deref()
+    );
 }

@@ -171,3 +171,139 @@ impl WorkloadHandler {
         }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use crate::tarpc_server::{TestWorkloadDouble, WorkloadExecutorDispatch};
+
+    use super::WorkloadHandler;
+    use crate::pure_jsonrpc::types::JsonRpcError;
+
+    fn handler(double: TestWorkloadDouble) -> WorkloadHandler {
+        WorkloadHandler::new(Arc::new(WorkloadExecutorDispatch::TestDouble(double)))
+    }
+
+    fn valid_submit_params() -> serde_json::Value {
+        serde_json::json!({
+            "workload_id": "work-1",
+            "workload_type": "cpu_compute",
+            "data": STANDARD.encode([1u8, 2, 3]),
+            "metadata": {},
+            "priority": "Normal",
+            "requirements": {
+                "cpu_cores": 1,
+                "memory_bytes": 1024
+            }
+        })
+    }
+
+    #[tokio::test]
+    async fn submit_workload_missing_params_returns_invalid_params() {
+        let err = handler(TestWorkloadDouble::Mock)
+            .submit_workload(None)
+            .await
+            .expect_err("missing params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("Missing params"));
+    }
+
+    #[tokio::test]
+    async fn submit_workload_invalid_params_returns_invalid_params() {
+        let params = serde_json::json!({"workload_id": 42});
+        let err = handler(TestWorkloadDouble::Mock)
+            .submit_workload(Some(&params))
+            .await
+            .expect_err("invalid params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("Invalid params"));
+    }
+
+    #[tokio::test]
+    async fn submit_workload_valid_params_forwards_to_executor() {
+        let result = handler(TestWorkloadDouble::Mock)
+            .submit_workload(Some(&valid_submit_params()))
+            .await
+            .expect("submit");
+        assert_eq!(result["workload_id"], "work-1");
+        assert_eq!(result["status"], "Completed");
+    }
+
+    #[tokio::test]
+    async fn cancel_workload_missing_params_returns_invalid_params() {
+        let err = handler(TestWorkloadDouble::Mock)
+            .cancel_workload(None)
+            .await
+            .expect_err("missing params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn cancel_workload_invalid_params_returns_invalid_params() {
+        let params = serde_json::json!(42);
+        let err = handler(TestWorkloadDouble::Mock)
+            .cancel_workload(Some(&params))
+            .await
+            .expect_err("invalid params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("workload_id must be a string"));
+    }
+
+    #[tokio::test]
+    async fn cancel_workload_valid_params_returns_success() {
+        let result = handler(TestWorkloadDouble::Mock)
+            .cancel_workload(Some(&serde_json::json!("work-1")))
+            .await
+            .expect("cancel");
+        assert_eq!(result["success"], true);
+    }
+
+    #[tokio::test]
+    async fn query_capabilities_forwards_to_executor() {
+        let result = handler(TestWorkloadDouble::Mock)
+            .query_capabilities()
+            .await
+            .expect("capabilities");
+        assert_eq!(result["service_id"], "mock");
+    }
+
+    #[tokio::test]
+    async fn validate_missing_params_returns_invalid_params() {
+        let err = handler(TestWorkloadDouble::Mock)
+            .validate(None)
+            .await
+            .expect_err("missing params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn validate_missing_workload_path_returns_invalid_params() {
+        let params = serde_json::json!({"dry_run": true});
+        let err = handler(TestWorkloadDouble::Mock)
+            .validate(Some(&params))
+            .await
+            .expect_err("missing workload_path");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("workload_path"));
+    }
+
+    #[tokio::test]
+    async fn validate_nonexistent_path_reports_warning() {
+        let params = serde_json::json!({
+            "workload_path": "/nonexistent/workload-validate-test.toml",
+            "dry_run": true
+        });
+        let result = handler(TestWorkloadDouble::Mock)
+            .validate(Some(&params))
+            .await
+            .expect("validate");
+        assert_eq!(result["valid"], false);
+        assert!(result["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("not found")));
+    }
+}

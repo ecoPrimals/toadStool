@@ -17,7 +17,7 @@ fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-conn-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)))
+    JsonRpcHandler::new(executor, "test-conn-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)), None)
 }
 
 #[tokio::test]

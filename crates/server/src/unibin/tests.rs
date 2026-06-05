@@ -291,7 +291,7 @@ async fn run_server_main_fails_when_socket_path_unavailable() {
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
         async {
-            let result = super::run_server_main(None, None, None).await;
+            let result = super::run_server_main(None, None, None, None, None).await;
             assert!(
                 result.is_err(),
                 "run_server_main should fail when socket path unavailable"
@@ -309,7 +309,7 @@ fn get_socket_path_from_toadstool_socket() {
     let socket_path = temp_dir.path().join("custom.sock");
     let path_str = socket_path.to_string_lossy().to_string();
     temp_env::with_var("TOADSTOOL_SOCKET", Some(path_str.as_str()), || {
-        let result = get_socket_path("family1", "node1");
+        let result = get_socket_path("family1", "node1", None, None);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), socket_path);
     });
@@ -324,7 +324,7 @@ fn get_socket_path_from_primal_socket() {
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
         ],
         || {
-            let result = get_socket_path("nat0", "node1");
+            let result = get_socket_path("nat0", "node1", None, None);
             assert!(result.is_ok());
             assert_eq!(
                 result.unwrap(),
@@ -343,7 +343,7 @@ fn get_socket_path_from_biomeos_socket_path() {
             ("BIOMEOS_SOCKET_PATH", Some("/run/biomeos/toadstool.sock")),
         ],
         || {
-            let result = get_socket_path("default", "node1");
+            let result = get_socket_path("default", "node1", None, None);
             assert!(result.is_ok());
             assert_eq!(
                 result.unwrap(),
@@ -365,7 +365,7 @@ fn get_socket_path_xdg_runtime_dir_fallback() {
             ("XDG_RUNTIME_DIR", Some(xdg_path.as_str())),
         ],
         || {
-            let result = get_socket_path("default", "node1");
+            let result = get_socket_path("default", "node1", None, None);
             assert!(result.is_ok());
             let path = result.unwrap();
             assert!(path.ends_with("biomeos/compute.sock"));
@@ -413,7 +413,7 @@ async fn run_server_main_refuses_family_plus_insecure() {
             ("BIOMEOS_INSECURE", Some("1")),
         ],
         async {
-            let result = run_server_main(None, None, None).await;
+            let result = run_server_main(None, None, None, None, None).await;
             assert!(result.is_err(), "must refuse when FAMILY_ID + INSECURE");
             let err = result.unwrap_err().to_string();
             assert!(

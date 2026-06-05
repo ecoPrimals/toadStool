@@ -206,7 +206,14 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
                 info!("   Family ID: {}", fid);
             }
 
-            server::run_server_daemon(family_id.clone(), bind.clone(), Some(*port)).await?;
+            server::run_server_daemon(
+                family_id.clone(),
+                bind.clone(),
+                Some(*port),
+                socket.clone(),
+                biomeos_socket.clone(),
+            )
+            .await?;
         }
 
         Commands::Execute {

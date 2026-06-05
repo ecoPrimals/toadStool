@@ -119,3 +119,69 @@ impl RuntimeEngine for RuntimeEngineDispatch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use toadstool::WorkloadType;
+    use toadstool_runtime_container::ContainerRuntimeEngine;
+    use toadstool_runtime_gpu::UniversalGpuEngine;
+    use toadstool_runtime_native::NativeRuntimeEngine;
+    use toadstool_runtime_specialty::{SpecialtyRuntimeConfig, SpecialtyRuntimeEngine};
+    use toadstool_runtime_wasm::{WasmRuntimeConfig, WasmRuntimeEngine};
+
+    use super::RuntimeEngineDispatch;
+    use toadstool::RuntimeEngine;
+
+    #[test]
+    fn native_variant_delegates_supports_workload() {
+        let dispatch = RuntimeEngineDispatch::Native(NativeRuntimeEngine::new());
+        assert!(dispatch.supports_workload(&WorkloadType::Native));
+        assert!(!dispatch.supports_workload(&WorkloadType::Wasm));
+    }
+
+    #[test]
+    fn container_variant_delegates_supports_workload() {
+        let inner = ContainerRuntimeEngine::new().expect("container engine");
+        let dispatch = RuntimeEngineDispatch::Container(inner);
+        assert!(dispatch.supports_workload(&WorkloadType::Container));
+        assert!(!dispatch.supports_workload(&WorkloadType::Native));
+    }
+
+    #[test]
+    fn wasm_variant_delegates_supports_workload() {
+        let inner = WasmRuntimeEngine::new(WasmRuntimeConfig::default()).expect("wasm engine");
+        let dispatch = RuntimeEngineDispatch::Wasm(inner);
+        assert!(dispatch.supports_workload(&WorkloadType::Wasm));
+        assert!(!dispatch.supports_workload(&WorkloadType::Container));
+    }
+
+    #[test]
+    fn specialty_variant_delegates_supports_workload() {
+        let inner = SpecialtyRuntimeEngine::new(SpecialtyRuntimeConfig::default());
+        let dispatch = RuntimeEngineDispatch::Specialty(inner);
+        let caps = dispatch.get_capabilities();
+        assert!(!caps.supported_workloads.is_empty());
+    }
+
+    #[tokio::test]
+    async fn gpu_variant_delegates_get_capabilities() {
+        let inner = UniversalGpuEngine::new().await.expect("gpu engine");
+        let dispatch = RuntimeEngineDispatch::Gpu(inner);
+        let caps = dispatch.get_capabilities();
+        assert!(caps.supported_workloads.contains(&WorkloadType::Gpu));
+    }
+
+    #[tokio::test]
+    async fn native_variant_delegates_get_metrics() {
+        let dispatch = RuntimeEngineDispatch::Native(NativeRuntimeEngine::new());
+        let metrics = dispatch.get_metrics().await.expect("metrics");
+        assert_eq!(metrics.cpu.usage_percent, 0.0);
+    }
+
+    #[tokio::test]
+    async fn wasm_variant_delegates_shutdown() {
+        let inner = WasmRuntimeEngine::new(WasmRuntimeConfig::default()).expect("wasm engine");
+        let mut dispatch = RuntimeEngineDispatch::Wasm(inner);
+        dispatch.shutdown().await.expect("shutdown");
+    }
+}

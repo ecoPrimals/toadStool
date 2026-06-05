@@ -19,6 +19,7 @@ fn test_handler() -> JsonRpcHandler {
         "test-s162-hw".to_string(),
         None,
         Arc::new(AtomicBool::new(true)),
+        None,
     )
 }
 

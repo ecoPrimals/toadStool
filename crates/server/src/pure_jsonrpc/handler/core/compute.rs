@@ -37,3 +37,34 @@ pub(crate) async fn gpu_memory() -> JsonRpcResult {
         "devices": crate::gpu_system::query_gpu_memory(),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{gpu_info, gpu_memory, version_info};
+
+    #[tokio::test]
+    async fn version_info_includes_version_string() {
+        let v = version_info("compute-test-9").await.expect("version");
+        assert_eq!(v["version"], "compute-test-9");
+    }
+
+    #[tokio::test]
+    async fn version_info_includes_protocol_and_service() {
+        let v = version_info("x").await.expect("version");
+        assert_eq!(v["protocol"], "JSON-RPC 2.0");
+        assert_eq!(v["service"], "ToadStool Compute");
+    }
+
+    #[tokio::test]
+    async fn gpu_info_returns_devices_and_driver() {
+        let g = gpu_info().await.expect("gpu_info");
+        assert!(g.get("devices").is_some());
+        assert_eq!(g["driver"], "wgpu");
+    }
+
+    #[tokio::test]
+    async fn gpu_memory_returns_devices_key() {
+        let m = gpu_memory().await.expect("gpu_memory");
+        assert!(m.get("devices").is_some());
+    }
+}

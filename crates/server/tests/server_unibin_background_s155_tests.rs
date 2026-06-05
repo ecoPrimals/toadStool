@@ -72,7 +72,7 @@ fn s155_get_socket_path_from_toadstool_socket_env() {
     let socket_path = temp_dir.path().join("custom-toadstool.sock");
     let path_str = socket_path.to_string_lossy().to_string();
     temp_env::with_var("TOADSTOOL_SOCKET", Some(path_str.as_str()), || {
-        let result = get_socket_path("any-family", "any-node");
+        let result = get_socket_path("any-family", "any-node", None, None);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), socket_path);
     });
@@ -104,7 +104,7 @@ fn s155_get_socket_path_tmp_fallback_when_xdg_not_exists() {
             ("XDG_RUNTIME_DIR", Some("/nonexistent-path-12345-abcd")),
         ],
         || {
-            let result = get_socket_path("custom", "node1");
+            let result = get_socket_path("custom", "node1", None, None);
             assert!(result.is_ok());
             let path = result.unwrap();
             assert!(path.ends_with("biomeos/compute-custom.sock"));
@@ -206,6 +206,7 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
         "1.0.0".to_string(),
         None,
         Arc::new(AtomicBool::new(true)),
+        None,
     ));
 
     let result = start_servers_with_fallback(

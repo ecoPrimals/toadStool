@@ -128,7 +128,7 @@ async fn main() -> Result<()> {
 /// Run server/daemon when invoked via legacy binary name (before CLI parse)
 async fn run_server_daemon(family_id: Option<String>, port: Option<u16>) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
-    toadstool_server::run_server_main(family_id, None, port)
+    toadstool_server::run_server_main(family_id, None, port, None, None)
         .await
         .map_err(|e| CliError::Other(format!("Server failed: {e}")))
 }

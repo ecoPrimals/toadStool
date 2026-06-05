@@ -69,3 +69,104 @@ impl DispatchHandler {
         }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::DispatchHandler;
+    use crate::pure_jsonrpc::types::JsonRpcError;
+    use crate::visualization_client::VisualizationClient;
+
+    fn test_handler() -> DispatchHandler {
+        DispatchHandler::new(Arc::new(VisualizationClient::unavailable()), None)
+    }
+
+    fn submit_params() -> serde_json::Value {
+        serde_json::json!({
+            "binary": [1u8, 2, 3],
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+        })
+    }
+
+    #[tokio::test]
+    async fn dispatch_status_missing_params_returns_invalid_params() {
+        let handler = test_handler();
+        let err = handler
+            .dispatch_status(None)
+            .await
+            .expect_err("missing job_id");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("job_id"));
+    }
+
+    #[tokio::test]
+    async fn dispatch_status_unknown_job_returns_not_found() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "job_id": "missing-job" });
+        let err = handler
+            .dispatch_status(Some(&params))
+            .await
+            .expect_err("unknown job");
+        assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+        assert!(err.message.contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn dispatch_status_existing_job_returns_domain_and_metadata() {
+        let handler = test_handler();
+        let submit = handler
+            .dispatch_submit(Some(&submit_params()))
+            .await
+            .expect("submit");
+        let job_id = submit["job_id"].as_str().expect("job_id");
+
+        let result = handler
+            .dispatch_status(Some(&serde_json::json!({ "job_id": job_id })))
+            .await
+            .expect("status");
+        assert_eq!(result["domain"], "compute.dispatch");
+        assert_eq!(result["operation"], "status");
+        assert_eq!(result["metadata"]["bdf"], "0000:03:00.0");
+    }
+
+    #[tokio::test]
+    async fn dispatch_result_missing_job_id_returns_invalid_params() {
+        let handler = test_handler();
+        let err = handler
+            .dispatch_result(Some(&serde_json::json!({})))
+            .await
+            .expect_err("missing job_id");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn dispatch_result_existing_job_returns_operation_result() {
+        let handler = test_handler();
+        let submit = handler
+            .dispatch_submit(Some(&submit_params()))
+            .await
+            .expect("submit");
+        let job_id = submit["job_id"].as_str().expect("job_id");
+
+        let result = handler
+            .dispatch_result(Some(&serde_json::json!({ "job_id": job_id })))
+            .await
+            .expect("result");
+        assert_eq!(result["domain"], "compute.dispatch");
+        assert_eq!(result["operation"], "result");
+        assert_eq!(result["job_id"], job_id);
+    }
+
+    #[tokio::test]
+    async fn dispatch_result_invalid_job_id_type_returns_invalid_params() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "job_id": ["not", "a", "string"] });
+        let err = handler
+            .dispatch_result(Some(&params))
+            .await
+            .expect_err("bad job_id type");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+}

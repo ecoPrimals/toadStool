@@ -83,7 +83,7 @@ fn unibin_s172_get_socket_path_toadstool_overrides_primal_and_biomeos() {
             ("BIOMEOS_SOCKET_PATH", Some("/also-not-this")),
         ],
         || {
-            let p = get_socket_path("ignored", "ignored").expect("path");
+            let p = get_socket_path("ignored", "ignored", None, None).expect("path");
             assert_eq!(p, primary);
         },
     );
@@ -98,7 +98,7 @@ fn unibin_s172_get_socket_path_primal_socket_empty_family_suffix() {
             ("PRIMAL_SOCKET", Some("/run/primal")),
         ],
         || {
-            let p = get_socket_path("", "node").expect("path");
+            let p = get_socket_path("", "node", None, None).expect("path");
             assert_eq!(p, PathBuf::from("/run/primal-"));
         },
     );
@@ -113,7 +113,7 @@ fn unibin_s172_get_socket_path_biomeos_only() {
             ("BIOMEOS_SOCKET_PATH", Some("/var/biomeos/custom.sock")),
         ],
         || {
-            let p = get_socket_path("anything", "node").expect("path");
+            let p = get_socket_path("anything", "node", None, None).expect("path");
             assert_eq!(p, PathBuf::from("/var/biomeos/custom.sock"));
         },
     );
@@ -130,7 +130,7 @@ fn unibin_s172_get_socket_path_xdg_empty_string_uses_fallback_or_tmp() {
             ("XDG_RUNTIME_DIR", Some("")),
         ],
         || {
-            let p = get_socket_path("default", "node").expect("path");
+            let p = get_socket_path("default", "node", None, None).expect("path");
             assert!(p.ends_with("biomeos/compute.sock"));
         },
     );
@@ -224,6 +224,7 @@ async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
         "1.0.0".to_string(),
         None,
         Arc::new(AtomicBool::new(true)),
+        None,
     ));
     let result = start_servers_with_fallback(
         server,
@@ -340,7 +341,7 @@ async fn unibin_s172_run_server_main_fails_when_runtime_parent_is_file() {
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
         async {
-            let result = toadstool_server::run_server_main(None, None, None).await;
+            let result = toadstool_server::run_server_main(None, None, None, None, None).await;
             assert!(
                 result.is_err(),
                 "expected error when biomeos cannot be created"

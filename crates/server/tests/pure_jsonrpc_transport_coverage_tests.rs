@@ -24,7 +24,7 @@ async fn transport_discover_returns_structure() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -49,7 +49,7 @@ async fn transport_list_returns_empty_initially() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -75,7 +75,7 @@ async fn transport_route_missing_params() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -93,7 +93,7 @@ async fn transport_route_missing_rx_id() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -111,7 +111,7 @@ async fn transport_route_missing_tx_id() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -129,7 +129,7 @@ async fn transport_route_with_nonexistent_transports() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -150,7 +150,7 @@ async fn transport_route_with_buf_size() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -174,7 +174,7 @@ async fn toadstool_health_returns_structure() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "1.2.3", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "1.2.3", Some(Arc::new(AtomicU64::new(0))), Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -195,7 +195,7 @@ async fn compute_health_alias() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "2.0.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "2.0.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -213,7 +213,7 @@ async fn toadstool_version_returns_info() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "3.0.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "3.0.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -233,7 +233,7 @@ async fn resources_estimate_exercises_handler() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -250,7 +250,7 @@ async fn resources_validate_availability_exercises_handler() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -267,7 +267,7 @@ async fn resources_suggest_optimizations_exercises_handler() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -284,7 +284,7 @@ async fn invalid_jsonrpc_version_returns_error() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("1.0"),
@@ -302,7 +302,7 @@ async fn gate_list_returns_structure() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -319,7 +319,7 @@ async fn gpu_info_returns_structure() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -336,7 +336,7 @@ async fn gpu_memory_returns_structure() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -353,7 +353,7 @@ async fn toadstool_query_capabilities() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
@@ -370,7 +370,7 @@ async fn toadstool_list_workloads() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)));
+    let handler = JsonRpcHandler::new(executor, "0.1.0", None, Arc::new(AtomicBool::new(true)), None);
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),

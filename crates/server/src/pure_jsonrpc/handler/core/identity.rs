@@ -191,12 +191,15 @@ pub(crate) async fn identity_get(
 pub(crate) async fn primal_announce(
     version: &str,
     semantic_registry: &SemanticMethodRegistry,
+    bound_socket: Option<&std::path::Path>,
 ) -> JsonRpcResult {
     use toadstool_common::interned_strings::socket_env;
 
     let methods = all_callable_methods(semantic_registry);
     let socket_name = format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN);
-    let socket = if let Ok(dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
+    let socket = if let Some(path) = bound_socket {
+        path.to_string_lossy().into_owned()
+    } else if let Ok(dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
         format!("{dir}/{socket_name}")
     } else {
         std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(
@@ -360,7 +363,7 @@ mod tests {
     #[tokio::test]
     async fn test_primal_announce_structure() {
         let reg = empty_registry();
-        let result = primal_announce("0.2.0", &reg).await.expect("primal_announce");
+        let result = primal_announce("0.2.0", &reg, None).await.expect("primal_announce");
         assert_eq!(result["primal"], PRIMAL_NAME);
         assert_eq!(result["version"], "0.2.0");
         assert_eq!(result["domain"], "compute");
@@ -375,9 +378,19 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_primal_announce_reports_bound_socket_path() {
+        let reg = empty_registry();
+        let bound = std::path::Path::new("/tmp/custom-bound/compute.sock");
+        let result = primal_announce("0.2.0", &reg, Some(bound))
+            .await
+            .expect("primal_announce");
+        assert_eq!(result["socket"].as_str(), Some("/tmp/custom-bound/compute.sock"));
+    }
+
+    #[tokio::test]
     async fn test_primal_announce_wave43_neural_api_fields() {
         let reg = empty_registry();
-        let result = primal_announce("0.2.0", &reg).await.expect("primal_announce");
+        let result = primal_announce("0.2.0", &reg, None).await.expect("primal_announce");
 
         assert!(result["socket"].is_string());
         let socket = result["socket"].as_str().expect("socket path");

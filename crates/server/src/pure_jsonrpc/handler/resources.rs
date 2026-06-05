@@ -83,3 +83,81 @@ impl ResourceHandler {
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::graph_types::{ExecutionGraph, GraphNode};
+    use crate::pure_jsonrpc::types::JsonRpcError;
+
+    use super::ResourceHandler;
+
+    fn minimal_graph_params() -> serde_json::Value {
+        let graph = ExecutionGraph::builder("res-test")
+            .nodes([GraphNode::simple("n1", "cpu_compute")])
+            .build();
+        serde_json::json!({ "graph": graph })
+    }
+
+    #[test]
+    fn extract_graph_missing_params_returns_invalid_params() {
+        let err = ResourceHandler::extract_graph(None).expect_err("missing params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("Missing params"));
+    }
+
+    #[test]
+    fn extract_graph_malformed_graph_returns_invalid_params() {
+        let params = serde_json::json!({ "graph": { "id": 123 } });
+        let err = ResourceHandler::extract_graph(Some(&params)).expect_err("bad graph");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("Invalid graph parameter"));
+    }
+
+    #[test]
+    fn extract_graph_valid_params_deserializes_graph() {
+        let graph = ResourceHandler::extract_graph(Some(&minimal_graph_params())).expect("graph");
+        assert_eq!(graph.id, "res-test");
+        assert_eq!(graph.nodes.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn resources_estimate_missing_params_returns_invalid_params() {
+        let handler = ResourceHandler::new();
+        let err = handler
+            .resources_estimate(None)
+            .await
+            .expect_err("missing params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn resources_estimate_valid_graph_returns_estimate() {
+        let handler = ResourceHandler::new();
+        let result = handler
+            .resources_estimate(Some(&minimal_graph_params()))
+            .await
+            .expect("estimate");
+        assert!(result.get("cpu_cores").is_some());
+    }
+
+    #[tokio::test]
+    async fn resources_validate_availability_missing_params_returns_invalid_params() {
+        let handler = ResourceHandler::new();
+        let err = handler
+            .resources_validate_availability(None)
+            .await
+            .expect_err("missing params");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn resources_suggest_optimizations_malformed_graph_returns_invalid_params() {
+        let handler = ResourceHandler::new();
+        let params = serde_json::json!({ "graph": "not-an-object" });
+        let err = handler
+            .resources_suggest_optimizations(Some(&params))
+            .await
+            .expect_err("bad graph");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+}

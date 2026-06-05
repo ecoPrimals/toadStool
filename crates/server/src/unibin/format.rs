@@ -87,13 +87,24 @@ pub fn legacy_socket_filename_for_family(family_id: &str) -> String {
 /// Returns an error if biomeOS directory creation or permission setting fails.
 ///
 /// Priority order:
+/// 0. CLI `--socket` override
 /// 1. TOADSTOOL_SOCKET env var
 /// 2. PRIMAL_SOCKET env var (with family suffix)
-/// 3. BIOMEOS_SOCKET_PATH env var
+/// 3. CLI `--biomeos-socket` override or BIOMEOS_SOCKET_PATH env var
 /// 4. XDG runtime directory
 /// 5. /tmp fallback
 #[expect(deprecated, reason = "reads legacy PRIMAL_SOCKET as backward-compat fallback")]
-pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf> {
+pub fn get_socket_path(
+    family_id: &str,
+    _node_id: &str,
+    cli_override: Option<&Path>,
+    biomeos_socket_override: Option<&Path>,
+) -> ServerResult<PathBuf> {
+    if let Some(path) = cli_override {
+        info!("✅ Using socket path from CLI --socket: {}", path.display());
+        return Ok(path.to_path_buf());
+    }
+
     if let Ok(socket) = std::env::var(socket_env::TOADSTOOL_SOCKET) {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
         return Ok(PathBuf::from(socket));
@@ -106,6 +117,14 @@ pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf>
             socket_with_family
         );
         return Ok(PathBuf::from(socket_with_family));
+    }
+
+    if let Some(path) = biomeos_socket_override {
+        info!(
+            "✅ Using socket path from CLI --biomeos-socket: {}",
+            path.display()
+        );
+        return Ok(path.to_path_buf());
     }
 
     if let Ok(socket) = std::env::var(socket_env::BIOMEOS_SOCKET_PATH) {
@@ -244,10 +263,55 @@ mod tests {
                 ("XDG_RUNTIME_DIR", Some("/nonexistent-path-12345-abcd")),
             ],
             || {
-                let result = get_socket_path("custom", "node1");
+                let result = get_socket_path("custom", "node1", None, None);
                 assert!(result.is_ok());
                 let path = result.unwrap();
                 assert!(path.ends_with("biomeos/compute-custom.sock"));
+            },
+        );
+    }
+
+    #[test]
+    fn get_socket_path_cli_override_takes_precedence() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let cli_path = temp_dir.path().join("cli-override.sock");
+        let env_path = temp_dir.path().join("env-override.sock");
+        let env_str = env_path.to_string_lossy().to_string();
+        temp_env::with_var("TOADSTOOL_SOCKET", Some(env_str.as_str()), || {
+            let result = get_socket_path("any-family", "any-node", Some(&cli_path), None);
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), cli_path);
+        });
+    }
+
+    #[test]
+    fn get_socket_path_without_override_falls_back_to_env_chain() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let socket_path = temp_dir.path().join("from-env.sock");
+        let path_str = socket_path.to_string_lossy().to_string();
+        temp_env::with_var("TOADSTOOL_SOCKET", Some(path_str.as_str()), || {
+            let result = get_socket_path("any-family", "any-node", None, None);
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), socket_path);
+        });
+    }
+
+    #[test]
+    fn get_socket_path_biomeos_socket_override_takes_precedence_over_env() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let cli_path = temp_dir.path().join("biomeos-cli.sock");
+        let env_path = temp_dir.path().join("biomeos-env.sock");
+        let env_str = env_path.to_string_lossy().to_string();
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_SOCKET", None::<&str>),
+                ("PRIMAL_SOCKET", None::<&str>),
+                ("BIOMEOS_SOCKET_PATH", Some(env_str.as_str())),
+            ],
+            || {
+                let result = get_socket_path("default", "node1", None, Some(&cli_path));
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap(), cli_path);
             },
         );
     }
@@ -271,7 +335,7 @@ mod tests {
         let socket_path = temp_dir.path().join("custom-toadstool.sock");
         let path_str = socket_path.to_string_lossy().to_string();
         temp_env::with_var("TOADSTOOL_SOCKET", Some(path_str.as_str()), || {
-            let result = get_socket_path("any-family", "any-node");
+            let result = get_socket_path("any-family", "any-node", None, None);
             assert!(result.is_ok());
             assert_eq!(result.unwrap(), socket_path);
         });
@@ -286,7 +350,7 @@ mod tests {
                 ("PRIMAL_SOCKET", Some("/run/primal")),
             ],
             || {
-                let result = get_socket_path("family-x", "node1");
+                let result = get_socket_path("family-x", "node1", None, None);
                 assert!(result.is_ok());
                 assert_eq!(
                     result.unwrap(),
@@ -306,7 +370,7 @@ mod tests {
                 "XDG_RUNTIME_DIR",
             ],
             || {
-                let result = get_socket_path("default", "node1");
+                let result = get_socket_path("default", "node1", None, None);
                 assert!(result.is_ok());
                 let path = result.unwrap();
                 assert!(path.ends_with("biomeos/compute.sock"));

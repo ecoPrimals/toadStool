@@ -21,6 +21,7 @@ mod transport;
 mod workload;
 
 use std::borrow::Cow;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use toadstool::semantic_methods::SemanticMethodRegistry;
@@ -70,6 +71,8 @@ pub struct JsonRpcHandler {
     transport: TransportHandler,
     silicon: SiliconHandler,
     pub(super) glowplug: SharedGlowPlugClient,
+    /// Actual bound JSON-RPC UDS path (set at server startup).
+    bound_socket_path: Option<Arc<PathBuf>>,
 }
 
 impl JsonRpcHandler {
@@ -83,6 +86,7 @@ impl JsonRpcHandler {
         version: impl Into<Arc<str>>,
         error_count: Option<Arc<AtomicU64>>,
         ready: Arc<AtomicBool>,
+        bound_socket_path: Option<Arc<PathBuf>>,
     ) -> Self {
         let local_gate_id = std::env::var(socket_env::TOADSTOOL_GATE_ID)
             .or_else(|_| std::env::var(socket_env::HOSTNAME))
@@ -181,6 +185,7 @@ impl JsonRpcHandler {
             transport: TransportHandler::new(),
             silicon: SiliconHandler::new(),
             glowplug: glowplug_client::create_glowplug_client(),
+            bound_socket_path,
         }
     }
 
@@ -351,8 +356,12 @@ impl JsonRpcHandler {
                 return core::capabilities_list(&self.semantic_registry, &self.version).await;
             }
             "primal.announce" => {
-                return core::primal_announce(&self.version, &self.semantic_registry)
-                    .await;
+                return core::primal_announce(
+                    &self.version,
+                    &self.semantic_registry,
+                    self.bound_socket_path.as_deref().map(PathBuf::as_path),
+                )
+                .await;
             }
             "compute.capabilities" => return self.workload.query_capabilities().await,
             "compute.discover_capabilities" => {
@@ -597,7 +606,12 @@ impl JsonRpcHandler {
             }
             "pipeline_status" => self.dispatch.pipeline_status(params).await,
             "primal_announce" => {
-                core::primal_announce(&self.version, &self.semantic_registry).await
+                core::primal_announce(
+                    &self.version,
+                    &self.semantic_registry,
+                    self.bound_socket_path.as_deref().map(PathBuf::as_path),
+                )
+                .await
             }
             // Science domain — semantic aliases routing to compute handlers
             "science_compute_submit" => self.workload.submit_workload(params).await,
@@ -708,9 +722,12 @@ impl JsonRpcHandler {
 /// Defaults to anonymous. Unix connections without BTSP get
 /// [`DispatchTrustLevel::LocalTransport`]. Completed BTSP handshakes set
 /// [`DispatchTrustLevel::BtspVerified`] (BearDog JH-1 will add mutual auth).
-fn extract_caller_context(conn: ConnectionTrustHints) -> CallerContext {
+pub(super) fn extract_caller_context(conn: ConnectionTrustHints) -> CallerContext {
     let mut ctx = CallerContext::anonymous();
-    if conn.btsp_verified {
+    if conn.mutually_authenticated {
+        ctx.trust_level = DispatchTrustLevel::MutuallyAuthenticated;
+        ctx.gate_id = resolve_local_gate_id();
+    } else if conn.btsp_verified {
         ctx.trust_level = DispatchTrustLevel::BtspVerified;
         ctx.gate_id = resolve_local_gate_id();
     } else if conn.transport == ConnectionTransport::Unix {
