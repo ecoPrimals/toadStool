@@ -3,7 +3,7 @@
 
 //! `libloading` integration and dynamic symbol resolution for [`super::abi::PluginVTable`].
 
-#![allow(
+#![expect(
     unsafe_code,
     reason = "libloading FFI symbol resolution requires unsafe"
 )]

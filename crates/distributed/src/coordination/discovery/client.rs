@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery client - RPC-based node discovery via Coordination
 
-#![allow(
+#![expect(
     deprecated,
     reason = "IPC addressing requires well-known names during migration"
 )]

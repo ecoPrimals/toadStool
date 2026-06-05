@@ -34,7 +34,7 @@ pub use experiment::{
     ChipDetection, ExperimentResult, ExperimentWrite, SnapshotDelta, SovereignSnapshot, detect_chip,
     run_experiment_stage, sovereign_snapshot_only,
 };
-#[allow(unused_imports)]
+#[expect(unused_imports, reason = "re-exports for sovereign stage consumers")]
 pub(crate) use experiment::{
     AMD_GRBM_STATUS, detect_chip_legacy, experiment_stage_1, experiment_stage_2, experiment_stage_3,
     experiment_stage_4_with_chip, experiment_stage_5, experiment_stage_6_with_chip,

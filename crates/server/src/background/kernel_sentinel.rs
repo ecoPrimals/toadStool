@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SAFETY: /dev/kmsg seek/read require BorrowedFd::borrow_raw on an owned fd.
-#![allow(unsafe_code)]
+#![expect(unsafe_code, reason = "/dev/kmsg seek/read require BorrowedFd::borrow_raw on owned fd")]
 //! Kernel oops sentinel — diesel engine crash forensics.
 //!
 //! Monitors `/dev/kmsg` (kernel log ring buffer) in real-time for signs of

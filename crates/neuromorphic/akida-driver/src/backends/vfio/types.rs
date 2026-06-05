@@ -15,9 +15,9 @@ pub mod ioctls {
         VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
     };
 
-    #[allow(dead_code, reason = "Reserved for VFIO DMA map operations")]
+    #[expect(dead_code, reason = "VFIO DMA map flags — reserved for DMA map operations")]
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
-    #[allow(dead_code, reason = "Reserved for VFIO DMA map operations")]
+    #[expect(dead_code, reason = "VFIO DMA map flags — reserved for DMA map operations")]
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
 
@@ -34,10 +34,10 @@ pub struct PollConfig<'a> {
 }
 
 // VFIO kernel ABI structs are now in hw-safe::vfio_setup (used by tests).
-#[allow(unused_imports, reason = "re-exports for tests and future DMA wiring")]
+#[expect(unused_imports, reason = "re-exports for tests and future DMA wiring")]
 pub use toadstool_hw_safe::vfio_setup::{VfioDeviceInfo, VfioGroupStatus, VfioRegionInfo};
 
-#[allow(unused_imports, reason = "re-exports for tests and future DMA wiring")]
+#[expect(unused_imports, reason = "re-exports for tests and future DMA wiring")]
 pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
 #[cfg(test)]

@@ -121,13 +121,11 @@ pub struct DrmVersion {
 
 /// RAII wrapper around a memory-mapped region. Unmaps on drop.
 #[derive(Debug)]
-#[allow(dead_code, reason = "used by AMD/NV backends absorbed in subsequent Phase C batches")]
 pub(crate) struct MappedRegion {
     ptr: NonNull<u8>,
     len: usize,
 }
 
-#[allow(dead_code, reason = "used by AMD/NV backends absorbed in subsequent Phase C batches")]
 impl MappedRegion {
     /// Map a file descriptor region into memory using `rustix::mm::mmap`.
     pub(crate) fn new(

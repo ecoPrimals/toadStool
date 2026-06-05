@@ -1,0 +1,230 @@
+# ToadStool Capability Registry — machine-readable capability declaration
+# Wave 78 ecosystem standard | AGPL-3.0-or-later
+# Generated from DIRECT_JSONRPC_METHODS + capabilities.list Wire Standard L3
+# Version: v0.2.0 | Session: S291
+
+[meta]
+primal = "toadstool"
+version = "0.2.0"
+protocol = "jsonrpc-2.0"
+transport = ["uds", "tcp"]
+sockets = ["compute.sock", "compute-tarpc.sock"]
+license = "AGPL-3.0-or-later"
+
+[capabilities.compute]
+owner = "toadstool"
+description = "GPU job queue, hardware dispatch, and performance routing"
+methods = [
+    "compute.execute",
+    "compute.health",
+    "compute.version",
+    "compute.capabilities",
+    "compute.discover_capabilities",
+    "compute.submit",
+    "compute.status",
+    "compute.result",
+    "compute.cancel",
+    "compute.list",
+    "compute.dispatch",
+    "compute.dispatch.submit",
+    "compute.dispatch.status",
+    "compute.dispatch.result",
+    "compute.dispatch.forward",
+    "compute.dispatch.capabilities",
+    "compute.dispatch.pipeline.submit",
+    "compute.dispatch.pipeline.status",
+    "compute.fan_out",
+    "compute.context.init",
+]
+
+[capabilities.hardware_learning]
+owner = "toadstool"
+description = "Hardware observation, distillation, and autonomous init"
+methods = [
+    "compute.hardware.observe",
+    "compute.hardware.distill",
+    "compute.hardware.apply",
+    "compute.hardware.share_recipe",
+    "compute.hardware.auto_init",
+    "compute.hardware.auto_init_all",
+    "compute.hardware.status",
+    "compute.hardware.vfio_devices",
+]
+
+[capabilities.performance_routing]
+owner = "toadstool"
+description = "All-silicon tolerance-based performance routing"
+methods = [
+    "compute.performance_surface.report",
+    "compute.performance_surface.query",
+    "compute.performance_surface.list",
+    "compute.route.multi_unit",
+]
+
+[capabilities.workload]
+owner = "toadstool"
+description = "High-level workload executor (multi-runtime)"
+methods = [
+    "toadstool.health",
+    "toadstool.version",
+    "toadstool.submit_workload",
+    "toadstool.query_status",
+    "toadstool.cancel_workload",
+    "toadstool.list_workloads",
+    "toadstool.validate",
+    "toadstool.query_capabilities",
+    "toadstool.resources.estimate",
+    "toadstool.resources.validate_availability",
+    "toadstool.resources.suggest_optimizations",
+]
+
+[capabilities.resources]
+owner = "toadstool"
+description = "biomeOS neural API resource routing aliases"
+methods = [
+    "resources.estimate",
+    "resources.validate_availability",
+    "resources.suggest_optimizations",
+]
+
+[capabilities.gpu]
+owner = "toadstool"
+description = "GPU hardware info and telemetry"
+methods = [
+    "gpu.query_info",
+    "gpu.query_memory",
+    "gpu.query_telemetry",
+]
+
+[capabilities.gate]
+owner = "toadstool"
+description = "Distributed cross-gate routing"
+methods = [
+    "gate.update",
+    "gate.remove",
+    "gate.list",
+    "gate.route",
+]
+
+[capabilities.transport]
+owner = "toadstool"
+description = "Hardware transport discovery and routing (DRM, V4L2, serial)"
+methods = [
+    "transport.discover",
+    "transport.list",
+    "transport.route",
+    "transport.open",
+    "transport.stream",
+    "transport.status",
+]
+
+[capabilities.shader]
+owner = "toadstool"
+description = "Sovereign shader dispatch (VFIO/DRM passthrough)"
+methods = [
+    "shader.dispatch",
+]
+
+[capabilities.ember]
+owner = "toadstool"
+description = "glowPlug/ember GPU device lifecycle"
+methods = [
+    "ember.list",
+    "ember.status",
+    "ember.reacquire",
+    "ember.warm_cycle",
+    "ember.prepare_dma",
+    "ember.cleanup_dma",
+    "ember.adopt_device",
+    "ember.falcon.upload_imem",
+    "ember.falcon.upload_dmem",
+    "ember.falcon.start_cpu",
+    "ember.falcon.poll",
+    "ember.pramin.write",
+    "ember.pramin.read",
+    "ember.fecs.state",
+    "ember.device.health",
+    "ember.device.recover",
+]
+
+[capabilities.device]
+owner = "toadstool"
+description = "VFIO device management and sovereign boot"
+methods = [
+    "device.swap",
+    "device.warm_catch",
+    "device.get",
+    "device.experiment_lifecycle",
+    "device.reset",
+    "device.resurrect",
+    "device.health",
+    "device.vfio.open",
+    "device.vfio.roundtrip",
+    "device.gr.init",
+]
+
+[capabilities.sovereign]
+owner = "toadstool"
+description = "Sovereign compute bootstrap and defense"
+methods = [
+    "sovereign.init",
+    "sovereign.boot",
+    "sovereign.profile",
+    "sovereign.warm_status",
+    "sovereign.defense_status",
+    "sovereign.watchdog_status",
+]
+
+[capabilities.mmio]
+owner = "toadstool"
+description = "BAR0 register access and falcon diagnostics"
+methods = [
+    "mmio.read32",
+    "mmio.write32",
+    "mmio.batch",
+    "mmio.pramin.read32",
+    "mmio.bar0.probe",
+    "mmio.falcon.status",
+]
+
+[capabilities.trust]
+owner = "toadstool"
+description = "Cross-gate dispatch trust verification and telemetry"
+methods = [
+    "dispatch.verify_trust",
+    "dispatch.telemetry.schema",
+]
+
+[capabilities.ai]
+owner = "toadstool"
+description = "biomeOS ai_local capability routing"
+methods = [
+    "ai.local_inference",
+    "ai.local_execute",
+]
+
+[capabilities.identity]
+owner = "toadstool"
+description = "Primal identity and capability discovery"
+methods = [
+    "capabilities.list",
+    "identity.get",
+    "primal.announce",
+    "provenance.query",
+]
+
+[capabilities.health]
+owner = "toadstool"
+description = "Health probes and lifecycle"
+methods = [
+    "health.liveness",
+    "health.readiness",
+    "health.check",
+    "health.version",
+    "health.drain",
+]
+
+[consumed_capabilities]
+security = ["security.sign", "security.verify"]
+storage = ["storage.artifact.store", "storage.artifact.retrieve"]
+coordination = ["coordination.register", "coordination.discover"]

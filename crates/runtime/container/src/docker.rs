@@ -122,7 +122,7 @@ pub async fn ensure_image(
 
 /// Ensure image (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
-#[allow(dead_code)]
+#[expect(dead_code, reason = "stub for non-docker builds")]
 pub async fn ensure_image(
     _docker: &(),
     _config: &ContainerRuntimeConfig,
@@ -182,7 +182,7 @@ pub async fn execute_container(
 
 /// Execute container (no-op when docker feature is disabled).
 #[cfg(not(feature = "docker"))]
-#[allow(dead_code)]
+#[expect(dead_code, reason = "stub for non-docker builds")]
 pub async fn execute_container(
     _docker: &(),
     _runtime_config: &ContainerRuntimeConfig,

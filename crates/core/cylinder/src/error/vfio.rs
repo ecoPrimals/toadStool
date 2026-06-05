@@ -244,7 +244,6 @@ pub enum DevinitError {
 #[cfg(feature = "vfio")]
 impl DevinitError {
     /// Wrap an [`std::io::Error`] with path and operation.
-    #[allow(dead_code, reason = "used by devinit modules absorbed in later Phase C batch")]
     pub(crate) fn vbios_resource_io(
         operation: &'static str,
         path: impl Into<String>,
@@ -518,7 +517,7 @@ pub enum SovereignStagesError {
 
 impl SovereignStagesError {
     /// Bridges `DriverResult`/`DriverError` from GR/FECS helpers into this enum.
-    #[allow(dead_code, reason = "used by sovereign init modules absorbed in later Phase C batch")]
+    #[expect(dead_code, reason = "VFIO compute error — pending sovereign dispatch wiring")]
     #[cfg(all(target_os = "linux", feature = "vfio"))]
     pub(crate) fn vfio_compute(err: DriverError) -> Self {
         Self::VfioCompute(Box::new(err))

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
-    clippy::must_use_candidate,
+#![expect(
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,
     clippy::missing_errors_doc,
@@ -44,7 +43,10 @@ pub use types::{
 
 /// Active container handle
 #[derive(Clone, Debug)]
-#[cfg_attr(not(feature = "docker"), allow(dead_code))]
+#[cfg_attr(
+    not(feature = "docker"),
+    expect(dead_code, reason = "stub for non-docker builds")
+)]
 pub(crate) struct ContainerHandle {
     pub(crate) container_id: String,
     _image: String,
@@ -58,7 +60,7 @@ pub struct ContainerRuntimeEngine {
     #[cfg(feature = "docker")]
     docker: Option<Docker>,
     #[cfg(not(feature = "docker"))]
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "stub for non-docker builds")]
     docker: Option<()>,
     active_containers: Arc<RwLock<HashMap<Uuid, ContainerHandle>>>,
     resource_monitor: Option<Arc<ResourceMonitorDispatch>>,

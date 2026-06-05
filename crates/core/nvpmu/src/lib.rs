@@ -29,7 +29,6 @@
 // dma and vfio modules require unsafe for VFIO ioctls and DMA mapping
 // bar0 uses safe hw-safe wrappers (DeviceMmap → VolatileMmio); no unsafe needed
 pub mod bar0;
-#[allow(unsafe_code, reason = "DMA buffer allocation requires mmap + ioctl")]
 pub mod dma;
 pub mod error;
 pub mod fb;
@@ -44,7 +43,7 @@ pub mod power;
 pub mod power_manager;
 pub mod power_policy;
 pub mod registers;
-#[allow(unsafe_code, reason = "VFIO device passthrough requires ioctl + mmap")]
+#[expect(unsafe_code, reason = "DMA / VFIO BAR0 access requires unsafe")]
 pub mod vfio;
 pub mod vfio_bind;
 pub mod watchdog;

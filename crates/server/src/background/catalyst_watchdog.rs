@@ -105,7 +105,11 @@ pub struct CatalystWatchdogGuard {
 
 impl CatalystWatchdogGuard {
     /// Signal that the handoff pipeline is still making progress.
-    #[allow(dead_code, clippy::unused_self)] // guard-scoped API; free `heartbeat()` used today
+    #[expect(
+        dead_code,
+        clippy::unused_self,
+        reason = "guard-scoped API; free heartbeat() used today"
+    )]
     pub fn heartbeat(&self) {
         WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
     }

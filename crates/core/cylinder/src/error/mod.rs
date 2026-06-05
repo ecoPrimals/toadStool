@@ -113,7 +113,6 @@ pub enum DriverError {
 
 impl DriverError {
     /// Platform overflow during numeric conversion.
-    #[allow(dead_code, reason = "used by DRM mmap paths absorbed in subsequent Phase C batches")]
     pub(crate) fn platform_overflow(msg: &'static str) -> Self {
         Self::MmapFailed(msg.into())
     }

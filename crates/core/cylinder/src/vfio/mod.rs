@@ -11,7 +11,7 @@
 #[cfg(feature = "amd")]
 pub mod amd_metal;
 pub mod boot_state;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once CE API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod ce_validate;
 pub mod channel;
 pub mod bar_cartography;
@@ -22,43 +22,39 @@ pub mod dma;
 pub mod ember_client;
 pub mod ember_gate;
 pub mod gpu_vendor;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once guarded sysfs API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod guarded_sysfs;
 pub mod ioctl;
 pub mod irq;
 pub mod isolation;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once kernel health API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod kernel_health;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once kmod API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod kmod;
 pub mod memory;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once module_patch API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod module_patch;
 pub mod nv_metal;
 pub(crate) mod pci_config;
 pub mod pci_discovery;
-#[allow(
-    missing_docs,
-    dead_code,
-    reason = "WIP upstream — docs and callers follow once PMU API stabilizes"
-)]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod pmu_investigate;
 pub mod init_kepler;
 pub mod init_pipeline;
 pub mod init_volta;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once handoff API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_handoff;
 pub mod sovereign_init;
 pub mod sovereign_profile;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once sovereign stages API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_stages;
 pub mod sovereign_strategy;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once tier API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_tiers;
 pub mod sovereign_types;
 pub mod sysfs_bar0;
 pub mod types;
-#[allow(missing_docs, reason = "WIP upstream — docs follow once reagent API stabilizes")]
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod reagent;
 pub mod warm_capture;
 

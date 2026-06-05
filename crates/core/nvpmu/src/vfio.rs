@@ -184,10 +184,9 @@ impl VfioBar0Access {
     ///
     /// # Errors
     /// Returns error if offset is out of range.
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_ptr_alignment,
-        reason = "BAR0 offsets are u32-aligned by hardware spec; truncation safe on 64-bit"
+        reason = "BAR0 MMIO register access — u64 offset narrowed after bounds check"
     )]
     pub fn read_u32(&self, offset: u64) -> Result<u32> {
         self.check_offset(offset)?;
@@ -200,10 +199,9 @@ impl VfioBar0Access {
     ///
     /// # Errors
     /// Returns error if offset is out of range.
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_ptr_alignment,
-        reason = "BAR0 offsets are u32-aligned by hardware spec; truncation safe on 64-bit"
+        reason = "BAR0 MMIO register access — u64 offset narrowed after bounds check"
     )]
     pub fn write_u32(&mut self, offset: u64, value: u32) -> Result<()> {
         self.check_offset(offset)?;

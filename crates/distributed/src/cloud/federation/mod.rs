@@ -16,7 +16,10 @@ pub mod discovery;
 pub mod policy;
 mod state;
 
-#[allow(unused_imports, reason = "MIN_HEARTBEAT_INTERVAL_SECS re-exported for downstream crates")]
+#[expect(
+    unused_imports,
+    reason = "MIN_HEARTBEAT_INTERVAL_SECS re-exported for downstream crates"
+)]
 pub use policy::{DEFAULT_HEARTBEAT_TIMEOUT_SECS, FederationMember, MIN_HEARTBEAT_INTERVAL_SECS};
 
 // ─── Federation Errors ───────────────────────────────────────────────────────

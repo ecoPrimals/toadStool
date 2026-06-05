@@ -35,7 +35,7 @@
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-#![allow(
+#![expect(
     clippy::multiple_crate_versions,
     reason = "transitive deps pull different minor versions"
 )]

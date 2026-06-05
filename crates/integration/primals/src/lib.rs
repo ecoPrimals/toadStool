@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
+#![expect(
     clippy::must_use_candidate,
     clippy::match_same_arms,
     clippy::doc_markdown,
@@ -28,12 +28,12 @@ use std::pin::Pin;
 
 use toadstool::ToadStoolResult;
 
-#[allow(
+#[expect(
     missing_docs,
     reason = "wired in S217; docs will be added incrementally"
 )]
 pub mod error;
-#[allow(
+#[expect(
     missing_docs,
     reason = "wired in S217; docs will be added incrementally"
 )]
@@ -42,7 +42,7 @@ pub mod types;
 mod health;
 mod integration_manifest;
 mod manager;
-#[allow(
+#[expect(
     missing_docs,
     reason = "wired in S217; docs will be added incrementally"
 )]
@@ -51,17 +51,17 @@ mod messaging;
 mod primal_types;
 mod service;
 
-#[allow(
+#[expect(
     missing_docs,
     reason = "wired in S217; docs will be added incrementally"
 )]
 pub mod client;
-#[allow(
+#[expect(
     missing_docs,
     reason = "wired in S217; docs will be added incrementally"
 )]
 pub mod orchestrator;
-#[allow(
+#[expect(
     missing_docs,
     reason = "wired in S217; docs will be added incrementally"
 )]

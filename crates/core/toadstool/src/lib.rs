@@ -19,7 +19,7 @@
 // `plugin-loading` feature (`libloading` / plugin ABI). All other modules remain safe-only.
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
+#![expect(
     clippy::must_use_candidate,
     clippy::return_self_not_must_use,
     clippy::redundant_closure_for_method_calls,
@@ -28,21 +28,10 @@
     clippy::unnecessary_wraps,
     clippy::semicolon_if_nothing_returned,
     clippy::needless_pass_by_value,
-    clippy::similar_names,
     clippy::if_not_else,
-    clippy::unnested_or_patterns,
     clippy::items_after_statements,
     clippy::match_same_arms,
-    clippy::match_wildcard_for_single_variants,
     clippy::unused_self,
-    clippy::no_effect_underscore_binding,
-    clippy::used_underscore_binding,
-    clippy::unreadable_literal,
-    clippy::default_trait_access,
-    clippy::single_match_else,
-    clippy::manual_let_else,
-    clippy::format_push_string,
-    clippy::case_sensitive_file_extension_comparisons,
     clippy::unused_async,
     reason = "pedantic lints suppressed crate-wide; fixing adds noise without safety benefit"
 )]

@@ -357,7 +357,6 @@ pub enum ServiceError {
 }
 
 /// Core RPC service for workload execution and management.
-#[allow(missing_docs)]
 #[tarpc::service]
 pub trait ToadStoolComputeRpc {
     /// Submit workload for execution

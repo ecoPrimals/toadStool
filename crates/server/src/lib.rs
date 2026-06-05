@@ -2,7 +2,7 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![cfg_attr(test, allow(deprecated))]
-#![allow(
+#![expect(
     clippy::doc_markdown,
     clippy::doc_comment_double_space_linebreaks,
     clippy::similar_names,

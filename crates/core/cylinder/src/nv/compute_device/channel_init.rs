@@ -90,7 +90,7 @@ pub(crate) fn init_channel_buffers(
 /// Like [`init_channel_buffers`] but allows overriding the PFIFO warm_handoff
 /// independently from `fecs_ready`. Use after a PMC PFIFO reset when FECS is
 /// still alive but PFIFO needs cold initialization.
-#[allow(clippy::too_many_arguments, reason = "hardware init requires explicit state flags")]
+#[expect(clippy::too_many_arguments, reason = "hardware init requires explicit state flags")]
 pub(crate) fn init_channel_buffers_with_pfifo_config(
     dma_backend: &DmaBackend,
     bar0: &MappedBar,

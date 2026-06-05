@@ -17,10 +17,6 @@ use super::JsonRpcResult;
 /// signaling is handled by `health.readiness` (returns `"starting"` vs
 /// `"ready"`). This separation aligns with the DEPLOYMENT_BEHAVIOR_STANDARD
 /// so nucleus health sweeps pass immediately on socket bind (Wave 47).
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn health_liveness() -> JsonRpcResult {
     Ok(serde_json::json!({ "status": "alive" }))
 }
@@ -28,10 +24,6 @@ pub(crate) async fn health_liveness() -> JsonRpcResult {
 /// Wire Standard L2: readiness probe with version (`health.readiness`).
 ///
 /// Returns `"starting"` during initialization, `"ready"` once fully operational.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn health_readiness(version: &str, ready: bool) -> JsonRpcResult {
     let status = if ready { "ready" } else { "starting" };
     Ok(serde_json::json!({
@@ -45,10 +37,6 @@ pub(crate) async fn health_readiness(version: &str, ready: bool) -> JsonRpcResul
 /// Returns session, version, build hash, and service name for post-upgrade
 /// verification. Build hash is embedded at compile time via `GIT_HASH` env
 /// var (set by CI or `build.rs`); falls back to `"dev"` for local builds.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn health_version(version: &str) -> JsonRpcResult {
     Ok(serde_json::json!({
         "version": version,
@@ -63,10 +51,6 @@ pub(crate) async fn health_version(version: &str) -> JsonRpcResult {
 /// Used by `toadstool.health`, `health.check`, `compute.health`, and semantic `check_health`.
 /// Wire Standard L1: includes `"status": "alive"` on the full envelope for orchestrators
 /// that expect the legacy shape on deep checks.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn health(
     version: &Arc<str>,
     start_time: std::time::Instant,
@@ -101,10 +85,6 @@ pub(crate) async fn health(
 /// Sets the draining flag so new dispatches are rejected, then waits for
 /// in-flight work to complete (up to a configurable timeout). Returns
 /// the drain status so the caller can confirm readiness for shutdown.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn health_drain(
     draining: &AtomicBool,
     ready: &AtomicBool,

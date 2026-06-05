@@ -29,10 +29,6 @@ fn all_callable_methods(semantic_registry: &SemanticMethodRegistry) -> Vec<&str>
 ///
 /// Cost model: energy/time/compute, not monetary. Dollar value is an
 /// end-user concern built on top of these primitives.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn capabilities_list(
     semantic_registry: &SemanticMethodRegistry,
     version: &str,
@@ -135,10 +131,6 @@ pub(crate) async fn capabilities_list(
 ///
 /// Legacy `compute.discover_capabilities` — returns node capabilities
 /// and merged method list.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn discover_capabilities(
     semantic_registry: &SemanticMethodRegistry,
     version: &str,
@@ -161,10 +153,6 @@ pub(crate) async fn discover_capabilities(
 ///
 /// Every primal MUST implement `identity.get` so orchestrators and peers
 /// can discover name, version, capabilities, and protocol.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn identity_get(
     version: &str,
     semantic_registry: &SemanticMethodRegistry,
@@ -200,10 +188,6 @@ pub(crate) async fn identity_get(
 /// Returns the primal's identity, capabilities, socket path, cost hints,
 /// and latency estimates so biomeOS Neural API can build routing weights
 /// and utilization tracking. Wire format per Wave 42/43 Neural API standard.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn primal_announce(
     version: &str,
     semantic_registry: &SemanticMethodRegistry,

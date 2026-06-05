@@ -9,19 +9,15 @@
 //! - Local resource management
 //! - Service registration and health reporting
 
-#![allow(
+#![expect(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::doc_markdown,
     clippy::missing_errors_doc,
-    clippy::uninlined_format_args,
     clippy::assigning_clones,
     clippy::default_trait_access,
-    clippy::match_wildcard_for_single_variants,
-    clippy::no_effect_underscore_binding,
-    clippy::similar_names,
     clippy::cast_lossless,
     clippy::if_not_else,
     clippy::items_after_statements,
@@ -30,7 +26,6 @@
     clippy::map_unwrap_or,
     clippy::match_same_arms,
     clippy::must_use_candidate,
-    clippy::needless_continue,
     clippy::needless_pass_by_value,
     clippy::return_self_not_must_use,
     clippy::single_match_else,
@@ -40,7 +35,6 @@
     clippy::unnecessary_wraps,
     clippy::unused_async,
     clippy::unused_self,
-    clippy::zero_sized_map_values,
     reason = "distributed crate: numeric casts for network sizes; pedantic lints suppressed crate-wide"
 )]
 #![cfg_attr(

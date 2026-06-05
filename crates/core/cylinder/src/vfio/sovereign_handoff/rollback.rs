@@ -14,7 +14,7 @@ use super::types::{HandoffResult, HandoffStep};
 /// - `sibling_state` is non-empty (siblings were unbound)
 /// - `needs_device_rollback` is true (device was unbound from its original
 ///   driver and needs to be restored to vfio-pci)
-#[allow(clippy::too_many_arguments, reason = "WIP upstream — parameter struct refactor pending")]
+#[expect(clippy::too_many_arguments, reason = "rollback step requires full handoff state")]
 pub(crate) fn halt_result(
     bdf: &str,
     halted_at: &str,
@@ -32,7 +32,7 @@ pub(crate) fn halt_result(
                       needs_device_rollback, false)
 }
 
-#[allow(clippy::too_many_arguments, reason = "WIP upstream — parameter struct refactor pending")]
+#[expect(clippy::too_many_arguments, reason = "rollback step requires full handoff state")]
 pub(crate) fn halt_result_poisoned(
     bdf: &str,
     halted_at: &str,
@@ -50,10 +50,10 @@ pub(crate) fn halt_result_poisoned(
                       needs_device_rollback, true)
 }
 
-#[allow(
+#[expect(
     clippy::too_many_arguments,
     clippy::fn_params_excessive_bools,
-    reason = "WIP upstream — parameter struct refactor pending"
+    reason = "rollback step requires full handoff state"
 )]
 pub(crate) fn halt_result_inner(
     bdf: &str,

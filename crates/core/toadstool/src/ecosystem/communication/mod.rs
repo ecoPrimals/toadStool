@@ -101,10 +101,10 @@ impl CommunicationManager {
     /// # Errors
     ///
     /// Returns error if the RPC client is unavailable or the remote call fails.
-    #[allow(
+    #[expect(
         clippy::significant_drop_tightening,
-        reason = "drop order is intentional"
-    )] // Conditional async; Tarpc fallback_client() borrows from guard
+        reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
+    )]
     pub async fn send_message(
         &self,
         channel: &ServiceChannel,
@@ -145,10 +145,10 @@ impl CommunicationManager {
     /// # Errors
     ///
     /// Returns error if the health RPC fails or the client is not initialized.
-    #[allow(
+    #[expect(
         clippy::significant_drop_tightening,
-        reason = "drop order is intentional"
-    )] // Conditional async; Tarpc fallback_client() borrows from guard
+        reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
+    )]
     pub async fn check_health(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
         debug!("🔍 Checking health of service: {}", channel.service_name);
 

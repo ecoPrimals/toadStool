@@ -11,12 +11,10 @@
 ///
 /// Construction is `unsafe`; once created, `read()` and `write()` are safe.
 #[derive(Clone, Copy)]
-#[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 pub(crate) struct VolatilePtr<T> {
     ptr: *mut T,
 }
 
-#[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 impl<T: Copy> VolatilePtr<T> {
     /// Create a `VolatilePtr` from a unique mutable reference (stack tests, etc.).
     ///

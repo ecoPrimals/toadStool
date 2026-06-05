@@ -16,12 +16,10 @@ use crate::error::DriverError;
 ///
 /// This type does **not** implement [`Send`] or [`Sync`]. Wrappers that prove
 /// additional invariants (for example VFIO-mapped BARs) may provide those impls.
-#[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 pub(crate) struct MmioRegion {
     backing: Backing,
 }
 
-#[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 enum Backing {
     /// Region mapped via [`DeviceMmap`]; unmapped on drop by hw-safe.
     Device(DeviceMmap),
@@ -35,7 +33,6 @@ enum Backing {
     Heap(Box<[u8]>),
 }
 
-#[allow(dead_code, reason = "used by VFIO/NV backends absorbed in subsequent Phase C batches")]
 impl MmioRegion {
     /// Wrap an fd-backed mapping from [`DeviceMmap`].
     #[must_use]

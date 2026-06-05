@@ -4,10 +4,6 @@
 use super::JsonRpcResult;
 
 /// Returns version and protocol information.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn version_info(version: &str) -> JsonRpcResult {
     Ok(serde_json::json!({
         "version": version,
@@ -25,10 +21,6 @@ pub(crate) async fn version_info(version: &str) -> JsonRpcResult {
 ///
 /// Also includes `firmware_inventory` for NVIDIA chips so callers can
 /// assess `compute_viable()` and `compute_blockers()` without local probing.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn gpu_info() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_devices(),
@@ -40,10 +32,6 @@ pub(crate) async fn gpu_info() -> JsonRpcResult {
 }
 
 /// Returns GPU memory information per device.
-#[allow(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
 pub(crate) async fn gpu_memory() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_memory(),

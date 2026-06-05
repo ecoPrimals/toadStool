@@ -95,10 +95,6 @@ impl ClockGateConfig {
     /// Decode from a register readback value.
     #[must_use]
     pub const fn decode(val: u32) -> Self {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "masked to 4 bits, always fits u8"
-        )]
         Self {
             idle_delay: (val & registers::CG_IDLE_DLY_MASK) as u8,
             idle_cg_en: val & registers::CG_IDLE_EN != 0,
@@ -409,10 +405,6 @@ impl<R: RegisterAccess> PowerManager<R> {
     /// # Errors
     ///
     /// Returns error if the register read fails (GPU likely in D3hot).
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "temperature fits in f64 without precision loss"
-    )]
     pub fn read_gpu_temp_c(&self) -> Result<f64> {
         let raw = self
             .regs

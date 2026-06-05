@@ -9,7 +9,6 @@ use crate::mmio_region::MmioRegion;
 /// Matches the GSP applicator's interface so firmware init sequences can
 /// write BAR0 registers through a VFIO-mapped BAR. Defined locally to
 /// avoid coupling to the `gsp` module (which stays in coralReef).
-#[allow(dead_code, reason = "used by sovereign/channel modules absorbed in later Phase C batch")]
 pub trait RegisterAccess {
     /// Read a 32-bit register at a BAR0-relative offset.
     fn read_u32(&self, offset: u32) -> Result<u32, ApplyError>;
@@ -19,7 +18,6 @@ pub trait RegisterAccess {
 }
 
 /// Errors during BAR0 register application.
-#[allow(dead_code, reason = "used by sovereign/channel modules absorbed in later Phase C batch")]
 #[derive(Debug, thiserror::Error)]
 pub enum ApplyError {
     /// BAR0 MMIO access failed.

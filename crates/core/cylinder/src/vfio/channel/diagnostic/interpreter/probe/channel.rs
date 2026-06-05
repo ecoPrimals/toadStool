@@ -1,8 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(
-    missing_docs,
-    reason = "Experimental diagnostic probing — docs evolve with stabilization. Uses #[allow] because missing_docs does not fire on all items when they have partial doc coverage."
-)]
 //! Channel config — Layer 5 probing.
 
 use crate::vfio::channel::registers::{

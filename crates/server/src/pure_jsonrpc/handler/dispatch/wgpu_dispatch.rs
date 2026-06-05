@@ -185,7 +185,7 @@ fn run_wgpu_dispatch(
             .collect();
 
         tracing::info!(spirv_words = spirv_words.len(), "wgpu dispatch: SPIR-V passthrough");
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code, reason = "spirv shader module creation requires unsafe")]
         // SAFETY: SPIR-V magic validated; compiled by coralReef (trusted primal).
         unsafe {
             ctx.device

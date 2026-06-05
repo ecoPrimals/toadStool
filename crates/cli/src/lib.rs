@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
+#![expect(
     deprecated,
     reason = "IPC addressing requires well-known names during migration"
 )]
-#![allow(
+#![expect(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
@@ -18,7 +18,6 @@
     clippy::map_unwrap_or,
     clippy::redundant_closure_for_method_calls,
     clippy::no_effect_underscore_binding,
-    clippy::inefficient_to_string,
     clippy::unused_self,
     clippy::ref_option,
     clippy::explicit_iter_loop,
@@ -32,14 +31,12 @@
     clippy::single_match_else,
     clippy::needless_continue,
     clippy::manual_let_else,
-    clippy::needless_pass_by_value,
     clippy::similar_names,
     clippy::cast_lossless,
     clippy::implicit_clone,
     clippy::implicit_hasher,
     clippy::fn_params_excessive_bools,
     clippy::default_trait_access,
-    clippy::float_cmp,
     clippy::case_sensitive_file_extension_comparisons,
     clippy::assigning_clones,
     clippy::needless_raw_string_hashes,

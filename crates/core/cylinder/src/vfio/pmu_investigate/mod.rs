@@ -134,6 +134,7 @@ pub(super) fn gpc_alive(val: u32) -> bool {
     !is_pri_fault(val) && val != 0
 }
 
+#[expect(dead_code, reason = "CE status probe — used when PMU investigate dispatch wired")]
 fn ce_alive(val: u32) -> bool {
     !is_pri_fault(val)
 }

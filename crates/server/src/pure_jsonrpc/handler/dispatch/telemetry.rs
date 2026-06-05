@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 /// Structured telemetry record for a single dispatch event.
 /// Schema aligns with barraCuda ml.mlp_train's 36-dim perceptron feature vector.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(
+#[expect(
     clippy::struct_excessive_bools,
     reason = "schema type for downstream dispatch telemetry — populated when submit paths emit records"
 )]
