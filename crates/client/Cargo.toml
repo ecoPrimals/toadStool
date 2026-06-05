@@ -48,7 +48,7 @@ toadstool-integration-protocols = { path = "../integration/protocols", optional 
 
 [features]
 default = []
-tarpc = ["dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-protocols"]
+tarpc = ["dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-protocols", "toadstool-integration-protocols/tarpc-transport"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

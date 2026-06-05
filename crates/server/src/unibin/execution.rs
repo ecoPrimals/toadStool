@@ -62,8 +62,19 @@ impl UnibinExecutionConfig {
         let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
             .map_or(true, |v| v != "1" && v.to_lowercase() != "true");
         let coordination_auth_token = std::env::var(socket_env::COORDINATION_AUTH_TOKEN)
-            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_AUTH_TOKEN))
-            .ok();
+            .ok()
+            .or_else(|| {
+                std::env::var(socket_env::LEGACY_SONGBIRD_AUTH_TOKEN)
+                    .ok()
+                    .map(|v| {
+                        tracing::warn!(
+                            env_var = %socket_env::LEGACY_SONGBIRD_AUTH_TOKEN,
+                            value = %v,
+                            "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                        );
+                        v
+                    })
+            });
         let max_concurrent_executions =
             std::env::var(socket_env::TOADSTOOL_MAX_CONCURRENT_EXECUTIONS)
                 .ok()

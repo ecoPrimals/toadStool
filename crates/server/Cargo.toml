@@ -20,7 +20,7 @@ toadstool-cylinder = { path = "../core/cylinder" }
 toadstool-ember = { path = "../core/ember" }
 toadstool-glowplug = { path = "../core/glowplug" }
 toadstool-distributed = { path = "../distributed" }
-toadstool-integration-protocols = { path = "../integration/protocols" }
+toadstool-integration-protocols = { path = "../integration/protocols", features = ["tarpc-transport"] }
 toadstool-runtime-container = { path = "../runtime/container", features = ["docker"] }
 toadstool-runtime-gpu = { path = "../runtime/gpu" }
 toadstool-runtime-native = { path = "../runtime/native" }

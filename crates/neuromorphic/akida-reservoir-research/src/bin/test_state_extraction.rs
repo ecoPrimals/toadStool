@@ -82,7 +82,9 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let model_path = model_path.unwrap();
+    let Some(model_path) = model_path else {
+        return Ok(());
+    };
     info!("Found model: {}", model_path);
 
     // Step 3: Load model

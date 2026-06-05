@@ -44,7 +44,7 @@ All Pure Rust!
 linux-drm = "0.5"   # DRM/KMS (NO C!)
 evdev = "0.13"      # Input (NO libevdev!)
 tokio = "*"         # Async runtime
-tarpc = "*"         # JSON-RPC
+serde_json = "*"    # JSON-RPC over Unix/TCP sockets
 ```
 
 ## Usage

@@ -34,13 +34,23 @@ pub struct SecurityConfig {
 impl Default for SecurityConfig {
     #[expect(deprecated, reason = "reads legacy BEARDOG_SOCKET as backward-compat fallback")]
     fn default() -> Self {
-        let socket_path = std::env::var(socket_env::BIOMEOS_CRYPTO_SOCKET)
-            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_SOCKET_ENV))
-            .unwrap_or_else(|_| {
-                let runtime_dir = std::env::var(socket_env::XDG_RUNTIME_DIR)
-                    .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
-                format!("{runtime_dir}/biomeos/{CAPABILITY_SOCKET_FILENAME}")
-            });
+        let socket_path = match std::env::var(socket_env::BIOMEOS_CRYPTO_SOCKET) {
+            Ok(path) => path,
+            Err(_) => {
+                if let Ok(path) = std::env::var(socket_env::LEGACY_BEARDOG_SOCKET_ENV) {
+                    tracing::warn!(
+                        env_var = %socket_env::LEGACY_BEARDOG_SOCKET_ENV,
+                        value = %path,
+                        "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                    );
+                    path
+                } else {
+                    let runtime_dir = std::env::var(socket_env::XDG_RUNTIME_DIR)
+                        .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
+                    format!("{runtime_dir}/biomeos/{CAPABILITY_SOCKET_FILENAME}")
+                }
+            }
+        };
 
         Self {
             socket_path,

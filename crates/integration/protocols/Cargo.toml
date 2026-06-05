@@ -11,7 +11,7 @@ categories = ["api-bindings", "network-programming"]
 
 [features]
 default = []
-tarpc-transport = []
+tarpc-transport = ["dep:tarpc"]
 # MessagePack + length-delimited framing (`tarpc::serde_transport`) for Rust-to-Rust peers
 binary-transport = ["tarpc-transport", "dep:tokio-serde", "dep:tokio-util", "dep:futures"]
 
@@ -22,7 +22,7 @@ toadstool-common = { path = "../../core/common" }
 toadstool-config = { path = "../../core/config" }
 
 # RPC frameworks
-tarpc = { workspace = true }
+tarpc = { workspace = true, optional = true }
 
 # HTTP client
 

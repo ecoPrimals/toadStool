@@ -83,17 +83,61 @@ impl SocketPathEnv {
             // Deprecated identity-based fallbacks (after `TOADSTOOL_*` / `BIOMEOS_*` capability vars).
             // Prefer `BIOMEOS_*_SOCKET` and runtime capability discovery — see `interned_strings::socket_env`.
             legacy_security_socket: std::env::var(socket_env::TOADSTOOL_SECURITY_SOCKET)
-                .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_SOCKET_ENV))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_BEARDOG_SOCKET_ENV)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_BEARDOG_SOCKET_ENV,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
             legacy_coordination_socket: std::env::var(socket_env::TOADSTOOL_COORDINATION_SOCKET)
-                .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_SOCKET_ENV))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_SONGBIRD_SOCKET_ENV)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_SONGBIRD_SOCKET_ENV,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
             legacy_storage_socket: std::env::var(socket_env::TOADSTOOL_STORAGE_SOCKET)
-                .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_SOCKET_ENV))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_NESTGATE_SOCKET_ENV)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_NESTGATE_SOCKET_ENV,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
             legacy_intelligence_socket: std::env::var(socket_env::TOADSTOOL_INTELLIGENCE_SOCKET)
-                .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_SOCKET_ENV))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_SQUIRREL_SOCKET_ENV)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_SQUIRREL_SOCKET_ENV,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
             toadstool_socket: std::env::var(socket_env::TOADSTOOL_SOCKET).ok(),
             toadstool_tarpc_socket: std::env::var(socket_env::TOADSTOOL_TARPC_SOCKET).ok(),
             biomeos_socket_path: std::env::var(socket_env::BIOMEOS_SOCKET_PATH).ok(),
@@ -104,21 +148,87 @@ impl SocketPathEnv {
             )
             .or_else(|_| std::env::var(socket_env::COORDINATION_URL))
             .or_else(|_| std::env::var(socket_env::COORDINATION_ENDPOINT))
-            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_URL))
-            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_ENDPOINT))
-            .ok(),
+            .ok()
+            .or_else(|| {
+                std::env::var(socket_env::LEGACY_SONGBIRD_URL)
+                    .ok()
+                    .map(|v| {
+                        tracing::warn!(
+                            env_var = %socket_env::LEGACY_SONGBIRD_URL,
+                            value = %v,
+                            "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                        );
+                        v
+                    })
+            })
+            .or_else(|| {
+                std::env::var(socket_env::LEGACY_SONGBIRD_ENDPOINT)
+                    .ok()
+                    .map(|v| {
+                        tracing::warn!(
+                            env_var = %socket_env::LEGACY_SONGBIRD_ENDPOINT,
+                            value = %v,
+                            "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                        );
+                        v
+                    })
+            }),
             security_connection_hint: std::env::var(socket_env::TOADSTOOL_SECURITY_ENDPOINT)
                 .or_else(|_| std::env::var(socket_env::SECURITY_URL))
                 .or_else(|_| std::env::var(socket_env::SECURITY_ENDPOINT))
-                .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_URL))
-                .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_ENDPOINT))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_BEARDOG_URL)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_BEARDOG_URL,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                })
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_BEARDOG_ENDPOINT)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_BEARDOG_ENDPOINT,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
             storage_connection_hint: std::env::var(socket_env::TOADSTOOL_STORAGE_ENDPOINT)
                 .or_else(|_| std::env::var(socket_env::STORAGE_URL))
                 .or_else(|_| std::env::var(socket_env::STORAGE_ENDPOINT))
-                .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_URL))
-                .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_ENDPOINT))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_NESTGATE_URL)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_NESTGATE_URL,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                })
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_NESTGATE_ENDPOINT)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_NESTGATE_ENDPOINT,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
             routing_connection_hint: std::env::var(socket_env::TOADSTOOL_AI_ENDPOINT)
                 .or_else(|_| std::env::var(socket_env::TOADSTOOL_INTELLIGENCE_ENDPOINT))
                 .or_else(|_| std::env::var(socket_env::AI_PROCESSING_ENDPOINT))
@@ -126,9 +236,31 @@ impl SocketPathEnv {
                 .or_else(|_| std::env::var(socket_env::INTELLIGENCE_URL))
                 .or_else(|_| std::env::var(socket_env::INTELLIGENCE_ENDPOINT))
                 .or_else(|_| std::env::var(socket_env::AI_PROCESSING_URL))
-                .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_URL))
-                .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_ENDPOINT))
-                .ok(),
+                .ok()
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_SQUIRREL_URL)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_SQUIRREL_URL,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                })
+                .or_else(|| {
+                    std::env::var(socket_env::LEGACY_SQUIRREL_ENDPOINT)
+                        .ok()
+                        .map(|v| {
+                            tracing::warn!(
+                                env_var = %socket_env::LEGACY_SQUIRREL_ENDPOINT,
+                                value = %v,
+                                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+                            );
+                            v
+                        })
+                }),
         }
     }
 

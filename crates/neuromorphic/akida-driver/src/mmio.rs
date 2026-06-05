@@ -166,17 +166,6 @@ impl MappedRegion {
         self.mmap.as_volatile()
     }
 
-    /// Read a 32-bit register
-    ///
-    /// # Panics
-    ///
-    /// Panics if `offset + 4` exceeds the mapped region size.
-    #[deprecated(note = "use try_read32/try_write32 which return MmioError")]
-    #[track_caller]
-    pub fn read32(&self, offset: usize) -> u32 {
-        self.try_read32(offset).expect("Register offset out of bounds")
-    }
-
     /// Read a 32-bit register without panicking.
     ///
     /// # Errors
@@ -184,18 +173,6 @@ impl MappedRegion {
     /// Returns [`MmioAccessError`] if `offset + 4` exceeds the mapped region size.
     pub fn try_read32(&self, offset: usize) -> std::result::Result<u32, MmioError> {
         self.mmio().read_u32(offset)
-    }
-
-    /// Write a 32-bit register
-    ///
-    /// # Panics
-    ///
-    /// Panics if `offset + 4` exceeds the mapped region size.
-    #[deprecated(note = "use try_read32/try_write32 which return MmioError")]
-    #[track_caller]
-    pub fn write32(&self, offset: usize, value: u32) {
-        self.try_write32(offset, value)
-            .expect("Register offset out of bounds");
     }
 
     /// Write a 32-bit register without panicking.
@@ -207,17 +184,6 @@ impl MappedRegion {
         self.mmio().write_u32(offset, value)
     }
 
-    /// Read a 64-bit register
-    ///
-    /// # Panics
-    ///
-    /// Panics if `offset + 8` exceeds the mapped region size.
-    #[deprecated(note = "use try_read64/try_write64 which return MmioError")]
-    #[track_caller]
-    pub fn read64(&self, offset: usize) -> u64 {
-        self.try_read64(offset).expect("Register offset out of bounds")
-    }
-
     /// Read a 64-bit register without panicking.
     ///
     /// # Errors
@@ -225,18 +191,6 @@ impl MappedRegion {
     /// Returns [`MmioAccessError`] if `offset + 8` exceeds the mapped region size.
     pub fn try_read64(&self, offset: usize) -> std::result::Result<u64, MmioError> {
         self.mmio().read_u64(offset)
-    }
-
-    /// Write a 64-bit register
-    ///
-    /// # Panics
-    ///
-    /// Panics if `offset + 8` exceeds the mapped region size.
-    #[deprecated(note = "use try_read64/try_write64 which return MmioError")]
-    #[track_caller]
-    pub fn write64(&self, offset: usize, value: u64) {
-        self.try_write64(offset, value)
-            .expect("Register offset out of bounds");
     }
 
     /// Write a 64-bit register without panicking.

@@ -140,9 +140,9 @@ pub fn rm_alloc(
         }
     };
 
-    let h_new_out = u32::from_ne_bytes(buf[8..12].try_into().unwrap());
-    let val_24 = u32::from_ne_bytes(buf[24..28].try_into().unwrap());
-    let val_28 = u32::from_ne_bytes(buf[28..32].try_into().unwrap());
+    let h_new_out = u32::from_ne_bytes([buf[8], buf[9], buf[10], buf[11]]);
+    let val_24 = u32::from_ne_bytes([buf[24], buf[25], buf[26], buf[27]]);
+    let val_28 = u32::from_ne_bytes([buf[28], buf[29], buf[30], buf[31]]);
     let status = if val_28 != 0xDEAD_BEEF { val_28 } else { val_24 };
 
     eprintln!(

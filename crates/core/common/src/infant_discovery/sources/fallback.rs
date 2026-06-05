@@ -34,20 +34,42 @@ impl FallbackSource {
         if let Ok(coordination) = std::env::var(socket_env::TOADSTOOL_COORDINATION_ENDPOINT)
             .or_else(|_| std::env::var(socket_env::COORDINATION_URL))
             .or_else(|_| std::env::var(socket_env::COORDINATION_ENDPOINT))
-            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_URL)) // legacy
-            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_ENDPOINT))
-        // legacy
         {
+            fallbacks.insert("coordination".to_string(), coordination);
+        } else if let Ok(coordination) = std::env::var(socket_env::LEGACY_SONGBIRD_URL) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_SONGBIRD_URL,
+                value = %coordination,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
+            fallbacks.insert("coordination".to_string(), coordination);
+        } else if let Ok(coordination) = std::env::var(socket_env::LEGACY_SONGBIRD_ENDPOINT) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_SONGBIRD_ENDPOINT,
+                value = %coordination,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
             fallbacks.insert("coordination".to_string(), coordination);
         }
 
         if let Ok(security) = std::env::var(socket_env::TOADSTOOL_SECURITY_ENDPOINT)
             .or_else(|_| std::env::var(socket_env::SECURITY_URL))
             .or_else(|_| std::env::var(socket_env::SECURITY_ENDPOINT))
-            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_URL)) // legacy
-            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_ENDPOINT))
-        // legacy
         {
+            fallbacks.insert("security".to_string(), security);
+        } else if let Ok(security) = std::env::var(socket_env::LEGACY_BEARDOG_URL) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_BEARDOG_URL,
+                value = %security,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
+            fallbacks.insert("security".to_string(), security);
+        } else if let Ok(security) = std::env::var(socket_env::LEGACY_BEARDOG_ENDPOINT) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_BEARDOG_ENDPOINT,
+                value = %security,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
             fallbacks.insert("security".to_string(), security);
         }
 
@@ -58,10 +80,21 @@ impl FallbackSource {
         if let Ok(storage) = std::env::var(socket_env::TOADSTOOL_STORAGE_ENDPOINT)
             .or_else(|_| std::env::var(socket_env::STORAGE_URL))
             .or_else(|_| std::env::var(socket_env::STORAGE_ENDPOINT))
-            .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_URL)) // legacy
-            .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_ENDPOINT))
-        // legacy
         {
+            fallbacks.insert("persistent_storage".to_string(), storage);
+        } else if let Ok(storage) = std::env::var(socket_env::LEGACY_NESTGATE_URL) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_NESTGATE_URL,
+                value = %storage,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
+            fallbacks.insert("persistent_storage".to_string(), storage);
+        } else if let Ok(storage) = std::env::var(socket_env::LEGACY_NESTGATE_ENDPOINT) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_NESTGATE_ENDPOINT,
+                value = %storage,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
             fallbacks.insert("persistent_storage".to_string(), storage);
         }
 
@@ -71,10 +104,21 @@ impl FallbackSource {
             .or_else(|_| std::env::var(socket_env::INTELLIGENCE_URL))
             .or_else(|_| std::env::var(socket_env::INTELLIGENCE_ENDPOINT))
             .or_else(|_| std::env::var(socket_env::AI_PROCESSING_URL))
-            .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_URL)) // legacy
-            .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_ENDPOINT))
-        // legacy
         {
+            fallbacks.insert("ai_processing".to_string(), ai);
+        } else if let Ok(ai) = std::env::var(socket_env::LEGACY_SQUIRREL_URL) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_SQUIRREL_URL,
+                value = %ai,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
+            fallbacks.insert("ai_processing".to_string(), ai);
+        } else if let Ok(ai) = std::env::var(socket_env::LEGACY_SQUIRREL_ENDPOINT) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_SQUIRREL_ENDPOINT,
+                value = %ai,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
             fallbacks.insert("ai_processing".to_string(), ai);
         }
 

@@ -17,6 +17,7 @@
 pub mod security_client;
 pub mod client;
 pub mod config;
+#[cfg(feature = "tarpc-transport")]
 pub mod tarpc_service;
 pub mod transport;
 pub mod types;

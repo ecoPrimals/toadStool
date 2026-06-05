@@ -105,9 +105,16 @@ impl EntropyClient {
         // DEEP DEBT EVOLUTION: Check Unix socket first (no hardcoded ports!)
         // Environment variable override takes precedence
         // `BEARDOG_URL`: legacy env alias (backward compat)
-        if let Ok(url) = std::env::var(socket_env::SECURITY_URL)
-            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_URL))
-        {
+        if let Ok(url) = std::env::var(socket_env::SECURITY_URL) {
+            tracing::debug!("Using crypto service URL from environment: {}", url);
+            return Ok(url);
+        }
+        if let Ok(url) = std::env::var(socket_env::LEGACY_BEARDOG_URL) {
+            tracing::warn!(
+                env_var = %socket_env::LEGACY_BEARDOG_URL,
+                value = %url,
+                "deprecated LEGACY env variable used — migrate to capability-based discovery"
+            );
             tracing::debug!("Using crypto service URL from environment: {}", url);
             return Ok(url);
         }

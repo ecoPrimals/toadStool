@@ -32,7 +32,7 @@ fn main() {
         .with_max_level(Level::INFO)
         .with_target(false)
         .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber");
+    let _ = tracing::subscriber::set_global_default(subscriber);
 
     if let Err(e) = run() {
         error!("Error: {}", e);
