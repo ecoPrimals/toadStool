@@ -169,4 +169,72 @@ mod tests {
         assert!(result["gate_id"].is_null());
         assert_eq!(result["trust_level"], "anonymous");
     }
+
+    #[test]
+    fn auth_peer_info_local_transport_trust() {
+        let ctx = super::super::method_gate::CallerContext {
+            trust_level: DispatchTrustLevel::LocalTransport,
+            ..super::super::method_gate::CallerContext::anonymous()
+        };
+        let result = auth_peer_info(&ctx).unwrap();
+        assert_eq!(result["transport"], "unix");
+        assert_eq!(result["trust_level"], "local_transport");
+    }
+
+    #[test]
+    fn auth_peer_info_btsp_verified_trust() {
+        let ctx = super::super::method_gate::CallerContext {
+            trust_level: DispatchTrustLevel::BtspVerified,
+            identity: Some("did:key:z6Mk_btsp".into()),
+            ..super::super::method_gate::CallerContext::anonymous()
+        };
+        let result = auth_peer_info(&ctx).unwrap();
+        assert_eq!(result["transport"], "btsp");
+        assert_eq!(result["authenticated"], true);
+        assert_eq!(result["trust_level"], "btsp_verified");
+    }
+
+    #[test]
+    fn auth_peer_info_mutual_btsp_trust() {
+        let ctx = super::super::method_gate::CallerContext {
+            trust_level: DispatchTrustLevel::MutuallyAuthenticated,
+            gate_id: Some("gate-42".into()),
+            identity: Some("did:key:z6Mk_mutual".into()),
+            ..super::super::method_gate::CallerContext::anonymous()
+        };
+        let result = auth_peer_info(&ctx).unwrap();
+        assert_eq!(result["transport"], "mutual_btsp");
+        assert_eq!(result["gate_id"], "gate-42");
+        assert_eq!(result["trust_level"], "mutually_authenticated");
+    }
+
+    #[test]
+    fn auth_check_unknown_method_classified_protected() {
+        let gate = MethodGate::permissive();
+        let params = serde_json::json!({"method": "vendor.custom.method"});
+        let result = auth_check(&gate, Some(&params)).unwrap();
+        assert_eq!(result["visibility"], "protected");
+        assert_eq!(result["allowed"], true);
+    }
+
+    #[test]
+    fn auth_check_public_method_in_enforcing_mode() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let params = serde_json::json!({"method": "auth.mode"});
+        let result = auth_check(&gate, Some(&params)).unwrap();
+        assert_eq!(result["visibility"], "public");
+        assert_eq!(result["allowed"], true);
+        assert_eq!(result["method"], "auth.mode");
+    }
+
+    #[test]
+    fn auth_peer_info_envelope_empty_allowlist_omitted_in_json() {
+        let ctx = super::super::method_gate::CallerContext {
+            envelope: Some(super::super::method_gate::ResourceEnvelope::default()),
+            ..super::super::method_gate::CallerContext::anonymous()
+        };
+        let result = auth_peer_info(&ctx).unwrap();
+        let envelope = result["envelope"].as_object().expect("envelope object");
+        assert!(!envelope.contains_key("method_allowlist"));
+    }
 }

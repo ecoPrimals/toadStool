@@ -505,4 +505,140 @@ mod tests {
         assert!(ctx.gate_id.is_none());
         assert_eq!(ctx.trust_level, DispatchTrustLevel::Anonymous);
     }
+
+    #[test]
+    fn gate_mode_accessor_returns_constructor_mode() {
+        let permissive = MethodGate::permissive();
+        assert_eq!(permissive.mode(), GateMode::Permissive);
+        let enforcing = MethodGate::new(GateMode::Enforcing);
+        assert_eq!(enforcing.mode(), GateMode::Enforcing);
+    }
+
+    #[test]
+    fn gate_mode_transition_permissive_to_enforcing() {
+        let gate = MethodGate::permissive();
+        assert!(gate.check("compute.submit").is_ok());
+
+        let gate = MethodGate::new(GateMode::Enforcing);
+        assert!(gate.check("compute.submit").is_err());
+        assert!(gate.check("health.liveness").is_ok());
+    }
+
+    #[test]
+    fn enforcing_public_method_ignores_missing_identity() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let ctx = CallerContext::anonymous();
+        assert!(gate
+            .check_with_context("capabilities.list", &ctx)
+            .is_ok());
+    }
+
+    #[test]
+    fn enforcing_authenticated_empty_allowlist_allows_protected() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope::default()),
+            ..CallerContext::anonymous()
+        };
+        assert!(gate.check_with_context("compute.cancel", &ctx).is_ok());
+        assert!(gate
+            .check_with_context("compute.performance_surface.report", &ctx)
+            .is_ok());
+    }
+
+    #[test]
+    fn permissive_without_envelope_allows_restricted_methods() {
+        let gate = MethodGate::permissive();
+        let ctx = CallerContext::anonymous();
+        assert!(gate
+            .check_with_context("gate.update", &ctx)
+            .is_ok());
+        assert!(gate
+            .check_with_context("transport.open", &ctx)
+            .is_ok());
+    }
+
+    #[test]
+    fn allowlist_exact_match_required() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                method_allowlist: vec!["compute.submit".into()],
+                ..ResourceEnvelope::default()
+            }),
+            ..CallerContext::anonymous()
+        };
+        assert!(gate.check_with_context("compute.submit", &ctx).is_ok());
+        let err = gate
+            .check_with_context("compute.submit.extra", &ctx)
+            .unwrap_err();
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED
+        );
+    }
+
+    #[test]
+    fn classify_auth_prefix_methods_are_public() {
+        assert_eq!(classify_method("auth.check"), MethodVisibility::Public);
+        assert_eq!(classify_method("auth.custom_probe"), MethodVisibility::Public);
+    }
+
+    #[test]
+    fn caller_context_has_envelope_when_present() {
+        let ctx = CallerContext {
+            envelope: Some(ResourceEnvelope {
+                mem_mb: Some(1024),
+                ..ResourceEnvelope::default()
+            }),
+            ..CallerContext::anonymous()
+        };
+        assert!(ctx.has_envelope());
+    }
+
+    #[test]
+    fn connection_trust_hints_constants() {
+        assert_eq!(
+            ConnectionTrustHints::UNIX_LOCAL.transport,
+            ConnectionTransport::Unix
+        );
+        assert!(ConnectionTrustHints::UNIX_BTSP.btsp_verified);
+        assert!(ConnectionTrustHints::UNIX_MUTUAL_BTSP.mutually_authenticated);
+        assert_eq!(ConnectionTrustHints::TCP.transport, ConnectionTransport::Tcp);
+    }
+
+    #[test]
+    fn dispatch_trust_level_serde_roundtrip() {
+        for level in [
+            DispatchTrustLevel::Anonymous,
+            DispatchTrustLevel::LocalTransport,
+            DispatchTrustLevel::BtspVerified,
+            DispatchTrustLevel::MutuallyAuthenticated,
+        ] {
+            let json = serde_json::to_value(level).unwrap();
+            let back: DispatchTrustLevel = serde_json::from_value(json).unwrap();
+            assert_eq!(back, level);
+        }
+    }
+
+    #[test]
+    fn enforcing_rejects_anonymous_even_with_envelope_no_identity() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let ctx = CallerContext {
+            envelope: Some(ResourceEnvelope {
+                method_allowlist: vec!["compute.submit".into()],
+                ..ResourceEnvelope::default()
+            }),
+            ..CallerContext::anonymous()
+        };
+        let err = gate
+            .check_with_context("compute.submit", &ctx)
+            .unwrap_err();
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::UNAUTHORIZED
+        );
+    }
 }

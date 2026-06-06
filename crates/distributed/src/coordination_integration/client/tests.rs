@@ -594,3 +594,82 @@ fn test_coordination_config_custom() {
     assert_eq!(config.discovery_timeout_ms, 10000);
     assert_eq!(config.preferred_location, ServiceLocation::Network);
 }
+
+#[tokio::test]
+async fn test_discovery_empty_capability_list() {
+    let config = CoordinationConfig {
+        required_capabilities: vec![],
+        ..Default::default()
+    };
+    let discovery = CoordinationDiscovery::new(config).await.unwrap();
+    let services = discovery.discover().await.unwrap();
+    assert!(services.is_empty());
+}
+
+#[tokio::test]
+async fn test_discovery_caching_matches_discover_result() {
+    let config = CoordinationConfig {
+        required_capabilities: vec![],
+        ..Default::default()
+    };
+    let discovery = CoordinationDiscovery::new(config).await.unwrap();
+    assert!(discovery.get_cached().await.is_empty());
+
+    let discovered = discovery.discover().await.unwrap();
+    let cached = discovery.get_cached().await;
+    assert_eq!(cached.len(), discovered.len());
+}
+
+#[tokio::test]
+async fn test_discover_by_capability_not_found_returns_none() {
+    let config = CoordinationConfig::default();
+    let discovery = CoordinationDiscovery::new(config).await.unwrap();
+    let result = discovery
+        .discover_by_capability(Capability::Crypto(
+            toadstool_common::primal_identity::CryptoCapability::KeyManagement,
+        ))
+        .await
+        .unwrap();
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_discover_by_capability_simulated_lookup_miss() {
+    let config = CoordinationConfig::default();
+    let discovery = CoordinationDiscovery::new(config).await.unwrap();
+    let result = discovery
+        .discover_by_capability(Capability::Coordination(
+            CoordinationCapability::ServiceDiscovery,
+        ))
+        .await;
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_service_registration_with_endpoints_roundtrip() {
+    use crate::coordination_integration::types::ServiceRegistration;
+
+    let reg = ServiceRegistration {
+        service_id: "reg-with-ep".to_string(),
+        service_name: "CoordSvc".to_string(),
+        version: "1.2.0".to_string(),
+        capabilities: vec![
+            "coordination.service_discovery".to_string(),
+            "coordination.load_balancing".to_string(),
+        ],
+        endpoints: vec![crate::coordination_integration::types::ServiceEndpoint {
+            protocol: "http".to_string(),
+            address: "127.0.0.1:9090".parse().unwrap(),
+            path: Some("/coord".to_string()),
+            metadata: HashMap::from([("region".to_string(), "local".to_string())]),
+        }],
+        metadata: HashMap::from([("tier".to_string(), "4".to_string())]),
+        ttl_seconds: 300,
+    };
+    let json = serde_json::to_string(&reg).unwrap();
+    let parsed: ServiceRegistration = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.service_id, "reg-with-ep");
+    assert_eq!(parsed.endpoints.len(), 1);
+    assert_eq!(parsed.capabilities.len(), 2);
+    assert_eq!(parsed.ttl_seconds, 300);
+}

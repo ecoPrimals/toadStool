@@ -184,3 +184,245 @@ async fn route_multi_unit_missing_params() {
     let err = handler.route_multi_unit(None).await.unwrap_err();
     assert_eq!(err.code, -32602);
 }
+
+#[tokio::test]
+async fn query_partial_match_tolerance_too_tight() {
+    let handler = SiliconHandler::new();
+    handler
+        .report(Some(&make_measurement(
+            "matmul",
+            SiliconUnit::TensorCore,
+            142_000.0,
+            1e-3,
+        )))
+        .await
+        .unwrap();
+
+    let query = serde_json::json!({
+        "operation": "matmul",
+        "tolerance_required": 1e-14
+    });
+    let result = handler.query(Some(&query)).await.unwrap();
+    assert!(result["recommendation"].is_null());
+    assert!(result["message"]
+        .as_str()
+        .unwrap()
+        .contains("no measurements"));
+}
+
+#[tokio::test]
+async fn query_missing_operation_param() {
+    let handler = SiliconHandler::new();
+    let err = handler
+        .query(Some(&serde_json::json!({"tolerance_required": 1e-7})))
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, -32602);
+    assert!(err.message.contains("operation"));
+}
+
+#[tokio::test]
+async fn query_missing_tolerance_param() {
+    let handler = SiliconHandler::new();
+    let err = handler
+        .query(Some(&serde_json::json!({"operation": "matmul"})))
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, -32602);
+    assert!(err.message.contains("tolerance_required"));
+}
+
+#[tokio::test]
+async fn query_best_shader_core_no_separate_fallback() {
+    let handler = SiliconHandler::new();
+    handler
+        .report(Some(&make_measurement(
+            "force_eval",
+            SiliconUnit::ShaderCore,
+            35_580.0,
+            1e-7,
+        )))
+        .await
+        .unwrap();
+
+    let result = handler
+        .query(Some(&serde_json::json!({
+            "operation": "force_eval",
+            "tolerance_required": 1e-6
+        })))
+        .await
+        .unwrap();
+    assert_eq!(result["recommended_unit"], "shader_core");
+    assert_eq!(result["fallback_unit"], "shader_core");
+}
+
+#[tokio::test]
+async fn report_invalid_measurement_shape() {
+    let handler = SiliconHandler::new();
+    let err = handler
+        .report(Some(&serde_json::json!({"bad": true})))
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, -32602);
+    assert!(err.message.contains("invalid measurement"));
+}
+
+#[tokio::test]
+async fn route_multi_unit_single_op() {
+    let handler = SiliconHandler::new();
+    handler
+        .report(Some(&make_measurement(
+            "neighbor_search",
+            SiliconUnit::RtCore,
+            5400.0,
+            1e-3,
+        )))
+        .await
+        .unwrap();
+
+    let result = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "neighbor_search", "tolerance": 1e-2 }]
+        })))
+        .await
+        .unwrap();
+    let ops = result["operations"].as_array().unwrap();
+    assert_eq!(ops.len(), 1);
+    assert_eq!(ops[0]["silicon_unit"], "rt_core");
+    assert_eq!(result["gpu_target"], "default");
+}
+
+#[tokio::test]
+async fn route_multi_unit_heterogeneous_units() {
+    let handler = SiliconHandler::new();
+    handler
+        .report(Some(&make_measurement(
+            "matmul",
+            SiliconUnit::TensorCore,
+            142_000.0,
+            1e-3,
+        )))
+        .await
+        .unwrap();
+    handler
+        .report(Some(&make_measurement(
+            "histogram_deposit",
+            SiliconUnit::Rop,
+            2700.0,
+            1e-7,
+        )))
+        .await
+        .unwrap();
+
+    let result = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [
+                { "op": "matmul", "tolerance": 1e-2 },
+                { "op": "histogram_deposit", "tolerance": 1e-7 },
+                { "op": "eos_table_lookup", "tolerance": 1e-7 }
+            ]
+        })))
+        .await
+        .unwrap();
+    let ops = result["operations"].as_array().unwrap();
+    assert_eq!(ops.len(), 3);
+    assert_eq!(ops[0]["silicon_unit"], "tensor_core");
+    assert_eq!(ops[1]["silicon_unit"], "rop");
+    assert_eq!(ops[2]["silicon_unit"], "texture_unit");
+    assert!(ops[2]["reason"].as_str().unwrap().contains("heuristic"));
+}
+
+#[tokio::test]
+async fn route_multi_unit_tolerance_exceeds_surface_uses_heuristic() {
+    let handler = SiliconHandler::new();
+    handler
+        .report(Some(&make_measurement(
+            "matmul",
+            SiliconUnit::TensorCore,
+            142_000.0,
+            1e-3,
+        )))
+        .await
+        .unwrap();
+
+    let result = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "matmul", "tolerance": 1e-14 }]
+        })))
+        .await
+        .unwrap();
+    let op = &result["operations"][0];
+    assert_eq!(op["silicon_unit"], "shader_core");
+    assert_eq!(op["precision_mode"], "df64");
+    assert!(op["reason"].as_str().unwrap().contains("heuristic"));
+}
+
+#[tokio::test]
+async fn route_multi_unit_workload_item_missing_op() {
+    let handler = SiliconHandler::new();
+    let err = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "tolerance": 1e-7 }]
+        })))
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, -32602);
+    assert!(err.message.contains("op"));
+}
+
+#[tokio::test]
+async fn route_multi_unit_workload_item_missing_tolerance() {
+    let handler = SiliconHandler::new();
+    let err = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "matmul" }]
+        })))
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, -32602);
+    assert!(err.message.contains("tolerance"));
+}
+
+#[tokio::test]
+async fn route_heuristic_matmul_loose_vs_tight_tolerance() {
+    let handler = SiliconHandler::new();
+
+    let loose = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "cg_solve_matmul", "tolerance": 1e-3 }]
+        })))
+        .await
+        .unwrap();
+    assert_eq!(loose["operations"][0]["silicon_unit"], "tensor_core");
+    assert_eq!(loose["operations"][0]["precision_mode"], "fp16");
+
+    let tight = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "cg_solve_matmul", "tolerance": 1e-14 }]
+        })))
+        .await
+        .unwrap();
+    assert_eq!(tight["operations"][0]["silicon_unit"], "shader_core");
+    assert_eq!(tight["operations"][0]["precision_mode"], "df64");
+}
+
+#[tokio::test]
+async fn route_heuristic_spatial_and_scatter_ops() {
+    let handler = SiliconHandler::new();
+
+    let spatial = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "bvh_spatial_query", "tolerance": 1e-7 }]
+        })))
+        .await
+        .unwrap();
+    assert_eq!(spatial["operations"][0]["silicon_unit"], "rt_core");
+
+    let scatter = handler
+        .route_multi_unit(Some(&serde_json::json!({
+            "workload": [{ "op": "scatter_deposit", "tolerance": 1e-7 }]
+        })))
+        .await
+        .unwrap();
+    assert_eq!(scatter["operations"][0]["silicon_unit"], "rop");
+}
