@@ -404,19 +404,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_monitoring_targets() {
-        let _biome = MonitoringTarget::Biome("test-biome".to_string());
-        let _service = MonitoringTarget::Service("biome".to_string(), "svc".to_string());
-        let _system = MonitoringTarget::System;
-        let _platform = MonitoringTarget::Platform("linux".to_string());
-        let _fed = MonitoringTarget::Federation;
+        let _ = MonitoringTarget::Biome("test-biome".to_string());
+        let _ = MonitoringTarget::Service("biome".to_string(), "svc".to_string());
+        let _ = MonitoringTarget::System;
+        let _ = MonitoringTarget::Platform("linux".to_string());
+        let _ = MonitoringTarget::Federation;
     }
 
     #[tokio::test]
     async fn test_monitoring_session_status() {
-        let _active = SessionStatus::Active;
-        let _paused = SessionStatus::Paused;
-        let _stopped = SessionStatus::Stopped;
-        let _err = SessionStatus::Error("test".to_string());
+        let _ = SessionStatus::Active;
+        let _ = SessionStatus::Paused;
+        let _ = SessionStatus::Stopped;
+        let _ = SessionStatus::Error("test".to_string());
     }
 
     #[test]

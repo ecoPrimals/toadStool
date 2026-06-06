@@ -184,6 +184,7 @@ fn cli_context_from_server_command() {
         max_workloads: 16,
         biomeos_socket: None,
         family_id: Some("test-family".to_string()),
+        headless: false,
     });
     let ctx = CliContext::new(&cli);
     assert!(ctx.is_ok());

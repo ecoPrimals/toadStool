@@ -23,7 +23,7 @@ impl BiomeExecutor {
     ) -> Result<()> {
         let biome_name = biome_name.as_ref();
         info!("🛑 Stopping biome: {}", biome_name);
-        let _timeout_secs = timeout_secs; // For future use
+        let _ = timeout_secs; // For future use
 
         // Check if biome exists
         if !ResourceManager::new(self).biome_exists(biome_name).await {

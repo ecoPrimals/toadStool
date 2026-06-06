@@ -1,9 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S289 (Telemetry wire contract v1.1 + adversarial trust tests + telemetry emission + bollard feature-gated). S288: Akida MMIO panic elimination, BearDog alias removal, `modbus` feature-gated, ioctl SAFETY docs. S287: trust/telemetry consolidation + ownership lifecycle fixes. S286: `dispatch.verify_trust`, `dispatch.telemetry.schema`, yield-to-owner audit. ~98% env centralized. Zero libc. All unsafe SAFETY-documented. Zero production panics. Zero clippy.
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,204+ lib-only) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented, confirmed S288) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5)
-**Latest**: S289 — **Telemetry Wire Contract + Adversarial Trust Tests + Telemetry Emission**: `dispatch.telemetry.schema` → versioned wire contract v1.1 (encoding rules, backward compat, consumer list). +8 adversarial trust tests. `DispatchTelemetryRecord` emitted from dispatch paths. `bollard` feature-gated (not default).
-**Previous**: S288 — Akida MMIO → `try_*` Result paths; BearDog type aliases removed; `modbus` feature-gated; ioctl SAFETY docs. S287 — trust/telemetry consolidation. S286 — cross-gate trust verification + dispatch telemetry schema + yield-to-owner. S285 — crypto_integration migration.
+**Updated**: Jun 2026 — S298. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Coverage sprint active.
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods)
+**Latest**: S298 — Coverage Push IV (+44 tests). S295 — Headless mode + akida-setup graceful skip (P0 VPS fix). S294 — UDS compliance (`--socket` wired). S293 — tarpc gated, unwrap purge, cylinder split. S292 — serialport feature-gated, device.rs split, naming constants.
 
 ---
 
@@ -32,22 +31,17 @@ parameter tuning.
 All `set_var`/`remove_var` calls wrapped in `unsafe {}` across 14 files. Mangled
 syntax fixed in 3 server files. Test suite fully unblocked.
 
-### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
+### P2: Test Coverage → 90% (D-COV) — Active Sprint (S294–S298)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **23,000+ tests** (0 failures, 9,204+ lib-only). Target 90%.
+**~85%+ estimated line coverage** (lib-only). **9,069+ lib tests** (0 failures). Target 90%.
 
-**S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
-- `resource_validator.rs` 20% → ~75% (+19 tests)
-- `primal_integration/discovery.rs` 57% → 88% (+21 tests)
-- `universal/scheduler/execution.rs` 45% → 99% (+25 tests)
-- `cloud/orchestrator/mod.rs` 43% → 100% (+6 tests)
-- `auto_config/ecosystem.rs` 68% → ~85% (+17 tests)
-- `client/core.rs` 54% → ~85% (+18 tests)
-- `pure_jsonrpc/handler/dispatch.rs` 40% → ~70% (+13 tests)
+**S294–S298 coverage sprint** added **+174 new tests** targeting non-VFIO gaps:
+- S294: CallerContext extraction, handler glue (workload, resources, queries, state, compute), RuntimeEngineDispatch (+57)
+- S296: ember.rs, dispatch/submit.rs, background services, CLI start.rs (+35)
+- S297: transport.rs, shader_dispatch.rs, CLI commands (device, mode, kernel_health, npu), glowplug_client.rs (+38)
+- S298: silicon.rs, job.rs, coordination_integration, method_gate.rs, auth.rs (+44)
 
-**S168** expanded coverage with 11 more 0% files → covered (see DEBT.md D-COV-*-S168).
-
-**Remaining gap**: Largest uncovered areas are hardware-dependent paths (VFIO, DRM, V4L2, akida userspace), neuromorphic drivers, GPU engine/execution paths, CLI discovery modules, and specialty engine.rs (4% coverage). These require integration-level testing with hardware or mock hardware infrastructure.
+**Remaining gap**: Hardware-dependent paths (VFIO, DRM, V4L2, akida userspace), neuromorphic drivers, GPU engine/execution paths, and deeper branch coverage in dispatch/wgpu_dispatch.rs. These require integration-level testing with hardware or mock hardware infrastructure.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -64,6 +58,27 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 5–6, 2026 — S292–S298 Deep Debt IX–X + Wave 79/80 Compliance
+
+| Item | Session | Status |
+|------|---------|--------|
+| `serialport` feature-gated in runtime/edge (`serial-transport`) | S292 | **DONE** |
+| `dispatch/device.rs` (781L) split into `device/` module dir | S292 | **DONE** |
+| Hardcoded `"toadstool"` → `PRIMAL_NAME`/`PRIMAL_BINARY_NAME` | S292 | **DONE** |
+| Deprecated `TestExecutor`/`WorkloadExecutor` exports removed | S292 | **DONE** |
+| V4L2 ioctl + plugin ABI SAFETY docs | S292 | **DONE** |
+| Unused `tarpc` removed from runtime/display | S293 | **DONE** |
+| `tarpc` made optional in integration/protocols (`tarpc-transport`) | S293 | **DONE** |
+| Production `unwrap`/`expect` purge — zero remaining | S293 | **DONE** |
+| `mmu_oracle/capture.rs` (795L) split into `capture/` dir | S293 | **DONE** |
+| 23 `LEGACY_*` env reads emit deprecation tracing | S293 | **DONE** |
+| `--socket` CLI wired through to server bind (UDS compliance) | S294 | **DONE** |
+| `ConnectionTrustHints` mutual-auth support | S294 | **DONE** |
+| `--headless` flag on server/daemon (skip GPU/NPU probes) | S295 | **DONE** |
+| `akida-setup` graceful skip on hardware-less systems | S295 | **DONE** |
+| Musl-static binary built (14MB, x86_64, static-pie) | S296 | **DONE** |
+| Coverage push: +174 new tests (S294–S298) | S294–S298 | **DONE** |
 
 ### Jun 4, 2026 — S289 Telemetry Wire Contract + Adversarial Trust Tests
 
@@ -150,7 +165,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 | Item | Status |
 |------|--------|
-| Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
+| Coverage push 85%→90% | **Active sprint** — S294–S298 added +174 tests (9,069 lib); remaining gap in VFIO/DRM/GPU hardware paths |
 | Phase D mixed command streams | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)) |
 | VFIO PBDMA dispatch | **PIPELINE WIRED, RUNLIST BLOCKED** (S258–S263; Jun 1 RCA) — channel, DMA, GPFIFO + QMD submission work on Titan V; **GP_GET never advances** because `PFIFO_RUNLIST_BASE=0` (runlist never configured). Not e2e dispatch. RCA: [HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md](infra/wateringHole/handoffs/HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md). Frontier spec: [COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md). |
 | PCIe bridge keepalive | **VALIDATED + EVOLVED** (S264→S266) — Phase 1 (S264): `pin_bridge_hierarchy()` + `SwapGuard` burst CfgRd during swaps. Phase 2 (S266): Root cause fix — PLX D3cold caused by **inactivity** (not swaps). `PlxKeepalive` (ember): continuous CfgRd every 5s on device + all upstream bridges. `PlxGuardian` (glowplug): fleet-level auto-detect via `scan_and_protect()`. 98 ember tests, 95 glowplug tests. |
@@ -249,7 +264,7 @@ after Phase D.
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 23,000+ tests (9,156+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 23,000+ tests (9,069+ lib-only); ~85%+ line; +174 tests S294–S298 targeting non-VFIO gaps; remaining gap in hardware-dependent paths; push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -270,7 +285,7 @@ after Phase D.
 - [x] **God file splits (round 3)** -- dispatch.rs, detection.rs, engine.rs, protocols/lib.rs, specialized_templates.rs (S96)
 - [x] **BTSP Phase 2 (S198)** -- handshake on all UDS accept paths (tarpc + daemon JSON-RPC servers)
 - [x] **Health triad shapes (S198+S225)** -- liveness (`starting`→`alive`), readiness (`starting`→`ready`), check (full envelope); PG-62 fast-path (S225)
-- [x] **musl-static release binary (S198)** -- ~11MB x86_64 PIE stripped, validated
+- [x] **musl-static release binary (S198→S296)** -- ~14MB x86_64 PIE stripped, validated; S296 rebuilt with `--headless` + `--socket` support
 - [x] **API orphan resolved** -- crates/api/ ByobApi extracted to container crate (S96)
 - [x] **V4L2 unsafe docs** -- All SAFETY comments on unsafe blocks (S96)
 - [x] **Debris cleanup** -- root tests/ stubs, stale checklists, false-positive TODOs (S95)

@@ -99,12 +99,12 @@ fn universal_job_creation_with_variants() {
 
 #[test]
 fn execution_target_variants() {
-    let _local = ExecutionTarget::Local;
-    let _toadstool = ExecutionTarget::ToadStool {
+    let _ = ExecutionTarget::Local;
+    let _ = ExecutionTarget::ToadStool {
         instance_id: "inst-1".to_string(),
         endpoint: "http://127.0.0.1:8080".to_string(),
     };
-    let _best = ExecutionTarget::BestAvailable {
+    let _ = ExecutionTarget::BestAvailable {
         constraints: ResourceConstraints {
             max_cpu_cores: Some(8.0),
             max_memory_bytes: Some(16 * 1024 * 1024 * 1024),
@@ -129,11 +129,11 @@ fn compatibility_mode_as_str() {
 
 #[test]
 fn load_balancing_strategy_construction() {
-    let _rr = LoadBalancingStrategy::RoundRobin;
-    let _lc = LoadBalancingStrategy::LeastConnections;
+    let _ = LoadBalancingStrategy::RoundRobin;
+    let _ = LoadBalancingStrategy::LeastConnections;
     let mut weights = HashMap::new();
     weights.insert("a".to_string(), 1);
-    let _wrr = LoadBalancingStrategy::WeightedRoundRobin { weights };
+    let _ = LoadBalancingStrategy::WeightedRoundRobin { weights };
 }
 
 #[test]

@@ -183,13 +183,13 @@ mod tests {
 
     #[test]
     fn execution_environment_variants() {
-        let _container = ExecutionEnvironment::Container {
+        let _ = ExecutionEnvironment::Container {
             runtime: "docker".to_string(),
         };
-        let _wasm = ExecutionEnvironment::Wasm {
+        let _ = ExecutionEnvironment::Wasm {
             runtime: "wasmtime".to_string(),
         };
-        let _native = ExecutionEnvironment::Native {
+        let _ = ExecutionEnvironment::Native {
             isolation: IsolationLevel::Standard,
         };
     }

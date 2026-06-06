@@ -164,7 +164,7 @@ fn test_encrypted_input_serialization() {
             nonce: vec![10, 20, 30],
             aad: None,
             kdf_info: None,
-            encrypted_at: 1234567890,
+            encrypted_at: 1_234_567_890,
         },
         security_level: SecurityLevel::Standard,
     };
@@ -186,7 +186,7 @@ fn test_encrypted_output_serialization() {
             nonce: vec![1, 2, 3],
             aad: Some(vec![4, 5, 6]),
             kdf_info: None,
-            encrypted_at: 9876543210,
+            encrypted_at: 9_876_543_210,
         },
         security_level: SecurityLevel::Enhanced,
     };

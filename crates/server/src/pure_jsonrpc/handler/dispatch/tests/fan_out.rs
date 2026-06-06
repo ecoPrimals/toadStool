@@ -14,7 +14,7 @@ async fn fan_out_assigns_single_unit() {
         "dag_session_id": "tenaillon-2016",
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("fan_out should succeed");
     assert!(result["dispatch_id"].as_str().unwrap().starts_with("fan-"));
@@ -38,7 +38,7 @@ async fn fan_out_assigns_multiple_units() {
         ],
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("fan_out should succeed with multiple units");
     assert_eq!(result["total_units"], 3);
@@ -53,7 +53,7 @@ async fn fan_out_auto_generates_unit_ids() {
         "work_units": [{}, {}],
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("fan_out should auto-generate ids");
     let assigned = result["assigned"].as_array().unwrap();
@@ -76,7 +76,7 @@ async fn fan_out_queues_when_gpu_required_but_unavailable() {
         "substrate_filter": { "gpu_required": true },
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("fan_out should queue gpu-required units");
     assert_eq!(result["assigned_count"], 0);
@@ -91,7 +91,7 @@ async fn fan_out_rejects_empty_work_units() {
     let handler = test_handler();
     let params = serde_json::json!({ "work_units": [] });
     let err = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .unwrap_err();
     assert!(err.message.contains("at least one work unit"));
@@ -102,7 +102,7 @@ async fn fan_out_rejects_missing_work_units() {
     let handler = test_handler();
     let params = serde_json::json!({});
     let err = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .unwrap_err();
     assert!(err.message.contains("work_units"));
@@ -112,7 +112,7 @@ async fn fan_out_rejects_missing_work_units() {
 async fn fan_out_rejects_no_params() {
     let handler = test_handler();
     let err = handler
-        .fan_out(None, &Default::default())
+        .fan_out(None, &CallerContext::default())
         .await
         .unwrap_err();
     assert!(err.message.contains("requires params"));
@@ -126,7 +126,7 @@ async fn fan_out_cpu_substrate_without_gpu() {
         "substrate_filter": { "min_cores": 4, "gpu_required": false },
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("cpu units should be assigned even without GPU");
     assert_eq!(result["assigned_count"], 1);
@@ -142,7 +142,7 @@ async fn fan_out_includes_timing() {
         "work_units": [{ "unit_id": "t1" }],
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("fan_out should include timing");
     assert!(result["timing"]["dispatch_ms"].is_number());
@@ -155,7 +155,7 @@ async fn fan_out_omits_dag_session_id_when_not_provided() {
         "work_units": [{ "unit_id": "u1" }],
     });
     let result = handler
-        .fan_out(Some(&params), &Default::default())
+        .fan_out(Some(&params), &CallerContext::default())
         .await
         .expect("fan_out without dag_session_id");
     assert!(result.get("dag_session_id").is_none());

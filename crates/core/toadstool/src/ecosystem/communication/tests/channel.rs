@@ -15,7 +15,7 @@ async fn test_communication_manager_creation() {
 #[tokio::test]
 async fn test_custom_timeout() {
     let manager = CommunicationManager::with_timeout(std::time::Duration::from_secs(60));
-    assert_eq!(manager._default_timeout.as_secs(), 60);
+    assert_eq!(manager.default_timeout.as_secs(), 60);
 }
 
 #[test]
@@ -154,7 +154,7 @@ async fn test_multiple_channels() {
 #[tokio::test]
 async fn test_with_timeout_zero_duration() {
     let manager = CommunicationManager::with_timeout(std::time::Duration::ZERO);
-    assert_eq!(manager._default_timeout, std::time::Duration::ZERO);
+    assert_eq!(manager.default_timeout, std::time::Duration::ZERO);
 }
 
 #[tokio::test]

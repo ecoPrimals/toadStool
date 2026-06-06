@@ -377,7 +377,7 @@ mod tests {
         let vec = record.to_feature_vector();
         // dims 0-3 are hashed strings — should be in [0, 1)
         for &dim in &vec[0..4] {
-            assert!(dim >= 0.0 && dim < 1.0, "hash dim out of range: {dim}");
+            assert!((0.0..1.0).contains(&dim), "hash dim out of range: {dim}");
         }
     }
 
@@ -386,7 +386,11 @@ mod tests {
         let record = DispatchTelemetryRecord::new("test.method", "gate-x");
         let v1 = record.to_feature_vector();
         let v2 = record.to_feature_vector();
-        assert_eq!(v1, v2);
+        assert!(
+            v1.iter()
+                .zip(v2.iter())
+                .all(|(a, b)| (a - b).abs() < f64::EPSILON)
+        );
     }
 
     #[test]

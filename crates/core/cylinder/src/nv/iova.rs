@@ -161,16 +161,21 @@ mod tests {
 
     #[test]
     fn layout_no_overlap() {
-        assert!(channel::INSTANCE_IOVA < channel::RUNLIST_IOVA);
-        assert!(channel::RUNLIST_IOVA < channel::PD3_IOVA);
-        assert!(channel::PT0_IOVA < channel::FAULT_BUF_IOVA);
-        assert!(channel::FAULT_BUF_IOVA < channel::NOP_PB_IOVA);
-        assert!(channel::CHANNEL_REGION_END <= dispatch::GPFIFO_IOVA);
-        assert!(dispatch::GPFIFO_IOVA < dispatch::USERD_IOVA);
-        assert!(dispatch::USERD_IOVA < dispatch::GR_CTX_IOVA);
-        assert!(dispatch::GR_CTX_IOVA + dispatch::GR_CTX_SIZE as u64 <= dispatch::USER_BUFFER_BASE_IOVA);
-        assert!(dispatch::USER_BUFFER_BASE_IOVA < firmware::FECS_CODE_IOVA);
-        assert!(firmware::ACR_UCODE_IOVA + 0x1_0000 <= IOVA_LIMIT);
+        const { assert!(channel::INSTANCE_IOVA < channel::RUNLIST_IOVA) };
+        const { assert!(channel::RUNLIST_IOVA < channel::PD3_IOVA) };
+        const { assert!(channel::PT0_IOVA < channel::FAULT_BUF_IOVA) };
+        const { assert!(channel::FAULT_BUF_IOVA < channel::NOP_PB_IOVA) };
+        const { assert!(channel::CHANNEL_REGION_END <= dispatch::GPFIFO_IOVA) };
+        const { assert!(dispatch::GPFIFO_IOVA < dispatch::USERD_IOVA) };
+        const { assert!(dispatch::USERD_IOVA < dispatch::GR_CTX_IOVA) };
+        const {
+            assert!(
+                dispatch::GR_CTX_IOVA + dispatch::GR_CTX_SIZE as u64
+                    <= dispatch::USER_BUFFER_BASE_IOVA
+            )
+        };
+        const { assert!(dispatch::USER_BUFFER_BASE_IOVA < firmware::FECS_CODE_IOVA) };
+        const { assert!(firmware::ACR_UCODE_IOVA + 0x1_0000 <= IOVA_LIMIT) };
     }
 
     #[test]

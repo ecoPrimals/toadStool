@@ -1,3 +1,4 @@
+#![allow(clippy::default_trait_access)]
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC handler throughput benchmarks (parse → dispatch → serialize).
 
@@ -19,6 +20,7 @@ fn jsonrpc_handler() -> JsonRpcHandler {
         Arc::<str>::from("bench-1.0.0"),
         None,
         Arc::new(AtomicBool::new(true)),
+        None,
     )
 }
 
@@ -32,7 +34,11 @@ fn bench_jsonrpc_capabilities_list(c: &mut Criterion) {
     group.bench_function("bench_jsonrpc_capabilities_list", |b| {
         b.iter(|| {
             let out = rt
-                .block_on(process_request(&handler, black_box(body.as_slice())))
+                .block_on(process_request(
+                    &handler,
+                    black_box(body.as_slice()),
+                    Default::default(),
+                ))
                 .unwrap();
             black_box(out);
         });
@@ -50,7 +56,11 @@ fn bench_jsonrpc_health_liveness(c: &mut Criterion) {
     group.bench_function("bench_jsonrpc_health_liveness", |b| {
         b.iter(|| {
             let out = rt
-                .block_on(process_request(&handler, black_box(body.as_slice())))
+                .block_on(process_request(
+                    &handler,
+                    black_box(body.as_slice()),
+                    Default::default(),
+                ))
                 .unwrap();
             black_box(out);
         });
@@ -68,7 +78,11 @@ fn bench_jsonrpc_identity_get(c: &mut Criterion) {
     group.bench_function("bench_jsonrpc_identity_get", |b| {
         b.iter(|| {
             let out = rt
-                .block_on(process_request(&handler, black_box(body.as_slice())))
+                .block_on(process_request(
+                    &handler,
+                    black_box(body.as_slice()),
+                    Default::default(),
+                ))
                 .unwrap();
             black_box(out);
         });

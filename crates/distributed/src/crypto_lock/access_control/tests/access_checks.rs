@@ -124,7 +124,7 @@ async fn test_check_external_access_no_crypto_lock_feature() {
     let result = lock.check_external_access(&target).await.unwrap();
     match &result {
         AccessResult::Granted { .. } => {}
-        _ => panic!("Expected Granted for no_crypto_lock"),
+        AccessResult::Denied { .. } => panic!("Expected Granted for no_crypto_lock"),
     }
 }
 
@@ -139,7 +139,7 @@ async fn test_check_external_access_primal_security() {
     let result = lock.check_external_access(&target).await.unwrap();
     match &result {
         AccessResult::Granted { .. } => {}
-        _ => panic!("Expected Granted for capability:security"),
+        AccessResult::Denied { .. } => panic!("Expected Granted for capability:security"),
     }
 }
 
@@ -194,7 +194,7 @@ async fn test_check_external_access_capability_coordination() {
     let result = lock.check_external_access(&target).await.unwrap();
     match &result {
         AccessResult::Granted { .. } => {}
-        _ => panic!("Expected Granted for capability:coordination"),
+        AccessResult::Denied { .. } => panic!("Expected Granted for capability:coordination"),
     }
 }
 
@@ -209,7 +209,7 @@ async fn test_check_external_access_capability_ai() {
     let result = lock.check_external_access(&target).await.unwrap();
     match &result {
         AccessResult::Granted { .. } => {}
-        _ => panic!("Expected Granted for capability:ai"),
+        AccessResult::Denied { .. } => panic!("Expected Granted for capability:ai"),
     }
 }
 

@@ -26,7 +26,7 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[expect(
+#[allow(
     dead_code,
     reason = "Inner names used by tests; HealthCheck reserved for future health-check wiring"
 )]

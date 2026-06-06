@@ -249,7 +249,7 @@ mod tests {
                 assert_eq!(region, "us-east-1");
                 assert_eq!(instance_id, "i-abc123");
             }
-            _ => unreachable!("Expected Cloud variant"),
+            WorkloadLocation::Local { .. } => unreachable!("Expected Cloud variant"),
         }
     }
 

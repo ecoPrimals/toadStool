@@ -604,8 +604,10 @@ mod tests {
             ConnectionTrustHints::UNIX_LOCAL.transport,
             ConnectionTransport::Unix
         );
-        assert!(ConnectionTrustHints::UNIX_BTSP.btsp_verified);
-        assert!(ConnectionTrustHints::UNIX_MUTUAL_BTSP.mutually_authenticated);
+        const {
+            assert!(ConnectionTrustHints::UNIX_BTSP.btsp_verified);
+            assert!(ConnectionTrustHints::UNIX_MUTUAL_BTSP.mutually_authenticated);
+        }
         assert_eq!(ConnectionTrustHints::TCP.transport, ConnectionTransport::Tcp);
     }
 

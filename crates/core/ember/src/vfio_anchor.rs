@@ -246,6 +246,6 @@ mod tests {
         let iommufd = Arc::new(test_fd());
         let anchor = VfioAnchor::from_iommufd("0000:02:00.0".into(), fd, iommufd, 1);
         let r1 = anchor.backend_arc();
-        let _r2 = r1.clone();
+        let _r2 = r1;
     }
 }

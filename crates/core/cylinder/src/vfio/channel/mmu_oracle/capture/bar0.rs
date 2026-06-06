@@ -67,16 +67,6 @@ impl Bar0Rw {
         }
     }
 
-    fn borrowed_volatile(&self) -> Option<VolatileMmio<'_>> {
-        match &self.backing {
-            Bar0Backing::Borrowed { ptr, len } => {
-                // SAFETY: `from_raw` requires ptr/len valid for the lifetime of this `Bar0Rw`.
-                Some(unsafe { VolatileMmio::new(*ptr, *len) })
-            }
-            Bar0Backing::Owned { .. } => None,
-        }
-    }
-
     pub fn open(bdf: &str) -> Result<Self, ChannelError> {
         crate::vfio::ember_gate::check_channel(bdf)?;
         let path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
@@ -136,9 +126,13 @@ impl Bar0Rw {
                     std::io::Error::other(e.to_string()),
                 )
             }),
-            Bar0Backing::Borrowed { .. } => self.borrowed_volatile().expect("borrowed backing").read_u32(offset).map_err(|e| {
-                mmio_err_read(offset, map_size, e)
-            }),
+            Bar0Backing::Borrowed { ptr, len } => {
+                // SAFETY: Borrowed arm guarantees ptr/len valid for lifetime of Bar0Rw (from_raw contract).
+                let volatile = unsafe { VolatileMmio::new(*ptr, *len) };
+                volatile
+                    .read_u32(offset)
+                    .map_err(|e| mmio_err_read(offset, map_size, e))
+            }
         }
     }
 
@@ -160,11 +154,13 @@ impl Bar0Rw {
                     std::io::Error::other(e.to_string()),
                 )
             }),
-            Bar0Backing::Borrowed { .. } => self
-                .borrowed_volatile()
-                .expect("borrowed backing")
-                .write_u32(offset, val)
-                .map_err(|e| mmio_err_write(offset, map_size, e)),
+            Bar0Backing::Borrowed { ptr, len } => {
+                // SAFETY: Borrowed arm guarantees ptr/len valid for lifetime of Bar0Rw (from_raw contract).
+                let volatile = unsafe { VolatileMmio::new(*ptr, *len) };
+                volatile
+                    .write_u32(offset, val)
+                    .map_err(|e| mmio_err_write(offset, map_size, e))
+            }
         }
     }
 

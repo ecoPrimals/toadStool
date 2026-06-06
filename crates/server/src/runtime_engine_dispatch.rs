@@ -175,7 +175,7 @@ mod tests {
     async fn native_variant_delegates_get_metrics() {
         let dispatch = RuntimeEngineDispatch::Native(NativeRuntimeEngine::new());
         let metrics = dispatch.get_metrics().await.expect("metrics");
-        assert_eq!(metrics.cpu.usage_percent, 0.0);
+        assert!((metrics.cpu.usage_percent - 0.0).abs() < f64::EPSILON);
     }
 
     #[tokio::test]

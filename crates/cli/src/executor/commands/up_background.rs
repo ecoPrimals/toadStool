@@ -19,8 +19,8 @@ impl BiomeExecutor {
         opts: super::super::UpBiomeOptions,
     ) -> Result<()> {
         info!("🚀 Starting biome in background mode (detached)");
-        let _restart = opts.restart; // For future use
-        let _health_interval = opts.health_interval; // For future use
+        let _ = opts.restart; // For future use
+        let _ = opts.health_interval; // For future use
 
         // Load and validate manifest
         let manifest = load_biome_manifest(&opts.manifest_path).await?;

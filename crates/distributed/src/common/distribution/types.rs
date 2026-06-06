@@ -193,8 +193,8 @@ mod tests {
 
     #[test]
     fn test_distribution_strategy_variants() {
-        let _equal = DistributionStrategy::Equal;
-        let _weighted = DistributionStrategy::Weighted {
+        let _ = DistributionStrategy::Equal;
+        let _ = DistributionStrategy::Weighted {
             weights: {
                 let mut m = HashMap::new();
                 m.insert("node1".to_string(), 0.6);
@@ -202,10 +202,10 @@ mod tests {
                 m
             },
         };
-        let _replicated = DistributionStrategy::Replicated {
+        let _ = DistributionStrategy::Replicated {
             replication_factor: 3,
         };
-        let _burst = DistributionStrategy::Burst {
+        let _ = DistributionStrategy::Burst {
             primary_target: "primary".to_string(),
             burst_targets: vec!["burst1".to_string()],
         };

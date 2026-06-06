@@ -284,9 +284,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_biome_deployment_status_variants() {
-        let _pending = BiomeDeploymentStatus::Pending;
-        let _running = BiomeDeploymentStatus::Running;
-        let _stopped = BiomeDeploymentStatus::Stopped;
+        let _ = BiomeDeploymentStatus::Pending;
+        let _ = BiomeDeploymentStatus::Running;
+        let _ = BiomeDeploymentStatus::Stopped;
         let failed = BiomeDeploymentStatus::Failed("timeout".to_string());
         match &failed {
             BiomeDeploymentStatus::Failed(msg) => assert_eq!(msg, "timeout"),

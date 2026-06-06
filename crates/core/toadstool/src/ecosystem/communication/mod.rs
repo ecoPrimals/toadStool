@@ -36,7 +36,8 @@ use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatu
 /// Communication manager for service channels and messaging
 pub struct CommunicationManager {
     channels: Arc<RwLock<HashMap<String, ServiceChannel>>>,
-    _default_timeout: Duration,
+    #[cfg_attr(not(test), allow(dead_code))]
+    default_timeout: Duration,
 }
 
 impl CommunicationManager {
@@ -50,7 +51,7 @@ impl CommunicationManager {
     pub fn with_timeout(timeout: Duration) -> Self {
         Self {
             channels: Arc::new(RwLock::new(HashMap::new())),
-            _default_timeout: timeout,
+            default_timeout: timeout,
         }
     }
 
@@ -101,7 +102,7 @@ impl CommunicationManager {
     /// # Errors
     ///
     /// Returns error if the RPC client is unavailable or the remote call fails.
-    #[expect(
+    #[allow(
         clippy::significant_drop_tightening,
         reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
     )]
@@ -145,7 +146,7 @@ impl CommunicationManager {
     /// # Errors
     ///
     /// Returns error if the health RPC fails or the client is not initialized.
-    #[expect(
+    #[allow(
         clippy::significant_drop_tightening,
         reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
     )]

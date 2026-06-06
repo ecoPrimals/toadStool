@@ -237,16 +237,16 @@ mod tests {
 
     #[test]
     fn platform_type_variants() {
-        let _linux = PlatformType::Linux {
+        let _ = PlatformType::Linux {
             distribution: "arch".to_string(),
             architecture: "aarch64".to_string(),
         };
-        let _docker = PlatformType::Docker;
-        let _gpu = PlatformType::GPU {
+        let _ = PlatformType::Docker;
+        let _ = PlatformType::GPU {
             vendor: "AMD".to_string(),
             framework: "ROCm".to_string(),
         };
-        let _lang = PlatformType::Language {
+        let _ = PlatformType::Language {
             name: "Python".to_string(),
             command: "python3".to_string(),
         };

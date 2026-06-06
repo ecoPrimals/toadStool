@@ -8,7 +8,8 @@ use crate::{ToadStoolError, ToadStoolResult};
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct SocketStorageBackend {
     pub(crate) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    pub(crate) _storage_tier: String,
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) storage_tier: String,
     pub(crate) replication_enabled: bool,
     pub(crate) replication_factor: u32,
 }
@@ -40,7 +41,7 @@ impl SocketStorageBackend {
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            _storage_tier: storage_tier.into(),
+            storage_tier: storage_tier.into(),
             replication_enabled,
             replication_factor,
         })
@@ -66,7 +67,7 @@ impl SocketStorageBackend {
             toadstool_common::primal_sockets::get_socket_path_for_capability("storage");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            _storage_tier: storage_tier.into(),
+            storage_tier: storage_tier.into(),
             replication_enabled,
             replication_factor,
         }

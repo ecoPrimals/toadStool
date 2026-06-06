@@ -87,7 +87,7 @@ fn s155_get_socket_path_from_primal_socket_with_family() {
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
         ],
         || {
-            let result = get_socket_path("family-x", "node1");
+            let result = get_socket_path("family-x", "node1", None, None);
             assert!(result.is_ok());
             assert_eq!(result.unwrap(), PathBuf::from("/run/primal-family-x"));
         },

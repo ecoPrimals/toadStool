@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_constraint_priority_default() {
-        let priority: ConstraintPriority = Default::default();
+        let priority = ConstraintPriority::default();
         assert_eq!(priority, ConstraintPriority::Normal);
     }
 

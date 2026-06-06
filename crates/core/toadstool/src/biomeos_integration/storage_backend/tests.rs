@@ -36,7 +36,7 @@ fn test_volume_status_equality() {
 #[expect(deprecated)]
 fn test_storage_backend_impl_constructor() {
     let backend = SocketStorageBackend::new("", "fast-tier", true, 3);
-    assert_eq!(backend._storage_tier, "fast-tier");
+    assert_eq!(backend.storage_tier, "fast-tier");
     assert!(backend.replication_enabled);
     assert_eq!(backend.replication_factor, 3);
 }

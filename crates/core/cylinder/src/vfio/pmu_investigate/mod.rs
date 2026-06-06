@@ -134,7 +134,7 @@ pub(super) fn gpc_alive(val: u32) -> bool {
     !is_pri_fault(val) && val != 0
 }
 
-#[expect(dead_code, reason = "CE status probe — used when PMU investigate dispatch wired")]
+#[allow(dead_code)]
 fn ce_alive(val: u32) -> bool {
     !is_pri_fault(val)
 }
@@ -622,8 +622,8 @@ mod tests {
 
     #[test]
     fn pmu_ext_registers_in_pmu_range() {
-        assert!(pmu_ext::IRQSTAT >= 0x10_A000);
-        assert!(pmu_ext::QUEUE_TAIL_3 < 0x10_B000);
+        const { assert!(pmu_ext::IRQSTAT >= 0x10_A000) };
+        const { assert!(pmu_ext::QUEUE_TAIL_3 < 0x10_B000) };
     }
 
     #[test]

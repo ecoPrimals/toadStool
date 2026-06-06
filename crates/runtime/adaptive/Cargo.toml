@@ -19,8 +19,8 @@ serde_json = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 thiserror = { workspace = true }
 
-# GPU runtime
-wgpu = { workspace = true }
+# GPU runtime (optional — only needed for live GPU fingerprinting)
+wgpu = { workspace = true, optional = true }
 
 # ToadStool core
 toadstool = { path = "../../core/toadstool" }
@@ -35,7 +35,8 @@ criterion = { workspace = true }
 proptest = { workspace = true }
 
 [features]
-default = []
+default = ["gpu-discovery"]
+gpu-discovery = ["dep:wgpu"]
 
 # [[bench]]
 # name = "adaptive_benchmarks"

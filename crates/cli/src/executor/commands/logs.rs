@@ -56,9 +56,9 @@ impl BiomeExecutor {
         drop(biomes);
 
         // Apply filters (for future use)
-        let _timestamps = timestamps;
-        let _level_filter = level_filter;
-        let _grep_pattern = grep_pattern;
+        let _ = timestamps;
+        let _ = level_filter;
+        let _ = grep_pattern;
 
         if follow {
             info!("📜 Following logs: {}", log_file.display());

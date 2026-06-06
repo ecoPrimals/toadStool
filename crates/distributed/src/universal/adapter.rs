@@ -105,8 +105,8 @@ mod tests {
         let exec_id = request.execution_id;
         let result = adapter.adapt_request(request);
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.execution_id, exec_id);
+        let actual = result.unwrap();
+        assert_eq!(actual.execution_id, exec_id);
     }
 
     #[test]
@@ -118,8 +118,8 @@ mod tests {
         };
         let result = adapter.adapt_request(request);
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.runtime_hint, Some(RuntimeType::Wasm));
+        let actual = result.unwrap();
+        assert_eq!(actual.runtime_hint, Some(RuntimeType::Wasm));
     }
 
     #[test]
@@ -131,8 +131,8 @@ mod tests {
             .insert("KEY".to_string(), "value".to_string());
         let result = adapter.adapt_request(request.clone());
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.environment.get("KEY"), Some(&"value".to_string()));
+        let actual = result.unwrap();
+        assert_eq!(actual.environment.get("KEY"), Some(&"value".to_string()));
     }
 
     #[test]
@@ -144,8 +144,8 @@ mod tests {
         };
         let result = adapter.adapt_request(request);
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.timeout, Some(Duration::from_secs(60)));
+        let actual = result.unwrap();
+        assert_eq!(actual.timeout, Some(Duration::from_secs(60)));
     }
 
     #[test]
@@ -154,9 +154,9 @@ mod tests {
         let response = toadstool::ExecutionResponse::default();
         let result = adapter.adapt_response(response.clone());
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.execution_id, response.execution_id);
-        assert_eq!(adapted.status, response.status);
+        let actual = result.unwrap();
+        assert_eq!(actual.execution_id, response.execution_id);
+        assert_eq!(actual.status, response.status);
     }
 
     #[test]
@@ -173,9 +173,9 @@ mod tests {
         };
         let result = adapter.adapt_response(response);
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.status, ExecutionStatus::Success);
-        assert_eq!(adapted.duration, Duration::from_secs(5));
+        let actual = result.unwrap();
+        assert_eq!(actual.status, ExecutionStatus::Success);
+        assert_eq!(actual.duration, Duration::from_secs(5));
     }
 
     #[test]
@@ -194,9 +194,9 @@ mod tests {
         };
         let result = adapter.adapt_response(response);
         assert!(result.is_ok());
-        let adapted = result.unwrap();
+        let actual = result.unwrap();
         assert!(matches!(
-            adapted.status,
+            actual.status,
             ExecutionStatus::Failed { error } if error == "test error"
         ));
     }
@@ -218,10 +218,10 @@ mod tests {
         };
         let result = adapter.adapt_response(response);
         assert!(result.is_ok());
-        let adapted = result.unwrap();
-        assert_eq!(adapted.output.data, Bytes::from("output bytes"));
-        assert_eq!(adapted.output.stdout, Some("stdout".to_string()));
-        assert_eq!(adapted.output.exit_code, Some(0));
+        let actual = result.unwrap();
+        assert_eq!(actual.output.data, Bytes::from("output bytes"));
+        assert_eq!(actual.output.stdout, Some("stdout".to_string()));
+        assert_eq!(actual.output.exit_code, Some(0));
     }
 
     #[test]

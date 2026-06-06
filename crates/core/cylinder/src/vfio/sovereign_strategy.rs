@@ -522,7 +522,7 @@ mod tests {
     fn kepler_strategy_from_profile() {
         let profile = generation::profile_for_sm(35);
         let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
-        let strat = strategy_for_profile(&profile, bridge, 35);
+        let strat = strategy_for_profile(profile, bridge, 35);
 
         assert_eq!(strat.family_name(), "Kepler");
         assert!(!strat.needs_cg_sweep());
@@ -537,7 +537,7 @@ mod tests {
     fn volta_strategy_from_profile() {
         let profile = generation::profile_for_sm(70);
         let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
-        let strat = strategy_for_profile(&profile, bridge, 70);
+        let strat = strategy_for_profile(profile, bridge, 70);
 
         assert_eq!(strat.family_name(), "Volta");
         assert!(strat.needs_cg_sweep());

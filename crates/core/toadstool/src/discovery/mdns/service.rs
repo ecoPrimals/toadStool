@@ -249,10 +249,8 @@ mod tests {
 
     #[test]
     fn test_advertise_requires_network_identity() {
-        let result = MdnsDiscoveryService::new();
-        let mdns = match result {
-            Ok(m) => m,
-            Err(_) => return,
+        let Ok(mdns) = MdnsDiscoveryService::new() else {
+            return;
         };
 
         let identity = SelfIdentity::new();
@@ -314,10 +312,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_cached_services_initially_empty() {
-        let result = MdnsDiscoveryService::new();
-        let mdns = match result {
-            Ok(m) => m,
-            Err(_) => return,
+        let Ok(mdns) = MdnsDiscoveryService::new() else {
+            return;
         };
 
         let cached = mdns.get_cached_services().await;
@@ -334,9 +330,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mdns_advertise() {
-        let mdns = if let Ok(m) = MdnsDiscoveryService::new() {
-            m
-        } else {
+        let Ok(mdns) = MdnsDiscoveryService::new() else {
             eprintln!("Skipping test - mDNS not available");
             return;
         };

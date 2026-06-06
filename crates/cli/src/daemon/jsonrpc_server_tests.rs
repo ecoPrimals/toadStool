@@ -48,7 +48,7 @@ async fn spawn_test_server(test_name: &str) -> (tempfile::TempDir, PathBuf, Arc<
     (dir, socket_path, state)
 }
 
-fn jsonrpc_request(method: &str, params: Value, id: Value) -> String {
+fn jsonrpc_request(method: &str, params: &Value, id: &Value) -> String {
     serde_json::to_string(&json!({
         "jsonrpc": "2.0",
         "method": method,
@@ -120,7 +120,7 @@ fn test_jsonrpc_response_serialization() {
 async fn test_server_construct_and_health() {
     let (_dir, socket_path, _state) = spawn_test_server("test").await;
 
-    let req = jsonrpc_request("daemon.health", json!({}), json!(1));
+    let req = jsonrpc_request("daemon.health", &json!({}), &json!(1));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert_eq!(parsed["result"]["status"], "ok");
@@ -132,7 +132,7 @@ async fn test_server_construct_and_health() {
 async fn test_method_routing_metrics() {
     let (_dir, socket_path, _state) = spawn_test_server("test_metrics").await;
 
-    let req = jsonrpc_request("daemon.metrics", json!({}), json!(2));
+    let req = jsonrpc_request("daemon.metrics", &json!({}), &json!(2));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert!(parsed["result"]["workloads"].is_object());
@@ -143,7 +143,7 @@ async fn test_method_routing_metrics() {
 async fn test_method_routing_list_workloads() {
     let (_dir, socket_path, _state) = spawn_test_server("test_list").await;
 
-    let req = jsonrpc_request("daemon.list_workloads", json!({}), json!(3));
+    let req = jsonrpc_request("daemon.list_workloads", &json!({}), &json!(3));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert!(parsed["result"]["workloads"].is_array());
@@ -161,7 +161,7 @@ async fn test_submit_workload_request_response() {
         "timeout_secs": 60,
         "persistent": false
     });
-    let req = jsonrpc_request("daemon.submit_workload", params, json!(4));
+    let req = jsonrpc_request("daemon.submit_workload", &params, &json!(4));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     if let Some(err) = parsed.get("error") {
@@ -183,7 +183,7 @@ async fn test_get_workload_not_found() {
     let (_dir, socket_path, _state) = spawn_test_server("test_get").await;
 
     let params = json!({"id": "nonexistent-uuid"});
-    let req = jsonrpc_request("daemon.get_workload", params, json!(5));
+    let req = jsonrpc_request("daemon.get_workload", &params, &json!(5));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert!(parsed["error"].is_object());
@@ -204,7 +204,7 @@ async fn test_parse_error_invalid_json() {
 async fn test_invalid_jsonrpc_version() {
     let (_dir, socket_path, _state) = spawn_test_server("test_version").await;
 
-    let req = jsonrpc_request("daemon.health", json!({}), json!(1));
+    let req = jsonrpc_request("daemon.health", &json!({}), &json!(1));
     let bad_req = req.replace("\"2.0\"", "\"1.0\"");
     let resp = connect_and_send(&socket_path, &bad_req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
@@ -216,7 +216,7 @@ async fn test_invalid_jsonrpc_version() {
 async fn test_method_not_found() {
     let (_dir, socket_path, _state) = spawn_test_server("test_method").await;
 
-    let req = jsonrpc_request("daemon.nonexistent", json!({}), json!(6));
+    let req = jsonrpc_request("daemon.nonexistent", &json!({}), &json!(6));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert!(parsed["error"].is_object());
@@ -228,7 +228,7 @@ async fn test_invalid_params_submit_workload() {
     let (_dir, socket_path, _state) = spawn_test_server("test_invalid_submit").await;
 
     let params = json!({"invalid": "params"});
-    let req = jsonrpc_request("daemon.submit_workload", params, json!(7));
+    let req = jsonrpc_request("daemon.submit_workload", &params, &json!(7));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert!(parsed["error"].is_object());
@@ -240,7 +240,7 @@ async fn test_invalid_params_get_workload_missing_id() {
     let (_dir, socket_path, _state) = spawn_test_server("test_get_missing").await;
 
     let params = json!({});
-    let req = jsonrpc_request("daemon.get_workload", params, json!(8));
+    let req = jsonrpc_request("daemon.get_workload", &params, &json!(8));
     let resp = connect_and_send(&socket_path, &req).await;
     let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
     assert!(parsed["error"].is_object());

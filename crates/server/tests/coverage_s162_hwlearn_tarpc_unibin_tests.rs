@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use toadstool_server::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest};
-use toadstool_server::{StandaloneExecutor, WorkloadExecutorDispatch};
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 fn test_handler() -> JsonRpcHandler {
     JsonRpcHandler::new(

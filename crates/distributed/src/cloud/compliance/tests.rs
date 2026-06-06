@@ -360,7 +360,7 @@ mod tests {
         let parsed_fail: CheckResult = serde_json::from_str(&json_fail).unwrap();
         match parsed_fail {
             CheckResult::Fail { reason } => assert_eq!(reason, "Missing cert"),
-            _ => panic!("Expected Fail variant"),
+            CheckResult::Pass => panic!("Expected Fail variant"),
         }
     }
 

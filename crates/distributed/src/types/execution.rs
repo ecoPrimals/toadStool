@@ -260,11 +260,11 @@ mod tests {
 
     #[test]
     fn test_distributed_execution_status_variants() {
-        let _pending = DistributedExecutionStatus::Pending;
-        let _running = DistributedExecutionStatus::Running;
-        let _completed = DistributedExecutionStatus::Completed;
-        let _failed = DistributedExecutionStatus::Failed("error".to_string());
-        let _cancelled = DistributedExecutionStatus::Cancelled;
+        let _ = DistributedExecutionStatus::Pending;
+        let _ = DistributedExecutionStatus::Running;
+        let _ = DistributedExecutionStatus::Completed;
+        let _ = DistributedExecutionStatus::Failed("error".to_string());
+        let _ = DistributedExecutionStatus::Cancelled;
     }
 
     #[test]

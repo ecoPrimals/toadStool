@@ -26,7 +26,7 @@ fn test_replication_settings_serialization() {
 #[expect(deprecated)]
 fn test_storage_backend_impl_new_configuration() {
     let backend = SocketStorageBackend::new("http://ignored", "fast-tier", true, 3);
-    assert_eq!(backend._storage_tier, "fast-tier");
+    assert_eq!(backend.storage_tier, "fast-tier");
     assert!(backend.replication_enabled);
     assert_eq!(backend.replication_factor, 3);
 }
@@ -36,7 +36,7 @@ fn test_storage_backend_impl_new_configuration() {
 fn test_storage_backend_impl_new_storage_tier_into() {
     let tier = String::from("ssd-tier");
     let backend = SocketStorageBackend::new("x", tier, false, 1);
-    assert_eq!(backend._storage_tier, "ssd-tier");
+    assert_eq!(backend.storage_tier, "ssd-tier");
     assert!(!backend.replication_enabled);
 }
 

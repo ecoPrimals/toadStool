@@ -445,7 +445,7 @@ mod tests {
             InitSource::Manual { experiment: 1 },
         );
         let summary = seq.domain_summary();
-        assert!(summary.len() >= 1);
+        assert!(!summary.is_empty());
     }
 
     #[test]

@@ -68,22 +68,21 @@ pub struct GpuFingerprint {
 }
 
 impl GpuFingerprint {
-    /// Discover GPU hardware at runtime
+    /// Discover GPU hardware at runtime via wgpu adapter probing.
     ///
-    /// Uses wgpu to detect hardware capabilities.
-    /// No assumptions about optimal configurations - those are learned!
+    /// Requires the `gpu-discovery` feature (enabled by default).
+    /// Without that feature, returns an error immediately.
     ///
     /// # Errors
     ///
-    /// Returns error if GPU discovery fails.
+    /// Returns error if GPU discovery fails or the `gpu-discovery` feature is disabled.
+    #[cfg(feature = "gpu-discovery")]
     pub async fn discover() -> Result<Self, AdaptiveError> {
-        // Create wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
 
-        // Request adapter (GPU)
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -95,22 +94,11 @@ impl GpuFingerprint {
 
         let info = adapter.get_info();
 
-        // Detect vendor from PCI vendor ID
         let vendor = Self::detect_vendor(info.vendor);
-
-        // Extract architecture from device name (best effort)
         let architecture = Self::extract_architecture(&info.name, vendor);
-
-        // Classify model (high-end, mid-range, etc.)
         let model_class = Self::classify_model(&info.name, vendor);
-
-        // Get driver version
         let driver_version = format!("{} ({})", info.driver, info.driver_info);
-
-        // Get backend
         let backend = format!("{:?}", info.backend);
-
-        // Estimate memory size (rounded to nearest GB)
         let limits = adapter.limits();
         let memory_size_gb = (limits.max_buffer_size / 1_000_000_000).max(1);
 
@@ -121,6 +109,19 @@ impl GpuFingerprint {
             driver_version,
             backend,
             memory_size_gb,
+        })
+    }
+
+    /// Fallback when `gpu-discovery` feature is disabled — returns software fingerprint.
+    #[cfg(not(feature = "gpu-discovery"))]
+    pub async fn discover() -> Result<Self, AdaptiveError> {
+        Ok(Self {
+            vendor: GpuVendor::Software,
+            architecture: "cpu-fallback".to_string(),
+            model_class: "software".to_string(),
+            driver_version: "none".to_string(),
+            backend: "cpu".to_string(),
+            memory_size_gb: 0,
         })
     }
 

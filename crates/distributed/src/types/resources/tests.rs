@@ -218,10 +218,10 @@ fn resource_limits_default() {
 
 #[test]
 fn resource_value_variants() {
-    let _i = ResourceValue::Integer(42);
-    let _f = ResourceValue::Float(3.5_f64);
-    let _s = ResourceValue::String("test".to_string());
-    let _b = ResourceValue::Boolean(true);
+    let _ = ResourceValue::Integer(42);
+    let _ = ResourceValue::Float(3.5_f64);
+    let _ = ResourceValue::String("test".to_string());
+    let _ = ResourceValue::Boolean(true);
 }
 
 #[test]

@@ -130,7 +130,7 @@ fn apply_single_patch_patches_ret_after_ftrace() {
     // Simulate a minimal function: e8 00 00 00 00 55 (call + push rbp)
     let mut bytes = vec![0xe8, 0x00, 0x00, 0x00, 0x00, 0x55, 0x48, 0x89];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),
@@ -156,7 +156,7 @@ fn apply_single_patch_patches_ret_after_ftrace() {
 fn apply_single_patch_rejects_missing_ftrace() {
     let mut bytes = vec![0x55, 0x48, 0x89, 0xe5, 0x41, 0x57, 0x41, 0x56];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),
@@ -202,7 +202,7 @@ fn apply_single_patch_rejects_missing_symbol() {
 fn apply_single_patch_accepts_nop_sled() {
     let mut bytes = vec![0x90, 0x90, 0x90, 0x90, 0x90, 0x55, 0x48, 0x89];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),
@@ -222,7 +222,7 @@ fn apply_single_patch_accepts_nop_sled() {
 fn apply_single_patch_accepts_zero_pad() {
     let mut bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0x48, 0x89];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),
@@ -242,7 +242,7 @@ fn apply_single_patch_accepts_zero_pad() {
 fn apply_single_patch_accepts_multibyte_nop() {
     let mut bytes = vec![0x0f, 0x1f, 0x44, 0x00, 0x00, 0x55, 0x48, 0x89];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),
@@ -262,7 +262,7 @@ fn apply_single_patch_accepts_multibyte_nop() {
 fn apply_single_patch_ret0_at_entry() {
     let mut bytes = vec![0xe8, 0x00, 0x00, 0x00, 0x00, 0x55, 0x48, 0x89, 0xe5, 0x41];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),
@@ -284,7 +284,7 @@ fn apply_single_patch_ret0_at_entry() {
 fn apply_single_patch_rejects_mid_instruction() {
     let mut bytes = vec![0xe5, 0x48, 0x89, 0xe5, 0x41, 0x57, 0x41, 0x56];
     let len = bytes.len();
-    let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
+    let symbols: HashMap<String, u64> = std::iter::once(("test_fn".into(), 0u64)).collect();
 
     let target = PatchTarget {
         symbol: "test_fn".into(),

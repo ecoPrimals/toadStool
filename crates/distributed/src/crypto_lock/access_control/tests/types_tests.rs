@@ -27,7 +27,7 @@ fn test_access_result_granted_constructor() {
         AccessResult::Granted {
             permission_level, ..
         } => assert!(matches!(permission_level, PermissionLevel::Full)),
-        _ => panic!(),
+        AccessResult::Denied { .. } => panic!(),
     }
 }
 
@@ -39,15 +39,15 @@ fn test_access_result_denied_constructor() {
     };
     match &result {
         AccessResult::Denied { reason, .. } => assert_eq!(reason, "No permission"),
-        _ => panic!(),
+        AccessResult::Granted { .. } => panic!(),
     }
 }
 
 #[test]
 fn test_permission_level_variants() {
-    let _b = PermissionLevel::Basic;
-    let _l = PermissionLevel::Limited;
-    let _f = PermissionLevel::Full;
+    let _ = PermissionLevel::Basic;
+    let _ = PermissionLevel::Limited;
+    let _ = PermissionLevel::Full;
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn test_access_result_granted_with_restrictions() {
     };
     match &result {
         AccessResult::Granted { restrictions, .. } => assert_eq!(restrictions.len(), 1),
-        _ => panic!(),
+        AccessResult::Denied { .. } => panic!(),
     }
 }
 
@@ -152,7 +152,7 @@ fn test_access_result_granted_with_expires_at() {
     };
     match &result {
         AccessResult::Granted { expires_at, .. } => assert!(expires_at.is_some()),
-        _ => panic!(),
+        AccessResult::Denied { .. } => panic!(),
     }
 }
 
@@ -257,7 +257,7 @@ fn test_access_result_granted_with_all_fields() {
             assert!(matches!(permission_level, PermissionLevel::Basic));
             assert_eq!(restrictions.len(), 2);
         }
-        _ => panic!(),
+        AccessResult::Denied { .. } => panic!(),
     }
 }
 

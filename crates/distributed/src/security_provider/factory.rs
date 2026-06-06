@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_factory_creation() {
         // Just verify factory can be constructed
-        let _factory = SecurityProviderFactory;
+        let _ = SecurityProviderFactory;
     }
 
     #[test]

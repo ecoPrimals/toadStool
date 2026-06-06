@@ -85,13 +85,13 @@ fn test_config_builder_with_all_options() {
 
 #[test]
 fn test_discovery_method_config_variants() {
-    let _auto = DiscoveryMethodConfig::Auto;
-    let _env = DiscoveryMethodConfig::Environment;
-    let _mdns = DiscoveryMethodConfig::Mdns;
-    let _config_file = DiscoveryMethodConfig::ConfigFile {
+    let _ = DiscoveryMethodConfig::Auto;
+    let _ = DiscoveryMethodConfig::Environment;
+    let _ = DiscoveryMethodConfig::Mdns;
+    let _ = DiscoveryMethodConfig::ConfigFile {
         path: "/etc/config.yaml".to_string(),
     };
-    let _registry = DiscoveryMethodConfig::Registry {
+    let _ = DiscoveryMethodConfig::Registry {
         endpoint: "http://localhost:8080".to_string(),
     };
 }
