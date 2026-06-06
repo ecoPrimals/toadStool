@@ -194,8 +194,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                 // manipulation (normalization, NOPs, relocation nullification)
                 // operates on the final ELF layout.
                 let patch_source = if rename_pair.is_some() {
-                    let staging = PathBuf::from(format!(
-                        "/tmp/toadstool-staging-{}.ko", ctx.config.module_name
+                    let staging = std::env::temp_dir().join(format!(
+                        "toadstool-staging-{}.ko", ctx.config.module_name
                     ));
                     if let Err(e) = std::fs::copy(&stock_path, &staging) {
                         ctx.steps.push(HandoffStep {
@@ -234,8 +234,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                     Ok(pr) => {
                         // Clean up staging file
                         if rename_pair.is_some() {
-                            let staging = PathBuf::from(format!(
-                                "/tmp/toadstool-staging-{}.ko", ctx.config.module_name
+                            let staging = std::env::temp_dir().join(format!(
+                                "toadstool-staging-{}.ko", ctx.config.module_name
                             ));
                             let _ = std::fs::remove_file(&staging);
                         }

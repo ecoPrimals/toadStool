@@ -38,8 +38,8 @@ impl BiomeExecutor {
         expected_checksum: &Option<String>,
     ) -> Result<Vec<u8>> {
         let module_data = if source.starts_with("http://") || source.starts_with("https://") {
-            return Err(crate::CliError::Other(
-                "HTTP WASM loading not yet implemented".to_string(),
+            return Err(crate::CliError::NotImplemented(
+                "HTTP WASM loading: requires runtime.wasm.http-fetch capability".to_string(),
             ));
         } else {
             fs::read(source).await?

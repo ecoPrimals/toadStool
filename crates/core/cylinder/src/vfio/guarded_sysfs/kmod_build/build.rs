@@ -17,7 +17,7 @@ use super::super::{GuardedSysfsError, INSMOD_TIMEOUT, RMMOD_TIMEOUT};
 /// ```text
 /// KmodBuilder::new("no_bus_reset")
 ///     .source(C_SOURCE)
-///     .tmpdir("/tmp/toadstool-no-bus-reset")
+///     .tmpdir("/var/tmp/toadstool-no-bus-reset")
 ///     .param("bdf", "0000:02:00.0")
 ///     .build_and_load()?;
 /// ```
@@ -37,7 +37,10 @@ impl KmodBuilder {
         Self {
             name: name.to_string(),
             source: "",
-            tmpdir: format!("/tmp/toadstool-kmod-{name}"),
+            tmpdir: std::env::temp_dir()
+                .join(format!("toadstool-kmod-{name}"))
+                .display()
+                .to_string(),
             params: Vec::new(),
         }
     }
@@ -48,7 +51,7 @@ impl KmodBuilder {
         self
     }
 
-    /// Override the build directory (default: `/tmp/toadstool-kmod-{name}`).
+    /// Override the build directory (default: `$TMPDIR/toadstool-kmod-{name}`).
     pub fn tmpdir(mut self, dir: &str) -> Self {
         self.tmpdir = dir.to_string();
         self
@@ -250,7 +253,13 @@ impl KmodBuilder {
 }
 
 const NO_BUS_RESET_MODULE: &str = "no_bus_reset";
-const NO_BUS_RESET_TMPDIR: &str = "/tmp/toadstool-no-bus-reset";
+
+fn no_bus_reset_tmpdir() -> String {
+    std::env::temp_dir()
+        .join("toadstool-no-bus-reset")
+        .display()
+        .to_string()
+}
 
 const NO_BUS_RESET_SOURCE: &str = r#"
 #include <linux/module.h>
@@ -357,14 +366,14 @@ pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
         tracing::info!(bdf, combined, "reloading no_bus_reset with expanded device list");
         return KmodBuilder::new(NO_BUS_RESET_MODULE)
             .source(NO_BUS_RESET_SOURCE)
-            .tmpdir(NO_BUS_RESET_TMPDIR)
+            .tmpdir(&no_bus_reset_tmpdir())
             .param("bdf", &combined)
             .build_and_load();
     }
 
     KmodBuilder::new(NO_BUS_RESET_MODULE)
         .source(NO_BUS_RESET_SOURCE)
-        .tmpdir(NO_BUS_RESET_TMPDIR)
+        .tmpdir(&no_bus_reset_tmpdir())
         .param("bdf", bdf)
         .build_and_load()
 }
@@ -403,7 +412,7 @@ pub fn suppress_all_resets(bdf: &str) -> Result<(), GuardedSysfsError> {
         tracing::info!(bdf, combined, "reloading no_bus_reset with no_flr=1");
         return KmodBuilder::new(NO_BUS_RESET_MODULE)
             .source(NO_BUS_RESET_SOURCE)
-            .tmpdir(NO_BUS_RESET_TMPDIR)
+            .tmpdir(&no_bus_reset_tmpdir())
             .param("bdf", &combined)
             .param("no_flr", "1")
             .build_and_load();
@@ -411,7 +420,7 @@ pub fn suppress_all_resets(bdf: &str) -> Result<(), GuardedSysfsError> {
 
     KmodBuilder::new(NO_BUS_RESET_MODULE)
         .source(NO_BUS_RESET_SOURCE)
-        .tmpdir(NO_BUS_RESET_TMPDIR)
+        .tmpdir(&no_bus_reset_tmpdir())
         .param("bdf", bdf)
         .param("no_flr", "1")
         .build_and_load()
@@ -422,7 +431,7 @@ pub fn suppress_all_resets(bdf: &str) -> Result<(), GuardedSysfsError> {
 /// Clears `PCI_DEV_FLAGS_NO_BUS_RESET` (and `NO_FLR_RESET`/`NO_PM_RESET`
 /// if active) on the target device via the module's exit handler.
 pub fn restore_bus_reset() -> Result<(), GuardedSysfsError> {
-    KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, NO_BUS_RESET_TMPDIR)
+    KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, &no_bus_reset_tmpdir())
 }
 
 // ── IRQ Clutch ──────────────────────────────────────────────────────────
@@ -446,7 +455,13 @@ pub fn restore_bus_reset() -> Result<(), GuardedSysfsError> {
 // NVIDIA registers its handler with dev_id = pci_get_drvdata(dev).
 
 const IRQ_CLUTCH_MODULE: &str = "irq_clutch";
-const IRQ_CLUTCH_TMPDIR: &str = "/tmp/toadstool-irq-clutch";
+
+fn irq_clutch_tmpdir() -> String {
+    std::env::temp_dir()
+        .join("toadstool-irq-clutch")
+        .display()
+        .to_string()
+}
 
 const IRQ_CLUTCH_SOURCE: &str = r#"
 #include <linux/module.h>
@@ -523,7 +538,7 @@ pub fn engage_irq_clutch(bdf: &str) -> Result<(), GuardedSysfsError> {
     tracing::info!(bdf, "engaging IRQ clutch — cleaning stale MSI/IRQ vectors");
     KmodBuilder::new(IRQ_CLUTCH_MODULE)
         .source(IRQ_CLUTCH_SOURCE)
-        .tmpdir(IRQ_CLUTCH_TMPDIR)
+        .tmpdir(&irq_clutch_tmpdir())
         .param("bdf", bdf)
         .build_and_load()
 }
@@ -531,7 +546,7 @@ pub fn engage_irq_clutch(bdf: &str) -> Result<(), GuardedSysfsError> {
 /// Disengage the IRQ clutch: unload the module and clean up.
 pub fn disengage_irq_clutch() -> Result<(), GuardedSysfsError> {
     tracing::info!("disengaging IRQ clutch");
-    KmodBuilder::unload_and_clean(IRQ_CLUTCH_MODULE, IRQ_CLUTCH_TMPDIR)
+    KmodBuilder::unload_and_clean(IRQ_CLUTCH_MODULE, &irq_clutch_tmpdir())
 }
 
 /// Remove a single BDF from the `no_bus_reset` module's suppression list.
@@ -564,7 +579,7 @@ pub fn unsuppress_bus_reset_for(bdf: &str) -> Result<(), GuardedSysfsError> {
         remaining = remaining.join(",").as_str(),
         "unsuppressing SBR for target BDF"
     );
-    KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, NO_BUS_RESET_TMPDIR)?;
+    KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, &no_bus_reset_tmpdir())?;
     if !remaining.is_empty() {
         let combined = remaining.join(",");
         tracing::info!(combined, "reloading no_bus_reset for remaining devices");

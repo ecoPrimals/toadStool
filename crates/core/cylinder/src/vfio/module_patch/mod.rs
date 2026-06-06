@@ -55,7 +55,7 @@ use elf::resolve_symbol_file_offsets;
 /// to a temporary file.
 ///
 /// Reads the source `.ko`, resolves symbol offsets via `nm`, applies the
-/// requested patches, and writes the result to `/tmp/toadstool-patched-{name}.ko`.
+/// requested patches, and writes the result to `$TMPDIR/toadstool-patched-{name}.ko`.
 ///
 /// If `rename` is `Some((old, new))`, the module identity is rewritten so
 /// it can be loaded alongside the original (avoids "module already loaded"
@@ -207,7 +207,10 @@ pub(crate) fn patch_module_with_rename(
     let output_name = rename
         .map(|(_, new)| new)
         .unwrap_or(&patch_set.module_name);
-    let patched_path = format!("/tmp/toadstool-patched-{output_name}.ko");
+    let patched_path = std::env::temp_dir()
+        .join(format!("toadstool-patched-{output_name}.ko"))
+        .display()
+        .to_string();
     std::fs::write(&patched_path, &module_bytes).map_err(|e| PatchError::WriteFailed {
         path: patched_path.clone(),
         source: e,
@@ -234,10 +237,10 @@ pub(crate) fn patch_module_with_rename(
 /// Get the path where a patched module would be written.
 #[must_use]
 pub(crate) fn patched_module_path(module_name: &str) -> PathBuf {
-    PathBuf::from(format!("/tmp/toadstool-patched-{module_name}.ko"))
+    std::env::temp_dir().join(format!("toadstool-patched-{module_name}.ko"))
 }
 
-/// Clean up a previously patched module from /tmp.
+/// Clean up a previously patched module from the temp directory.
 pub(crate) fn cleanup_patched_module(module_name: &str) -> Result<(), std::io::Error> {
     let path = patched_module_path(module_name);
     if path.exists() {

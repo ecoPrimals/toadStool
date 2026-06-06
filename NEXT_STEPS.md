@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S298. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Coverage sprint active.
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods)
-**Latest**: S298 — Coverage Push IV (+44 tests). S295 — Headless mode + akida-setup graceful skip (P0 VPS fix). S294 — UDS compliance (`--socket` wired). S293 — tarpc gated, unwrap purge, cylinder split. S292 — serialport feature-gated, device.rs split, naming constants.
+**Updated**: Jun 2026 — S300. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Coverage sprint active.
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods) | **Zero `/tmp/` hardcoding** (all production paths use `std::env::temp_dir()`)
+**Latest**: S300 — Deep Debt XI: migration stubs evolved to typed errors, `/tmp/` hardcoding eliminated, wgpu/tokio features narrowed, `CliError::NotImplemented` variant. S298 — Coverage Push IV (+44 tests). S295 — Headless mode + akida-setup graceful skip (P0 VPS fix).
 
 ---
 
@@ -58,6 +58,17 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 6, 2026 — S300 Deep Debt XI: Stub Evolution + Hardcode Elimination
+
+| Item | Status |
+|------|--------|
+| Migration stubs → `CliError::NotImplemented` (15 leaf I/O ops) | **DONE** |
+| `/tmp/` hardcoded paths → `std::env::temp_dir()` (5 production modules) | **DONE** |
+| `wgpu` platform features narrowed (dropped dx12/metal/webgpu — Linux-only) | **DONE** |
+| `tokio` features narrowed from `full` to explicit set | **DONE** |
+| `CliError::NotImplemented` variant added for capability-gated operations | **DONE** |
+| HTTP WASM loading `CliError::Other` → `CliError::NotImplemented` | **DONE** |
 
 ### Jun 5–6, 2026 — S292–S298 Deep Debt IX–X + Wave 79/80 Compliance
 

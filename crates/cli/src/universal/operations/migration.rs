@@ -232,25 +232,24 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn pause_workload(&self, platform: &str) -> Result<()> {
-        info!("⏸️  Pausing workload on: {}", platform);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "pause_workload({platform}): requires platform.workload.pause capability"
+        )))
     }
 
     async fn verify_migration_success(&self, plan: &MigrationPlan) -> Result<bool> {
         tracing::warn!(
             source = %plan.source_platform,
             target = %plan.target_platform,
-            "Migration verification not implemented: \
-             target platform health checks require platform-specific probing. \
-             Implement platform.health.check capability for automated verification."
+            "migration verification requires platform.health.check capability"
         );
         Ok(false)
     }
 
-    // Helper methods implementation
     async fn prepare_target_platform(&self, target: &str) -> Result<()> {
-        info!("🎯 Preparing target platform: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "prepare_target_platform({target}): requires platform.provision capability"
+        )))
     }
 
     async fn create_workload_checkpoint(&self, biome: &str) -> Result<WorkloadCheckpoint> {
@@ -272,8 +271,9 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         _checkpoint: &WorkloadCheckpoint,
         target: &str,
     ) -> Result<()> {
-        info!("📦 Transferring checkpoint to: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "transfer_checkpoint({target}): requires platform.transfer capability"
+        )))
     }
 
     async fn restore_from_checkpoint(
@@ -281,18 +281,21 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         _checkpoint: &WorkloadCheckpoint,
         target: &str,
     ) -> Result<()> {
-        info!("📥 Restoring checkpoint on: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "restore_from_checkpoint({target}): requires platform.restore capability"
+        )))
     }
 
     async fn cleanup_source_workload(&self, biome: &str) -> Result<()> {
-        info!("🧹 Cleaning up source workload: {}", biome);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "cleanup_source_workload({biome}): requires platform.workload.cleanup capability"
+        )))
     }
 
     async fn stop_source_workload(&self, biome: &str) -> Result<()> {
-        info!("🛑 Stopping source workload: {}", biome);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "stop_source_workload({biome}): requires platform.workload.stop capability"
+        )))
     }
 
     async fn export_workload_state(&self, biome: &str) -> Result<WorkloadExport> {
@@ -310,8 +313,9 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn transfer_workload_data(&self, _export: &WorkloadExport, target: &str) -> Result<()> {
-        info!("🚚 Transferring workload data to: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "transfer_workload_data({target}): requires platform.transfer capability"
+        )))
     }
 
     async fn import_and_start_workload(
@@ -319,8 +323,9 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         _export: &WorkloadExport,
         target: &str,
     ) -> Result<()> {
-        info!("📥 Importing and starting workload on: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "import_and_start_workload({target}): requires platform.workload.import capability"
+        )))
     }
 
     async fn start_continuous_replication(
@@ -340,18 +345,23 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn wait_for_replication_sync(&self, handle: &ReplicationHandle) -> Result<()> {
-        info!("⏳ Waiting for replication sync: {}", handle.id);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "wait_for_replication_sync({}): requires replication.sync capability",
+            handle.id
+        )))
     }
 
     async fn perform_quick_switchover(&self, source: &str, target: &str) -> Result<()> {
-        info!("⚡ Performing quick switchover: {} → {}", source, target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "perform_quick_switchover({source} -> {target}): requires platform.switchover capability"
+        )))
     }
 
     async fn stop_replication(&self, handle: &ReplicationHandle) -> Result<()> {
-        info!("🛑 Stopping replication: {}", handle.id);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "stop_replication({}): requires replication.control capability",
+            handle.id
+        )))
     }
 
     async fn create_workload_snapshot(&self, biome: &str) -> Result<WorkloadSnapshot> {
@@ -368,12 +378,14 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         _snapshot: &WorkloadSnapshot,
         target: &str,
     ) -> Result<()> {
-        info!("🚀 Deploying snapshot to target: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "deploy_snapshot_to_target({target}): requires platform.snapshot.deploy capability"
+        )))
     }
 
     async fn start_cloned_workload(&self, target: &str) -> Result<()> {
-        info!("▶️  Starting cloned workload: {}", target);
-        Ok(())
+        Err(crate::CliError::NotImplemented(format!(
+            "start_cloned_workload({target}): requires platform.workload.start capability"
+        )))
     }
 }

@@ -41,7 +41,9 @@ fn main() -> ExitCode {
     }
 
     let res_path = &args[1];
-    let out_dir = args.get(2).map_or("/tmp/pmu_capture", String::as_str);
+    let default_out = std::env::temp_dir().join("pmu_capture");
+    let default_out_str = default_out.display().to_string();
+    let out_dir = args.get(2).map_or(default_out_str.as_str(), String::as_str);
     let rw = args.get(3).is_some_and(|a| a == "rw");
 
     let file = if rw {

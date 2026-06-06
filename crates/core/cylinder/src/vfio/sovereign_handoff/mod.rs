@@ -29,7 +29,7 @@
 //! │    BAR0 register probes → SovereignTier determination               │
 //! ├─────────────────────────────────────────────────────────────────────┤
 //! │ 7. Module Cleanup                                                   │
-//! │    rmmod patched module (if we loaded it), delete /tmp/.ko          │
+//! │    rmmod patched module (if we loaded it), delete $TMPDIR/.ko       │
 //! └─────────────────────────────────────────────────────────────────────┘
 //! ```
 

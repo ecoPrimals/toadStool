@@ -34,6 +34,10 @@ pub enum CliError {
     #[error("System error: {0}")]
     System(String),
 
+    /// Operation not yet implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
     /// Catch-all for other errors
     #[error("Other error: {0}")]
     Other(String),

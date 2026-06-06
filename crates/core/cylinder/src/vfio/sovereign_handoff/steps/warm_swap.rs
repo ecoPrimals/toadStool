@@ -488,10 +488,13 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                         "catalyst capture: domain-scoped BAR0 snapshot (post-swap, vfio-pci safe)"
                     );
 
-                    let snapshot_path = format!(
-                        "/tmp/toadstool-catalyst-{}.json",
-                        ctx.config.bdf.replace([':', '.'], "-")
-                    );
+                    let snapshot_path = std::env::temp_dir()
+                        .join(format!(
+                            "toadstool-catalyst-{}.json",
+                            ctx.config.bdf.replace([':', '.'], "-")
+                        ))
+                        .display()
+                        .to_string();
                     if let Ok(json) = full_snapshot.to_json() {
                         if let Err(e) = std::fs::write(&snapshot_path, &json) {
                             tracing::warn!(err = %e, path = snapshot_path.as_str(),
@@ -510,10 +513,13 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                         "470.256.02",
                         ctx.hw.bar0_domains,
                     );
-                    let replay_path = format!(
-                        "/tmp/toadstool-catalyst-replay-{}.json",
-                        ctx.config.bdf.replace([':', '.'], "-")
-                    );
+                    let replay_path = std::env::temp_dir()
+                        .join(format!(
+                            "toadstool-catalyst-replay-{}.json",
+                            ctx.config.bdf.replace([':', '.'], "-")
+                        ))
+                        .display()
+                        .to_string();
                     if let Ok(json) = replay.to_json() {
                         if let Err(e) = std::fs::write(&replay_path, &json) {
                             tracing::warn!(err = %e, "catalyst capture: failed to persist replay");

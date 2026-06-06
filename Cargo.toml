@@ -85,11 +85,11 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # This achieves ABSOLUTE 100.00% Pure Rust! 🎉
 wgpu = { version = "22", default-features = false, features = [
     "wgsl",                # WGSL shader language support
-    "dx12",                # DirectX 12 (Windows)
-    "metal",               # Metal (macOS/iOS)
-    "webgpu",              # WebGPU (browsers)
-    "vulkan-portability",  # Vulkan support (enables wgpu-hal/vulkan internally)
-    # "renderdoc",         # ❌ DISABLED - C dependency! Use tracing instead! ✅
+    "vulkan-portability",  # Vulkan support (Linux GPU compute path)
+    # "dx12",              # Windows-only — not needed for Linux daemon
+    # "metal",             # macOS-only — not needed for Linux daemon
+    # "webgpu",            # browser WASM — not needed for native daemon
+    # "renderdoc",         # C dependency — use tracing instead
 ]}
 
 # Pure Rust directory discovery (replaces dirs/dirs-sys)
@@ -102,7 +102,10 @@ etcetera = "0.8"
 bytes = { version = "1.11.1", features = ["serde"] }
 
 # Core dependencies
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.35", features = [
+    "rt-multi-thread", "macros", "sync", "time", "net",
+    "io-util", "fs", "signal", "process",
+] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
