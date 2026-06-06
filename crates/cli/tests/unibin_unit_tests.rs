@@ -108,6 +108,55 @@ fn test_server_command_with_socket() {
 }
 
 #[test]
+fn test_server_command_with_headless() {
+    let args = vec!["toadstool", "server", "--headless"];
+    let cli = Cli::parse_from(args);
+
+    if let Commands::Server { headless, .. } = cli.command {
+        assert!(headless, "expected --headless to set headless=true");
+    } else {
+        panic!("Expected Server command");
+    }
+}
+
+#[test]
+fn test_server_command_headless_with_socket() {
+    let args = vec![
+        "toadstool",
+        "server",
+        "--headless",
+        "--socket",
+        "/run/membrane/toadstool.sock",
+    ];
+    let cli = Cli::parse_from(args);
+
+    if let Commands::Server {
+        headless, socket, ..
+    } = cli.command
+    {
+        assert!(headless);
+        assert_eq!(
+            socket,
+            Some(PathBuf::from("/run/membrane/toadstool.sock"))
+        );
+    } else {
+        panic!("Expected Server command");
+    }
+}
+
+#[test]
+fn test_daemon_command_with_headless() {
+    let args = vec!["toadstool", "daemon", "--headless"];
+    let cli = Cli::parse_from(args);
+
+    if let Commands::Daemon { headless, .. } = cli.command {
+        assert!(headless, "expected --headless on daemon");
+    } else {
+        panic!("Expected Daemon command");
+    }
+}
+
+#[test]
 fn test_server_command_with_config() {
     // Test server command with config file
     let args = vec!["toadstool", "server", "--config", "/etc/toadstool.toml"];
@@ -180,6 +229,7 @@ fn test_server_command_all_options() {
         max_workloads,
         biomeos_socket,
         family_id: _,
+        ..
     } = cli.command
     {
         assert!(register);
@@ -261,6 +311,7 @@ fn test_daemon_command_all_options() {
         max_workloads,
         biomeos_socket,
         family_id: _,
+        ..
     } = cli.command
     {
         assert!(register);

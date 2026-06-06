@@ -291,7 +291,7 @@ async fn run_server_main_fails_when_socket_path_unavailable() {
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
         async {
-            let result = super::run_server_main(None, None, None, None, None).await;
+            let result = super::run_server_main(None, None, None, None, None, false).await;
             assert!(
                 result.is_err(),
                 "run_server_main should fail when socket path unavailable"
@@ -413,7 +413,7 @@ async fn run_server_main_refuses_family_plus_insecure() {
             ("BIOMEOS_INSECURE", Some("1")),
         ],
         async {
-            let result = run_server_main(None, None, None, None, None).await;
+            let result = run_server_main(None, None, None, None, None, false).await;
             assert!(result.is_err(), "must refuse when FAMILY_ID + INSECURE");
             let err = result.unwrap_err().to_string();
             assert!(

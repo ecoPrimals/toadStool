@@ -242,6 +242,10 @@ pub enum Commands {
         /// Family ID for multi-family socket support (creates toadstool-{family_id}.sock)
         #[arg(long)]
         family_id: Option<String>,
+
+        /// Start in headless mode: skip GPU/NPU hardware probes (pure-compute IPC server)
+        #[arg(long)]
+        headless: bool,
     },
 
     /// Start ToadStool as a daemon service (workload execution service)
@@ -285,6 +289,10 @@ pub enum Commands {
         /// Family ID for multi-family socket support (creates toadstool-{family_id}.sock)
         #[arg(long)]
         family_id: Option<String>,
+
+        /// Start in headless mode: skip GPU/NPU hardware probes (pure-compute IPC server)
+        #[arg(long)]
+        headless: bool,
     },
 
     /// System health check and diagnostics

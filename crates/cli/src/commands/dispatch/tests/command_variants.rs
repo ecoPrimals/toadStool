@@ -254,6 +254,7 @@ fn test_commands_server_variant() {
         max_workloads: 10,
         biomeos_socket: None,
         family_id: None,
+        headless: false,
     };
     match &cmd {
         Commands::Server {

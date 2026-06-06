@@ -17,6 +17,7 @@ pub async fn run_server_daemon(
     port: Option<u16>,
     socket_override: Option<std::path::PathBuf>,
     biomeos_socket_override: Option<std::path::PathBuf>,
+    headless: bool,
 ) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
 
@@ -26,6 +27,7 @@ pub async fn run_server_daemon(
         port,
         socket_override,
         biomeos_socket_override,
+        headless,
     )
         .await
         .map_err(|e| CliError::Other(format!("Server failed: {e}")))?;
@@ -95,12 +97,13 @@ mod tests {
         temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
             let result = tokio::time::timeout(
                 Duration::from_millis(80),
-                super::run_server_daemon(
+                    super::run_server_daemon(
                     Some("test-family-id".to_string()),
                     None,
                     None,
                     None,
                     None,
+                    false,
                 ),
             )
             .await;

@@ -39,6 +39,14 @@ pub async fn query_local_capabilities() -> Vec<Arc<str>> {
     query_baseline_capabilities()
 }
 
+/// Headless query: returns baseline capabilities only (CPU, memory, orchestration).
+/// Skips all GPU/NPU hardware probing for port-free VPS deployment.
+#[expect(clippy::unused_async, reason = "async to match query_local_capabilities signature")]
+pub async fn query_baseline_only() -> Vec<Arc<str>> {
+    tracing::info!("Headless mode: returning CPU-only baseline capabilities (no GPU/NPU probes)");
+    query_baseline_capabilities()
+}
+
 /// Fast baseline: CPU + memory + orchestration — no GPU probing.
 fn query_baseline_capabilities() -> Vec<Arc<str>> {
     let mut capabilities: Vec<Arc<str>> = vec![Arc::from("compute"), Arc::from("cpu")];

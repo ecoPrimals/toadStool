@@ -95,6 +95,7 @@ pub async fn run_server_main(
     tcp_port: Option<u16>,
     socket_override: Option<PathBuf>,
     biomeos_socket_override: Option<PathBuf>,
+    headless: bool,
 ) -> Result<(), ServerError> {
     info!(
         "🍄 ToadStool Universal Compute Server v{}",
@@ -184,6 +185,11 @@ pub async fn run_server_main(
     } else {
         tcp_port
     };
+
+    if headless {
+        info!("🖥️ Headless mode: hardware probes disabled (pure-compute IPC server)");
+        unibin_config.headless = true;
+    }
 
     info!("Initializing compute executor...");
     let executor = execution::create_executor(&family_id, &unibin_config).await?;

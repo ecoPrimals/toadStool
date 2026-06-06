@@ -49,6 +49,8 @@ pub struct UnibinExecutionConfig {
     pub max_queue_size: usize,
     /// Seconds between coordination health reports.
     pub health_reporting_interval_secs: u64,
+    /// Skip hardware probes (GPU/NPU discovery) for headless deployment.
+    pub headless: bool,
 }
 
 impl UnibinExecutionConfig {
@@ -96,6 +98,8 @@ impl UnibinExecutionConfig {
             max_queue_size: unibin_execution_defaults::DEFAULT_MAX_JOB_QUEUE_SIZE,
             health_reporting_interval_secs:
                 unibin_execution_defaults::DEFAULT_COORDINATION_HEALTH_REPORT_INTERVAL_SECS,
+            headless: std::env::var("TOADSTOOL_HEADLESS")
+                .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
         }
     }
 
@@ -128,7 +132,11 @@ pub async fn create_executor(
 
     if cfg.use_distributed {
         info!("Initializing distributed coordinator mode");
-        let capabilities = capabilities::query_local_capabilities().await;
+        let capabilities = if cfg.headless {
+            capabilities::query_baseline_only().await
+        } else {
+            capabilities::query_local_capabilities().await
+        };
         info!("Local capabilities: {:?}", capabilities);
 
         let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();

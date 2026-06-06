@@ -90,6 +90,8 @@ install_systemd_service() {
 Description=Akida NPU Driver Loader
 After=multi-user.target
 Before=graphical.target
+# Only run on systems with BrainChip PCIe hardware (vendor 0x1e7c)
+ConditionPathIsDirectory=/sys/bus/pci
 
 [Service]
 Type=oneshot

@@ -200,6 +200,7 @@ fn cli_context_from_daemon_command() {
         max_workloads: 8,
         biomeos_socket: Some(PathBuf::from("/run/biomeos.sock")),
         family_id: None,
+        headless: false,
     });
     let ctx = CliContext::new(&cli);
     assert!(ctx.is_ok());

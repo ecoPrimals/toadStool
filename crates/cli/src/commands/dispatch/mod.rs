@@ -164,6 +164,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             max_workloads,
             biomeos_socket,
             family_id,
+            headless,
         }
         | Commands::Daemon {
             register,
@@ -174,6 +175,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             max_workloads,
             biomeos_socket,
             family_id,
+            headless,
         } => {
             let is_server = matches!(&cli.command, Commands::Server { .. });
 
@@ -205,6 +207,9 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             if let Some(fid) = family_id {
                 info!("   Family ID: {}", fid);
             }
+            if *headless {
+                info!("   Headless: enabled (skipping hardware probes)");
+            }
 
             server::run_server_daemon(
                 family_id.clone(),
@@ -212,6 +217,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
                 Some(*port),
                 socket.clone(),
                 biomeos_socket.clone(),
+                *headless,
             )
             .await?;
         }
