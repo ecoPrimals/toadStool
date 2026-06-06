@@ -5,6 +5,7 @@ mod envelope;
 mod fan_out;
 mod orchestrator;
 mod shader;
+mod submit;
 mod trio_contract;
 
 use std::sync::Arc;

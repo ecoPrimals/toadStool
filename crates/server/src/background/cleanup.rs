@@ -4,13 +4,15 @@
 //! Garbage collection for timed-out executions. Removes stale entries
 //! from active_executions and broadcasts ExecutionCompleted (Failed) events.
 
-use std::time::Duration;
+use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 
 use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 use toadstool::RuntimeEngine;
 
-use crate::state::{ServerEvent, ServerState};
+use crate::state::{ActiveExecution, ServerEvent, ServerState};
 use toadstool_common::constants::timeouts::DEFAULT_CACHE_TTL;
 use tokio::time::interval;
 
@@ -24,19 +26,8 @@ pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
         interval.tick().await;
 
         let mut active_executions = state.active_executions.write().await;
-        let now = std::time::SystemTime::now();
-
-        // Clean up timed-out executions
-        let mut to_remove = Vec::new();
-        for (id, execution) in active_executions.iter() {
-            let elapsed = now
-                .duration_since(execution.started_at)
-                .unwrap_or(Duration::ZERO);
-            if elapsed > execution.timeout {
-                to_remove.push(*id);
-            }
-        }
-
+        let now = SystemTime::now();
+        let to_remove = find_timed_out_execution_ids(&active_executions, now);
         let cleanup_count = to_remove.len();
         for id in to_remove {
             if let Some(execution) = active_executions.remove(&id) {
@@ -64,4 +55,27 @@ pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
             info!("Cleaned up {} timed-out executions", cleanup_count);
         }
     }
+}
+
+/// Return execution IDs whose elapsed time exceeds their configured timeout.
+///
+/// Exposed for unit testing — not part of the public API.
+#[doc(hidden)]
+pub(crate) fn find_timed_out_execution_ids(
+    active_executions: &HashMap<Uuid, ActiveExecution>,
+    now: SystemTime,
+) -> Vec<Uuid> {
+    active_executions
+        .iter()
+        .filter_map(|(id, execution)| {
+            let elapsed = now
+                .duration_since(execution.started_at)
+                .unwrap_or(Duration::ZERO);
+            if elapsed > execution.timeout {
+                Some(*id)
+            } else {
+                None
+            }
+        })
+        .collect()
 }

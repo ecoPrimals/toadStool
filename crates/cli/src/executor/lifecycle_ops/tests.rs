@@ -405,6 +405,201 @@ async fn test_purge_biome_data_after_stop() {
     assert!(result.is_ok(), "purge after stop: {:?}", result);
 }
 
+fn make_git_workload_manifest() -> crate::BiomeManifest {
+    let now = std::time::SystemTime::now();
+    let mut primals = HashMap::new();
+    primals.insert(
+        "git-primal".to_string(),
+        crate::PrimalConfig {
+            version: "1.0".to_string(),
+            source: crate::WorkloadSource::Git {
+                repository: "https://example.com/repo.git".to_string(),
+                branch: Some("main".to_string()),
+                commit: None,
+                path: None,
+            },
+            enabled: true,
+            config: HashMap::new(),
+            dependencies: vec![],
+            health_check: None,
+        },
+    );
+
+    crate::BiomeManifest {
+        metadata: crate::BiomeMetadata {
+            name: "git-biome".to_string(),
+            version: "1.0.0".to_string(),
+            description: None,
+            author: None,
+            created: now,
+            updated: now,
+            tags: vec![],
+        },
+        primals,
+        services: HashMap::new(),
+        resources: crate::BiomeResources {
+            cpu_limit: None,
+            memory_limit: None,
+            storage_limit: None,
+            gpu_limit: None,
+            network_bandwidth: None,
+        },
+        security: crate::BiomeSecurity {
+            isolation_level: "standard".to_string(),
+            trust_level: "medium".to_string(),
+            security_required: false,
+            crypto_policies: vec![],
+            allowed_networks: vec![],
+            forbidden_syscalls: vec![],
+        },
+        networking: crate::BiomeNetworking {
+            mode: "bridge".to_string(),
+            dns_servers: vec![],
+            port_mappings: vec![],
+            network_policies: vec![],
+        },
+        storage: crate::BiomeStorage {
+            storage_integration: None,
+            datasets: vec![],
+            volumes: vec![],
+            backup_policy: None,
+        },
+    }
+}
+
+fn make_wasm_manifest(source: &str, checksum: &str) -> crate::BiomeManifest {
+    let now = std::time::SystemTime::now();
+    let mut primals = HashMap::new();
+    primals.insert(
+        "wasm-primal".to_string(),
+        crate::PrimalConfig {
+            version: "1.0".to_string(),
+            source: crate::WorkloadSource::Wasm {
+                source: source.to_string(),
+                checksum: checksum.to_string(),
+                wasi_config: None,
+            },
+            enabled: true,
+            config: HashMap::new(),
+            dependencies: vec![],
+            health_check: None,
+        },
+    );
+
+    crate::BiomeManifest {
+        metadata: crate::BiomeMetadata {
+            name: "wasm-biome".to_string(),
+            version: "1.0.0".to_string(),
+            description: None,
+            author: None,
+            created: now,
+            updated: now,
+            tags: vec![],
+        },
+        primals,
+        services: HashMap::new(),
+        resources: crate::BiomeResources {
+            cpu_limit: None,
+            memory_limit: None,
+            storage_limit: None,
+            gpu_limit: None,
+            network_bandwidth: None,
+        },
+        security: crate::BiomeSecurity {
+            isolation_level: "standard".to_string(),
+            trust_level: "medium".to_string(),
+            security_required: false,
+            crypto_policies: vec![],
+            allowed_networks: vec![],
+            forbidden_syscalls: vec![],
+        },
+        networking: crate::BiomeNetworking {
+            mode: "bridge".to_string(),
+            dns_servers: vec![],
+            port_mappings: vec![],
+            network_policies: vec![],
+        },
+        storage: crate::BiomeStorage {
+            storage_integration: None,
+            datasets: vec![],
+            volumes: vec![],
+            backup_policy: None,
+        },
+    }
+}
+
+#[tokio::test]
+async fn test_start_biome_internal_unsupported_git_workload_fails() {
+    let executor = BiomeExecutor::new().await.expect("executor should create");
+    let manifest = make_git_workload_manifest();
+
+    let result = executor
+        .start_biome_internal(
+            "unsupported-git-biome",
+            manifest,
+            vec![],
+            false,
+            false,
+            "standard",
+        )
+        .await;
+
+    assert!(result.is_err(), "Git workload source should be rejected");
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("Unsupported workload source") || err.contains("Git"),
+        "unexpected error: {err}"
+    );
+}
+
+#[tokio::test]
+async fn test_start_biome_internal_wasm_missing_file_fails() {
+    let executor = BiomeExecutor::new().await.expect("executor should create");
+    let manifest = make_wasm_manifest(
+        "/nonexistent/toadstool-test-module.wasm",
+        "deadbeef",
+    );
+
+    let result = executor
+        .start_biome_internal(
+            "wasm-missing-file-biome",
+            manifest,
+            vec![],
+            false,
+            false,
+            "standard",
+        )
+        .await;
+
+    assert!(result.is_err(), "missing WASM file should fail startup");
+}
+
+#[tokio::test]
+async fn test_start_biome_internal_wasm_checksum_mismatch_fails() {
+    let executor = BiomeExecutor::new().await.expect("executor should create");
+    let temp_dir = std::env::temp_dir();
+    let wasm_path = temp_dir.join(format!("test-module-{}.wasm", uuid::Uuid::new_v4()));
+    tokio::fs::write(&wasm_path, b"\0asm\x01\0\0\0")
+        .await
+        .expect("write temp wasm");
+
+    let manifest = make_wasm_manifest(wasm_path.to_str().expect("utf8 path"), "wrong-checksum");
+
+    let result = executor
+        .start_biome_internal(
+            "wasm-checksum-biome",
+            manifest,
+            vec![],
+            false,
+            false,
+            "standard",
+        )
+        .await;
+
+    let _ = tokio::fs::remove_file(&wasm_path).await;
+    assert!(result.is_err(), "checksum mismatch should fail startup");
+}
+
 #[tokio::test]
 async fn test_start_biome_internal_with_disabled_primal() {
     let mut manifest = make_minimal_container_manifest();

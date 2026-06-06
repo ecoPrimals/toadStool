@@ -496,6 +496,93 @@ async fn test_perform_health_check_no_active_executions() {
     assert!(healthy);
 }
 
+fn sample_active_execution(
+    id: Uuid,
+    started_at: std::time::SystemTime,
+    timeout: Duration,
+) -> ActiveExecution {
+    ActiveExecution {
+        execution_id: id,
+        runtime_type: RuntimeType::Native,
+        started_at,
+        timeout,
+        status: ExecutionStatus::Running,
+        client_info: ClientInfo {
+            ip_address: None,
+            user_agent: None,
+            api_key: None,
+            authenticated_user: None,
+        },
+    }
+}
+
+#[test]
+fn test_find_timed_out_execution_ids_none_expired() {
+    let id = Uuid::new_v4();
+    let now = std::time::SystemTime::now();
+    let mut active = HashMap::new();
+    active.insert(
+        id,
+        sample_active_execution(id, now, Duration::from_secs(60)),
+    );
+
+    let timed_out = find_timed_out_execution_ids(&active, now);
+    assert!(timed_out.is_empty());
+}
+
+#[test]
+fn test_find_timed_out_execution_ids_detects_expired() {
+    let id = Uuid::new_v4();
+    let now = std::time::SystemTime::now();
+    let started_at = now
+        .checked_sub(Duration::from_secs(120))
+        .expect("valid past time");
+    let mut active = HashMap::new();
+    active.insert(
+        id,
+        sample_active_execution(id, started_at, Duration::from_secs(30)),
+    );
+
+    let timed_out = find_timed_out_execution_ids(&active, now);
+    assert_eq!(timed_out, vec![id]);
+}
+
+#[test]
+fn test_find_timed_out_execution_ids_boundary_not_expired() {
+    let id = Uuid::new_v4();
+    let timeout = Duration::from_secs(30);
+    let now = std::time::SystemTime::now();
+    let started_at = now.checked_sub(timeout).expect("valid past time");
+    let mut active = HashMap::new();
+    active.insert(id, sample_active_execution(id, started_at, timeout));
+
+    let timed_out = find_timed_out_execution_ids(&active, now);
+    assert!(timed_out.is_empty(), "elapsed == timeout must not trigger cleanup");
+}
+
+#[test]
+fn test_update_stats_on_tick_increments_uptime() {
+    let mut stats = ServerStatistics::default();
+    update_stats_on_tick(&mut stats, 15, 0);
+    assert_eq!(stats.uptime_seconds, 15);
+    update_stats_on_tick(&mut stats, 5, 0);
+    assert_eq!(stats.uptime_seconds, 20);
+}
+
+#[test]
+fn test_update_stats_on_tick_updates_peak_concurrent_executions() {
+    let mut stats = ServerStatistics::default();
+    update_stats_on_tick(&mut stats, 10, 3);
+    assert_eq!(stats.peak_concurrent_executions, 3);
+    update_stats_on_tick(&mut stats, 10, 2);
+    assert_eq!(
+        stats.peak_concurrent_executions, 3,
+        "peak must not decrease when concurrency drops"
+    );
+    update_stats_on_tick(&mut stats, 10, 7);
+    assert_eq!(stats.peak_concurrent_executions, 7);
+}
+
 #[tokio::test]
 async fn test_perform_health_check_exactly_at_max_executions() {
     let config = ServerConfig {

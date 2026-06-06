@@ -62,9 +62,25 @@ pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
 
         // Update statistics
         let mut stats = state.stats.write().await;
-        stats.uptime_seconds += state.config.resource_monitoring_interval.as_secs();
-        if active_executions > stats.peak_concurrent_executions {
-            stats.peak_concurrent_executions = active_executions;
-        }
+        update_stats_on_tick(
+            &mut stats,
+            state.config.resource_monitoring_interval.as_secs(),
+            active_executions,
+        );
+    }
+}
+
+/// Apply one resource-monitoring tick to server statistics.
+///
+/// Exposed for unit testing — not part of the public API.
+#[doc(hidden)]
+pub(crate) fn update_stats_on_tick(
+    stats: &mut crate::state::ServerStatistics,
+    interval_secs: u64,
+    active_executions: u32,
+) {
+    stats.uptime_seconds += interval_secs;
+    if active_executions > stats.peak_concurrent_executions {
+        stats.peak_concurrent_executions = active_executions;
     }
 }

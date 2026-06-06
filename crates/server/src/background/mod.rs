@@ -35,7 +35,11 @@ use crate::state::ServerState;
 
 // Re-export for unit tests (only used in #[cfg(test)] mod tests)
 #[cfg(test)]
+pub(crate) use cleanup::find_timed_out_execution_ids;
+#[cfg(test)]
 pub(crate) use health::perform_health_check;
+#[cfg(test)]
+pub(crate) use resource::update_stats_on_tick;
 
 /// Start all background services
 pub async fn start_background_services<E: RuntimeEngine + 'static>(state: ServerState<E>) {
