@@ -103,3 +103,26 @@ pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn execute_kernel_health_text_format_runs() {
+        let result = execute_kernel_health("text", false).await;
+        assert!(result.is_ok(), "text format should succeed: {result:?}");
+    }
+
+    #[tokio::test]
+    async fn execute_kernel_health_json_format_runs() {
+        let result = execute_kernel_health("json", false).await;
+        assert!(result.is_ok(), "json format should succeed: {result:?}");
+    }
+
+    #[tokio::test]
+    async fn execute_kernel_health_json_with_repair_flag_runs() {
+        let result = execute_kernel_health("json", true).await;
+        assert!(result.is_ok(), "json+repair should succeed: {result:?}");
+    }
+}

@@ -670,4 +670,60 @@ mod tests {
         let val = read_pci_config_u32("ffff:ff:ff.f", 0x200);
         assert_eq!(val, 0);
     }
+
+    #[test]
+    fn get_device_nonexistent_bdf_returns_none() {
+        let client = GlowPlugClient::new();
+        assert!(client.get_device("ffff:ff:ff.f").is_none());
+    }
+
+    #[test]
+    fn discover_single_device_rejects_non_gpu_bdf() {
+        assert!(discover_single_device("ffff:ff:ff.f").is_none());
+    }
+
+    #[test]
+    fn is_gpu_bdf_rejects_missing_device() {
+        assert!(!is_gpu_bdf("ffff:ff:ff.f"));
+    }
+
+    #[test]
+    fn experiment_lifecycle_unknown_action_fails() {
+        let client = GlowPlugClient::new();
+        let result = client.experiment_lifecycle("0000:01:00.0", "pause");
+        assert!(!result.success);
+        assert_eq!(result.action, "pause");
+        assert!(result.session.is_none());
+    }
+
+    #[test]
+    fn experiment_lifecycle_start_and_end() {
+        let client = GlowPlugClient::new();
+        let start = client.experiment_lifecycle("0000:01:00.0", "start");
+        assert!(start.success);
+        assert!(start.session.as_ref().is_some_and(|s| s.active));
+
+        let end = client.experiment_lifecycle("0000:01:00.0", "end");
+        assert!(end.success);
+        assert!(end.session.is_some());
+
+        let end_again = client.experiment_lifecycle("0000:01:00.0", "end");
+        assert!(!end_again.success);
+        assert!(end_again.session.is_none());
+    }
+
+    #[test]
+    fn pci_bdf_matches_nonexistent_link_returns_false() {
+        let path = std::path::Path::new("/nonexistent/device/link");
+        assert!(!pci_bdf_matches(path, "0000:01:00.0"));
+    }
+
+    #[test]
+    fn warm_detect_invalid_bdf_has_zero_registers() {
+        let client = GlowPlugClient::new();
+        let result = client.warm_detect("ffff:ff:ff.f");
+        assert_eq!(result["pmc_enable"], "0x00000000");
+        assert_eq!(result["fecs_cpuctl"], "0x00000000");
+        assert_eq!(result["pmc_popcount"], 0);
+    }
 }

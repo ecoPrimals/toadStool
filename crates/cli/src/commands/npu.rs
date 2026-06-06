@@ -129,3 +129,20 @@ fn list_devices() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(all(test, feature = "npu"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn setup_command_yes_flag_is_honored() {
+        let cmd = SetupCommand { yes: true };
+        assert!(cmd.yes);
+    }
+
+    #[test]
+    fn npu_status_handles_missing_hardware_gracefully() {
+        let result = show_status();
+        assert!(result.is_ok());
+    }
+}

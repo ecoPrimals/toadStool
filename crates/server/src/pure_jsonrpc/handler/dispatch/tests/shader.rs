@@ -2,6 +2,7 @@
 //! `shader.dispatch` tests — binary formats, compile_result shapes, readback, job tracking.
 
 use super::{DispatchHandler, JsonRpcError, test_handler};
+use crate::pure_jsonrpc::handler::method_gate::{CallerContext, ResourceEnvelope};
 
 #[tokio::test]
 async fn shader_dispatch_missing_params_returns_invalid_params() {
@@ -289,4 +290,119 @@ async fn shader_dispatch_job_trackable_via_status_and_result() {
         .await
         .expect("result");
     assert_eq!(got["job_id"], job_id);
+}
+
+fn ctx_with_envelope(cpu_cores: u32) -> CallerContext {
+    CallerContext {
+        envelope: Some(ResourceEnvelope {
+            mem_mb: None,
+            cpu_cores: Some(cpu_cores),
+            max_timeout_ms: None,
+            method_allowlist: vec![],
+        }),
+        ..CallerContext::anonymous()
+    }
+}
+
+#[tokio::test]
+async fn shader_dispatch_default_workgroup_size() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "binary": [1, 2, 3],
+        "bdf": "0000:03:00.0",
+        "dispatch_mode": "passthrough",
+    });
+    let result = handler
+        .shader_dispatch(Some(&params))
+        .await
+        .expect("shader dispatch");
+    assert_eq!(
+        result["metadata"]["workgroup_size"],
+        serde_json::json!([256, 1, 1])
+    );
+}
+
+#[tokio::test]
+async fn shader_dispatch_partial_workgroup_size_uses_defaults() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "binary": [1],
+        "bdf": "0000:03:00.0",
+        "dispatch_mode": "passthrough",
+        "workgroup_size": [64],
+    });
+    let result = handler
+        .shader_dispatch(Some(&params))
+        .await
+        .expect("shader dispatch");
+    assert_eq!(
+        result["metadata"]["workgroup_size"],
+        serde_json::json!([64, 1, 1])
+    );
+}
+
+#[tokio::test]
+async fn shader_dispatch_workgroup_envelope_rejects_oversized_total() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "binary": [1, 2, 3],
+        "bdf": "0000:03:00.0",
+        "dispatch_mode": "passthrough",
+        "workgroup_size": [2048, 2, 1],
+    });
+    let ctx = ctx_with_envelope(2);
+    let err = handler
+        .shader_dispatch_with_context(Some(&params), &ctx)
+        .await
+        .expect_err("workgroup total exceeds cpu envelope");
+    assert_eq!(
+        err.code,
+        toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED
+    );
+    assert!(err.message.contains("Workgroup total"));
+}
+
+#[tokio::test]
+async fn shader_dispatch_drm_without_shader_service_returns_failed_envelope() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "binary": [1, 2, 3],
+        "bdf": "0000:03:00.0",
+        "dispatch_mode": "drm",
+    });
+    let result = handler
+        .shader_dispatch(Some(&params))
+        .await
+        .expect("handler returns Ok JSON envelope on service miss");
+    assert_eq!(result["domain"], "compute.dispatch");
+    assert_eq!(result["operation"], "shader");
+    assert_eq!(result["status"], "failed");
+    assert!(result["output"].is_null());
+    assert!(
+        result["error"]
+            .as_str()
+            .is_some_and(|s| s.contains("shader") || s.contains("visualization"))
+    );
+    assert_eq!(result["metadata"]["dispatch_mode"], "drm");
+    assert!(result["job_id"].as_str().is_some());
+}
+
+#[tokio::test]
+async fn shader_dispatch_failed_response_has_consistent_shape() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "binary": [1],
+        "bdf": "0000:03:00.0",
+        "dispatch_mode": "vfio",
+    });
+    let result = handler
+        .shader_dispatch(Some(&params))
+        .await
+        .expect("failed dispatch still returns envelope");
+    for key in ["domain", "operation", "job_id", "status", "output", "error", "metadata"] {
+        assert!(result.get(key).is_some(), "missing key: {key}");
+    }
+    assert_eq!(result["status"], "failed");
+    assert!(result["metadata"]["bdf"].as_str().is_some());
+    assert!(result["metadata"]["binary_size"].as_u64().is_some());
 }

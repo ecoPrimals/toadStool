@@ -147,3 +147,67 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gpu_mode_state_path_sanitizes_colons() {
+        let path = gpu_mode_state_path("0000:01:00.0");
+        assert!(path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .contains("0000-01-00.0"));
+        assert!(path.to_string_lossy().contains("toadstool-gpu-mode"));
+    }
+
+    #[test]
+    fn binding_state_driver_name_maps_all_variants() {
+        assert_eq!(
+            binding_state_driver_name(&BindingState::VfioPci),
+            "vfio-pci"
+        );
+        assert_eq!(
+            binding_state_driver_name(&BindingState::KernelDriver("nvidia".into())),
+            "nvidia"
+        );
+        assert_eq!(
+            binding_state_driver_name(&BindingState::Unbound),
+            "none"
+        );
+    }
+
+    #[test]
+    fn resolve_bdf_returns_explicit_value() {
+        let bdf = resolve_bdf(Some("0000:42:00.0".into())).expect("explicit bdf");
+        assert_eq!(bdf, "0000:42:00.0");
+    }
+
+    #[tokio::test]
+    async fn mode_status_with_explicit_bdf_succeeds_or_reports_binding_error() {
+        let ctx = crate::CliContext {
+            config_path: None,
+            working_dir: std::env::current_dir().expect("cwd"),
+            verbose: false,
+        };
+        let result = execute_mode_command(
+            &ctx,
+            ModeCommand::Status {
+                bdf: Some("ffff:ff:00.0".into()),
+            },
+        )
+        .await;
+        match result {
+            Ok(()) => {}
+            Err(crate::CliError::Other(msg)) => {
+                assert!(
+                    msg.contains("binding") || msg.contains("query"),
+                    "unexpected error: {msg}"
+                );
+            }
+            Err(other) => panic!("unexpected error variant: {other:?}"),
+        }
+    }
+}

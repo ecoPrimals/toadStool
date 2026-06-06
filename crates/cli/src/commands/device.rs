@@ -180,3 +180,80 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_gpu_or_npu_class_matches_gpu_and_npu_classes() {
+        assert!(is_gpu_or_npu_class(0x0003_0000)); // VGA
+        assert!(is_gpu_or_npu_class(0x0003_0200)); // 3D controller
+        assert!(is_gpu_or_npu_class(0x0012_0000)); // Processing accelerator
+        assert!(is_gpu_or_npu_class(0x0003_00ab)); // subclass bits masked
+    }
+
+    #[test]
+    fn is_gpu_or_npu_class_rejects_non_gpu_classes() {
+        assert!(!is_gpu_or_npu_class(0x0002_0000)); // Ethernet
+        assert!(!is_gpu_or_npu_class(0x0001_0000)); // SCSI
+        assert!(!is_gpu_or_npu_class(0x0000_0000));
+    }
+
+    #[test]
+    fn read_current_driver_nonexistent_bdf_returns_unbound() {
+        assert_eq!(read_current_driver("ffff:ff:ff.f"), "unbound");
+    }
+
+    #[test]
+    fn read_power_state_nonexistent_bdf_returns_unknown() {
+        assert_eq!(read_power_state("ffff:ff:ff.f"), "unknown");
+    }
+
+    #[tokio::test]
+    async fn device_list_json_format_succeeds() {
+        let result = execute_device_command(DeviceCommand::List {
+            format: "json".into(),
+        })
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn device_list_text_format_succeeds() {
+        let result = execute_device_command(DeviceCommand::List {
+            format: "text".into(),
+        })
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn device_status_explicit_bdf_json_format_succeeds() {
+        let result = execute_device_command(DeviceCommand::Status {
+            bdf: Some("ffff:ff:00.0".into()),
+            format: "json".into(),
+        })
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn device_status_explicit_bdf_text_format_succeeds() {
+        let result = execute_device_command(DeviceCommand::Status {
+            bdf: Some("ffff:ff:00.0".into()),
+            format: "text".into(),
+        })
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn device_warm_nonexistent_bdf_succeeds() {
+        let result = execute_device_command(DeviceCommand::Warm {
+            bdf: "ffff:ff:00.0".into(),
+        })
+        .await;
+        assert!(result.is_ok());
+    }
+}
