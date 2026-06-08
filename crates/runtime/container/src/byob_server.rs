@@ -18,7 +18,7 @@ use toadstool::{
 };
 
 use crate::byob_routes::ByobApi;
-use toadstool_common::constants::network::BIND_ALL_IPV4;
+use toadstool_common::constants::network::LOCALHOST_IPV4;
 use toadstool_config::ports::daemon_port;
 
 use crate::ContainerRuntimeEngine;
@@ -48,7 +48,7 @@ struct ByobServerConfigFile {
 }
 
 fn default_bind_address() -> String {
-    BIND_ALL_IPV4.to_string()
+    LOCALHOST_IPV4.to_string()
 }
 
 fn default_port() -> u16 {
@@ -61,13 +61,6 @@ fn default_port() -> u16 {
 ///
 /// Returns an error if configuration loading, runtime engine creation, or server startup fails.
 pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
-    let loaded = load_config_inner(config.config_path.as_deref()).await?;
-    let bind_address = config
-        .bind_address
-        .as_deref()
-        .unwrap_or(&loaded.bind_address);
-    let port = config.port.unwrap_or(loaded.port);
-
     let runtime_engine = create_runtime_engine().await?;
     let byob_executor = create_byob_executor(runtime_engine);
 
@@ -77,10 +70,41 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
         .merge(ByobApi::<ByobExecutorDispatch<ContainerRuntimeEngine>>::routes())
         .with_state(byob_executor);
 
+    // Transport injection: check TRANSPORT_ENDPOINT first (sourDough standard)
+    if let Some(te) = toadstool_common::TransportEndpoint::from_env()
+        .map_err(|e| ToadStoolError::configuration(e))?
+    {
+        match te {
+            toadstool_common::TransportEndpoint::Tcp { ref host, port } => {
+                let addr: SocketAddr = format!("{host}:{port}")
+                    .parse()
+                    .map_err(|e| ToadStoolError::configuration(format!("Invalid TRANSPORT_ENDPOINT address: {e}")))?;
+                info!("Starting Toadstool BYOB Server on {} (transport-injected)", addr);
+                let listener = TcpListener::bind(addr)
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("Failed to bind BYOB server: {e}")))?;
+                return axum::serve(listener, app.into_make_service())
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("BYOB server error: {e}")));
+            }
+            other => {
+                info!("TRANSPORT_ENDPOINT={other} not applicable for HTTP BYOB server, falling back to config");
+            }
+        }
+    }
+
+    // Fallback: self-bind from config (Tier 5: debug/standalone only)
+    let loaded = load_config_inner(config.config_path.as_deref()).await?;
+    let bind_address = config
+        .bind_address
+        .as_deref()
+        .unwrap_or(&loaded.bind_address);
+    let port = config.port.unwrap_or(loaded.port);
+
     let addr: SocketAddr = format!("{bind_address}:{port}")
         .parse()
         .map_err(|e| ToadStoolError::configuration(format!("Invalid bind address: {e}")))?;
-    info!("Starting Toadstool BYOB Server on {}", addr);
+    info!("Starting Toadstool BYOB Server on {} (self-bind fallback)", addr);
 
     let listener = TcpListener::bind(addr)
         .await

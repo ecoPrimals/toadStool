@@ -198,6 +198,35 @@ impl IpcClient {
         platform::tcp::DEFAULT_PORT
     }
 
+    /// Create client from a launcher-injected `TransportEndpoint`.
+    ///
+    /// Converts the sourDough-standard endpoint into the internal `Endpoint`
+    /// representation and uses it as the sole connection target.
+    pub fn from_transport_endpoint(
+        te: &toadstool_common::TransportEndpoint,
+    ) -> ToadStoolResult<Self> {
+        let endpoint = match te {
+            toadstool_common::TransportEndpoint::Uds { path } => Endpoint::Unix {
+                path: path.clone(),
+            },
+            toadstool_common::TransportEndpoint::Tcp { host, port } => Endpoint::Tcp {
+                host: host.clone(),
+                port: *port,
+            },
+            toadstool_common::TransportEndpoint::MeshRelay {
+                peer_id,
+                capability,
+            } => {
+                return Err(ToadStoolError::not_supported(format!(
+                    "mesh_relay transport not yet supported (peer={peer_id}, cap={capability})"
+                )));
+            }
+        };
+        Ok(Self {
+            endpoints: vec![endpoint],
+        })
+    }
+
     /// Create client with custom endpoints
     ///
     /// **Deep Debt**: Flexible, allows override
