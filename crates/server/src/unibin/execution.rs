@@ -51,6 +51,10 @@ pub struct UnibinExecutionConfig {
     pub health_reporting_interval_secs: u64,
     /// Skip hardware probes (GPU/NPU discovery) for headless deployment.
     pub headless: bool,
+
+    /// Launcher-injected transport endpoint (sourDough standard).
+    /// When set, the server uses this transport instead of self-binding.
+    pub transport_endpoint: Option<toadstool_common::transport_endpoint::TransportEndpoint>,
 }
 
 impl UnibinExecutionConfig {
@@ -100,6 +104,11 @@ impl UnibinExecutionConfig {
                 unibin_execution_defaults::DEFAULT_COORDINATION_HEALTH_REPORT_INTERVAL_SECS,
             headless: std::env::var("TOADSTOOL_HEADLESS")
                 .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
+            transport_endpoint: toadstool_common::transport_endpoint::TransportEndpoint::from_env()
+                .unwrap_or_else(|e| {
+                    tracing::warn!("invalid TRANSPORT_ENDPOINT: {e}");
+                    None
+                }),
         }
     }
 
@@ -201,6 +210,27 @@ pub async fn start_servers_with_fallback(
     cfg: &UnibinExecutionConfig,
     jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
 ) -> ServerResult<()> {
+    // Transport injection: if TRANSPORT_ENDPOINT is set, use the injected transport
+    if let Some(ref te) = cfg.transport_endpoint {
+        use toadstool_common::transport_endpoint::TransportEndpoint;
+        info!("🔌 TRANSPORT_ENDPOINT injected: {te}");
+        return match te {
+            TransportEndpoint::Uds { path } => {
+                try_unix_servers(&server, &jsonrpc_handler, &socket_path, path, jsonrpc_listener).await
+            }
+            TransportEndpoint::Tcp { host, port } => {
+                info!("   Launcher-injected TCP: {host}:{port}");
+                start_tcp_jsonrpc_on_port(Arc::clone(&jsonrpc_handler), *port, host.clone()).await
+            }
+            TransportEndpoint::MeshRelay { peer_id, capability } => {
+                info!("   Mesh relay transport not yet wired (peer={peer_id}, cap={capability})");
+                Err(ServerError::Network(
+                    "mesh_relay transport not yet supported".into(),
+                ))
+            }
+        };
+    }
+
     if let Some(port) = tcp_port {
         info!("   --port {port} specified: starting TCP JSON-RPC (UniBin standard)");
         let tcp_handler = Arc::clone(&jsonrpc_handler);

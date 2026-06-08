@@ -207,6 +207,13 @@ pub const TOADSTOOL_ENABLE_MDNS: &str = "TOADSTOOL_ENABLE_MDNS";
 /// Network bind mode: `localhost`, `all`, or `specific`.
 pub const TOADSTOOL_BIND_MODE: &str = "TOADSTOOL_BIND_MODE";
 pub const TOADSTOOL_TCP_BIND_ADDRESS: &str = "TOADSTOOL_TCP_BIND_ADDRESS";
+
+/// Launcher-injected transport endpoint (JSON `TransportEndpoint`).
+///
+/// When set, the primal uses this transport instead of self-binding.
+/// Follows the sourDough canonical transport standard.
+/// Format: `{"transport":"uds","path":"/run/user/1000/biomeos/compute.sock"}`
+pub const TRANSPORT_ENDPOINT: &str = "TRANSPORT_ENDPOINT";
 /// Idle timeout (seconds) for Pure JSON-RPC TCP connections.
 pub const TOADSTOOL_TCP_IDLE_TIMEOUT_SECS: &str = "TOADSTOOL_TCP_IDLE_TIMEOUT_SECS";
 pub const TOADSTOOL_STANDALONE: &str = "TOADSTOOL_STANDALONE";

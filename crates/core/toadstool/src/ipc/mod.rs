@@ -34,7 +34,7 @@ pub mod server;
 
 // Re-export key types
 pub use client::{IpcClient, IpcStream};
-pub use platform::Endpoint;
+pub use platform::{ConnectedTransport, Endpoint, connect_transport};
 pub use server::IpcServer;
 
 // Re-export legacy helpers for backward compatibility

@@ -145,6 +145,49 @@ pub enum TransportTier {
 }
 
 // ============================================================================
+// Transport-injected connection (sourDough standard)
+// ============================================================================
+
+/// Connect to a peer using a launcher-injected `TransportEndpoint`.
+///
+/// Routes through the appropriate platform transport based on the endpoint type.
+/// This is the canonical way to establish outbound IPC connections per the
+/// sourDough transport standard.
+///
+/// # Errors
+///
+/// Returns error if the connection fails.
+pub async fn connect_transport(
+    endpoint: &toadstool_common::transport_endpoint::TransportEndpoint,
+) -> crate::ToadStoolResult<ConnectedTransport> {
+    use toadstool_common::transport_endpoint::TransportEndpoint;
+    match endpoint {
+        TransportEndpoint::Uds { path } => {
+            let stream = connect_unix(path).await?;
+            Ok(ConnectedTransport::Unix(stream))
+        }
+        TransportEndpoint::Tcp { host, port } => {
+            let stream = connect_tcp(host, *port).await?;
+            Ok(ConnectedTransport::Tcp(stream))
+        }
+        TransportEndpoint::MeshRelay {
+            peer_id,
+            capability,
+        } => Err(crate::ToadStoolError::not_supported(format!(
+            "mesh_relay transport not yet implemented (peer={peer_id}, cap={capability})"
+        ))),
+    }
+}
+
+/// A connected transport stream (result of `connect_transport`).
+pub enum ConnectedTransport {
+    /// Connected Unix domain socket.
+    Unix(tokio::net::UnixStream),
+    /// Connected TCP stream.
+    Tcp(tokio::net::TcpStream),
+}
+
+// ============================================================================
 // Platform Detection Helpers (Pure Rust, No Unsafe!)
 // ============================================================================
 

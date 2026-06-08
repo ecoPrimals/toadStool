@@ -95,31 +95,73 @@ impl DaemonServer {
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
         info!("🚀 ToadStool daemon running");
-        info!("🍄 JSON-RPC socket: {}", self.socket_path.display());
-        info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
 
-        // Start JSON-RPC Unix socket server
-        {
-            let socket = self.socket_path.clone();
-            let manager = Arc::clone(&self.workload_manager);
+        // Transport injection: check TRANSPORT_ENDPOINT first (sourDough standard)
+        let injected_transport =
+            toadstool_common::transport_endpoint::TransportEndpoint::from_env()
+                .unwrap_or_else(|e| {
+                    warn!("invalid TRANSPORT_ENDPOINT: {e}");
+                    None
+                });
 
-            tokio::spawn(async move {
-                if let Err(e) = jsonrpc_server::start_jsonrpc_server(&socket, manager).await {
-                    warn!("⚠️  JSON-RPC server stopped: {e}");
+        if let Some(ref te) = injected_transport {
+            use toadstool_common::transport_endpoint::TransportEndpoint;
+            info!("🔌 TRANSPORT_ENDPOINT injected: {te}");
+            match te {
+                TransportEndpoint::Uds { path } => {
+                    let manager = Arc::clone(&self.workload_manager);
+                    let socket = path.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = jsonrpc_server::start_jsonrpc_server(&socket, manager).await
+                        {
+                            warn!("⚠️  JSON-RPC server stopped: {e}");
+                        }
+                    });
                 }
-            });
-        }
-
-        // Start TCP JSON-RPC if --port was specified (non-zero enables cross-host access)
-        let tcp_port = self.config.port;
-        if tcp_port != 0 {
-            info!("🌐 TCP JSON-RPC on port {tcp_port} (--port)");
-            let manager = Arc::clone(&self.workload_manager);
-            tokio::spawn(async move {
-                if let Err(e) = jsonrpc_server::start_tcp_jsonrpc_server(tcp_port, manager).await {
-                    warn!("⚠️  TCP JSON-RPC on port {tcp_port} failed: {e}");
+                TransportEndpoint::Tcp { host: _, port } => {
+                    let manager = Arc::clone(&self.workload_manager);
+                    let p = *port;
+                    tokio::spawn(async move {
+                        if let Err(e) =
+                            jsonrpc_server::start_tcp_jsonrpc_server(p, manager).await
+                        {
+                            warn!("⚠️  TCP JSON-RPC on port {p} failed: {e}");
+                        }
+                    });
                 }
-            });
+                TransportEndpoint::MeshRelay { .. } => {
+                    warn!("mesh_relay transport not yet wired for daemon");
+                }
+            }
+        } else {
+            info!("🍄 JSON-RPC socket: {}", self.socket_path.display());
+            info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
+
+            // Start JSON-RPC Unix socket server
+            {
+                let socket = self.socket_path.clone();
+                let manager = Arc::clone(&self.workload_manager);
+
+                tokio::spawn(async move {
+                    if let Err(e) = jsonrpc_server::start_jsonrpc_server(&socket, manager).await {
+                        warn!("⚠️  JSON-RPC server stopped: {e}");
+                    }
+                });
+            }
+
+            // Start TCP JSON-RPC if --port was specified (Tier 5 fallback: debug/standalone only)
+            let tcp_port = self.config.port;
+            if tcp_port != 0 {
+                info!("🌐 TCP JSON-RPC on port {tcp_port} (--port, Tier 5 fallback)");
+                let manager = Arc::clone(&self.workload_manager);
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        jsonrpc_server::start_tcp_jsonrpc_server(tcp_port, manager).await
+                    {
+                        warn!("⚠️  TCP JSON-RPC on port {tcp_port} failed: {e}");
+                    }
+                });
+            }
         }
 
         info!("✨ JSON-RPC over UDS per wateringHole standard");
