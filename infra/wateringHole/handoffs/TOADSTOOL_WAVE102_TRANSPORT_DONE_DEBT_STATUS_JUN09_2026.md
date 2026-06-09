@@ -3,7 +3,7 @@
 **Date**: June 9, 2026
 **From**: toadStool team (strandGate)
 **To**: primalSpring (eastGate), cellMembrane (ironGate)
-**Sessions**: S301–S305
+**Sessions**: S301–S306
 **Status**: Transport evolution COMPLETE. Scorecard entry is STALE — toadStool shipped S301–S302.
 
 ---
@@ -36,6 +36,7 @@ The Wave 102 scorecard lists toadStool as "the only non-exempt primal without Tr
 | S303 | Deep Debt XII | `#[allow]` → `#[expect]` elimination, `page_tables.rs` split (V2/Kepler), OS identifier constants |
 | S304 | Deprecated Elim | 15 Category A deprecated items removed (-300L dead code) |
 | S305 | Deprecated Evol | Sync ctor migration (auth/agents → async), `OpenCl` `#[deprecated]` attr, remaining `#[allow]` → `#[expect]` |
+| S306 | Deep Debt XIII | `bar_cartography.rs` split (4 files), `amd/ioctl.rs` split (3 files), `ServiceMeshType` vendor variant removal |
 
 ---
 
@@ -45,7 +46,7 @@ The Wave 102 scorecard lists toadStool as "the only non-exempt primal without Tr
 
 toadStool binary is **6 sessions ahead** of last depot build. Transport evolution, deprecated removals, and deep debt work are all in git but not in depot.
 
-**Action**: Include toadStool in the depot refresh sweep. Binary should be rebuilt from current HEAD (`7c368015f`+).
+**Action**: Include toadStool in the depot refresh sweep. Binary should be rebuilt from current HEAD (`276aa00aa`+).
 
 ### P2: `sourdough validate transport` (sourDough action)
 
@@ -92,7 +93,7 @@ The deprecated `security` module has ~50 production+test callers. `crypto_integr
 | Zero `/tmp/` hardcoding | Achieved S300 |
 | `TRANSPORT_ENDPOINT` accepted | Achieved S301 |
 | BYOB default bind `127.0.0.1` | Achieved S302 |
-| Zero production files >750L | Achieved S303 |
+| Zero production files >750L | Achieved S303, maintained S306 (2 more splits) |
 | `capability_registry.toml` | Shipped S291 |
 
 ---
