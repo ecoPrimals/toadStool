@@ -15,7 +15,6 @@
 
 #![allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_cli::ecosystem::*;
 
@@ -92,66 +91,6 @@ fn test_service_endpoint_storage() {
     assert!(matches!(endpoint.service_type, EcosystemService::Storage));
     assert_eq!(endpoint.address.ip().to_string(), "10.0.0.50");
     assert!(endpoint.capabilities.contains(&"zfs".to_string()));
-}
-
-// ============================================================================
-// DiscoveredService Tests (3 tests)
-// ============================================================================
-
-#[test]
-fn test_discovered_service_creation() {
-    let mut capabilities = HashMap::new();
-    capabilities.insert("version".to_string(), "1.0.0".to_string());
-    capabilities.insert("protocol".to_string(), "http".to_string());
-
-    let service = DiscoveredService {
-        service_type: ServiceType::Discovery,
-        address: "127.0.0.1:8080".parse().unwrap(),
-        trust_level: TrustLevel::Discovered,
-        capabilities: capabilities.clone(),
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    assert!(matches!(service.service_type, ServiceType::Discovery));
-    assert_eq!(service.capabilities.len(), 2);
-    assert!(matches!(service.trust_level, TrustLevel::Discovered));
-}
-
-#[test]
-fn test_discovered_service_with_empty_capabilities() {
-    let service = DiscoveredService {
-        service_type: ServiceType::Crypto,
-        address: "192.168.1.1:8443".parse().unwrap(),
-        trust_level: TrustLevel::Unknown,
-        capabilities: HashMap::new(),
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    assert!(service.capabilities.is_empty());
-    assert!(matches!(service.trust_level, TrustLevel::Unknown));
-}
-
-#[test]
-fn test_discovered_service_multiple_capabilities() {
-    let mut capabilities = HashMap::new();
-    capabilities.insert("version".to_string(), "2.0.0".to_string());
-    capabilities.insert("protocol".to_string(), "https".to_string());
-    capabilities.insert("auth".to_string(), "bearer".to_string());
-    capabilities.insert("crypto".to_string(), "ed25519".to_string());
-
-    let service = DiscoveredService {
-        service_type: ServiceType::Crypto,
-        address: "10.0.0.1:8443".parse().unwrap(),
-        trust_level: TrustLevel::Verified,
-        capabilities,
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    assert_eq!(service.capabilities.len(), 4);
-    assert_eq!(
-        service.capabilities.get("crypto"),
-        Some(&"ed25519".to_string())
-    );
 }
 
 // ============================================================================

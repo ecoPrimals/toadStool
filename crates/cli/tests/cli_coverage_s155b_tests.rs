@@ -27,8 +27,8 @@ mod ecosystem_tests {
     use toadstool_cli::ecosystem::capabilities::StandardCapability;
     use toadstool_cli::ecosystem::service_type::ServiceType;
     use toadstool_cli::ecosystem::{
-        SecurityPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
-        EcosystemIntegrator, StorageMount, ServiceSignature, SignedServiceResponse, TrustLevel,
+        CryptoVerificationContext, DiscoveryResult, EcosystemIntegrator, SecurityPermission,
+        ServiceSignature, SignedServiceResponse, StorageMount, TrustLevel,
     };
     use uuid::Uuid;
 
@@ -161,21 +161,6 @@ mod ecosystem_tests {
         let caps = vec![StandardCapability::CryptoSignatureEd25519.id()];
         let st = ServiceType::from_capability_list(caps);
         assert_eq!(st.display_name(), "crypto-service");
-    }
-
-    #[test]
-    #[expect(deprecated)]
-    fn test_discovered_service_creation() {
-        let mut caps = HashMap::new();
-        caps.insert("version".to_string(), "1.0.0".to_string());
-        let svc = DiscoveredService {
-            service_type: toadstool_cli::ecosystem::ServiceType::Discovery,
-            address: "127.0.0.1:8080".parse().unwrap(),
-            trust_level: TrustLevel::Verified,
-            capabilities: caps,
-            last_seen: std::time::SystemTime::now(),
-        };
-        assert!(svc.capabilities.contains_key("version"));
     }
 
     #[test]

@@ -48,16 +48,6 @@ fn auth_manager_with_inmemory() {
     let _m = AuthenticationManager::with_inmemory(config);
 }
 
-// ─── with_security (deprecated) ───────────────────────────────────────────────
-
-#[test]
-#[expect(deprecated)]
-fn with_security_creates_manager() {
-    let mut config = base_config();
-    config.security_endpoint = "http://localhost:9876".to_string();
-    let _m = AuthenticationManager::with_security(config);
-}
-
 // ─── get_current_token and sign ─────────────────────────────────────────────
 
 #[tokio::test(flavor = "current_thread")]

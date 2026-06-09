@@ -8,7 +8,6 @@
 #![allow(deprecated, clippy::cast_precision_loss)] // Testing backward compatibility with deprecated EcosystemService
 
 use base64::Engine;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -100,41 +99,6 @@ fn test_trust_level_progression_ecosystem() {
     ];
 
     assert_eq!(levels.len(), 5);
-}
-
-// ============================================================================
-// ServiceType Tests
-// ============================================================================
-
-#[test]
-fn test_service_type_discovery() {
-    let service_type = ServiceType::Discovery;
-    assert!(matches!(service_type, ServiceType::Discovery));
-}
-
-#[test]
-fn test_service_type_crypto() {
-    let service_type = ServiceType::Crypto;
-    assert!(matches!(service_type, ServiceType::Crypto));
-}
-
-#[test]
-fn test_service_type_storage() {
-    let service_type = ServiceType::Storage;
-    assert!(matches!(service_type, ServiceType::Storage));
-}
-
-#[test]
-fn test_service_type_compute() {
-    let service_type = ServiceType::Compute;
-    assert!(matches!(service_type, ServiceType::Compute));
-}
-
-#[test]
-fn test_service_type_clone() {
-    let service_type = ServiceType::Discovery;
-    let cloned = service_type;
-    assert!(matches!(cloned, ServiceType::Discovery));
 }
 
 // ============================================================================
@@ -320,56 +284,6 @@ fn test_nestgate_mount_admin_mode() {
 }
 
 // ============================================================================
-// DiscoveredService Tests
-// ============================================================================
-
-#[test]
-fn test_discovered_service_creation() {
-    let service = DiscoveredService {
-        service_type: ServiceType::Discovery,
-        address: "10.0.0.1:8080".parse().unwrap(),
-        trust_level: TrustLevel::Discovered,
-        capabilities: HashMap::new(),
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    assert!(matches!(service.service_type, ServiceType::Discovery));
-    assert!(matches!(service.trust_level, TrustLevel::Discovered));
-}
-
-#[test]
-fn test_discovered_service_with_capabilities() {
-    let mut capabilities = HashMap::new();
-    capabilities.insert("version".to_string(), "1.0.0".to_string());
-    capabilities.insert("protocol".to_string(), "http".to_string());
-
-    let service = DiscoveredService {
-        service_type: ServiceType::Crypto,
-        address: "192.168.1.100:9000".parse().unwrap(),
-        trust_level: TrustLevel::Verified,
-        capabilities,
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    assert_eq!(service.capabilities.len(), 2);
-    assert_eq!(service.capabilities.get("version").unwrap(), "1.0.0");
-}
-
-#[test]
-fn test_discovered_service_clone() {
-    let service = DiscoveredService {
-        service_type: ServiceType::Storage,
-        address: "127.0.0.1:7000".parse().unwrap(),
-        trust_level: TrustLevel::Sovereign,
-        capabilities: HashMap::new(),
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    let cloned = service;
-    assert!(matches!(cloned.service_type, ServiceType::Storage));
-}
-
-// ============================================================================
 // ServiceSignature Tests
 // ============================================================================
 
@@ -417,18 +331,6 @@ fn test_all_ecosystem_services() {
 }
 
 #[test]
-fn test_all_service_types() {
-    let types = [
-        ServiceType::Discovery,
-        ServiceType::Crypto,
-        ServiceType::Storage,
-        ServiceType::Compute,
-    ];
-
-    assert_eq!(types.len(), 4);
-}
-
-#[test]
 fn test_trust_level_hierarchy() {
     // Trust levels should progress from Unknown to Sovereign
     let levels = [
@@ -442,130 +344,6 @@ fn test_trust_level_hierarchy() {
     assert_eq!(levels.len(), 5);
     assert!(matches!(levels[0], TrustLevel::Unknown));
     assert!(matches!(levels[4], TrustLevel::Sovereign));
-}
-
-// ============================================================================
-// ServiceType::from_capability - all variants
-// ============================================================================
-
-#[test]
-fn test_service_type_from_capability_discovery() {
-    assert!(matches!(
-        ServiceType::from_capability("discovery"),
-        ServiceType::Discovery
-    ));
-    assert!(matches!(
-        ServiceType::from_capability("orchestration"),
-        ServiceType::Discovery
-    ));
-    assert!(matches!(
-        ServiceType::from_capability("coordination"),
-        ServiceType::Discovery
-    ));
-}
-
-#[test]
-fn test_service_type_from_capability_crypto() {
-    assert!(matches!(
-        ServiceType::from_capability("crypto"),
-        ServiceType::Crypto
-    ));
-    assert!(matches!(
-        ServiceType::from_capability("pki"),
-        ServiceType::Crypto
-    ));
-    assert!(matches!(
-        ServiceType::from_capability("security"),
-        ServiceType::Crypto
-    ));
-}
-
-#[test]
-fn test_service_type_from_capability_storage() {
-    assert!(matches!(
-        ServiceType::from_capability("storage"),
-        ServiceType::Storage
-    ));
-}
-
-#[test]
-fn test_service_type_from_capability_compute() {
-    assert!(matches!(
-        ServiceType::from_capability("compute"),
-        ServiceType::Compute
-    ));
-    assert!(matches!(
-        ServiceType::from_capability("compute:execution"),
-        ServiceType::Compute
-    ));
-}
-
-#[test]
-fn test_service_type_from_capability_generic() {
-    assert!(matches!(
-        ServiceType::from_capability("unknown"),
-        ServiceType::Generic
-    ));
-    assert!(matches!(
-        ServiceType::from_capability("custom"),
-        ServiceType::Generic
-    ));
-}
-
-// ============================================================================
-// ServiceType::from_name - legacy primal names
-// ============================================================================
-
-#[test]
-fn test_service_type_from_name_songbird() {
-    assert!(matches!(
-        ServiceType::from_name("songbird"),
-        ServiceType::Discovery
-    ));
-}
-
-#[test]
-fn test_service_type_from_name_beardog() {
-    assert!(matches!(
-        ServiceType::from_name("beardog"),
-        ServiceType::Crypto
-    ));
-}
-
-#[test]
-fn test_service_type_from_name_nestgate() {
-    assert!(matches!(
-        ServiceType::from_name("nestgate"),
-        ServiceType::Storage
-    ));
-}
-
-#[test]
-fn test_service_type_from_name_toadstool() {
-    assert!(matches!(
-        ServiceType::from_name("toadstool"),
-        ServiceType::Compute
-    ));
-}
-
-#[test]
-fn test_service_type_from_name_squirrel() {
-    assert!(matches!(
-        ServiceType::from_name("squirrel"),
-        ServiceType::Compute
-    ));
-}
-
-#[test]
-fn test_service_type_from_name_case_insensitive() {
-    assert!(matches!(
-        ServiceType::from_name("SONGBIRD"),
-        ServiceType::Discovery
-    ));
-    assert!(matches!(
-        ServiceType::from_name("BearDog"),
-        ServiceType::Crypto
-    ));
 }
 
 // ============================================================================
@@ -658,15 +436,6 @@ fn test_crypto_verification_context_default_with_env_vars() {
             assert!(ctx.trusted_public_keys.contains_key("crypto"));
         },
     );
-}
-
-#[test]
-fn test_service_type_to_capability_all() {
-    assert_eq!(ServiceType::Discovery.to_capability(), "discovery");
-    assert_eq!(ServiceType::Crypto.to_capability(), "crypto");
-    assert_eq!(ServiceType::Storage.to_capability(), "storage");
-    assert_eq!(ServiceType::Compute.to_capability(), "compute");
-    assert_eq!(ServiceType::Generic.to_capability(), "generic");
 }
 
 // ============================================================================

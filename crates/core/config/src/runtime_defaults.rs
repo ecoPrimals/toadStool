@@ -223,9 +223,5 @@ impl ToadStoolConfig {
 }
 
 #[cfg(test)]
-#[expect(
-    deprecated,
-    reason = "tests exercise legacy runtime defaults pending migration"
-)]
 #[path = "runtime_defaults_tests.rs"]
 mod tests;
