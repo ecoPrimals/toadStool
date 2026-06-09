@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Auth module tests - uses capability domains for issuer validation
-#![allow(
-    deprecated,
-    reason = "tests exercise legacy auth APIs pending migration"
-)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use toadstool_common::constants::ecosystem::{capabilities, well_known};
+use toadstool_common::constants::ecosystem::capabilities;
 use toadstool_common::constants::primal_identity::audience;
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
@@ -26,8 +22,8 @@ fn test_config() -> AuthManagerConfig {
         replay_protection: true,
         signing_key_seed: None,
         token_audience: vec![
-            well_known::SONGBIRD.to_string(),
-            well_known::NESTGATE.to_string(),
+            capabilities::COORDINATION.to_string(),
+            capabilities::STORAGE.to_string(),
         ],
     }
 }
@@ -41,8 +37,8 @@ fn test_config_with_signing_key() -> AuthManagerConfig {
         replay_protection: true,
         signing_key_seed: Some("configured-but-unused-locally".to_string()),
         token_audience: vec![
-            well_known::SONGBIRD.to_string(),
-            well_known::NESTGATE.to_string(),
+            capabilities::COORDINATION.to_string(),
+            capabilities::STORAGE.to_string(),
         ],
     }
 }
@@ -104,7 +100,7 @@ async fn test_sign_token_request_mock() {
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
     let signature = manager
-        .sign_token_request(&token, well_known::SONGBIRD)
+        .sign_token_request(&token, capabilities::COORDINATION)
         .await;
     assert!(signature.is_ok());
     assert!(signature.unwrap().starts_with("ed25519:mock:"));
@@ -173,7 +169,7 @@ fn config_signature_validation_disabled() -> AuthManagerConfig {
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
         replay_protection: true,
         signing_key_seed: None,
-        token_audience: vec![well_known::SONGBIRD.to_string()],
+        token_audience: vec![capabilities::COORDINATION.to_string()],
     }
 }
 
@@ -183,7 +179,7 @@ async fn test_sign_token_request_disabled_returns_signature_disabled() {
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
     let sig = manager
-        .sign_token_request(&token, well_known::NESTGATE)
+        .sign_token_request(&token, capabilities::STORAGE)
         .await
         .unwrap();
     assert_eq!(sig, "signature_disabled");
@@ -194,7 +190,7 @@ async fn test_sign_verification_request_disabled_returns_signature_disabled() {
     let config = config_signature_validation_disabled();
     let manager = AuthenticationManager::with_inmemory(config);
     let sig = manager
-        .sign_verification_request(well_known::SONGBIRD)
+        .sign_verification_request(capabilities::COORDINATION)
         .await
         .unwrap();
     assert_eq!(sig, "signature_disabled");
@@ -213,7 +209,7 @@ async fn test_sign_payload_delegates_to_backend() {
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
     let result = manager
-        .sign_token_request(&token, well_known::SONGBIRD)
+        .sign_token_request(&token, capabilities::COORDINATION)
         .await;
     assert!(result.is_ok());
     assert!(result.unwrap().starts_with("ed25519:mock:"));

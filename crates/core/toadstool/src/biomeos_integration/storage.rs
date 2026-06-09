@@ -29,8 +29,7 @@ pub struct StorageProvisioningConfig {
     /// Storage service endpoint URL.
     ///
     /// **Deprecated** — leave empty (`String::new()`) to use capability-based socket
-    /// discovery via `discover_storage_socket()`. Explicit endpoints are only supported
-    /// by the legacy `with_storage_ext()` constructor which is also deprecated.
+    /// discovery via `discover_storage_socket()`.
     #[deprecated(
         since = "0.3.0",
         note = "Leave empty and use with_storage_service() for runtime discovery"
@@ -88,31 +87,6 @@ impl StorageProvisioningManager {
             config,
             backend: Arc::new(StorageBackendDispatch::Socket(backend)),
         })
-    }
-
-    /// Create a new manager with a legacy direct storage endpoint
-    ///
-    /// **DEPRECATED**: Use `with_storage_service()` for capability-based discovery.
-    #[must_use]
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use with_storage_service() for capability-based discovery"
-    )]
-    #[expect(
-        deprecated,
-        reason = "wraps legacy SocketStorageBackend::new; callers migrating to with_storage_service()"
-    )]
-    pub fn with_storage_ext(config: StorageProvisioningConfig) -> Self {
-        let backend = super::storage_backend::SocketStorageBackend::new(
-            config.storage_endpoint.clone(),
-            config.storage_tier.clone(),
-            config.replication_enabled,
-            config.replication_factor,
-        );
-        Self {
-            config,
-            backend: Arc::new(StorageBackendDispatch::Socket(backend)),
-        }
     }
 
     /// Create a new manager with in-memory test backend

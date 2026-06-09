@@ -10,13 +10,6 @@ pub const HTTPS: &str = "https";
 /// gRPC protocol
 pub const GRPC: &str = "grpc";
 
-/// `WebSocket` protocol
-#[deprecated(
-    since = "0.5.0",
-    note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-)]
-pub const WEBSOCKET: &str = "websocket";
-
 /// JSON-RPC protocol
 pub const JSONRPC: &str = "jsonrpc";
 

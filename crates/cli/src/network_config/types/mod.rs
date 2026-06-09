@@ -46,7 +46,3 @@ pub struct OrchestrationNetworkConfig {
     /// Health monitoring configuration
     pub health_monitoring: HealthMonitoringConfig,
 }
-
-#[deprecated(since = "0.2.0", note = "use OrchestrationNetworkConfig — capability-based naming")]
-/// Legacy alias — prefer [`OrchestrationNetworkConfig`].
-pub type SongbirdNetworkConfig = OrchestrationNetworkConfig;

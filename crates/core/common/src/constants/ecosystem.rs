@@ -25,28 +25,6 @@ pub mod capabilities {
     pub const ROUTING: &str = "routing";
 }
 
-/// Well-known primal service names used in integration modules.
-/// Core logic should discover by capability, not by name.
-///
-/// Prefer `interned_strings::capabilities::*` for discovery.
-/// These exist only for protocol compatibility (parsing manifests, socket paths).
-#[deprecated(
-    since = "0.4.0",
-    note = "Use interned_strings::capabilities::* for discovery. These are for protocol compat only."
-)]
-pub mod well_known {
-    /// Coordination / discovery service (legacy name)
-    pub const SONGBIRD: &str = "songbird";
-    /// Cryptography / security service (legacy name)
-    pub const BEARDOG: &str = "beardog";
-    /// Storage / artifact service (legacy name)
-    pub const NESTGATE: &str = "nestgate";
-    /// Platform management service (legacy name)
-    pub const SQUIRREL: &str = "squirrel";
-    /// Ecosystem orchestration service (legacy name)
-    pub const BIOMEOS: &str = "biomeos";
-}
-
 /// OS-release identifiers used for deployment-layer detection.
 pub mod os_identifiers {
     /// biomeOS host OS identifier (matched in `/etc/os-release`).

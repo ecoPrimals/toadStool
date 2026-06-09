@@ -83,10 +83,6 @@ pub struct OrchestrationNetworkConfigurator {
 /// Short alias for [`OrchestrationNetworkConfigurator`].
 pub type OrchestrationConfigurator = OrchestrationNetworkConfigurator;
 
-#[deprecated(since = "0.2.0", note = "use OrchestrationNetworkConfigurator — capability-based naming")]
-/// Legacy alias — prefer [`OrchestrationNetworkConfigurator`].
-pub type SongbirdNetworkConfigurator = OrchestrationNetworkConfigurator;
-
 // Public API re-exports
 impl OrchestrationNetworkConfigurator {
     /// Create a new orchestration network configurator with default configuration

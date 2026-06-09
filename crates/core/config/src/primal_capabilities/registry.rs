@@ -70,15 +70,6 @@ impl PrimalCapabilitiesRegistry {
         Ok(format!("{protocol}://{}:{}", host, primal.default_port))
     }
 
-    /// Get migration fallback URL (deprecated)
-    #[deprecated(since = "0.4.0", note = "Use capability discovery instead of migration fallbacks")]
-    #[must_use]
-    pub fn get_migration_fallback(&self, primal_name: &str) -> Option<&str> {
-        self.migration
-            .get(primal_name)
-            .map(|m| m.fallback_url.as_str())
-    }
-
     /// Get all primals with their endpoints
     ///
     /// Returns a map of `primal_name` -> endpoint

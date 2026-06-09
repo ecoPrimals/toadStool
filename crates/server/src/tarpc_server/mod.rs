@@ -17,7 +17,6 @@ pub use executor::{StandaloneExecutor, WorkloadExecutor};
 pub use executor::TestExecutor;
 
 use std::io::ErrorKind;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
@@ -207,34 +206,6 @@ impl ToadStoolTarpcServer {
                 connection::serve_on_tarpc_channel(server, stream).await;
             });
         }
-    }
-
-    /// Start tarpc server on TCP (DEBUG ONLY - not for production)
-    ///
-    /// Deep debt violation: TCP with hardcoded ports breaks multi-instance support.
-    /// Use serve_unix() instead for production.
-    ///
-    /// # Errors
-    ///
-    /// Always returns [`ServerError`] (deprecated - use serve_unix or serve_tcp instead).
-    #[deprecated(
-        since = "2.2.0",
-        note = "Use serve_unix() for production. TCP hardcoding violates deep debt principles."
-    )]
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by trait/interface"
-    )] // Deprecated; returns Err immediately; kept async for API compatibility
-    pub async fn serve_tcp_debug(self, addr: SocketAddr) -> ServerResult<()> {
-        warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
-        warn!("⚠️  Use Unix sockets for production (serve_unix)");
-        info!(
-            "tarpc TCP debug endpoint requested on: {addr} — use serve_unix() or serve_tcp() instead"
-        );
-
-        Err(ServerError::Execution(
-            "serve_tcp_debug is deprecated — use serve_unix() or serve_tcp()".to_string(),
-        ))
     }
 
     /// Start tarpc server on TCP listener (isomorphic fallback)

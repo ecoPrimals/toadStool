@@ -142,27 +142,6 @@ fn test_get_all_endpoints() {
 }
 
 #[test]
-#[expect(deprecated)]
-fn test_get_migration_fallback() {
-    let toml_content = r#"
-[primals.toadstool]
-name = "toadstool"
-primary_role = "compute"
-capabilities = ["compute"]
-default_port = 8080
-
-[migration.toadstool]
-capability = "compute"
-fallback_url = "http://fallback:8080"
-"#;
-    let registry: PrimalCapabilitiesRegistry = toml::from_str(toml_content).unwrap();
-    let fallback = registry.get_migration_fallback("toadstool");
-    assert_eq!(fallback, Some("http://fallback:8080"));
-    let no_fallback = registry.get_migration_fallback("beardog");
-    assert!(no_fallback.is_none());
-}
-
-#[test]
 fn test_load_from_file_not_found() {
     let result = PrimalCapabilitiesRegistry::load_from_file("/nonexistent/path/capabilities.toml");
     assert!(result.is_err());

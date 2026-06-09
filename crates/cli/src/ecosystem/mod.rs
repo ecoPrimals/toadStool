@@ -33,9 +33,9 @@ pub mod discovery;
     reason = "re-exporting deprecated EcosystemService for backward compatibility"
 )]
 pub use types::{
-    CryptoVerificationContext, DiscoveredService, DiscoveryResult, EcosystemIntegrator,
-    EcosystemService, SecurityPermission, ServiceEndpoint, ServiceSignature, ServiceType,
-    SignedServiceResponse, StorageMount, TrustLevel,
+    CryptoVerificationContext, DiscoveryResult, EcosystemIntegrator, EcosystemService,
+    SecurityPermission, ServiceEndpoint, ServiceSignature, SignedServiceResponse, StorageMount,
+    TrustLevel,
 };
 
 // Internal types

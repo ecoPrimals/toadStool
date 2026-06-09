@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
 use crate::rpc_types::{ResourceRequirements, WorkloadPriority};
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -38,17 +37,6 @@ fn test_tarpc_server_clone() {
     let server = ToadStoolTarpcServer::new("v1", executor, None);
     let cloned = server.clone();
     assert_eq!(server.version.as_ref(), cloned.version.as_ref());
-}
-
-#[tokio::test]
-async fn test_serve_tcp_debug_deprecated_returns_err() {
-    let executor = arc_test_dispatch(TestWorkloadDouble::Mock);
-    let server = ToadStoolTarpcServer::new("v1", executor, None);
-    let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let result = server.serve_tcp_debug(addr).await;
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("deprecated"));
 }
 
 #[test]

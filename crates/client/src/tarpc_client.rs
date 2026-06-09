@@ -31,8 +31,8 @@ pub enum TarpcClientError {
 }
 use std::path::{Path, PathBuf};
 use tarpc::{client, context, tokio_serde::formats::Json};
-use tokio::net::{TcpStream, UnixStream};
-use tracing::{info, warn};
+use tokio::net::UnixStream;
+use tracing::info;
 
 use toadstool_integration_protocols::tarpc_service::{
     ComputeCapabilities, HealthStatus, ServiceError, ToadStoolComputeRpcClient, WorkloadResult,
@@ -122,63 +122,6 @@ impl ToadStoolTarpcClient {
         Ok(Self {
             client,
             endpoint: ClientEndpoint::UnixSocket(socket_path.to_path_buf()),
-        })
-    }
-
-    /// Connect to ToadStool compute service at given TCP address (DEPRECATED)
-    ///
-    /// **Deep Debt Violation**: TCP with hardcoded ports breaks multi-instance support.
-    ///
-    /// Use `connect_unix()` instead for production. This method exists only for:
-    /// - Platform fallback (where Unix sockets unavailable)
-    /// - Testing and debugging
-    ///
-    /// # Migration
-    ///
-    /// ```rust,no_run
-    /// use toadstool_client::{ToadStoolTarpcClient, TarpcClientError};
-    /// use toadstool_common::primal_sockets;
-    ///
-    /// # async fn example() -> Result<(), TarpcClientError> {
-    /// // OLD (TCP - Deep Debt violation)
-    /// // let client = ToadStoolTarpcClient::connect("127.0.0.1:50051".parse()?).await?;
-    ///
-    /// // NEW (Unix socket - Deep Debt compliant)
-    /// let socket_path = primal_sockets::get_toadstool_socket_path();
-    /// let client = ToadStoolTarpcClient::connect_unix(&socket_path).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use connect_unix() for production. TCP hardcoding violates Deep Debt principles."
-    )]
-    pub async fn connect(addr: SocketAddr) -> Result<Self, TarpcClientError> {
-        warn!("⚠️  TCP mode is DEPRECATED - violates Deep Debt principles");
-        warn!("⚠️  Use connect_unix() for production");
-        info!("Connecting to ToadStool compute service at TCP: {}", addr);
-
-        // Establish TCP connection
-        let stream = TcpStream::connect(addr).await.map_err(|e| {
-            TarpcClientError::Connection(format!("Failed to connect to TCP {}: {}", addr, e))
-        })?;
-
-        // Create transport with JSON codec
-        let transport = tarpc::serde_transport::new(
-            tokio_util::codec::LengthDelimitedCodec::builder()
-                .max_frame_length(16 * 1024 * 1024) // 16MB max frame
-                .new_framed(stream),
-            Json::default(),
-        );
-
-        // Create tarpc client
-        let client = ToadStoolComputeRpcClient::new(client::Config::default(), transport).spawn();
-
-        info!("Connected to ToadStool at TCP: {}", addr);
-
-        Ok(Self {
-            client,
-            endpoint: ClientEndpoint::Tcp(addr),
         })
     }
 
@@ -296,22 +239,6 @@ mod tests {
 
         let socket_path = PathBuf::from("/tmp/toadstool-nonexistent-test.sock");
         let result = ToadStoolTarpcClient::connect_unix(&socket_path).await;
-
-        let err = result.expect_err("should fail when no server is listening");
-        assert!(
-            matches!(err, TarpcClientError::Connection(_)),
-            "expected Connection error, got: {err}"
-        );
-    }
-
-    #[tokio::test]
-    #[expect(
-        deprecated,
-        reason = "tests deprecated ToadStoolTarpcClient::connect API"
-    )]
-    async fn test_client_tcp_connection_no_server() {
-        let addr: SocketAddr = "127.0.0.1:1".parse().expect("valid addr");
-        let result = ToadStoolTarpcClient::connect(addr).await;
 
         let err = result.expect_err("should fail when no server is listening");
         assert!(

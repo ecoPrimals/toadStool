@@ -7,8 +7,7 @@
 //!
 //! Prefer capability-prefixed vars via [`super::CapabilityDomain::biomeos_socket_env`] /
 //! [`super::CapabilityDomain::toadstool_socket_env`] (`BIOMEOS_*_SOCKET`, `TOADSTOOL_*_SOCKET`).
-//! Legacy `LEGACY_*` names are identity-based fallbacks only — use
-//! [`super::CapabilityDomain::legacy_socket_env`] only when migrating older deployments.
+//! Legacy `LEGACY_*` names are identity-based fallbacks for older deployments.
 
 // POSIX / XDG Base Directory Specification.
 pub const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";

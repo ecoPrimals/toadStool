@@ -73,38 +73,6 @@ fn test_trust_level_variants() {
     assert!(matches!(TrustLevel::Sovereign, TrustLevel::Sovereign));
 }
 
-#[test]
-#[expect(deprecated)] // Testing deprecated ServiceType during migration
-fn test_service_type_variants() {
-    assert!(matches!(ServiceType::Discovery, ServiceType::Discovery));
-    assert!(matches!(ServiceType::Crypto, ServiceType::Crypto));
-    assert!(matches!(ServiceType::Storage, ServiceType::Storage));
-    assert!(matches!(ServiceType::Compute, ServiceType::Compute));
-    assert!(matches!(ServiceType::Generic, ServiceType::Generic));
-
-    // Test capability mapping
-    assert_eq!(ServiceType::Discovery.to_capability(), "discovery");
-    assert_eq!(ServiceType::Crypto.to_capability(), "crypto");
-    assert_eq!(ServiceType::Storage.to_capability(), "storage");
-
-    // Test from_name migration helper (legacy primal names -> capability)
-    assert!(matches!(
-        ServiceType::from_name("songbird"),
-        ServiceType::Discovery
-    ));
-    assert!(matches!(
-        ServiceType::from_name("orchestration"),
-        ServiceType::Discovery
-    ));
-    assert!(matches!(
-        ServiceType::from_name("beardog"),
-        ServiceType::Crypto
-    ));
-    assert!(matches!(
-        ServiceType::from_name("unknown"),
-        ServiceType::Generic
-    ));
-}
 
 #[test]
 #[expect(deprecated)] // Testing backward compatibility with deprecated EcosystemService
@@ -190,24 +158,6 @@ fn test_nestgate_mount_creation() {
     assert_eq!(mount.dataset_name, "research-data");
     assert_eq!(mount.access_mode, "read");
     assert!(mount.zfs_dataset.is_some());
-}
-
-#[expect(deprecated)] // Using ServiceType during migration
-#[test]
-fn test_discovered_service_creation() {
-    let mut capabilities = HashMap::new();
-    capabilities.insert("version".to_string(), "1.0.0".to_string());
-
-    let service = DiscoveredService {
-        service_type: ServiceType::Discovery,
-        address: "127.0.0.1:8080".parse().unwrap(),
-        trust_level: TrustLevel::Verified,
-        capabilities,
-        last_seen: std::time::SystemTime::now(),
-    };
-
-    assert!(matches!(service.service_type, ServiceType::Discovery));
-    assert_eq!(service.capabilities.len(), 1);
 }
 
 #[test]

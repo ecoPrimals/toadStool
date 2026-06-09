@@ -29,12 +29,6 @@ fn test_manager_with_inmemory_initialization() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
     assert_eq!(manager.config().storage_tier, "hot");
-}
-
-#[test]
-fn test_manager_with_storage_ext_initialization() {
-    let config = test_config();
-    let manager = StorageProvisioningManager::with_inmemory(config);
     assert!(manager.config().backup_enabled);
 }
 

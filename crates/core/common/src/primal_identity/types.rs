@@ -219,21 +219,6 @@ impl ServiceEndpoint {
         }
     }
 
-    /// Create a new `WebSocket` endpoint
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    pub fn websocket(host: impl Into<String>, port: u16) -> Self {
-        Self {
-            protocol: "ws".to_string(),
-            address: host.into(),
-            port,
-            path: None,
-            metadata: HashMap::new(),
-        }
-    }
-
     /// Set the path for this endpoint
     #[must_use]
     pub fn with_path(mut self, path: impl Into<String>) -> Self {
@@ -331,13 +316,5 @@ mod tests {
         assert_eq!(endpoint.port, restored.port);
         assert_eq!(endpoint.path, restored.path);
         assert_eq!(endpoint.metadata, restored.metadata);
-    }
-
-    #[test]
-    #[expect(deprecated, reason = "tests exercise deprecated websocket constructor")]
-    fn test_service_endpoint_websocket_deprecated() {
-        let endpoint = ServiceEndpoint::websocket("ws.example.com", 8081);
-        assert_eq!(endpoint.protocol, "ws");
-        assert_eq!(endpoint.url(), "ws://ws.example.com:8081");
     }
 }

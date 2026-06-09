@@ -120,24 +120,6 @@ impl CapabilityDomain {
         }
     }
 
-    /// Legacy identity-based socket env var (fallback only).
-    #[must_use]
-    #[deprecated(since = "0.4.0", note = "use biomeos_socket_env() or capability discovery")]
-    #[expect(
-        deprecated,
-        reason = "legacy_socket_env intentionally references identity-based fallback env names"
-    )]
-    pub const fn legacy_socket_env(self) -> &'static str {
-        match self {
-            Self::Security => socket_env::LEGACY_BEARDOG_SOCKET_ENV,
-            Self::Coordination => socket_env::LEGACY_SONGBIRD_SOCKET_ENV,
-            Self::Storage => socket_env::LEGACY_NESTGATE_SOCKET_ENV,
-            Self::Routing | Self::Intelligence => socket_env::LEGACY_SQUIRREL_SOCKET_ENV,
-            Self::Compute => socket_env::PRIMAL_SOCKET,
-            Self::Monitoring => socket_env::TOADSTOOL_TELEMETRY,
-        }
-    }
-
     /// Resolve a capability id or legacy route label to a domain.
     ///
     /// Capability strings (`capabilities::*`) are preferred; legacy primal route
@@ -314,11 +296,9 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated, reason = "tests deprecated protocol string constants")]
     fn test_protocols() {
         assert_eq!(protocols::HTTP, "http");
         assert_eq!(protocols::GRPC, "grpc");
-        assert_eq!(protocols::WEBSOCKET, "websocket");
         assert_eq!(protocols::JSONRPC, "jsonrpc");
         assert_eq!(protocols::UNIX, "unix");
         assert_eq!(protocols::TARPC, "tarpc");

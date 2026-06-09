@@ -18,7 +18,7 @@ use std::sync::Arc;
 pub use crypto::{
     CryptoVerificationContext, SecurityPermission, ServiceSignature, SignedServiceResponse,
 };
-pub use discovery::{DiscoveredService, DiscoveryResult, ServiceType};
+pub use discovery::DiscoveryResult;
 pub use endpoint::{EcosystemService, ServiceEndpoint, TrustLevel};
 pub use storage::StorageMount;
 

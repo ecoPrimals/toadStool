@@ -31,7 +31,7 @@ fn test_songbird_network_config_clone() {
 fn test_songbird_network_config_debug() {
     let config = create_test_coordination_config();
     let debug_str = format!("{:?}", config);
-    assert!(debug_str.contains("SongbirdNetworkConfig"));
+    assert!(debug_str.contains("OrchestrationNetworkConfig"));
 }
 
 #[test]

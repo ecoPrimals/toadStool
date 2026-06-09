@@ -177,8 +177,8 @@ fn test_metrics_config() {
 // Helper Functions
 // ============================================================================
 
-fn create_test_coordination_config() -> SongbirdNetworkConfig {
-    SongbirdNetworkConfig {
+fn create_test_coordination_config() -> OrchestrationNetworkConfig {
+    OrchestrationNetworkConfig {
         service_mesh: create_test_service_mesh_config(true),
         dns_discovery: create_test_dns_discovery_config(),
         cross_primal_security: create_test_cross_primal_security_config(),

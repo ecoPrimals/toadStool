@@ -259,12 +259,6 @@ impl Default for DeviceUsage {
 /// Framework-specific device handles.
 #[derive(Debug)]
 pub enum FrameworkHandle {
-    /// DEPRECATED S198: OpenCL removed. Use `gpu.dispatch.opencl` capability provider via IPC.
-    #[deprecated(
-        since = "0.2.0",
-        note = "OpenCL removed — use gpu.dispatch.opencl capability provider via IPC"
-    )]
-    OpenCl,
     /// Vulkan device.
     #[cfg(feature = "vulkan")]
     Vulkan(Arc<vulkano::device::Device>),
@@ -283,10 +277,8 @@ pub enum FrameworkHandle {
 }
 
 impl Clone for FrameworkHandle {
-    #[expect(deprecated, reason = "OpenCL variant retained in enum (S198)")]
     fn clone(&self) -> Self {
         match self {
-            Self::OpenCl => Self::OpenCl,
             #[cfg(feature = "vulkan")]
             Self::Vulkan(device) => Self::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]
