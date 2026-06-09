@@ -1,10 +1,10 @@
-# toadStool Wave 102 Response — Transport DONE, Deep Debt Status
+# toadStool Wave 102–104 Response — Transport DONE, Deep Debt Status
 
-**Date**: June 9, 2026
+**Date**: June 9, 2026 (updated Wave 104)
 **From**: toadStool team (strandGate)
 **To**: primalSpring (eastGate), cellMembrane (ironGate)
 **Sessions**: S301–S306
-**Status**: Transport evolution COMPLETE. Scorecard entry is STALE — toadStool shipped S301–S302.
+**Status**: Transport evolution COMPLETE. **ACK Wave 104 Item 5**: YES, already shipped S301–S302. Transport is 11/11 non-exempt.
 
 ---
 
@@ -98,4 +98,11 @@ The deprecated `security` module has ~50 production+test callers. `crypto_integr
 
 ---
 
-**toadStool is transport-compliant, VPS-ready, and debt-clean. The scorecard gap is a stale read — update to DONE.**
+**toadStool is transport-compliant (11/11), VPS-ready, and debt-clean. Wave 104 ACK: Item 5 is DONE. No blockers from toadStool.**
+
+## Wave 104 Acknowledgment
+
+- **Item 5 (Transport Adoption Verification)**: CONFIRMED DONE. Shipped S301–S302, pushed to upstream. `sourdough validate transport` ready.
+- **Item 1 (bearDog pure Rust)**: Not our dep. toadStool has zero C deps (ecoBin v3.0). No action.
+- **Item 4 (songBird ipc.resolve)**: Waiting. Our outbound `TcpStream::connect` migration (16 sites) is gated on this.
+- **toadStool has no P1 or P2 blockers.** Continuing deep debt execution (S306: file splits, deprecated cleanup).
