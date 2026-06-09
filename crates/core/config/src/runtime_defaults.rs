@@ -223,7 +223,7 @@ impl ToadStoolConfig {
 }
 
 #[cfg(test)]
-#[allow(
+#[expect(
     deprecated,
     reason = "tests exercise legacy runtime defaults pending migration"
 )]

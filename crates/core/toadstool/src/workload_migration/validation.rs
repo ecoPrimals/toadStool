@@ -260,7 +260,7 @@ pub fn validate_migration(
 }
 
 #[cfg(test)]
-#[allow(
+#[expect(
     deprecated,
     reason = "tests exercise deprecated MigrationRecommendation/MigrationTarget APIs"
 )]

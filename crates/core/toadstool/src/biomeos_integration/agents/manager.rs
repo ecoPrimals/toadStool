@@ -78,20 +78,13 @@ impl AgentDeploymentManager {
 
         // Priority 2: Capability-domain / legacy routing endpoint hints (see SocketPathEnv)
         let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
-        if let Some(endpoint) = socket_env.routing_connection_hint {
-            tracing::info!("Discovered ML service via environment: {}", endpoint);
-            let mut config = config;
-            config.ai_processing_endpoint = endpoint;
-            return Ok(Self::with_intelligence_service(config));
-        }
+        let has_hint = socket_env.routing_connection_hint.is_some();
+        let has_config = !config.ai_processing_endpoint.is_empty();
 
-        // Priority 3: Check if endpoint is already configured
-        if !config.ai_processing_endpoint.is_empty() {
-            tracing::debug!(
-                "Using configured endpoint: {}",
-                config.ai_processing_endpoint
-            );
-            return Ok(Self::with_intelligence_service(config));
+        if has_hint || has_config {
+            let source = if has_hint { "environment" } else { "config" };
+            tracing::info!("Discovered ML service via {source}, connecting async");
+            return Self::with_ml_service(config).await;
         }
 
         Err(crate::ToadStoolError::configuration(
@@ -121,26 +114,6 @@ impl AgentDeploymentManager {
         })
     }
 
-    /// Create a new manager using a direct intelligence-service endpoint (legacy path).
-    ///
-    /// Prefer `with_ml_service()` or `discover()` for capability-based discovery.
-    #[must_use]
-    #[expect(
-        deprecated,
-        reason = "wraps legacy IntelligenceBackend; callers migrating to discover()"
-    )]
-    pub fn with_intelligence_service(config: AgentDeploymentConfig) -> Self {
-        let backend = super::super::agent_backend::IntelligenceBackend::new(
-            config.ai_processing_endpoint.clone(),
-            config.model_registry.clone(),
-            config.agent_runtime.clone(),
-            config.mcp_enabled,
-        );
-        Self {
-            _config: config,
-            backend: Arc::new(AgentBackendDispatch::Intelligence(backend)),
-        }
-    }
 
     /// Create a new manager with in-memory test backend
     #[must_use]

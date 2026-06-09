@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeOS Backend Implementations.
 //!
-//! Covers legacy sync constructors for unit testing without real services.
+//! Uses in-memory and socket backends for unit testing without real services.
 //! Production code must use the `new_async()` capability-based constructors.
 //! See `*_evolved.rs` and `new_async()` for the current production path.
-#![allow(deprecated)]
 
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -14,44 +13,8 @@ use toadstool::biomeos_integration::storage_backend::*;
 use toadstool::biomeos_integration::types::*;
 
 // ============================================================================
-// SecurityBackend Tests - Authentication Backend (15 tests)
+// SecurityBackend Tests - Authentication Backend
 // ============================================================================
-
-#[test]
-fn test_security_backend_creation() {
-    let _backend = SecurityBackend::new("http://beardog:8081");
-    // Backend should be constructed successfully
-    // (We can't test internal fields directly, but construction validates the API)
-}
-
-#[test]
-fn test_security_backend_creation_with_string() {
-    let endpoint = String::from("http://beardog:8081");
-    let _backend = SecurityBackend::new(endpoint);
-    // Backend should accept String as endpoint
-}
-
-#[test]
-fn test_security_backend_creation_with_str() {
-    let _backend = SecurityBackend::new("http://beardog:8081");
-    // Backend should accept &str as endpoint
-}
-
-#[test]
-fn test_security_backend_creation_various_endpoints() {
-    // Test different endpoint formats
-    let endpoints = vec![
-        "http://localhost:8081",
-        "http://beardog:8081",
-        "https://security.example.com",
-        "http://192.168.1.100:8081",
-    ];
-
-    for endpoint in endpoints {
-        let _backend = SecurityBackend::new(endpoint);
-        // Each endpoint should create a valid backend
-    }
-}
 
 #[test]
 fn test_auth_backend_trait_validate_token_valid() {
@@ -340,37 +303,8 @@ fn test_volume_status_equality() {
 }
 
 // ============================================================================
-// IntelligenceBackend Tests - Agent Backend (15 tests)
+// IntelligenceBackend Tests - Agent Backend
 // ============================================================================
-
-#[test]
-fn test_intelligence_backend_creation() {
-    let _backend = IntelligenceBackend::new("http://squirrel:7070", "local", "container", true);
-    // Backend should be constructed successfully
-}
-
-#[test]
-fn test_intelligence_backend_creation_with_strings() {
-    let endpoint = String::from("http://squirrel:7070");
-    let registry = String::from("huggingface");
-    let runtime = String::from("process");
-    let _backend = IntelligenceBackend::new(endpoint, registry, runtime, false);
-    // Backend should accept String types
-}
-
-#[test]
-fn test_intelligence_backend_creation_various_configs() {
-    let configs = vec![
-        ("http://localhost:7070", "local", "container", true),
-        ("http://squirrel:7070", "huggingface", "process", false),
-        ("https://squirrel.example.com", "ollama", "docker", true),
-    ];
-
-    for (endpoint, registry, runtime, mcp) in configs {
-        let _backend = IntelligenceBackend::new(endpoint, registry, runtime, mcp);
-        // Each config should create a valid backend
-    }
-}
 
 #[test]
 fn test_agent_status_deploying() {

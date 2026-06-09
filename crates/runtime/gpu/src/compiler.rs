@@ -70,6 +70,7 @@ impl UniversalKernelCompiler {
         target_framework: GpuFramework,
         device: &UniversalComputeDevice,
     ) -> ToadStoolResult<Arc<CompiledKernel>> {
+        #[expect(deprecated, reason = "guard clause rejects deprecated OpenCl variant")]
         if matches!(target_framework, GpuFramework::OpenCl) {
             return Err(toadstool::error::ToadStoolError::runtime(
                 "OpenCL kernel compilation removed (S198): use gpu.dispatch.opencl capability provider via IPC.",

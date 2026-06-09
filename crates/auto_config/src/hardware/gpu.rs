@@ -205,7 +205,7 @@ pub fn calculate_gpu_score(gpu_info: &[GpuInfo]) -> f64 {
 }
 
 #[cfg(test)]
-#[allow(
+#[expect(
     deprecated,
     reason = "tests exercise legacy GPU config APIs pending migration"
 )]

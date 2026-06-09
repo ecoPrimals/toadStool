@@ -188,7 +188,7 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
-    #[allow(deprecated, reason = "test constructs deprecated opencl field")]
+    #[expect(deprecated, reason = "test constructs deprecated opencl field")]
     fn test_deployment() -> ZeroConfigDeployment {
         ZeroConfigDeployment {
             system_info: SystemInfo {
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated, reason = "test constructs deprecated opencl field")]
+    #[expect(deprecated, reason = "test constructs deprecated opencl field")]
     async fn runtime_config_with_docker_and_cuda() {
         let mut deploy = test_deployment();
         deploy.system_info.container_runtime.docker = true;

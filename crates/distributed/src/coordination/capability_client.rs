@@ -300,7 +300,7 @@ pub struct ClientStats {
 }
 
 #[cfg(test)]
-#[allow(
+#[expect(
     deprecated,
     reason = "tests exercise legacy coordination client pending migration"
 )]

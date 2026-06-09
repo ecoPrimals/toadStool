@@ -16,8 +16,10 @@ pub enum GpuFramework {
     /// Vulkan compute (cross-platform, high-performance)
     Vulkan,
     /// Serialization / discovery only: OpenCL-class GPUs use the `gpu.dispatch.opencl` capability provider via IPC.
-    ///
-    /// **DEPRECATED S198:** direct OpenCL support was removed from this crate; use `gpu.dispatch.opencl` capability provider via IPC.
+    #[deprecated(
+        since = "0.2.0",
+        note = "OpenCL removed S198 — use gpu.dispatch.opencl capability provider via IPC"
+    )]
     OpenCl,
     /// NVIDIA CUDA (NVIDIA-specific, high-performance)
     Cuda,
@@ -34,6 +36,7 @@ pub enum GpuFramework {
 impl GpuFramework {
     /// Get human-readable framework name
     #[must_use]
+    #[expect(deprecated, reason = "exhaustive match includes deprecated OpenCl variant")]
     pub fn name(&self) -> &str {
         match self {
             Self::WebGpu => "WebGPU",
@@ -55,6 +58,7 @@ impl GpuFramework {
 
     /// Get platform compatibility information
     #[must_use]
+    #[expect(deprecated, reason = "exhaustive match includes deprecated OpenCl variant")]
     pub fn platform_compatibility(&self) -> Vec<&str> {
         match self {
             Self::WebGpu => vec!["Windows", "macOS", "Linux", "Web"],

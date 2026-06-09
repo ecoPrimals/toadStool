@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp, reason = "exact mock constants in test")]
+    #[expect(clippy::float_cmp, reason = "exact mock constants in test")]
     async fn mock_resource_monitor_get_system_resources() {
         let monitor = MockResourceMonitor::new();
         let result = monitor.get_system_resources().await;
@@ -163,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp, reason = "exact mock constants in test")]
+    #[expect(clippy::float_cmp, reason = "exact mock constants in test")]
     fn mock_system_resources_with_usage_default() {
         let resources = MockSystemResourcesWithUsage::default();
         assert_eq!(resources.cpu_usage_percent, 45.2);
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp, reason = "exact mock constants in test")]
+    #[expect(clippy::float_cmp, reason = "exact mock constants in test")]
     fn mock_system_resources_with_usage_custom() {
         let resources = MockSystemResourcesWithUsage {
             cpu_usage_percent: 80.0,

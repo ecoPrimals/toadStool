@@ -112,6 +112,7 @@ impl UniversalGpuEngine {
     }
 
     /// Create instance of specific framework
+    #[expect(deprecated, reason = "exhaustive match includes deprecated OpenCl variant")]
     async fn create_framework_instance(
         &self,
         framework_type: GpuFramework,

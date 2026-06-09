@@ -292,7 +292,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp, reason = "exact builder values in test")]
+    #[expect(clippy::float_cmp, reason = "exact builder values in test")]
     fn test_graph_node_builder_with_resources() {
         let node = GraphNode::builder("n3", "gpu_compute")
             .cpu(8.0)
