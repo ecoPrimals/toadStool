@@ -20,4 +20,4 @@ pub use config_file::ConfigFileSource;
 pub use environment::EnvironmentSource;
 pub use fallback::FallbackSource;
 pub use mdns::MDNSSource;
-pub use service_mesh::{ServiceMeshSource, ServiceMeshType};
+pub use service_mesh::ServiceMeshSource;

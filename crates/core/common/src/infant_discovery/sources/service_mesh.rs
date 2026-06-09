@@ -10,64 +10,17 @@ use crate::infant_discovery::capabilities::{DiscoveryError, EndpointSource};
 
 /// Service mesh source - discovers services via the coordination service
 ///
-/// ## Evolution (Feb 15, 2026)
-///
-/// Service mesh discovery is now delegated to the coordination service.
-/// Vendor-specific options (Consul, etcd, Kubernetes) removed - they are
-/// the coordination layer's concern, not ToadStool's.
-///
+/// Service mesh discovery is delegated to the coordination service.
 /// ToadStool only reports mDNS capability requirements upstream.
-pub struct ServiceMeshSource {
-    mesh_type: ServiceMeshType,
-}
-
-/// Service mesh type
-///
-/// ## Evolution (Feb 15, 2026)
-///
-/// Vendor-specific types (Consul, etcd, Kubernetes) deprecated.
-/// Service discovery is the coordination service's responsibility.
-#[derive(Debug, Clone, Copy)]
-pub enum ServiceMeshType {
-    /// Auto-detect (delegates to coordination service)
-    Auto,
-    /// Consul service mesh (deprecated - use coordination service)
-    #[deprecated(
-        since = "0.16.0",
-        note = "Use coordination service for service mesh discovery"
-    )]
-    Consul,
-    /// etcd key-value store (deprecated - use coordination service)
-    #[deprecated(
-        since = "0.16.0",
-        note = "Use coordination service for service mesh discovery"
-    )]
-    Etcd,
-    /// Kubernetes service discovery (deprecated - use coordination service)
-    #[deprecated(
-        since = "0.16.0",
-        note = "Use coordination service for service mesh discovery"
-    )]
-    Kubernetes,
-}
+pub struct ServiceMeshSource;
 
 impl ServiceMeshSource {
-    /// Create new service mesh source with auto-detection
+    /// Create new service mesh source
     ///
     /// Discovery is delegated to the coordination service.
     #[must_use]
     pub const fn new() -> Self {
-        Self {
-            mesh_type: ServiceMeshType::Auto,
-        }
-    }
-
-    /// Create with specific mesh type
-    ///
-    /// Note: Vendor-specific types are deprecated. Use Auto to delegate to the coordination service.
-    #[must_use]
-    pub const fn with_type(mesh_type: ServiceMeshType) -> Self {
-        Self { mesh_type }
+        Self
     }
 }
 
@@ -78,34 +31,18 @@ impl Default for ServiceMeshSource {
 }
 
 impl EndpointSource for ServiceMeshSource {
-    #[expect(
-        deprecated,
-        reason = "resolve() matches on deprecated vendor-specific mesh variants"
-    )]
     fn resolve(
         &self,
         service: &str,
     ) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
         let service = service.to_string();
-        let mesh_type = self.mesh_type;
 
         Box::pin(async move {
-            match mesh_type {
-                ServiceMeshType::Auto => {
-                    tracing::trace!(
-                        service,
-                        "Service mesh discovery delegated to coordination service"
-                    );
-                    Ok(None)
-                }
-                ServiceMeshType::Consul | ServiceMeshType::Etcd | ServiceMeshType::Kubernetes => {
-                    tracing::warn!(
-                        service,
-                        "Vendor-specific service mesh deprecated - use coordination service"
-                    );
-                    Ok(None)
-                }
-            }
+            tracing::trace!(
+                service,
+                "Service mesh discovery delegated to coordination service"
+            );
+            Ok(None)
         })
     }
 
@@ -126,41 +63,7 @@ mod tests {
 
     #[test]
     fn test_service_mesh_source_default() {
-        let source = ServiceMeshSource::default();
-        assert!(matches!(source.mesh_type, ServiceMeshType::Auto));
-    }
-
-    #[test]
-    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
-    fn test_service_mesh_source_with_consul_deprecated() {
-        let source = ServiceMeshSource::with_type(ServiceMeshType::Consul);
-        assert!(matches!(source.mesh_type, ServiceMeshType::Consul));
-    }
-
-    #[test]
-    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
-    fn test_service_mesh_source_with_etcd_deprecated() {
-        let source = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
-        assert!(matches!(source.mesh_type, ServiceMeshType::Etcd));
-    }
-
-    #[test]
-    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
-    fn test_service_mesh_source_with_kubernetes_deprecated() {
-        let source = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
-        assert!(matches!(source.mesh_type, ServiceMeshType::Kubernetes));
-    }
-
-    #[tokio::test]
-    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
-    async fn test_service_mesh_deprecated_returns_none() {
-        let consul = ServiceMeshSource::with_type(ServiceMeshType::Consul);
-        let etcd = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
-        let k8s = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
-
-        assert_eq!(consul.resolve("test-service").await.unwrap(), None);
-        assert_eq!(etcd.resolve("test-service").await.unwrap(), None);
-        assert_eq!(k8s.resolve("test-service").await.unwrap(), None);
+        let _source = ServiceMeshSource::default();
     }
 
     #[tokio::test]
@@ -169,12 +72,5 @@ mod tests {
         let result = source.resolve("auto-service").await.unwrap();
 
         assert_eq!(result, None);
-    }
-
-    #[test]
-    fn test_service_mesh_type_debug() {
-        let mesh_type = ServiceMeshType::Auto;
-        let debug = format!("{mesh_type:?}");
-        assert!(debug.contains("Auto"));
     }
 }
