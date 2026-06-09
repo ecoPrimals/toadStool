@@ -134,7 +134,7 @@ pub(super) fn gpc_alive(val: u32) -> bool {
     !is_pri_fault(val) && val != 0
 }
 
-#[allow(dead_code)]
+#[expect(dead_code, reason = "CE liveness check retained for future copy-engine diagnostics")]
 fn ce_alive(val: u32) -> bool {
     !is_pri_fault(val)
 }

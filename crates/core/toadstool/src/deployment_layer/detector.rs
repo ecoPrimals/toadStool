@@ -141,7 +141,10 @@ impl LayerDetector {
 
     async fn detect_middleware(&self) -> Result<Option<DeploymentLayer>, DetectionError> {
         if let Ok(os_release) = tokio::fs::read_to_string(etc_paths::OS_RELEASE).await {
-            if !os_release.contains("biomeOS") && !os_release.contains("SteamOS") {
+            use toadstool_common::constants::ecosystem::os_identifiers;
+            if !os_release.contains(os_identifiers::BIOMEOS)
+                && !os_release.contains(os_identifiers::STEAMOS)
+            {
                 let (host_os, host_version) = self.parse_os_release(&os_release);
                 return Ok(Some(DeploymentLayer::MiddlewareLayer {
                     host_os,

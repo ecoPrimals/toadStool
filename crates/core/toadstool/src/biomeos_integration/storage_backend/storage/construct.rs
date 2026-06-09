@@ -8,7 +8,7 @@ use crate::{ToadStoolError, ToadStoolResult};
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct SocketStorageBackend {
     pub(crate) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg_attr(not(test), expect(dead_code, reason = "storage tier consumed only in test assertions"))]
     pub(crate) storage_tier: String,
     pub(crate) replication_enabled: bool,
     pub(crate) replication_factor: u32,

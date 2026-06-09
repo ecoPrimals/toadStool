@@ -247,7 +247,7 @@ const fn pm4_type3_header(opcode: u32, count: u32) -> u32 {
 }
 
 /// Build `COMPUTE_PGM_RSRC1` register value (legacy interface).
-#[allow(dead_code)]
+#[expect(dead_code, reason = "legacy interface retained for non-profiled dispatch paths")]
 const fn compute_pgm_rsrc1(
     vgpr_count: u32,
     sgpr_count: u32,
@@ -316,7 +316,7 @@ fn compute_resource_limits_profiled(info: &ShaderInfo, profile: &AmdGenerationPr
 }
 
 /// Build `COMPUTE_RESOURCE_LIMITS` register value (legacy interface).
-#[allow(dead_code)]
+#[expect(dead_code, reason = "legacy interface retained for non-profiled dispatch paths")]
 const fn compute_resource_limits(info: &ShaderInfo) -> u32 {
     let threads_per_wg = info.workgroup[0] * info.workgroup[1] * info.workgroup[2];
     let waves_per_threadgroup = threads_per_wg.div_ceil(info.wave_size);

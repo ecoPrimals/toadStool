@@ -47,6 +47,14 @@ pub mod well_known {
     pub const BIOMEOS: &str = "biomeos";
 }
 
+/// OS-release identifiers used for deployment-layer detection.
+pub mod os_identifiers {
+    /// biomeOS host OS identifier (matched in `/etc/os-release`).
+    pub const BIOMEOS: &str = "biomeOS";
+    /// SteamOS host OS identifier (matched in `/etc/os-release`).
+    pub const STEAMOS: &str = "SteamOS";
+}
+
 /// Protocol strings for `NodeType` (coordination discovery API).
 /// Legacy wire-format labels from older deployments; prefer capability discovery elsewhere.
 pub mod node_type {

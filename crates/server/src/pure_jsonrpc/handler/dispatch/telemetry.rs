@@ -107,7 +107,7 @@ impl DispatchTelemetryRecord {
     ///
     /// String fields are hashed via FNV-1a to produce stable `f64` values.
     /// Boolean fields map to `0.0` / `1.0`. Nullable fields use `0.0` for `None`.
-    #[cfg_attr(not(test), allow(dead_code, reason = "barraCuda ml.mlp_train consumer API"))]
+    #[cfg_attr(not(test), expect(dead_code, reason = "barraCuda ml.mlp_train consumer API"))]
     #[must_use]
     pub fn to_feature_vector(&self) -> [f64; 36] {
         [
@@ -319,7 +319,6 @@ pub fn telemetry_schema() -> serde_json::Value {
 }
 
 /// FNV-1a hash of a string, scaled to `f64` in `[0, 1)` for perceptron input stability.
-#[cfg_attr(not(test), allow(dead_code, reason = "used by to_feature_vector for ml.mlp_train"))]
 fn fnv1a_hash_f64(s: &str) -> f64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for byte in s.bytes() {

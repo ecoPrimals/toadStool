@@ -16,7 +16,7 @@ pub mod discovery;
 pub mod policy;
 mod state;
 
-#[allow(
+#[expect(
     unused_imports,
     reason = "MIN_HEARTBEAT_INTERVAL_SECS re-exported for downstream crates"
 )]

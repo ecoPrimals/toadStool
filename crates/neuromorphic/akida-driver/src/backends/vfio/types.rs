@@ -15,9 +15,9 @@ pub mod ioctls {
         VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
     };
 
-    #[allow(dead_code, reason = "VFIO DMA map flags retained for backend ABI parity")]
+    #[expect(dead_code, reason = "VFIO DMA map flags retained for backend ABI parity")]
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
-    #[allow(dead_code, reason = "VFIO DMA map flags retained for backend ABI parity")]
+    #[expect(dead_code, reason = "VFIO DMA map flags retained for backend ABI parity")]
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
 
@@ -33,9 +33,9 @@ pub struct PollConfig<'a> {
     pub error_msg: &'a str,
 }
 
-#[allow(unused_imports, reason = "Re-exported for downstream VFIO backend consumers")]
+#[expect(unused_imports, reason = "re-exported for downstream VFIO backend consumers")]
 pub use toadstool_hw_safe::vfio_setup::{VfioDeviceInfo, VfioGroupStatus, VfioRegionInfo};
-#[allow(unused_imports, reason = "Re-exported for downstream VFIO backend consumers")]
+#[expect(unused_imports, reason = "re-exported for downstream VFIO backend consumers")]
 pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
 #[cfg(test)]

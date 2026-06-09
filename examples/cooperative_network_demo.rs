@@ -13,7 +13,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 struct Node {
-    #[allow(dead_code, reason = "field used for Debug display and future expansion")]
+    #[expect(dead_code, reason = "field used for Debug display and future expansion")]
     name: String,
     contributed: u64,
     received: u64,

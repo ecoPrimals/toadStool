@@ -72,7 +72,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
 
     // Transport injection: check TRANSPORT_ENDPOINT first (sourDough standard)
     if let Some(te) = toadstool_common::TransportEndpoint::from_env()
-        .map_err(|e| ToadStoolError::configuration(e))?
+        .map_err(ToadStoolError::configuration)?
     {
         match te {
             toadstool_common::TransportEndpoint::Tcp { ref host, port } => {
