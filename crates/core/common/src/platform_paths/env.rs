@@ -26,6 +26,8 @@ pub struct PathEnv {
     pub user: Option<String>,
     /// TMPDIR (Unix) or TMP/TEMP (Windows) - explicit override
     pub tmpdir: Option<String>,
+    /// `BIOMEOS_SOCKET_DIR` - NUCLEUS socket directory override
+    pub biomeos_socket_dir: Option<String>,
     /// Current platform (detected)
     pub platform: Platform,
 }
@@ -69,6 +71,7 @@ impl PathEnv {
                 .or_else(|_| std::env::var(socket_env::TMP))
                 .or_else(|_| std::env::var(socket_env::TEMP))
                 .ok(),
+            biomeos_socket_dir: std::env::var(socket_env::BIOMEOS_SOCKET_DIR).ok(),
             platform: Platform::detect(),
         }
     }

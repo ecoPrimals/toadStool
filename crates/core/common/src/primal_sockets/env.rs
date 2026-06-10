@@ -46,6 +46,8 @@ pub struct SocketPathEnv {
     pub biomeos_socket_path: Option<String>,
     /// `NUCLEUS_SOCKET` override for Nucleus socket
     pub nucleus_socket: Option<String>,
+    /// `BIOMEOS_SOCKET_DIR` — NUCLEUS socket directory override
+    pub biomeos_socket_dir: Option<String>,
     /// `BIOMEOS_INSECURE` — when "1", disables BTSP (dev only; conflicts with `FAMILY_ID`)
     pub biomeos_insecure: Option<String>,
     /// Coordination service URL/path hint (not socket-specific): `TOADSTOOL_COORDINATION_ENDPOINT`,
@@ -141,6 +143,7 @@ impl SocketPathEnv {
             toadstool_socket: std::env::var(socket_env::TOADSTOOL_SOCKET).ok(),
             toadstool_tarpc_socket: std::env::var(socket_env::TOADSTOOL_TARPC_SOCKET).ok(),
             biomeos_socket_path: std::env::var(socket_env::BIOMEOS_SOCKET_PATH).ok(),
+            biomeos_socket_dir: std::env::var(socket_env::BIOMEOS_SOCKET_DIR).ok(),
             nucleus_socket: std::env::var(socket_env::NUCLEUS_SOCKET).ok(),
             biomeos_insecure: std::env::var(socket_env::BIOMEOS_INSECURE).ok(),
             coordination_connection_hint: std::env::var(

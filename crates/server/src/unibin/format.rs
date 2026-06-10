@@ -132,6 +132,20 @@ pub fn get_socket_path(
         return Ok(PathBuf::from(socket));
     }
 
+    if let Ok(dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
+        let socket_dir = PathBuf::from(&dir);
+        if socket_dir.exists() || std::fs::create_dir_all(&socket_dir).is_ok() {
+            let socket_filename = socket_filename_for_family(family_id);
+            let socket_path = socket_dir.join(socket_filename);
+            info!(
+                "✅ Using socket path from {}: {}",
+                socket_env::BIOMEOS_SOCKET_DIR,
+                socket_path.display()
+            );
+            return Ok(socket_path);
+        }
+    }
+
     let runtime_dir = if let Ok(xdg_runtime) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         PathBuf::from(xdg_runtime)
     } else if let Ok(uid_str) = std::fs::read_to_string(procfs::PROC_SELF_LOGINUID) {

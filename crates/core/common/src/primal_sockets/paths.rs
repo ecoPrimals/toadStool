@@ -55,9 +55,14 @@ pub fn resolve_runtime_dir(env: &SocketPathEnv) -> String {
         .to_string()
 }
 
-/// Pure logic: resolve biomeos dir
+/// Pure logic: resolve biomeos dir.
+///
+/// Resolution: `BIOMEOS_SOCKET_DIR` > `{runtime_dir}/biomeos/`
 #[must_use]
 pub fn resolve_biomeos_dir(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref dir) = env.biomeos_socket_dir {
+        return PathBuf::from(dir);
+    }
     PathBuf::from(resolve_runtime_dir(env)).join("biomeos")
 }
 

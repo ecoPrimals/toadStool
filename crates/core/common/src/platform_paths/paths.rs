@@ -144,9 +144,14 @@ impl<'a> PlatformPaths<'a> {
         self.temp_dir().join("toadstool-config")
     }
 
-    /// ToadStool socket directory (biomeOS standard: `{runtime}/biomeos/`)
+    /// ToadStool socket directory.
+    ///
+    /// Resolution: `BIOMEOS_SOCKET_DIR` > `{runtime_dir}/biomeos/`
     #[must_use]
     pub fn toadstool_socket_dir(&self) -> PathBuf {
+        if let Some(ref dir) = self.env.biomeos_socket_dir {
+            return PathBuf::from(dir);
+        }
         self.runtime_dir().join("biomeos")
     }
 
@@ -288,6 +293,7 @@ mod tests {
             xdg_runtime_dir: None,
             tmpdir: Some("/fixed/tmp".into()),
             user: Some("nobody".into()),
+            biomeos_socket_dir: None,
             platform: Platform::Linux,
         };
         let paths = PlatformPaths::new(&env);

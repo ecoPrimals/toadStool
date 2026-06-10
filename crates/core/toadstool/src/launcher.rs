@@ -133,7 +133,16 @@ fn get_toadstool_socket_paths() -> Vec<PathBuf> {
     // 1. biomeOS socket (shared module - env overrides, XDG-compliant)
     paths.push(toadstool_common::primal_sockets::get_toadstool_socket_path());
 
-    // 2. Display-specific paths (XDG-compliant)
+    // 2. BIOMEOS_SOCKET_DIR (NUCLEUS socket directory — preferred for display too)
+    if let Ok(socket_dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
+        paths.push(
+            PathBuf::from(&socket_dir)
+                .join(PRIMAL_NAME)
+                .join("display.sock"),
+        );
+    }
+
+    // 3. Display-specific paths (XDG-compliant)
     if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         paths.push(
             PathBuf::from(&runtime_dir)
@@ -164,14 +173,19 @@ fn get_toadstool_socket_paths() -> Vec<PathBuf> {
 fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
-    // 1. XDG_RUNTIME_DIR (preferred)
+    // 1. BIOMEOS_SOCKET_DIR (NUCLEUS socket directory — highest priority)
+    if let Ok(socket_dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
+        paths.push(PathBuf::from(socket_dir).join(format!("{PRIMAL_NAME}-ipc-port")));
+    }
+
+    // 2. XDG_RUNTIME_DIR
     if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         paths.push(
             PathBuf::from(runtime_dir).join(format!("{PRIMAL_NAME}-ipc-port")),
         );
     }
 
-    // 2. HOME/.local/share (secondary)
+    // 3. HOME/.local/share (secondary)
     if let Ok(home) = std::env::var(socket_env::HOME) {
         paths.push(
             PathBuf::from(home)
@@ -180,7 +194,7 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
         );
     }
 
-    // 3. Temp dir (fallback - platform agnostic)
+    // 4. Temp dir (fallback - platform agnostic)
     paths.push(std::env::temp_dir().join(format!("{PRIMAL_NAME}-ipc-port")));
 
     paths

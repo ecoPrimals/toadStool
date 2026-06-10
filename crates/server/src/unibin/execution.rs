@@ -412,9 +412,13 @@ pub fn is_selinux_enforcing() -> bool {
 }
 
 fn write_fleet_file(devices: &[String]) {
-    let runtime_dir =
-        std::env::var(socket_env::XDG_RUNTIME_DIR).unwrap_or_else(|_| "/tmp".to_string());
-    let fleet_dir = std::path::PathBuf::from(&runtime_dir).join("biomeos");
+    let fleet_dir = std::env::var(socket_env::BIOMEOS_SOCKET_DIR)
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            let runtime_dir = std::env::var(socket_env::XDG_RUNTIME_DIR)
+                .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
+            std::path::PathBuf::from(&runtime_dir).join("biomeos")
+        });
     let fleet_path = fleet_dir.join("toadstool-ember-fleet.json");
 
     if let Err(e) = std::fs::create_dir_all(&fleet_dir) {
@@ -501,14 +505,19 @@ pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> 
 
     let content = format!("tcp:{addr}");
 
-    if let Ok(runtime_dir) = env::var(socket_env::XDG_RUNTIME_DIR) {
-        let path = PathBuf::from(runtime_dir).join(filename);
-        fs::write(&path, &content).map_err(|e| ServerError::Internal(e.to_string()))?;
-        info!("📁 TCP discovery file: {}", path.display());
-        return Ok(());
-    }
+    let dir = env::var(socket_env::BIOMEOS_SOCKET_DIR)
+        .or_else(|_| env::var(socket_env::XDG_RUNTIME_DIR))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            warn!(
+                "Neither {} nor {} set — TCP discovery file written to temp_dir (stale socket risk)",
+                socket_env::BIOMEOS_SOCKET_DIR,
+                socket_env::XDG_RUNTIME_DIR,
+            );
+            env::temp_dir()
+        });
 
-    let path = env::temp_dir().join(filename);
+    let path = dir.join(filename);
     fs::write(&path, &content).map_err(|e| ServerError::Internal(e.to_string()))?;
     info!("📁 TCP discovery file: {}", path.display());
     Ok(())

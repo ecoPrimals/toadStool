@@ -60,6 +60,7 @@ pub fn is_selinux_enforcing() -> bool {
 /// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, `HOME/.local/share`, then the system temp directory.
 pub fn write_tcp_discovery_file(addr: &SocketAddr) {
     let discovery_dirs: Vec<Option<String>> = vec![
+        std::env::var(socket_env::BIOMEOS_SOCKET_DIR).ok(),
         std::env::var(socket_env::XDG_RUNTIME_DIR).ok(),
         std::env::var(socket_env::HOME)
             .ok()
