@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S298 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S308 | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (8,895+ lib-only default; +1,289 behind `legacy-coordination`), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,069+ lib-only default; +1,289 behind `legacy-coordination`), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (confirmed S288); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
@@ -50,16 +50,16 @@ Nest    = Tower  + Storage            <- storage
 | Production stubs / test mocks | Stubs evolved to real implementations or typed errors (`NoProviderRegistered`, `NoEngineRegistered`); **embedded-placeholder** opt-in via `embedded-placeholder-impls` feature (S285 — removed from default features); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
-| Dead code | ~400+ lines removed (REST, middleware, dead modules); **zero production `#[allow]`** (S291 — all converted to `#[expect]` or deleted; ~13 test-only `#[allow]` remain) |
+| Dead code | ~400+ lines removed (REST, middleware, dead modules); **zero production `#[allow]`** (S291 — all converted to `#[expect]` with `reason`; ~13 test-only `#[allow]` remain) |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→security service RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed. S288: `modbus` (feature-gated `modbus-transport`, not default). S289: `bollard` (feature-gated `docker`, not default). S292: `serialport` (feature-gated `serial-transport`, not default). S293: `tarpc` removed from display (unused), made optional in protocols (`tarpc-transport`) |
-| Hardcoded primal names | **0** user-visible; install/launcher paths use `PRIMAL_BINARY_NAME` (S292); **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
+| Hardcoded primal names | **0** user-visible; install/launcher paths use `PRIMAL_BINARY_NAME` (S292); **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3 |
 | `async-trait` migration | **DEPRECATED** — fully removed and banned in `deny.toml` (S203r). **Stadial parity gate cleared (S203s)**: ~32 traits converted from `dyn` dispatch to **enum dispatch + RPITIT**. Zero finite-implementor `dyn` remaining. |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | JSON-RPC surface | **111** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | Non-hardware production files target **< 500 lines**. **0 production files >800L** (S284 split last 3: `sovereign_init`, `open_vfio`, `experiment`); test-only files in `tests/` directories may exceed limit. S278+S284 split oversized production files into module dirs. |
+| File size limit | Non-hardware production files target **< 500 lines**. **0 production files >750L** (S284 split large files, S303+S306+S307 tightened gate to 750L); test-only files in `tests/` directories may exceed limit. |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -147,11 +147,11 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 
 ### Health Probe Timeouts (PG-62)
 
-Callers probing `health.liveness` should use a timeout of **≥3 seconds** (recommended: 5s for composition startup). During initialization, `health.liveness` returns `{"status":"starting"}` until the server is fully ready (discovery registered, biomeOS scanned), then transitions to `{"status":"alive"}`. The socket accepts connections immediately upon listener bind — before executor initialization completes — so callers receive a fast response even during cold start. If BTSP handshake is required, add its budget (5s default, overridable via `BTSP_HANDSHAKE_TIMEOUT_SECS`).
+Callers probing `health.liveness` should use a timeout of **≥3 seconds** (recommended: 5s for composition startup). `health.liveness` always returns `{"status":"alive"}` — if the caller can reach the handler, the process is alive. Boot-phase signaling is handled by `health.readiness` (`"starting"` → `"ready"`). The socket accepts connections immediately upon listener bind (prebind + early health responder, S272/Wave 47), so callers get a fast response during cold start. If BTSP handshake is required, add its budget (5s default, overridable via `BTSP_HANDSHAKE_TIMEOUT_SECS`).
 
 | Probe | During init | After ready |
 |-------|-------------|-------------|
-| `health.liveness` | `{"status":"starting"}` | `{"status":"alive"}` |
+| `health.liveness` | `{"status":"alive"}` | `{"status":"alive"}` |
 | `health.readiness` | `{"status":"starting","version":"..."}` | `{"status":"ready","version":"..."}` |
 | `health.check` | Full envelope (always `"alive"`) | Full envelope |
 
@@ -242,6 +242,9 @@ toadStool/
 |   +-- security/                  Sandbox, policies, monitoring
 |   +-- testing/                   Chaos, fault, property-based testing (proptest)
 |   +-- management/                Analytics, monitoring, resources (real ResourceManager with toadstool-sysmon)
+|   +-- client/                    ToadStool client library (tarpc + JSON-RPC client builders)
+|   +-- auto_config/               Zero-config auto-detection (sysfs, env, discovery)
+|   +-- integration-tests/         Cross-crate integration tests
 +-- (fossils at ecoPrimals/infra/wateringHole/fossilRecord/)
 +-- (showcase/ fossilized S275 → fossilRecord/primals/toadStool/showcase_wave49/)
 +-- docs/                          Architecture, guides, audits, ADRs
@@ -273,8 +276,8 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (8,895+ lib default; +1,289 legacy-coordination) |
-| Lib-only line coverage | ~83.6% |
+| Workspace tests | **23,000+**, 0 failures (9,069+ lib default; +1,289 legacy-coordination) |
+| Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282–S290: all paths evolved to Result; diagnostic `write!` expects → `let _ = write!()`, S290) |
@@ -282,7 +285,7 @@ toadStool/
 | Production stubs | Typed error returns (`NoProviderRegistered`, `NoEngineRegistered`, etc.); test-only mocks **`#[cfg(test)]`** only |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
 | Production FIXME / HACK | 0 |
-| Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
+| Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **zero production `#[allow]`** — all converted to `#[expect]` with `reason` (S291); ~13 test-only `#[allow]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
 | External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif`. S288: `modbus` (feature-gated `modbus-transport`). S289: `bollard` (feature-gated `docker`, not default) |
 | Env centralization | **~98%** (~410+ env reads via `socket_env::` constants); <10 raw `env::var("...")` remaining (S282–S285) |
@@ -296,35 +299,27 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,156+ lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,069+ lib); ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
-- **S298 (Jun 6, 2026)**: **Coverage Push IV** — +44 tests (9,069 lib total). `silicon.rs` (13 tests: performance surface query, route_multi_unit, heuristic paths). `job.rs` (11 tests: queue full, lifecycle transitions, cancel/result, malformed IDs). `coordination_integration` (5 tests: discovery, caching, registration). `method_gate.rs` (12 tests: gate modes, allowlist, trust levels, envelope enforcement). `auth.rs` (6 tests: peer_info trust levels, auth.check edge cases). **9,069+ lib tests. Zero clippy.**
-- **S297 (Jun 6, 2026)**: **Coverage Push III** — +38 tests (9,025 lib total). `transport.rs` (12 tests: discover, list, route, open/stream, status). `dispatch/shader_dispatch.rs` (5 tests: workgroup parsing, envelope rejection, DRM mode). CLI commands (17 tests: device, mode, kernel_health, npu — sysfs helpers, output formats, BDF resolution). `glowplug_client.rs` (7 tests: BDF parsing, experiment lifecycle, warm detect). **9,025+ lib tests. Zero clippy.**
-- **S296 (Jun 5, 2026)**: **Coverage Push II + Musl Build** — +35 tests (8,987 lib total). `ember.rs` (10 tests: list, status, param validation). `dispatch/submit.rs` (17 tests: binary resolution, workgroup/buffers, dispatch mode, thermal gate, envelope enforcement). Background services (5 tests: cleanup timeout, resource stats). CLI `start.rs` (3 tests: workload source validation). Musl-static binary built (14MB, static-pie, stripped) — ready for VPS redeployment. **8,987+ lib tests. Zero clippy.**
-- **S295 (Jun 5, 2026)**: **Wave 79b: Headless Mode + akida-setup Graceful Skip** — Fixed P0 VPS deployment regression: `akida-setup` now exits gracefully (exit 0 with warning) when no NPU hardware found instead of hard-failing. Added `--headless` flag to `server`/`daemon` commands — skips GPU/NPU probes for pure-compute IPC server mode. `TOADSTOOL_HEADLESS=1` env also honored. Systemd unit `ConditionPathIsDirectory=/sys/bus/pci` added. `toadstool server --socket /run/membrane/toadstool.sock --headless` now works on VPS without hardware. **8,952+ lib tests. Zero clippy.**
-- **S294 (Jun 5, 2026)**: **Wave 79: UDS Compliance + Coverage Push** — Fixed P2 binary UDS compliance: `--socket` CLI arg now wired through to server bind (was dead code). Socket path resolution adds CLI override as precedence #0. `primal.announce` reports actual bound path. Coverage push: +57 tests (8,952 lib total). CallerContext extraction tests, handler glue tests (workload, resources, queries, state, compute), `RuntimeEngineDispatch` delegation tests. Mutual-auth support wired into `ConnectionTrustHints`. **8,952+ lib tests. Zero clippy.**
-- **S293 (Jun 5, 2026)**: **Deep Debt X: tarpc Gating + Unwrap Purge + Cylinder Split + LEGACY Deprecation Tracing** — Removed unused `tarpc` from `runtime/display`. `tarpc` made optional in `integration/protocols` behind `tarpc-transport`. `mmu_oracle/capture.rs` (795L) smart-split into `capture/` module dir (bar0, types, walk). All production `unwrap`/`expect` purged: `cpu_resource.rs` degraded pool, `rm_trigger` ioctl, Akida deprecated MMIO wrappers removed, neuromorphic bin tools. 23 `LEGACY_*` env reads now emit `tracing::warn!` deprecation notices. **8,895+ lib tests. Zero clippy. Zero production panics.**
-- **S292 (Jun 5, 2026)**: **Deep Debt IX: Feature Gates + Module Splits + Naming + SAFETY + Deprecated Cleanup** — `serialport` feature-gated (`serial-transport`, not default) in `runtime/edge`. `dispatch/device.rs` (781L) smart-split into `device/` module dir (vfio, gr_init, lifecycle). Hardcoded `"toadstool"` → `PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants. Deprecated `TestExecutor`/`WorkloadExecutor` exports removed from `server/lib.rs`. SAFETY docs added to V4L2 ioctl + plugin ABI. Deprecated coordination re-exports removed from `distributed/lib.rs`. **8,895+ lib tests. Zero clippy.**
-- **S291 (Jun 5, 2026)**: **Wave 78 Parity: Capability Registry + Zero Production #[allow]** — Created `config/capability_registry.toml` (machine-readable, 17 capability groups, 111 methods). Eliminated all 77 production `#[allow]` attributes: 14 deleted (stale), 58 converted to `#[expect]`, 4 unsafe justified with `#[expect]`, 4 cfg-gated. **Zero production `#[allow]`. Wave 78 compliant.**
-- **S290 (Jun 4, 2026)**: **CallerContext Threading + Coordination Feature Gate + Panic Hygiene** — `compute.fan_out` now enforces resource envelope and emits telemetry (was ignoring `CallerContext`). `distributed::coordination` module (~6.3k LOC) feature-gated behind `legacy-coordination` (not default). `sovereign_acr_boot` binary unwraps hardened. ~45 diagnostic `write!().unwrap()` sites evolved to `let _ = write!()`. **8,895+ lib tests (default) + 1,289 (legacy-coordination). Full workspace clippy clean.**
-- **S289 (Jun 4, 2026)**: **Telemetry Wire Contract + Adversarial Trust Tests + Telemetry Emission + Bollard Feature Gate** — `dispatch.telemetry.schema` evolved to versioned wire contract v1.1 (encoding rules, backward compat, consumer list for barraCuda/biomeOS L5 perceptron). +8 adversarial `dispatch.verify_trust` tests (forged BTSP, gate_id mismatch, malformed params, trust level serialization roundtrip). `DispatchTelemetryRecord` now emitted from `compute.dispatch.submit` and `shader.dispatch` via structured tracing (`dispatch.telemetry` target). `bollard` removed from default features in `runtime/container` (opt-in via `docker` feature). **9,204+ lib tests. Full workspace clippy clean.**
-- **S288 (Jun 3, 2026)**: **Deep Debt Evolution VIII: Panic Elimination + Naming + Feature Gates + Safety Docs** — Akida MMIO panicking wrappers removed; VFIO callers use `try_read32`/`try_write32`. `cpu_resource` Rayon pool and `rm_trigger` ioctl buffers evolved to Result. BearDog type aliases removed (`SecurityServiceIntegration`, `SecurityPermission`). `modbus` feature-gated (`modbus-transport`). SAFETY docs on all `Ioctl::output_from_ptr` impls. **Zero P0 panic paths. Full workspace clippy clean.**
-- **S287 (Jun 3, 2026)**: **S286 Consolidation + Telemetry Consumer + Trust Test Coverage** — `verify_trust` semantics tightened; `auth.peer_info` returns `gate_id`/`trust_level`/`transport`. Ownership lifecycle fixes (`revert_to_local_owner`, `gate.update`/`gate.remove`). `DispatchTelemetryRecord::to_feature_vector()` for barraCuda ml.mlp_train. +16 targeted trust/telemetry tests.
-- **S286 (Jun 3, 2026)**: **Cross-Gate Trust Verification + Dispatch Telemetry + Yield-to-Owner** — `dispatch.verify_trust` + `dispatch.telemetry.schema` JSON-RPC methods. `DispatchTrustLevel` + connection-layer trust in `CallerContext`. `GateOwnership` + `TOADSTOOL_HARDWARE_OWNER_GATE_ID`. Owner gate bypasses guest load limits. Provenance injection on cross-gate forward.
-- **S285 (Jun 3, 2026)**: **Deep Debt Evolution VII: Security Migration + Stub Evolution + Capability Naming** — Server encrypt/decrypt migrated `distributed::security` → `crypto_integration` (zero deprecated security callers). `NoopCryptoProvider`/`StubRuntimeEngine` → typed errors (`NoProviderRegistered`, `NoEngineRegistered`). `embedded-placeholder-impls` removed from specialty defaults. Hardcoded `"toadstool"` → `PRIMAL_NAME`. ~100L dead code removed; last production `expect()` → safe patterns. **Full workspace clippy clean, all tests pass.**
-- **S284 (Jun 3, 2026)**: **Deep Debt Evolution VI: Large File Splits + Deprecated Cleanup + Final Panic Elimination** — Last 3 production files >800L split by concern (`sovereign_init` 991→7 modules, `open_vfio` 949→6, `experiment` 911→5). Final 2 library panics eliminated (`kernel_sentinel`, `visualization_client`). Dead deprecated symbols removed (BearDogBackend, legacy capability helpers). 33 server clippy fixes + test compilation fixes. **0 production files >800L, zero production library panics.**
-- **S282 (May 28, 2026)**: **Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization + Panic Elimination** — 28 unsafe SAFETY doc gaps closed (12 files). 4 production panic paths evolved to Result. 110 raw env::var sites migrated (+56 new socket_env constants). libc::mmap→rustix::mm. 8 cylinder + 13 server clippy fixes. `PatchStrategy` → idiomatic `impl FromStr`. **178 lib tests, zero clippy, zero libc, ~98% env centralized.**
-- **S281 (May 28, 2026)**: **Deep Debt Evolution IV: libc Elimination + Workspace Consolidation** — libc eliminated from cylinder (last C binding on hardware path). rm_trigger.rs → rustix::ioctl. rustix consolidated to workspace dep across 10 crates. +33 socket_env constants, 47 env::var sites migrated. **Zero libc in workspace.**
-- **S280 (May 28, 2026)**: **Wave 59 Env Centralization + Clippy Allow Evolution** — Deleted orphan env_overrides.rs (342L). +73 socket_env constants. 117 env::var sites migrated across 30 files. Fixed 5 P0 bare #[allow(clippy::)].
-- **S279 (May 27, 2026)**: **Deep Debt Evolution III: Panic Path Elimination + Capability Hardening** — All P0/P1 production panic paths eliminated. Legacy capability→primal roundtrip helpers deprecated. **9,156+ lib tests, zero clippy.**
-- **S279 (May 27, 2026)**: **Exp 229: Catalyst Channel** — Full RM compute channel before warm swap (FECS ACR blocker). rm_trigger --channel 16-step Volta recipe.
-- **S278 (May 27, 2026)**: **Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption** — Split 7 oversized files into module directories (sovereign_handoff 2,860L→11 modules, module_patch 2,020L→11, compute_device 2,072L→11 with gr_ungating/pbdma dedup, sovereign_stages 1,861L→7, guarded_sysfs 1,561L→5, channel/mod 1,117L→4, handler/sovereign 1,004L→6). Ported 4 userspace C tools to Rust bins (rm_trigger, sovereign_acr_boot, sovereign_pmu_boot, capture_pmu_falcon). Created `nv/registers/` (12 domain submodules) and `nv/rm_abi.rs` (canonical RM ABI types from coral-kmod). Evolved `StubGspBridge` → `NoopGspBridge` with capability guidance. Gated AMD Vega behind feature. Fossilized coral-kmod. **705 cylinder tests, zero clippy, zero userspace C.**
-- **S90–S198 (Mar–Apr 2026)**: Full evolution history from REST API deletion through BTSP Phase 2, capability-based discovery, unsafe containment (89→46 blocks), OpenCL deprecation, dependency sovereignty, 6502/Z80 emulators, primal overstep cleanup, cross-spring absorptions, and coverage expansion (19K→21.5K tests). See [CHANGELOG.md](CHANGELOG.md) for session-by-session detail.
+- **S308 (Jun 10, 2026)**: **PRIMAL-SOCKET-CLEANUP (Wave 107 P2)** — `BIOMEOS_SOCKET_DIR` wired into all socket/discovery-file resolution chains. Zero `/tmp` writes when `BIOMEOS_SOCKET_DIR` is set. Unblocks `ProtectSystem=strict` systemd hardening.
+- **S307 (Jun 10, 2026)**: **Deep Debt XIV** — `registers.rs` split (pri/cg/pclock), `pm4.rs` test extract, `swap.rs` test extract, stale test cleanup (25 tests removed), unfulfilled lint hygiene. **Zero production files >750L.**
+- **S306 (Jun 9, 2026)**: **Deep Debt XII–XIII** — `bar_cartography.rs` + `amd/ioctl.rs` file splits, `ServiceMeshType` enum removed.
+- **S305 (Jun 9, 2026)**: **Deprecated Symbol Evolution** — `AuthManager`/`AgentDeploymentManager` sync ctor migration to async. 13 `#[allow]` → `#[expect]` with reasons. Zero sync-ctor fallbacks.
+- **S304 (Jun 8, 2026)**: **Deep Debt XI** — Category A deprecated symbols removed (`DiscoveredService`, `ServiceType`, stale test helpers).
+- **S303 (Jun 8, 2026)**: **Deep Debt X-XI** — `page_tables.rs` split. `#[allow]`/`#[expect]` hygiene pass. File-size gate tightened to 750L.
+- **S301–S302 (Jun 8, 2026)**: **Transport Evolution** — `TRANSPORT_ENDPOINT` accepted (sourDough wire-compatible). `connect_transport()` for outbound. `IpcClient::from_transport_endpoint()` bridge. BYOB default bind `127.0.0.1`.
+- **S300 (Jun 6, 2026)**: **Deep Debt X** — `/tmp` path hardcoding eliminated. `temp_dir()` used for platform-agnostic fallback.
+- **S298 (Jun 6, 2026)**: **Coverage Push IV** — +44 tests (9,069 lib). silicon/job/coordination/method_gate/auth tests.
+- **S294–S297 (Jun 5–6, 2026)**: **Coverage Push I–III + VPS Compliance** — +174 tests. `--socket` wired, `--headless` mode, musl-static binary. **9,069+ lib tests.**
+- **S289–S293 (Jun 4–5, 2026)**: **Deep Debt VIII–X + Telemetry** — `tarpc` gating, unwrap purge, cylinder splits, LEGACY deprecation tracing, telemetry wire contract v1.1, bollard/serialport feature-gated, `CallerContext` threading, zero production panics.
+- **S284–S288 (Jun 3, 2026)**: **Deep Debt VI–VIII** — Last 3 files >800L split, BearDog aliases removed, `modbus` gated, SAFETY docs, security migration, typed stub errors. Zero production files >800L.
+- **S278–S283 (May 27–31, 2026)**: **Deep Debt I–V + Module Sprint** — Split 7 oversized files, ported 4 C tools to Rust, libc eliminated, env centralized (~98%), unsafe hardened, zero clippy.
+- **S90–S198 (Mar–Apr 2026)**: Full evolution history from REST API deletion through capability-based discovery, unsafe containment (89→46 blocks), dependency sovereignty, and coverage expansion (19K→21.5K tests). See [CHANGELOG.md](CHANGELOG.md).
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -334,7 +329,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,156+ lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,069+ lib); ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -377,7 +372,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S298. **23,000+** workspace tests, 0 failures (8,895+ lib default; +1,289 legacy-coordination). ~83.6% lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct, `DIRECT_JSONRPC_METHODS`; S286+ adds `dispatch.verify_trust`, `dispatch.telemetry.schema`) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). Zero userspace C. **46 unsafe blocks** — all SAFETY-documented (confirmed S288); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics** (S282–S293: all paths evolved to Result; Akida MMIO panicking wrappers removed S293). Zero production TODO/FIXME/HACK. **~98% env centralized** (410+ reads via `socket_env::` constants; 23 LEGACY reads now emit deprecation tracing S293). **`--socket` CLI wired for UDS compliance** (S294). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. **Telemetry wire contract v1.1** — `dispatch.telemetry.schema` documented for barraCuda/biomeOS L5 consumption (S289).
+**Last Updated**: Jun 2026 — S308. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **46 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308).
 
 ---
 

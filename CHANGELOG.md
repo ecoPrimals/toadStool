@@ -5,7 +5,74 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 3, 2026 (Sessions 43-288)
+## [Unreleased] - Jun 10, 2026 (Sessions 43-308)
+
+### Session S308 (Jun 10, 2026) — PRIMAL-SOCKET-CLEANUP (Wave 107 P2)
+
+`BIOMEOS_SOCKET_DIR` wired into all socket/discovery-file resolution chains (`write_tcp_discovery_file`, `write_fleet_file`, `get_socket_path`, `resolve_biomeos_dir`, `toadstool_socket_dir`, launcher search paths, display IPC). Zero `/tmp` production writes when `BIOMEOS_SOCKET_DIR` is set. Unblocks `ProtectSystem=strict` systemd hardening.
+
+- `PathEnv` + `SocketPathEnv` — added `biomeos_socket_dir` field, populated from `BIOMEOS_SOCKET_DIR` env var
+- `toadstool_socket_dir()` — respects `BIOMEOS_SOCKET_DIR` before falling back to `{runtime_dir}/biomeos`
+- `resolve_biomeos_dir()` — same precedence
+- `write_tcp_discovery_file()` — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (with warning)
+- `write_fleet_file()` — same chain
+- `get_socket_path()` — `BIOMEOS_SOCKET_DIR` checked after explicit socket overrides
+- Launcher discovery paths — `BIOMEOS_SOCKET_DIR` first in search order
+- Display IPC — `BIOMEOS_SOCKET_DIR` first in discovery chain
+- Files: `execution.rs`, `format.rs`, `platform_paths/env.rs`, `platform_paths/paths.rs`, `primal_sockets/env.rs`, `primal_sockets/paths.rs`, `launcher.rs`, `display/ipc/platform.rs`
+
+### Session S307 (Jun 10, 2026) — Deep Debt XIV: File Splits + Stale Test Cleanup + Lint Hygiene
+
+- `registers.rs` (766L) split into `registers/pri.rs`, `registers/cg.rs`, `registers/pclock.rs` (→548L)
+- `pm4.rs` (752L) test extract → `pm4_tests.rs` (→359L)
+- `swap.rs` (774L) test extract → `swap_tests.rs` (→498L)
+- Zero production files >750L
+- Removed 25 stale tests referencing removed APIs (`ServiceType`, `DiscoveredService`, `with_security`)
+- Fixed unfulfilled lint expectations (`#[cfg(test)]` on test-only functions, `#[allow]` vs `#[expect]` for conditional warns)
+
+### Session S306 (Jun 9, 2026) — Deep Debt XII–XIII: File Splits + ServiceMeshType Removal
+
+- `bar_cartography.rs` → `bar_cartography/` module dir (types, scan, display, helpers)
+- `amd/ioctl.rs` → `amd/ioctl/` module dir (types, ops)
+- Removed deprecated `ServiceMeshType` enum; `ServiceMeshSource` simplified to unit struct
+
+### Session S305 (Jun 9, 2026) — Deprecated Symbol Evolution: Sync Ctor Migration + Lint Hygiene
+
+- `AuthManager::discover_with_config()` → `SecurityBackend::new_async()` (eliminated deprecated `with_security()`)
+- `AgentDeploymentManager::discover_with_config()` → `IntelligenceBackend::new_async()` (eliminated deprecated `with_intelligence_service()`)
+- `GpuFramework::OpenCl` formally deprecated
+- 13 `#[allow]` → `#[expect]` with reasons
+
+### Session S304 (Jun 8, 2026) — Deep Debt XI: Category A Deprecated Symbol Removal
+
+- Removed `DiscoveredService`, `ServiceType` enum, stale test helpers
+- Eliminated deprecated re-exports from public APIs
+
+### Session S303 (Jun 8, 2026) — Deep Debt X-XI: Page Tables Split + Lint Hygiene
+
+- `page_tables.rs` split into `page_tables/` module dir
+- `#[allow]`/`#[expect]` hygiene pass
+- File-size gate tightened from 800L to 750L
+
+### Session S301–S302 (Jun 8, 2026) — Transport Evolution: TRANSPORT_ENDPOINT + connect_transport()
+
+- `TRANSPORT_ENDPOINT` env var accepted at all server paths (sourDough wire-compatible)
+- `connect_transport()` for outbound IPC
+- `IpcClient::from_transport_endpoint()` bridge
+- Local `TransportEndpoint` type (Uds/Tcp/MeshRelay)
+- BYOB default bind changed from `0.0.0.0` to `127.0.0.1`
+
+### Session S300 (Jun 6, 2026) — Deep Debt X: /tmp Path Evolution
+
+- Hardcoded `/tmp` string literals replaced with `std::env::temp_dir()` for platform-agnostic fallback
+
+### Session S299 (Jun 6, 2026) — Coverage Push V + Cleanup
+
+- Test cleanup and consolidation following S294–S298 coverage sprint
+
+### Session S289–S298 (Jun 4–6, 2026) — Coverage Sprint + Deep Debt VIII–X + Telemetry
+
+See individual session entries below for S289–S293 (deep debt) and S294–S298 (coverage push).
 
 ### Session S288 (Jun 3, 2026) — Deep Debt VIII: Panic Elimination + Naming + Feature Gates + Safety Docs
 
