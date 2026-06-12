@@ -208,6 +208,8 @@ pub(crate) async fn primal_announce(
         )
     };
 
+    let devices = crate::glowplug_client::discover_gpu_bdfs();
+
     Ok(serde_json::json!({
         "primal": PRIMAL_NAME,
         "version": version,
@@ -230,6 +232,7 @@ pub(crate) async fn primal_announce(
             "science": 100,
             "inference": 150,
         },
+        "devices": devices,
         "status": "ready",
     }))
 }

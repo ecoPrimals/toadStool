@@ -60,11 +60,62 @@ pub fn get_default_coordination_socket() -> String {
     format!("{}/biomeos/coordination.sock", get_runtime_dir())
 }
 
+/// Enumerate PCI GPU/NPU devices from sysfs for registration payloads.
+///
+/// Returns a JSON array of device descriptors. Runs synchronously (sysfs reads
+/// are fast) and is safe to call during startup before wgpu initialization.
+fn discover_hardware_inventory() -> Vec<Value> {
+    let pci_dir = std::path::Path::new("/sys/bus/pci/devices");
+    let Ok(entries) = std::fs::read_dir(pci_dir) else {
+        return Vec::new();
+    };
+
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let class_path = entry.path().join("class");
+            let class = std::fs::read_to_string(class_path).ok()?;
+            let class_trimmed = class.trim();
+            // VGA: 0x030000, 3D: 0x030200
+            let device_type = if class_trimmed.starts_with("0x0302") {
+                "gpu_3d"
+            } else if class_trimmed.starts_with("0x0300") {
+                "gpu_vga"
+            } else {
+                return None;
+            };
+
+            let bdf = entry.file_name().to_str()?.to_string();
+            let vendor = std::fs::read_to_string(entry.path().join("vendor"))
+                .ok()
+                .map(|v| v.trim().to_string());
+            let device = std::fs::read_to_string(entry.path().join("device"))
+                .ok()
+                .map(|d| d.trim().to_string());
+            let driver = entry
+                .path()
+                .join("driver")
+                .read_link()
+                .ok()
+                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()));
+
+            Some(json!({
+                "bdf": bdf,
+                "type": device_type,
+                "vendor_id": vendor,
+                "device_id": device,
+                "driver": driver,
+            }))
+        })
+        .collect()
+}
+
 /// Self-register with the discovery service via `DISCOVERY_SOCKET` (preferred) or coordination fallback.
 ///
-/// Sends `ipc.register` so the coordination plane can resolve `toadstool` by capability
-/// without the composition launcher doing it on our behalf. Fire-and-forget
-/// at the call site — if this fails the primal continues in standalone mode.
+/// Sends `ipc.register` with capability list and hardware inventory so the
+/// coordination plane can resolve `toadstool` by capability and know what
+/// compute devices are available. Fire-and-forget at the call site — if
+/// this fails the primal continues in standalone mode.
 ///
 /// # Errors
 ///
@@ -89,13 +140,17 @@ pub async fn register_with_discovery() -> ToadStoolResult<()> {
     let own_socket = resolve_toadstool_socket(&env);
     let endpoint = format!("unix://{}", own_socket.display());
 
+    let devices = discover_hardware_inventory();
+    let device_count = devices.len();
+
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.register",
         "params": {
             "primal_id": PRIMAL_NAME,
             "capabilities": DISCOVERY_CAPABILITIES,
-            "endpoint": endpoint
+            "endpoint": endpoint,
+            "devices": devices
         },
         "id": 1
     });
@@ -109,7 +164,10 @@ pub async fn register_with_discovery() -> ToadStoolResult<()> {
         )));
     }
 
-    info!("Self-registered with discovery service ({})", endpoint);
+    info!(
+        "Self-registered with discovery service ({}, {} device(s))",
+        endpoint, device_count
+    );
     debug!("Registration response: {:?}", response);
 
     Ok(())
@@ -217,6 +275,8 @@ pub async fn self_announce_to_biomeos(
         }
     };
 
+    let devices = discover_hardware_inventory();
+
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "primal.announce",
@@ -235,7 +295,8 @@ pub async fn self_announce_to_biomeos(
                 "compute": 200,
                 "science": 100,
                 "inference": 150
-            }
+            },
+            "devices": devices
         },
         "id": 1
     });
@@ -282,5 +343,33 @@ mod tests {
                 );
             },
         );
+    }
+
+    #[test]
+    fn discover_hardware_inventory_returns_vec() {
+        let devices = discover_hardware_inventory();
+        // May be empty on CI / non-GPU hosts — structural check only
+        for dev in &devices {
+            assert!(dev.get("bdf").is_some(), "device must have bdf field");
+            assert!(dev.get("type").is_some(), "device must have type field");
+            let dev_type = dev["type"].as_str().unwrap();
+            assert!(
+                dev_type == "gpu_vga" || dev_type == "gpu_3d",
+                "unexpected type: {dev_type}"
+            );
+        }
+    }
+
+    #[test]
+    fn discover_hardware_inventory_includes_vendor_and_device_ids() {
+        let devices = discover_hardware_inventory();
+        for dev in &devices {
+            if let Some(vid) = dev.get("vendor_id").and_then(|v| v.as_str()) {
+                assert!(vid.starts_with("0x"), "vendor_id should be hex: {vid}");
+            }
+            if let Some(did) = dev.get("device_id").and_then(|v| v.as_str()) {
+                assert!(did.starts_with("0x"), "device_id should be hex: {did}");
+            }
+        }
     }
 }

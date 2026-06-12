@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S308. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Transport evolution Phase 2 complete. **PRIMAL-SOCKET-CLEANUP done** (Wave 107).
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods) | **Zero `/tmp/` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` | **`TRANSPORT_ENDPOINT` accepted** (sourDough standard, Wave 100) | **BYOB default bind `127.0.0.1`** | **Zero production files >750L** | **~20 deprecated symbols removed** | **Zero sync-ctor fallbacks** (auth/agents fully async)
-**Latest**: S308 — `PRIMAL-SOCKET-CLEANUP` (Wave 107 P2): `BIOMEOS_SOCKET_DIR` wired into all socket/discovery-file resolution chains (`write_tcp_discovery_file`, `write_fleet_file`, `get_socket_path`, `resolve_biomeos_dir`, `toadstool_socket_dir`, launcher search paths, display IPC). Zero `/tmp` production writes when `BIOMEOS_SOCKET_DIR` is set. S307 — Deep debt XIV.
+**Updated**: Jun 2026 — S309. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Transport evolution Phase 2 complete. **PRIMAL-SOCKET-CLEANUP done** (Wave 107). **TOADSTOOL-AUTO-REGISTER done** (Wave 111).
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods) | **Zero `/tmp/` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` | **`TRANSPORT_ENDPOINT` accepted** (sourDough standard, Wave 100) | **BYOB default bind `127.0.0.1`** | **Zero production files >750L** | **~20 deprecated symbols removed** | **Zero sync-ctor fallbacks** (auth/agents fully async) | **Auto-register hardware** — PCI sysfs GPU/NPU inventory sent in `ipc.register` + `primal.announce`
+**Latest**: S309 — `TOADSTOOL-AUTO-REGISTER` (Wave 111 P2): PCI sysfs hardware enumeration wired into both `ipc.register` (discovery service) and `primal.announce` (Neural API) payloads. Devices field includes BDF, type, vendor/device IDs, and bound driver. `primal.announce` inbound handler also returns device inventory. Unblocks autonomous `gate.bootstrap` for compute gates. S308 — `PRIMAL-SOCKET-CLEANUP`.
 
 ---
 
@@ -58,6 +58,16 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 12, 2026 — S309 TOADSTOOL-AUTO-REGISTER (Wave 111)
+
+| Item | Status |
+|------|--------|
+| `discover_hardware_inventory()` — PCI sysfs GPU/NPU enumeration (BDF, type, vendor/device ID, driver) | **DONE** |
+| `ipc.register` params extended with `devices` array for songBird/coordination | **DONE** |
+| `self_announce_to_biomeos()` params extended with `devices` array for Neural API | **DONE** |
+| `primal.announce` inbound handler response includes `devices` (BDF list from sysfs) | **DONE** |
+| 2 unit tests for `discover_hardware_inventory` structural validation | **DONE** |
 
 ### Jun 8, 2026 — S301 Transport Evolution (Wave 100)
 
