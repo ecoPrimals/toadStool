@@ -208,22 +208,42 @@ pub async fn serve_unix_prebound(
 
 /// Handle a single Unix connection with persistent keep-alive.
 ///
-/// Supports both HTTP/1.1 keep-alive and persistent NDJSON sessions per
-/// `PRIMAL_IPC_PROTOCOL.md`. Multi-step dispatch sequences (submit → status →
-/// result) and health checks reuse the same connection without reconnecting.
+/// Detects riboCipher transport signal before protocol dispatch per
+/// `RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`. Falls back to legacy
+/// peek-and-guess with WARN for unsignalled connections (Wave 111–112).
 pub(super) async fn handle_unix_connection(
     handler: Arc<JsonRpcHandler>,
-    stream: UnixStream,
+    mut stream: UnixStream,
 ) -> ServerResult<()> {
-    let (reader, mut writer) = stream.into_split();
-    let mut reader = BufReader::new(reader);
-
-    let mut first_line = String::new();
-    let n = reader
-        .read_line(&mut first_line)
+    let mut first = [0u8; 1];
+    let n = tokio::io::AsyncReadExt::read(&mut stream, &mut first)
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
     if n == 0 {
+        return Ok(());
+    }
+
+    let stream = match try_ribocipher_dispatch(&handler, stream, first[0]).await {
+        Ok(Some(result)) => return result,
+        Ok(None) => unreachable!("try_ribocipher_dispatch returns Err for non-riboCipher"),
+        Err(stream) => stream,
+    };
+
+    // Legacy path: WARN and reconstruct first line from consumed byte
+    warn!(
+        first_byte = format_args!("0x{:02X}", first[0]),
+        "DEPRECATED: unsignalled connection (no riboCipher prefix). \
+         Clients should prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+    );
+
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut first_line = String::from(first[0] as char);
+    let n2 = reader
+        .read_line(&mut first_line)
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    if n2 == 0 && first_line.trim().is_empty() {
         return Ok(());
     }
 
@@ -235,6 +255,90 @@ pub(super) async fn handle_unix_connection(
     }
 
     handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await
+}
+
+/// Attempt riboCipher dispatch on a Unix stream. If the first byte is a
+/// riboCipher prefix, the stream is consumed and `Ok(Some(result))` is returned.
+/// If not riboCipher, the stream is returned intact for legacy fallback.
+async fn try_ribocipher_dispatch(
+    handler: &Arc<JsonRpcHandler>,
+    mut stream: UnixStream,
+    first_byte: u8,
+) -> Result<Option<ServerResult<()>>, UnixStream> {
+    use super::ribocipher;
+
+    match first_byte {
+        ribocipher::CLEAR => {
+            let mut pt = [0u8; 1];
+            if let Err(e) = tokio::io::AsyncReadExt::read_exact(&mut stream, &mut pt).await {
+                return Ok(Some(Err(ServerError::Network(format!(
+                    "riboCipher: failed to read protocol type: {e}"
+                )))));
+            }
+            info!(
+                protocol_type = format_args!("0x{:02X}", pt[0]),
+                "riboCipher clear signal"
+            );
+            Ok(Some(
+                handle_ribocipher_clear_unix(handler.clone(), stream, pt[0]).await,
+            ))
+        }
+        ribocipher::MITO => {
+            warn!("riboCipher mito-obfuscated tier not yet supported — closing connection");
+            Ok(Some(Ok(())))
+        }
+        ribocipher::NUCLEAR => {
+            warn!("riboCipher nuclear-sealed tier not yet supported — closing connection");
+            Ok(Some(Ok(())))
+        }
+        _ => Err(stream),
+    }
+}
+
+/// Handle a riboCipher clear-signalled Unix connection, routed by protocol type.
+async fn handle_ribocipher_clear_unix(
+    handler: Arc<JsonRpcHandler>,
+    stream: UnixStream,
+    protocol_type: u8,
+) -> ServerResult<()> {
+    use super::ribocipher::protocol_type as pt;
+
+    match protocol_type {
+        pt::PROBE => {
+            let (_, mut writer) = stream.into_split();
+            let response = serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
+            let mut buf = serde_json::to_vec(&response).unwrap_or_default();
+            buf.push(b'\n');
+            let _ = writer.write_all(&buf).await;
+            let _ = writer.flush().await;
+            Ok(())
+        }
+        pt::NDJSON_JSONRPC => {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+            handle_ndjson_unix(handler, &mut reader, &mut writer, String::new()).await
+        }
+        pt::HTTP => {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+            let mut first_line = String::new();
+            let n = reader
+                .read_line(&mut first_line)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            if n == 0 {
+                return Ok(());
+            }
+            handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await
+        }
+        unknown => {
+            warn!(
+                protocol_type = format_args!("0x{:02X}", unknown),
+                "riboCipher: unsupported protocol type — closing"
+            );
+            Ok(())
+        }
+    }
 }
 
 /// HTTP/1.1 keep-alive loop: process multiple HTTP requests on a single connection.
@@ -364,6 +468,20 @@ pub(super) async fn handle_btsp_connection(
         return Ok(());
     }
 
+    // riboCipher detection — BEFORE legacy BTSP/plaintext peek
+    let mut stream = match try_ribocipher_dispatch(&handler, stream, first[0]).await {
+        Ok(Some(result)) => return result,
+        Ok(None) => unreachable!("try_ribocipher_dispatch returns Err for non-riboCipher"),
+        Err(s) => s,
+    };
+
+    // Legacy BTSP detection with WARN for unsignalled connections
+    warn!(
+        first_byte = format_args!("0x{:02X}", first[0]),
+        "DEPRECATED: unsignalled connection on BTSP socket (no riboCipher prefix). \
+         Clients should prepend [0xEC, protocol_type] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+    );
+
     let mut stream = if is_plaintext_protocol_byte(first[0]) {
         info!(
             target: "btsp",
@@ -472,6 +590,19 @@ pub(super) async fn handle_btsp_connection(
     if n == 0 {
         return Ok(());
     }
+
+    // riboCipher detection — BEFORE legacy peek
+    let mut stream = match try_ribocipher_dispatch(&handler, stream, first[0]).await {
+        Ok(Some(result)) => return result,
+        Ok(None) => unreachable!("try_ribocipher_dispatch returns Err for non-riboCipher"),
+        Err(s) => s,
+    };
+
+    warn!(
+        first_byte = format_args!("0x{:02X}", first[0]),
+        "DEPRECATED: unsignalled connection on BTSP socket (no riboCipher prefix). \
+         Clients should prepend [0xEC, protocol_type] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+    );
 
     if is_plaintext_protocol_byte(first[0]) {
         info!(

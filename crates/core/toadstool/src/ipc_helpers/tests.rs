@@ -327,14 +327,17 @@ async fn spawn_mock_songbird(
     socket_path: &str,
     reply: serde_json::Value,
 ) -> tokio::task::JoinHandle<()> {
-    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
     use tokio::net::UnixListener;
 
     let listener = UnixListener::bind(socket_path).expect("bind mock socket");
     let reply_line = format!("{reply}\n");
 
     tokio::spawn(async move {
-        if let Ok((stream, _)) = listener.accept().await {
+        if let Ok((mut stream, _)) = listener.accept().await {
+            // Consume riboCipher clear signal [0xEC, 0x01]
+            let mut signal = [0u8; 2];
+            let _ = stream.read_exact(&mut signal).await;
             let (read_half, mut write_half) = stream.into_split();
             let mut reader = BufReader::new(read_half);
             let mut line = String::new();
@@ -399,7 +402,13 @@ async fn test_register_with_discovery_sends_ipc_register_method() {
 
     let listener = UnixListener::bind(&socket_path).expect("bind mock socket");
     let capture_handle = tokio::spawn(async move {
-        let (stream, _) = listener.accept().await.expect("accept");
+        let (mut stream, _) = listener.accept().await.expect("accept");
+        // Consume riboCipher clear signal [0xEC, 0x01] before reading JSON
+        let mut signal = [0u8; 2];
+        tokio::io::AsyncReadExt::read_exact(&mut stream, &mut signal)
+            .await
+            .expect("read riboCipher signal");
+        assert_eq!(signal, [0xEC, 0x01], "expected riboCipher clear + NDJSON");
         let (read_half, mut write_half) = stream.into_split();
         let mut reader = BufReader::new(read_half);
         let mut line = String::new();

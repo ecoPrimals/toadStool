@@ -106,7 +106,6 @@ impl UnixJsonRpcClient {
     ///
     /// Fully async with tokio - no blocking!
     pub async fn call(&self, method: &str, params: Value) -> ToadStoolResult<Value> {
-        // Connect to unix socket
         let stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
             ToadStoolError::network(format!(
                 "Failed to connect to {}: {e}",
@@ -114,12 +113,10 @@ impl UnixJsonRpcClient {
             ))
         })?;
 
-        // Generate request ID
         let id = self
             .next_id
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        // Build JSON-RPC 2.0 request (zero-copy: borrows both version and method)
         let request = JsonRpcRequest {
             jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id,
@@ -127,14 +124,17 @@ impl UnixJsonRpcClient {
             params,
         };
 
-        // Serialize request
         let request_json = serde_json::to_string(&request)
             .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
 
-        // Split stream for concurrent read/write
         let (reader, mut writer) = stream.into_split();
 
-        // Send request (newline-delimited JSON)
+        // riboCipher clear signal: [0xEC, 0x01] = NDJSON JSON-RPC
+        writer
+            .write_all(&[0xEC, 0x01])
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Failed to send riboCipher signal: {e}")))?;
+
         writer
             .write_all(request_json.as_bytes())
             .await
@@ -265,7 +265,9 @@ impl ConnectedJsonRpcClient {
     ///
     /// Returns error if the socket connection fails.
     pub async fn connect(socket_path: impl AsRef<Path>) -> ToadStoolResult<Self> {
-        let stream = UnixStream::connect(socket_path.as_ref())
+        use tokio::io::AsyncWriteExt;
+
+        let mut stream = UnixStream::connect(socket_path.as_ref())
             .await
             .map_err(|e| {
                 ToadStoolError::network(format!(
@@ -273,6 +275,10 @@ impl ConnectedJsonRpcClient {
                     socket_path.as_ref().display()
                 ))
             })?;
+        // riboCipher clear signal: [0xEC, 0x01] = NDJSON JSON-RPC
+        stream.write_all(&[0xEC, 0x01]).await.map_err(|e| {
+            ToadStoolError::network(format!("Failed to send riboCipher signal: {e}"))
+        })?;
         let (reader, writer) = stream.into_split();
         Ok(Self {
             reader: BufReader::new(reader),

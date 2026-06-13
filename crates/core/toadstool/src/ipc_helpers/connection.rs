@@ -137,6 +137,8 @@ pub async fn register_with_discovery() -> ToadStoolResult<()> {
             ))
         })?;
 
+    framing::write_ribocipher_signal(&mut stream).await?;
+
     let own_socket = resolve_toadstool_socket(&env);
     let endpoint = format!("unix://{}", own_socket.display());
 
@@ -196,6 +198,8 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
                 "Failed to connect to discovery service at {socket_path}: {e}"
             ))
         })?;
+
+    framing::write_ribocipher_signal(&mut stream).await?;
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
@@ -274,6 +278,8 @@ pub async fn self_announce_to_biomeos(
             ));
         }
     };
+
+    framing::write_ribocipher_signal(&mut stream).await?;
 
     let devices = discover_hardware_inventory();
 

@@ -55,19 +55,25 @@ pub async fn serve_tcp(handler: Arc<JsonRpcHandler>, listener: TcpListener) -> S
 
 /// Handle a single TCP connection with persistent keep-alive.
 ///
-/// Supports both HTTP/1.1 keep-alive and persistent NDJSON sessions per
-/// `PRIMAL_IPC_PROTOCOL.md`. Multi-step dispatch sequences (submit → status →
-/// result) and health checks reuse the same connection without reconnecting.
+/// Detects riboCipher transport signal before protocol dispatch per
+/// `RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`. Falls back to legacy
+/// peek-and-guess with WARN for unsignalled connections (Wave 111–112).
 pub(crate) async fn handle_tcp_connection(
     handler: Arc<JsonRpcHandler>,
-    stream: TcpStream,
+    mut stream: TcpStream,
 ) -> ServerResult<()> {
-    let idle_timeout = tcp_idle_timeout();
-    let (reader, mut writer) = stream.into_split();
-    let mut reader = BufReader::new(reader);
+    use super::ribocipher;
 
-    let mut first_line = String::new();
-    let n = match tokio::time::timeout(idle_timeout, reader.read_line(&mut first_line)).await {
+    let idle_timeout = tcp_idle_timeout();
+
+    // Read first byte for riboCipher detection
+    let mut first = [0u8; 1];
+    let n = match tokio::time::timeout(
+        idle_timeout,
+        tokio::io::AsyncReadExt::read(&mut stream, &mut first),
+    )
+    .await
+    {
         Ok(Ok(n)) => n,
         Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
         Err(_) => {
@@ -80,6 +86,54 @@ pub(crate) async fn handle_tcp_connection(
         return Ok(());
     }
 
+    // riboCipher detection
+    match first[0] {
+        ribocipher::CLEAR => {
+            let mut pt = [0u8; 1];
+            tokio::io::AsyncReadExt::read_exact(&mut stream, &mut pt)
+                .await
+                .map_err(|e| {
+                    ServerError::Network(format!("riboCipher: failed to read protocol type: {e}"))
+                })?;
+            info!(
+                protocol_type = format_args!("0x{:02X}", pt[0]),
+                "riboCipher clear signal on TCP"
+            );
+            return handle_ribocipher_clear_tcp(handler, stream, pt[0]).await;
+        }
+        ribocipher::MITO => {
+            info!("riboCipher mito-obfuscated tier not yet supported on TCP — closing");
+            return Ok(());
+        }
+        ribocipher::NUCLEAR => {
+            info!("riboCipher nuclear-sealed tier not yet supported on TCP — closing");
+            return Ok(());
+        }
+        _ => {}
+    }
+
+    // Legacy path: WARN and reconstruct first line from consumed byte
+    debug!(
+        first_byte = format_args!("0x{:02X}", first[0]),
+        "DEPRECATED: unsignalled TCP connection (no riboCipher prefix)"
+    );
+
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut first_line = String::from(first[0] as char);
+    let n2 = match tokio::time::timeout(idle_timeout, reader.read_line(&mut first_line)).await {
+        Ok(Ok(n)) => n,
+        Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
+        Err(_) => {
+            return Err(ServerError::Network(
+                "TCP idle timeout on initial read".into(),
+            ));
+        }
+    };
+    if n2 == 0 && first_line.trim().is_empty() {
+        return Ok(());
+    }
+
     if first_line.starts_with("POST")
         || first_line.starts_with("GET")
         || first_line.starts_with("HTTP")
@@ -88,6 +142,53 @@ pub(crate) async fn handle_tcp_connection(
     }
 
     handle_ndjson_tcp(handler, &mut reader, &mut writer, first_line).await
+}
+
+/// Handle a riboCipher clear-signalled TCP connection, routed by protocol type.
+async fn handle_ribocipher_clear_tcp(
+    handler: Arc<JsonRpcHandler>,
+    stream: TcpStream,
+    protocol_type: u8,
+) -> ServerResult<()> {
+    use super::ribocipher::protocol_type as pt;
+
+    match protocol_type {
+        pt::PROBE => {
+            let (_, mut writer) = stream.into_split();
+            let response =
+                serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
+            let mut buf = serde_json::to_vec(&response).unwrap_or_default();
+            buf.push(b'\n');
+            let _ = writer.write_all(&buf).await;
+            let _ = writer.flush().await;
+            Ok(())
+        }
+        pt::NDJSON_JSONRPC => {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+            handle_ndjson_tcp(handler, &mut reader, &mut writer, String::new()).await
+        }
+        pt::HTTP => {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+            let mut first_line = String::new();
+            let n = reader
+                .read_line(&mut first_line)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            if n == 0 {
+                return Ok(());
+            }
+            handle_http_keepalive_tcp(handler, &mut reader, &mut writer, first_line).await
+        }
+        unknown => {
+            info!(
+                protocol_type = format_args!("0x{:02X}", unknown),
+                "riboCipher: unsupported protocol type on TCP — closing"
+            );
+            Ok(())
+        }
+    }
 }
 
 /// HTTP/1.1 keep-alive loop for TCP connections.

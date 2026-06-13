@@ -3,6 +3,9 @@
 //!
 //! Generic over JsonRpcHandler. Parses requests from owned bytes so that
 //! JsonRpcRequest's Cow<'a, str> can borrow from the slice during deserialization.
+//!
+//! Supports riboCipher transport signal detection per
+//! `ecoPrimals/infra/wateringHole/RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`.
 
 mod tcp;
 #[cfg(test)]
@@ -16,6 +19,31 @@ use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use crate::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
+
+/// riboCipher transport signal constants.
+///
+/// Per `ecoPrimals/infra/wateringHole/RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`:
+/// Every connection declares its intended protocol via a signal prefix instead
+/// of fragile peek-and-guess detection.
+pub(crate) mod ribocipher {
+    /// Clear signal prefix — local/trusted wire (2 bytes total: prefix + protocol type).
+    pub const CLEAR: u8 = 0xEC;
+    /// Mito-obfuscated prefix — cross-gate WAN (5 bytes: prefix + 4-byte HMAC tag).
+    pub const MITO: u8 = 0xED;
+    /// Nuclear-sealed prefix — privileged channel (7 bytes: prefix + 6-byte ciphertext).
+    pub const NUCLEAR: u8 = 0xEE;
+
+    /// Protocol type byte (second byte after `CLEAR` prefix).
+    pub mod protocol_type {
+        pub const PROBE: u8 = 0x00;
+        pub const NDJSON_JSONRPC: u8 = 0x01;
+        #[expect(dead_code, reason = "reserved for BTSP-over-riboCipher routing")]
+        pub const BTSP_BINARY: u8 = 0x02;
+        #[expect(dead_code, reason = "reserved for BTSP-over-riboCipher routing")]
+        pub const BTSP_JSONLINE: u8 = 0x03;
+        pub const HTTP: u8 = 0x04;
+    }
+}
 
 /// Parse request from body bytes, dispatch to handler, return serialized response.
 ///

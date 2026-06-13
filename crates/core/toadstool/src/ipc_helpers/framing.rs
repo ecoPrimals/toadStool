@@ -8,6 +8,24 @@ use tokio::net::UnixStream;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
+/// riboCipher clear signal prefix for NDJSON JSON-RPC.
+///
+/// Per `RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`: every outbound IPC connection
+/// must prepend this 2-byte signal before the first JSON payload. Call once
+/// per connection, immediately after `connect()`.
+const RIBOCIPHER_CLEAR_NDJSON: [u8; 2] = [0xEC, 0x01];
+
+/// Write the riboCipher clear-signal prefix for NDJSON JSON-RPC.
+///
+/// Must be called once per connection, before the first `write_json_rpc`.
+pub async fn write_ribocipher_signal(stream: &mut UnixStream) -> ToadStoolResult<()> {
+    use tokio::io::AsyncWriteExt;
+
+    stream.write_all(&RIBOCIPHER_CLEAR_NDJSON).await.map_err(|e| {
+        ToadStoolError::integration(format!("Failed to write riboCipher signal: {e}"))
+    })
+}
+
 /// Write JSON-RPC message to stream
 pub async fn write_json_rpc(stream: &mut UnixStream, message: &Value) -> ToadStoolResult<()> {
     use tokio::io::AsyncWriteExt;
