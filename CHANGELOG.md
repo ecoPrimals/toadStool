@@ -5,7 +5,27 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 10, 2026 (Sessions 43-308)
+## [Unreleased] - Jun 13, 2026 (Sessions 43-310)
+
+### Session S310 (Jun 13, 2026) — Deep Debt XV: Unsafe Evolution + Deprecated Hygiene + Test Splits
+
+Eliminated 2 `unsafe` blocks in `kernel_sentinel.rs` by replacing `BorrowedFd::borrow_raw` with safe `AsFd` trait (44 unsafe remaining). Forensics log path evolved from hardcoded `/var/log/handoff-forensics.log` to `TOADSTOOL_FORENSICS_LOG` env-configurable. `CoordinationTransport::GRPC` formally deprecated with `#[expect(deprecated)]` at all call sites. Test file splits (service_discovery + plugin_system). `#[allow(clippy::await_holding_lock)]` attrs given explicit `reason` strings.
+
+- `kernel_sentinel.rs` — `unsafe { BorrowedFd::borrow_raw(raw_fd) }` → safe `kmsg_fd.as_fd()` (2 blocks eliminated)
+- `forensics.rs` — `forensics_path()` reads `TOADSTOOL_FORENSICS_LOG` env with fallback to default
+- `coordination/types/protocols.rs` — `#[deprecated]` on `CoordinationTransport::GRPC`
+- `coordination/{connection,transport,capability_discovery,capability_client}.rs` — `#[expect(deprecated)]` on GRPC match arms
+- `service_discovery/tests.rs` — split into `tests.rs` (399L) + `tests_advanced.rs` (407L)
+- `plugin_system/tests.rs` — split into `tests.rs` (403L) + `tests_advanced.rs` (397L)
+- `primal_discovery_complete/tests/cache_config.rs` — 5× `#[allow(clippy::await_holding_lock)]` given `reason`
+
+### Session S309 (Jun 12, 2026) — TOADSTOOL-AUTO-REGISTER (Wave 111 P2)
+
+PCI sysfs GPU/NPU hardware enumeration wired into `ipc.register` and `primal.announce` payloads. `discover_hardware_inventory()` enumerates `/sys/bus/pci/devices/` for 3D GPU (0x0302) and VGA (0x0300) class devices, extracting BDF address, vendor/device ID, and bound driver.
+
+- `ipc_helpers/connection.rs` — new `discover_hardware_inventory()` function; `register_with_discovery()` and `self_announce_to_biomeos()` include `devices` array in JSON-RPC payloads
+- `pure_jsonrpc/handler/core/identity.rs` — `primal_announce` response includes `devices` from `glowplug_client::discover_gpu_bdfs()`
+- FRAGO: `TOADSTOOL_WAVE111_AUTO_REGISTER_DONE_JUN12_2026.md`
 
 ### Session S308 (Jun 10, 2026) — PRIMAL-SOCKET-CLEANUP (Wave 107 P2)
 

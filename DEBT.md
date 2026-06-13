@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: June 10, 2026 — S308
+**Date**: June 13, 2026 — S310
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—

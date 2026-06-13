@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Jun 2026 — S308
+**Last Updated**: Jun 2026 — S310
 
 ---
 
@@ -30,22 +30,24 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S308 — Jun 2026)
+## Current State (S310 — Jun 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **23,000+ tests** (9,069+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **111 JSON-RPC methods** (direct) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
+- **TOADSTOOL-AUTO-REGISTER** (S309, Wave 111) — PCI sysfs GPU/NPU hardware enumeration wired into `ipc.register` + `primal.announce` payloads. Auto-register unblocks autonomous `gate.bootstrap`.
+- **Deep Debt XV** (S310) — kernel_sentinel unsafe eliminated (AsFd, −2 blocks), forensics path env-configurable, `CoordinationTransport::GRPC` formally deprecated, test file splits + lint hygiene.
 - **PRIMAL-SOCKET-CLEANUP** (S308, Wave 107) — `BIOMEOS_SOCKET_DIR` wired into all socket/discovery-file chains. Zero `/tmp` writes when set. `ProtectSystem=strict` compatible.
 - **Transport Evolution** (S301–S302) — `TRANSPORT_ENDPOINT` accepted; `connect_transport()` for outbound; BYOB bind `127.0.0.1`.
 - **Deep Debt XIV** (S307) — Zero production files >750L. File splits (registers, pm4, swap, bar_cartography, amd/ioctl, page_tables). 25 stale tests removed. ~20 deprecated symbols eliminated.
 - **Coverage Push I–IV** (S294–S298) — +174 tests, `--socket` wired, `--headless` mode, musl-static VPS binary. 9,069+ lib tests.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V. Current frontier: FECS PENDING_CTX_RELOAD.
 - **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans active.
-- **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
+- **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path). Socket dir: `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir`.
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S308).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S310).
 
 ---
 

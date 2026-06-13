@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S308 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S310 | v0.2.0
 
 ---
 
@@ -45,7 +45,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo test --workspace` | **23,000+ tests, 0 failures** (9,069+ lib-only default; +1,289 behind `legacy-coordination`), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (confirmed S288); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
+| `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282–S290: all paths evolved to Result; diagnostic `write!` expects → `let _ = write!()`, S290) |
 | Production stubs / test mocks | Stubs evolved to real implementations or typed errors (`NoProviderRegistered`, `NoEngineRegistered`); **embedded-placeholder** opt-in via `embedded-placeholder-impls` feature (S285 — removed from default features); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -279,7 +279,7 @@ toadStool/
 | Workspace tests | **23,000+**, 0 failures (9,069+ lib default; +1,289 legacy-coordination) |
 | Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282–S290: all paths evolved to Result; diagnostic `write!` expects → `let _ = write!()`, S290) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | Typed error returns (`NoProviderRegistered`, `NoEngineRegistered`, etc.); test-only mocks **`#[cfg(test)]`** only |
@@ -306,6 +306,8 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S310 (Jun 13, 2026)**: **Deep Debt XV** — kernel_sentinel.rs unsafe eliminated (BorrowedFd → AsFd, −2 blocks), forensics.rs path env-configurable, `CoordinationTransport::GRPC` formally deprecated, test file splits (service_discovery + plugin_system), test `#[allow]` hygiene.
+- **S309 (Jun 12, 2026)**: **TOADSTOOL-AUTO-REGISTER (Wave 111 P2)** — PCI sysfs GPU/NPU hardware inventory wired into `ipc.register` + `primal.announce` payloads. Auto-register unblocks autonomous `gate.bootstrap`.
 - **S308 (Jun 10, 2026)**: **PRIMAL-SOCKET-CLEANUP (Wave 107 P2)** — `BIOMEOS_SOCKET_DIR` wired into all socket/discovery-file resolution chains. Zero `/tmp` writes when `BIOMEOS_SOCKET_DIR` is set. Unblocks `ProtectSystem=strict` systemd hardening.
 - **S307 (Jun 10, 2026)**: **Deep Debt XIV** — `registers.rs` split (pri/cg/pclock), `pm4.rs` test extract, `swap.rs` test extract, stale test cleanup (25 tests removed), unfulfilled lint hygiene. **Zero production files >750L.**
 - **S306 (Jun 9, 2026)**: **Deep Debt XII–XIII** — `bar_cartography.rs` + `amd/ioctl.rs` file splits, `ServiceMeshType` enum removed.
@@ -372,7 +374,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S308. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **46 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308).
+**Last Updated**: Jun 2026 — S310. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **`CoordinationTransport::GRPC` deprecated** (S310).
 
 ---
 

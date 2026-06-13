@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: May 2026 — S282+
+**Updated**: Jun 2026 — S310
 
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub. Session trackers archived to the [ecosystem fossil record](https://github.com/ecoPrimals/fossilRecord).
 
@@ -27,4 +27,4 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 - **[reference/](reference/)** -- Constants, types, server methods, config patterns
 
 ### Debt
-- **[debt/](debt/)** -- Tracked debt items with evolution paths
+- **[../DEBT.md](../DEBT.md)** -- Active debt register with evolution paths

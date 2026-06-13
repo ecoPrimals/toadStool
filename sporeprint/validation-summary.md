@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,069+ lib tests, 23,000+ workspace tests, 111 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, zero unsafe without SAFETY, ~98% env centralized, BIOMEOS_SOCKET_DIR compliant"
-date = 2026-06-10
+description = "Sovereign compute hardware primal — 9,069+ lib tests, 23,000+ workspace tests, 111 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 44 unsafe (all SAFETY-documented), ~98% env centralized, BIOMEOS_SOCKET_DIR compliant, auto-register hardware, GRPC deprecated"
+date = 2026-06-13
 
 [taxonomies]
 primals = ["toadstool"]
@@ -10,14 +10,14 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S308, Jun 10, 2026)
+- **Version**: 0.2.0 (Session S310, Jun 13, 2026)
 - **Lib tests**: 9,069+ (0 failures, unlimited parallelism)
 - **Workspace tests**: 23,000+ (0 failures, ~222 hardware-gated ignores; 9,069+ lib-only)
 - **JSON-RPC methods**: 111 (direct) + semantic registry aliases
 - **Workspace crates**: 47
 - **Clippy**: 0 warnings (`-D warnings`)
 - **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned)
-- **Unsafe blocks**: 46 actual (all SAFETY-documented, hw-containment crates only)
+- **Unsafe blocks**: 44 actual (all SAFETY-documented, hw-containment crates only)
 - **Production unwrap/panic**: 0
 - **License**: AGPL-3.0-or-later (SPDX headers on all files)
 
