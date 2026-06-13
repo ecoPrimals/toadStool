@@ -50,6 +50,8 @@ mod types;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_advanced;
 
 // Re-exports for backward compatibility
 pub use manager::PluginManager;

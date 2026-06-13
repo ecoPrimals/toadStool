@@ -78,6 +78,7 @@ impl CoordinationConnection {
                      HTTP is deprecated in ecoPrimals; use Unix socket RPC (unix://…) or gRPC"
                 )))
             }
+            #[expect(deprecated, reason = "exhaustive match — gRPC arm routes to UDS or returns error")]
             CoordinationTransport::GRPC => {
                 if endpoint.starts_with("unix://") || endpoint.starts_with("file://") {
                     let path = endpoint

@@ -14,6 +14,8 @@ mod service;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_advanced;
+#[cfg(test)]
 mod tests_registry;
 mod types;
 

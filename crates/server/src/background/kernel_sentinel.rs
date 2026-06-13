@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// SAFETY: /dev/kmsg seek/read require BorrowedFd::borrow_raw on an owned fd.
-#![expect(unsafe_code, reason = "/dev/kmsg seek/read require BorrowedFd::borrow_raw on owned fd")]
 //! Kernel oops sentinel — diesel engine crash forensics.
 //!
 //! Monitors `/dev/kmsg` (kernel log ring buffer) in real-time for signs of
@@ -208,8 +206,7 @@ pub fn start_sentinel_thread() -> std::io::Result<()> {
         .spawn(move || {
             // Wrap entire thread body in catch_unwind to detect silent panics
             let result = std::panic::catch_unwind(|| {
-            use rustix::fd::BorrowedFd;
-            use std::os::unix::io::AsRawFd;
+            use std::os::fd::AsFd;
 
             info!("kernel sentinel: thread spawned, opening /dev/kmsg");
 
@@ -224,11 +221,7 @@ pub fn start_sentinel_thread() -> std::io::Result<()> {
                 }
             };
 
-            // Seek to end so we only see new messages
-            let raw_fd = kmsg_fd.as_raw_fd();
-            // SAFETY: we own kmsg_fd and it outlives this borrow
-            let borrowed = unsafe { BorrowedFd::borrow_raw(raw_fd) };
-            let _ = rustix::fs::seek(borrowed, rustix::fs::SeekFrom::End(0));
+            let _ = rustix::fs::seek(kmsg_fd.as_fd(), rustix::fs::SeekFrom::End(0));
 
             info!("kernel sentinel thread started — monitoring /dev/kmsg");
 
@@ -238,10 +231,7 @@ pub fn start_sentinel_thread() -> std::io::Result<()> {
             let mut report_saved = false;
 
             loop {
-                // SAFETY: we own kmsg_fd and it outlives this borrow
-                let borrowed = unsafe { BorrowedFd::borrow_raw(raw_fd) };
-                // Blocking read — returns one complete kmsg record per call
-                let n = match rustix::io::read(borrowed, &mut buf) {
+                let n = match rustix::io::read(kmsg_fd.as_fd(), &mut buf) {
                     Ok(n) if n > 0 => n,
                     Err(e) if e == rustix::io::Errno::PIPE => {
                         // Ring buffer wrapped — records were lost, keep going

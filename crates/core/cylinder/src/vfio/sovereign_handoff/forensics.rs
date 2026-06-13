@@ -7,11 +7,18 @@
 //! froze. Uses sync_all() to force flush to disk.
 
 use std::io::Write;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-const FORENSICS_PATH: &str = "/var/log/handoff-forensics.log";
+const DEFAULT_FORENSICS_PATH: &str = "/var/log/handoff-forensics.log";
+
+fn forensics_path() -> PathBuf {
+    std::env::var("TOADSTOOL_FORENSICS_LOG")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(DEFAULT_FORENSICS_PATH))
+}
 
 /// Write a timestamped forensic breadcrumb to persistent storage.
 pub fn breadcrumb(msg: &str) {
@@ -20,10 +27,11 @@ pub fn breadcrumb(msg: &str) {
         .map(|d| d.as_secs())
         .unwrap_or(0);
 
+    let path = forensics_path();
     match std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(FORENSICS_PATH)
+        .open(&path)
     {
         Ok(mut f) => {
             if !INITIALIZED.swap(true, Ordering::Relaxed) {
@@ -42,6 +50,7 @@ pub fn breadcrumb(msg: &str) {
 /// Smoke-test at daemon startup — verifies the forensic log path is writable
 /// BEFORE any handoff is attempted.
 pub fn startup_smoke_test() {
+    let path = forensics_path();
     breadcrumb("DAEMON STARTUP — forensics smoke test");
-    tracing::info!(path = FORENSICS_PATH, "forensics: startup smoke test written");
+    tracing::info!(path = %path.display(), "forensics: startup smoke test written");
 }

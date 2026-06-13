@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S309. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Transport evolution Phase 2 complete. **PRIMAL-SOCKET-CLEANUP done** (Wave 107). **TOADSTOOL-AUTO-REGISTER done** (Wave 111).
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all SAFETY-documented) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods) | **Zero `/tmp/` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` | **`TRANSPORT_ENDPOINT` accepted** (sourDough standard, Wave 100) | **BYOB default bind `127.0.0.1`** | **Zero production files >750L** | **~20 deprecated symbols removed** | **Zero sync-ctor fallbacks** (auth/agents fully async) | **Auto-register hardware** — PCI sysfs GPU/NPU inventory sent in `ipc.register` + `primal.announce`
-**Latest**: S309 — `TOADSTOOL-AUTO-REGISTER` (Wave 111 P2): PCI sysfs hardware enumeration wired into both `ipc.register` (discovery service) and `primal.announce` (Neural API) payloads. Devices field includes BDF, type, vendor/device IDs, and bound driver. `primal.announce` inbound handler also returns device inventory. Unblocks autonomous `gate.bootstrap` for compute gates. S308 — `PRIMAL-SOCKET-CLEANUP`.
+**Updated**: Jun 2026 — S310. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Transport evolution Phase 2 complete. **PRIMAL-SOCKET-CLEANUP done** (Wave 107). **TOADSTOOL-AUTO-REGISTER done** (Wave 111).
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **44 unsafe blocks** (all SAFETY-documented; −2 from kernel_sentinel AsFd evolution) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods) | **Zero `/tmp/` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` | **`TRANSPORT_ENDPOINT` accepted** (sourDough standard, Wave 100) | **BYOB default bind `127.0.0.1`** | **Zero production files >750L** | **~20 deprecated symbols removed** | **Zero sync-ctor fallbacks** (auth/agents fully async) | **Auto-register hardware** — PCI sysfs GPU/NPU inventory sent in `ipc.register` + `primal.announce` | **`CoordinationTransport::GRPC` deprecated** with `#[expect]` on all call sites
+**Latest**: S310 — Deep debt XV: kernel_sentinel.rs unsafe eliminated (BorrowedFd::borrow_raw → AsFd), forensics.rs path env-configurable (TOADSTOOL_FORENSICS_LOG), CoordinationTransport::GRPC formally deprecated with #[expect] on 4 production match arms, test files split (service_discovery 806→399+407, plugin_system 800→403+397), test #[allow] hygiene. S309 — `TOADSTOOL-AUTO-REGISTER`.
 
 ---
 
@@ -58,6 +58,19 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 13, 2026 — S310 Deep Debt XV
+
+| Item | Status |
+|------|--------|
+| `kernel_sentinel.rs` — unsafe `BorrowedFd::borrow_raw` → safe `AsFd` (2 unsafe blocks eliminated) | **DONE** |
+| `forensics.rs` — hardcoded `/var/log/handoff-forensics.log` → `TOADSTOOL_FORENSICS_LOG` env | **DONE** |
+| `CoordinationTransport::GRPC` — formal `#[deprecated]` attr + `#[expect]` on 4 production match arms | **DONE** |
+| `ProtocolConfig.grpc` field — `#[expect(deprecated)]` with reason | **DONE** |
+| `service_discovery/tests.rs` split — 806L → `tests.rs` (399L) + `tests_advanced.rs` (407L) | **DONE** |
+| `plugin_system/tests.rs` split — 800L → `tests.rs` (403L) + `tests_advanced.rs` (397L) | **DONE** |
+| Test `#[allow(clippy::await_holding_lock)]` — 5 sites in `cache_config.rs` given `reason` | **DONE** |
+| Unfulfilled `#[expect(unsafe_code)]` in kernel_sentinel removed (no longer needed) | **DONE** |
 
 ### Jun 12, 2026 — S309 TOADSTOOL-AUTO-REGISTER (Wave 111)
 

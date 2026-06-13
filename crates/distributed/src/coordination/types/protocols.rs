@@ -11,6 +11,10 @@ pub enum CoordinationTransport {
     /// JSON-RPC or REST-style HTTP transport.
     HTTP,
     /// gRPC (deprecated; prefer JSON-RPC per project IPC standard).
+    #[deprecated(
+        since = "0.3.0",
+        note = "gRPC deprecated per UNIVERSAL_IPC_STANDARD_V3. Use JSON-RPC over Unix socket."
+    )]
     GRPC,
     /// Brokered message-queue transport.
     MessageQueue,
@@ -24,6 +28,7 @@ pub struct ProtocolConfig {
     /// Settings when using HTTP.
     pub http: HttpProtocolConfig,
     /// Settings when using gRPC (deprecated).
+    #[expect(deprecated, reason = "field retained for config deserialization backward compat")]
     pub grpc: GrpcProtocolConfig,
     /// Settings when using a message queue.
     pub message_queue: MessageQueueProtocolConfig,

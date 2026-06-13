@@ -194,6 +194,7 @@ impl CapabilityClient {
         }
 
         // Filter by protocol compatibility
+        #[expect(deprecated, reason = "exhaustive match — gRPC variant needed for label conversion")]
         let protocol_str = match self.preferred_protocol {
             CoordinationTransport::HTTP => "http",
             CoordinationTransport::GRPC => "grpc",

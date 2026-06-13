@@ -101,7 +101,7 @@ async fn test_discovery_config_default_with_env() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[allow(clippy::await_holding_lock, reason = "test validates cache behavior under lock — intentional hold across await")]
 async fn test_cache_stats_stale_entries() {
     let service = DiscoveredService {
         id: Some("stale-service".to_string()),
@@ -198,7 +198,7 @@ async fn test_discovery_config_default_fallbacks() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[allow(clippy::await_holding_lock, reason = "test validates cache behavior under lock — intentional hold across await")]
 async fn test_cached_endpoint_is_fresh() {
     let service = DiscoveredService {
         id: Some("fresh".to_string()),
@@ -222,7 +222,7 @@ async fn test_cached_endpoint_is_fresh() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[allow(clippy::await_holding_lock, reason = "test validates cache behavior under lock — intentional hold across await")]
 async fn test_cache_stats_multiple_entries() {
     let mut config = DiscoveryConfig::default();
     config.fallbacks.clear();
@@ -247,7 +247,7 @@ async fn test_cache_stats_multiple_entries() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[allow(clippy::await_holding_lock, reason = "test validates cache behavior under lock — intentional hold across await")]
 async fn test_cached_endpoint_stale_after_ttl() {
     let mut config = DiscoveryConfig::default();
     config.fallbacks.clear();
@@ -385,7 +385,7 @@ fn test_discovery_config_custom() {
 }
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[allow(clippy::await_holding_lock, reason = "test validates cache behavior under lock — intentional hold across await")]
 async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {
     let service = DiscoveredService {
         id: Some("fresh".to_string()),

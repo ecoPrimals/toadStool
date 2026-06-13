@@ -38,6 +38,7 @@ impl ToadStoolCoordinationIntegration {
                 self.submit_via_http(coordination_request, &self.connection.active_endpoint)
                     .await?
             }
+            #[expect(deprecated, reason = "exhaustive match — gRPC arm delegates to stub")]
             CoordinationTransport::GRPC => {
                 self.submit_via_grpc(coordination_request, &self.connection.active_endpoint)
                     .await?
