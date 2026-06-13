@@ -229,11 +229,12 @@ pub(super) async fn handle_unix_connection(
         Err(stream) => stream,
     };
 
-    // Legacy path: WARN and reconstruct first line from consumed byte
-    warn!(
+    // Legacy path: ERROR (Wave 112) and reconstruct first line from consumed byte
+    error!(
         first_byte = format_args!("0x{:02X}", first[0]),
         "DEPRECATED: unsignalled connection (no riboCipher prefix). \
-         Clients should prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+         Clients MUST prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD. \
+         Wave 113 will REJECT unsignalled connections."
     );
 
     let (reader, mut writer) = stream.into_split();
@@ -475,11 +476,12 @@ pub(super) async fn handle_btsp_connection(
         Err(s) => s,
     };
 
-    // Legacy BTSP detection with WARN for unsignalled connections
-    warn!(
+    // Legacy BTSP detection with ERROR (Wave 112) for unsignalled connections
+    error!(
         first_byte = format_args!("0x{:02X}", first[0]),
         "DEPRECATED: unsignalled connection on BTSP socket (no riboCipher prefix). \
-         Clients should prepend [0xEC, protocol_type] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+         Clients MUST prepend [0xEC, protocol_type] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD. \
+         Wave 113 will REJECT unsignalled connections."
     );
 
     let mut stream = if is_plaintext_protocol_byte(first[0]) {
@@ -598,10 +600,11 @@ pub(super) async fn handle_btsp_connection(
         Err(s) => s,
     };
 
-    warn!(
+    error!(
         first_byte = format_args!("0x{:02X}", first[0]),
         "DEPRECATED: unsignalled connection on BTSP socket (no riboCipher prefix). \
-         Clients should prepend [0xEC, protocol_type] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+         Clients MUST prepend [0xEC, protocol_type] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD. \
+         Wave 113 will REJECT unsignalled connections."
     );
 
     if is_plaintext_protocol_byte(first[0]) {

@@ -112,10 +112,11 @@ pub(crate) async fn handle_tcp_connection(
         _ => {}
     }
 
-    // Legacy path: WARN and reconstruct first line from consumed byte
-    debug!(
+    // Legacy path: ERROR (Wave 112) and reconstruct first line from consumed byte
+    error!(
         first_byte = format_args!("0x{:02X}", first[0]),
-        "DEPRECATED: unsignalled TCP connection (no riboCipher prefix)"
+        "DEPRECATED: unsignalled TCP connection (no riboCipher prefix). \
+         Wave 113 will REJECT unsignalled connections."
     );
 
     let (reader, mut writer) = stream.into_split();

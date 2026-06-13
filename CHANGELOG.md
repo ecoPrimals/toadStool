@@ -5,7 +5,26 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 13, 2026 (Sessions 43-310)
+## [Unreleased] - Jun 13, 2026 (Sessions 43-312)
+
+### Session S312 (Jun 13, 2026) — riboCipher Wave 112: WARN→ERROR Escalation
+
+Per Wave 112 deprecation timeline: unsignalled connections upgraded from WARN to ERROR on all 4 accept loops (JSON-RPC Unix, JSON-RPC TCP, BTSP Unix with/without feature). Legacy connections still accepted (rejection in Wave 113). Root docs updated to S312.
+
+- `connection/unix.rs` — 3× `warn!` → `error!` for unsignalled connections
+- `connection/tcp.rs` — 1× `debug!` → `error!` for unsignalled TCP connections
+
+### Session S311 (Jun 13, 2026) — riboCipher Transport Signal Convergence (Wave 111)
+
+riboCipher transport signal detection per `RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`. Server-side first-byte detection on all JSON-RPC accept loops; client-side `[0xEC, 0x01]` signal on all outbound IPC. Tier 1 (clear) fully implemented; Tier 2/3 (mito/nuclear) stubs present. Legacy fallback with WARN.
+
+- `connection/mod.rs` — riboCipher constants module (CLEAR=0xEC, MITO=0xED, NUCLEAR=0xEE, protocol_type table)
+- `connection/unix.rs` — `handle_unix_connection` refactored to first-byte detection; `try_ribocipher_dispatch` + `handle_ribocipher_clear_unix`; both `handle_btsp_connection` variants get riboCipher before BTSP peek
+- `connection/tcp.rs` — `handle_tcp_connection` refactored to first-byte detection; `handle_ribocipher_clear_tcp`
+- `ipc_helpers/framing.rs` — `write_ribocipher_signal()` ([0xEC, 0x01])
+- `ipc_helpers/connection.rs` — signal on register_with_discovery, find_by_capability, self_announce_to_biomeos
+- `unix_jsonrpc_client.rs` — `[0xEC, 0x01]` on `UnixJsonRpcClient::call()` and `ConnectedJsonRpcClient::connect()`
+- `execution.rs` — 2× pre-existing clippy::map_unwrap_or fixed
 
 ### Session S310 (Jun 13, 2026) — Deep Debt XV: Unsafe Evolution + Deprecated Hygiene + Test Splits
 
