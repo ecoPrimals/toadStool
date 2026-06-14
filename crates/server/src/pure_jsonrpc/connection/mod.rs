@@ -7,6 +7,7 @@
 //! Supports riboCipher transport signal detection per
 //! `ecoPrimals/infra/wateringHole/RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`.
 
+mod btsp_unix;
 mod tcp;
 #[cfg(test)]
 mod tests;

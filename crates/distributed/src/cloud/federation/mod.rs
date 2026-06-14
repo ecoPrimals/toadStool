@@ -16,7 +16,7 @@ pub mod discovery;
 pub mod policy;
 mod state;
 
-#[allow(unused_imports, reason = "MIN_HEARTBEAT_INTERVAL_SECS re-exported for downstream crates and tests")]
+#[allow(unused_imports, reason = "re-exported as public API for downstream crates; lint fires inconsistently across lib/test builds")]
 pub use policy::{DEFAULT_HEARTBEAT_TIMEOUT_SECS, FederationMember, MIN_HEARTBEAT_INTERVAL_SECS};
 
 // ─── Federation Errors ───────────────────────────────────────────────────────

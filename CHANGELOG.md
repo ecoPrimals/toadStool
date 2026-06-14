@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 13, 2026 (Sessions 43-312)
+## [Unreleased] - Jun 14, 2026 (Sessions 43-313)
+
+### Session S313 (Jun 14, 2026) — Deep Debt XVI: Zero Production Panics + File Split
+
+Eliminated 3 production `unreachable!()` calls (panic paths) in `connection/unix.rs`, replacing with typed `ServerError::Internal` returns. Split `unix.rs` (815L) into `unix.rs` (512L) + `btsp_unix.rs` (334L) by extracting BTSP connection handling. `#[allow(dead_code)]` → `#[expect(dead_code)]` in `executor/types.rs`. Federation re-export `#[allow(unused_imports)]` documented with reason (lint fires inconsistently across lib/test builds).
+
+- `connection/unix.rs` — 3× `unreachable!()` → `Err(ServerError::Internal(...))` for invariant-violation safety
+- `connection/unix.rs` — 815L → 512L: BTSP handlers extracted to `btsp_unix.rs`
+- `connection/btsp_unix.rs` (NEW) — 334L: `handle_btsp_connection` (btsp + non-btsp), `handle_post_handshake_session`, `handle_encrypted_session`, `resolve_family_seed`
+- `executor/types.rs` — `#[allow(dead_code)]` → `#[expect(dead_code, reason)]`
+- `cloud/federation/mod.rs` — `#[allow(unused_imports)]` reason documented
 
 ### Session S312 (Jun 13, 2026) — riboCipher Wave 112: WARN→ERROR Escalation
 

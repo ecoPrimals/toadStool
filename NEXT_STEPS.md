@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jun 2026 — S312. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Transport evolution Phase 2 complete. **PRIMAL-SOCKET-CLEANUP done** (Wave 107). **TOADSTOOL-AUTO-REGISTER done** (Wave 111). **riboCipher COMPLIANT** (Wave 112 — server detect + client signal, ERROR on unsignalled).
+**Updated**: Jun 2026 — S313. **VPS-ready** — musl-static binary built with `--headless` support. All P0 blockers resolved. Transport evolution Phase 2 complete. **PRIMAL-SOCKET-CLEANUP done** (Wave 107). **TOADSTOOL-AUTO-REGISTER done** (Wave 111). **riboCipher COMPLIANT** (Wave 112 — server detect + client signal, ERROR on unsignalled).
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; **9,069+ lib-only**) | **111 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **44 unsafe blocks** (all SAFETY-documented; −2 from kernel_sentinel AsFd evolution) | **rustix 1.x workspace-wide** | **~98% env centralized** (410+ reads via socket_env constants; 23 LEGACY reads emit deprecation tracing) | **capability-based primal references** (`PRIMAL_NAME`/`PRIMAL_BINARY_NAME` constants) | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Telemetry wire contract v1.1** (barraCuda/biomeOS L5) | **`--headless` mode** for port-free VPS deployment | **`--socket` wired** for launcher-injected UDS paths | **Zero production `#[allow]`** (Wave 78 compliant) | **`capability_registry.toml`** (17 capability groups, 111 methods) | **Zero `/tmp/` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` | **`TRANSPORT_ENDPOINT` accepted** (sourDough standard, Wave 100) | **BYOB default bind `127.0.0.1`** | **Zero production files >750L** | **~20 deprecated symbols removed** | **Zero sync-ctor fallbacks** (auth/agents fully async) | **Auto-register hardware** — PCI sysfs GPU/NPU inventory sent in `ipc.register` + `primal.announce` | **`CoordinationTransport::GRPC` deprecated** with `#[expect]` on all call sites | **riboCipher compliant** — server detect (Unix+TCP, 4 accept loops) + client signal (`[0xEC, 0x01]` on all outbound IPC)
-**Latest**: S312 — riboCipher Wave 112 escalation: unsignalled connections upgraded WARN→ERROR on all 4 accept loops. Legacy still accepted (Wave 113 will reject). S311 — riboCipher transport signal convergence: server detect + client `[0xEC, 0x01]` on all IPC.
+**Latest**: S313 — Deep Debt XVI: 3 `unreachable!()` → typed errors (zero production panics), `unix.rs` split (815→512+334). S312 — riboCipher WARN→ERROR escalation. S311 — riboCipher convergence.
 
 ---
 
@@ -58,6 +58,15 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)); extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Jun 14, 2026 — S313 Deep Debt XVI
+
+| Item | Status |
+|------|--------|
+| `connection/unix.rs` — 3× `unreachable!()` → `Err(ServerError::Internal(...))` | **DONE** |
+| `connection/unix.rs` split — 815L → `unix.rs` (512L) + `btsp_unix.rs` (334L) | **DONE** |
+| `executor/types.rs` — `#[allow(dead_code)]` → `#[expect(dead_code, reason)]` | **DONE** |
+| `cloud/federation/mod.rs` — `#[allow(unused_imports)]` reason documented | **DONE** |
 
 ### Jun 13, 2026 — S310 Deep Debt XV
 
