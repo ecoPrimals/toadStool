@@ -10,6 +10,10 @@ use std::sync::Arc;
 use crate::coordination::types::{DiscoveryClient, NodeType};
 use toadstool_common::constants::ecosystem::node_type;
 
+const LEGACY_NESTGATE: &str = "NestGate";
+const LEGACY_BEARDOG: &str = "BearDog";
+const LEGACY_SONGBIRD: &str = "Songbird";
+
 use super::make_coordination_connection;
 
 #[test]
@@ -103,7 +107,7 @@ fn test_discovery_client_parse_node_data_storage_type() {
 
     let node_json = serde_json::json!({
         "node_id": "nest-node",
-        "type": node_type::NESTGATE,
+        "type": LEGACY_NESTGATE,
         "capabilities": {
             "cpu_cores": 4.0,
             "memory_gb": 8.0,
@@ -129,7 +133,7 @@ fn test_discovery_client_parse_node_data_security_type() {
 
     let node_json = serde_json::json!({
         "node_id": "bd-node",
-        "type": node_type::BEARDOG,
+        "type": LEGACY_BEARDOG,
         "capabilities": {"cpu_cores": 1.0, "memory_gb": 2.0, "storage_gb": 10.0, "gpu_count": 0, "specialized_hardware": [], "software_capabilities": []},
         "endpoints": ["http://bd"],
         "protocols": ["http"]
@@ -148,7 +152,7 @@ fn test_discovery_client_parse_node_data_coordination_type() {
 
     let node_json = serde_json::json!({
         "node_id": "sb-node",
-        "type": node_type::SONGBIRD,
+        "type": LEGACY_SONGBIRD,
         "capabilities": {"cpu_cores": 1.0, "memory_gb": 2.0, "storage_gb": 10.0, "gpu_count": 0, "specialized_hardware": [], "software_capabilities": []},
         "endpoints": ["http://sb"],
         "protocols": ["http"]

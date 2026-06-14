@@ -67,16 +67,6 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
         config.features.enable_openapi = parse::parse_bool(&enabled);
     }
 
-    if let Ok(enabled) = std::env::var(socket_env::TOADSTOOL_ENABLE_GRPC) {
-        #[expect(
-            deprecated,
-            reason = "gRPC feature flag kept for env-var compat; prefer IPC"
-        )]
-        {
-            config.features.enable_grpc = parse::parse_bool(&enabled);
-        }
-    }
-
     if let Ok(enabled) = std::env::var(socket_env::TOADSTOOL_ENABLE_GRAPHQL) {
         config.features.enable_graphql = parse::parse_bool(&enabled);
     }

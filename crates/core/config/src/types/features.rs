@@ -41,19 +41,6 @@ pub struct FeatureFlags {
     /// Enable `GraphQL` API
     pub enable_graphql: bool,
 
-    /// Enable gRPC API
-    ///
-    /// # Deprecation
-    ///
-    /// gRPC is deprecated per wateringHole `UNIVERSAL_IPC_STANDARD_V3`.
-    /// Migrate to JSON-RPC 2.0 over Unix sockets (required transport).
-    /// tarpc is optional.
-    #[deprecated(
-        since = "0.3.0",
-        note = "gRPC deprecated per UNIVERSAL_IPC_STANDARD_V3. Use JSON-RPC over Unix socket."
-    )]
-    pub enable_grpc: bool,
-
     /// Enable `OpenAPI` documentation
     pub enable_openapi: bool,
 
@@ -83,8 +70,6 @@ impl Default for FeatureFlags {
             enable_distributed: true,
             enable_federation: true,
             enable_graphql: false,
-            #[expect(deprecated, reason = "gRPC field kept for config compat; prefer IPC")]
-            enable_grpc: false,
             enable_openapi: true,
             enable_auto_config: true,
             enable_hot_reload: cfg!(debug_assertions),

@@ -304,12 +304,6 @@ impl ConfigUtils {
         defaults::get_message_broker_url()
     }
 
-    /// Get distributed storage URL from environment or default
-    #[must_use]
-    pub fn get_distributed_storage_url() -> String {
-        defaults::get_distributed_storage_url()
-    }
-
     /// Get monitoring endpoint from environment or default
     #[must_use]
     pub fn get_monitoring_endpoint() -> String {

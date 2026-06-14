@@ -642,7 +642,6 @@ fn test_feature_flags_default() {
     assert!(flags.enable_distributed);
     assert!(flags.enable_federation);
     assert!(!flags.enable_graphql);
-    assert!(!flags.enable_grpc);
     assert!(flags.enable_openapi);
     assert!(flags.enable_auto_config);
     assert!(flags.custom.is_empty());
@@ -662,7 +661,6 @@ fn test_feature_flags_custom() {
         enable_distributed: false,
         enable_federation: false,
         enable_graphql: true,
-        enable_grpc: true,
         enable_openapi: false,
         enable_auto_config: false,
         enable_hot_reload: true,

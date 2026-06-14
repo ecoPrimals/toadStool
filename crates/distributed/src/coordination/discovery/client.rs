@@ -92,15 +92,14 @@ impl DiscoveryClient {
             .ok_or_else(|| ToadStoolError::runtime("Missing node_id in discovery data"))?
             .to_string();
 
-        // `type` may be a legacy product label (node_type::*) or a capability id (see `capabilities::*`).
         let type_str = node_data["type"].as_str().unwrap_or(node_type::TOADSTOOL);
         let parsed_node_type = match type_str {
             s if s == node_type::TOADSTOOL => NodeType::ToadStool,
-            s if s == node_type::NESTGATE || s == capabilities::STORAGE => NodeType::Storage,
-            s if s == node_type::BEARDOG || s == capabilities::CRYPTO || s == "security" => {
+            s if s == "NestGate" || s == capabilities::STORAGE => NodeType::Storage,
+            s if s == "BearDog" || s == capabilities::CRYPTO || s == "security" => {
                 NodeType::Security
             }
-            s if s == node_type::SONGBIRD || s == capabilities::COORDINATION => {
+            s if s == "Songbird" || s == capabilities::COORDINATION => {
                 NodeType::Coordination
             }
             custom => NodeType::Custom(custom.to_string()),
@@ -250,7 +249,7 @@ mod tests {
         let reg = client
             .parse_node_data(&json!({
                 "node_id": "s1",
-                "type": node_type::NESTGATE,
+                "type": "NestGate",
             }))
             .unwrap();
         assert!(matches!(reg.node_type, NodeType::Storage));

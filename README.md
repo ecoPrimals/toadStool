@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S313 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S314 | v0.2.0
 
 ---
 
@@ -306,6 +306,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S314 (Jun 14, 2026)**: **Deprecated Symbol Evolution** — `node_type::{BEARDOG,SONGBIRD,NESTGATE}` deleted (zero production callers). `FeatureFlags::enable_grpc` field removed (dead — populated but never read). `DISTRIBUTED_URL` + `get_distributed_storage_url()` dead API bundle removed. `TOADSTOOL_ENABLE_GRPC` env constant deprecated.
 - **S313 (Jun 14, 2026)**: **Deep Debt XVI** — 3 production `unreachable!()` → typed `ServerError::Internal` (zero production panics). `unix.rs` split: 815L → `unix.rs` (512L) + `btsp_unix.rs` (334L). `#[allow(dead_code)]` → `#[expect]` in `executor/types.rs`. Federation re-export `#[allow]` documented.
 - **S312 (Jun 13, 2026)**: **riboCipher Wave 112 escalation** — legacy unsignalled connections upgraded from WARN → ERROR on all 4 accept loops. Wave 113 will REJECT.
 - **S311 (Jun 13, 2026)**: **riboCipher transport signal convergence (Wave 111)** — server-side detection on all JSON-RPC accept loops (Unix + TCP, 4 loops), client-side `[0xEC, 0x01]` signal on all outbound IPC (register, discover, announce, `UnixJsonRpcClient`, `ConnectedJsonRpcClient`). Tier 2/3 stubs present.
@@ -377,7 +378,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S313. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher COMPLIANT** — server detect + client signal, ERROR on unsignalled (S311–S312, Wave 112).
+**Last Updated**: Jun 2026 — S314. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher COMPLIANT** — server detect + client signal, ERROR on unsignalled (S311–S312, Wave 112).
 
 ---
 

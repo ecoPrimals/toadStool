@@ -257,13 +257,6 @@ fn test_get_message_broker_url() {
 }
 
 #[test]
-fn test_get_distributed_storage_url() {
-    let url = ConfigUtils::get_distributed_storage_url();
-    // May be empty (capability discovery); or explicit URL
-    assert!(url.is_empty() || url.contains("://"));
-}
-
-#[test]
 fn test_get_monitoring_endpoint() {
     let endpoint = ConfigUtils::get_monitoring_endpoint();
     assert!(!endpoint.is_empty());

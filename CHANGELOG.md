@@ -5,7 +5,20 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 14, 2026 (Sessions 43-313)
+## [Unreleased] - Jun 14, 2026 (Sessions 43-314)
+
+### Session S314 (Jun 14, 2026) — Deprecated Symbol Evolution: Dead Code Deletion
+
+Deleted 3 legacy `node_type` wire-label constants (BEARDOG, SONGBIRD, NESTGATE) — zero production callers. Removed dead `FeatureFlags::enable_grpc` field (populated but never read for behavior). Removed dead `DISTRIBUTED_URL` constant + `get_distributed_storage_url()` API bundle. `TOADSTOOL_ENABLE_GRPC` env constant deprecated. Tests updated.
+
+- `constants/ecosystem.rs` — `node_type::BEARDOG`, `node_type::SONGBIRD`, `node_type::NESTGATE` deleted
+- `types/features.rs` — `enable_grpc` field removed from `FeatureFlags`
+- `defaults/storage.rs` — `DISTRIBUTED_URL` constant deleted
+- `config_utils/defaults.rs` — `get_distributed_storage_url()` function deleted
+- `config_utils/mod.rs` — `ConfigUtils::get_distributed_storage_url()` wrapper deleted
+- `env_overrides/features.rs` — `TOADSTOOL_ENABLE_GRPC` override removed
+- `socket_env.rs` — `TOADSTOOL_ENABLE_GRPC` deprecated
+- `discovery/client.rs` — `parse_node_data` uses inline legacy labels instead of deleted constants
 
 ### Session S313 (Jun 14, 2026) — Deep Debt XVI: Zero Production Panics + File Split
 

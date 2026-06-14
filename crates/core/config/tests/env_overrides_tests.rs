@@ -40,7 +40,6 @@ const ENV_OVERRIDE_VARS: &[&str] = &[
     "TOADSTOOL_ENABLE_BETA",
     "TOADSTOOL_ENABLE_PROFILING",
     "TOADSTOOL_ENABLE_OPENAPI",
-    "TOADSTOOL_ENABLE_GRPC",
     "TOADSTOOL_ENABLE_GRAPHQL",
     "TOADSTOOL_CONTAINER_RUNTIME",
     "TOADSTOOL_CONTAINER_REGISTRY",
@@ -387,22 +386,14 @@ fn test_env_override_api_protocols() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_ENABLE_OPENAPI", Some("true")),
-            ("TOADSTOOL_ENABLE_GRPC", Some("true")),
             ("TOADSTOOL_ENABLE_GRAPHQL", Some("true")),
         ],
         || {
             let mut config = ToadStoolConfig::default();
             config.features.enable_openapi = false;
-            #[expect(deprecated)]
-            {
-                config.features.enable_grpc = false;
-            }
             config.features.enable_graphql = false;
             config.apply_env_overrides().unwrap();
             assert!(config.features.enable_openapi);
-            #[expect(deprecated)]
-            let grpc_enabled = config.features.enable_grpc;
-            assert!(grpc_enabled);
             assert!(config.features.enable_graphql);
         },
     );

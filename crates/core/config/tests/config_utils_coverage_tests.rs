@@ -340,7 +340,6 @@ fn defaults_getters_follow_env() {
             ("TOADSTOOL_DATABASE_URL", Some("postgres://db")),
             ("TOADSTOOL_REDIS_URL", Some("redis://cache:9")),
             ("TOADSTOOL_AMQP_URL", Some("amqp://q:1")),
-            ("TOADSTOOL_DISTRIBUTED_STORAGE_URL", Some("s3://bucket")),
             ("TOADSTOOL_METRICS_URL", Some("http://m:9")),
             (
                 "TOADSTOOL_ALERT_WEBHOOK_URL",
@@ -377,7 +376,6 @@ fn defaults_getters_follow_env() {
             assert_eq!(ConfigUtils::get_database_url(), "postgres://db");
             assert_eq!(ConfigUtils::get_cache_url(), "redis://cache:9");
             assert_eq!(ConfigUtils::get_message_broker_url(), "amqp://q:1");
-            assert_eq!(ConfigUtils::get_distributed_storage_url(), "s3://bucket");
             assert_eq!(ConfigUtils::get_monitoring_endpoint(), "http://m:9");
             assert_eq!(
                 ConfigUtils::get_alert_webhook_url(),

@@ -214,10 +214,8 @@ fn test_get_database_cache_message_broker_urls() {
 }
 
 #[test]
-fn test_get_distributed_storage_monitoring_urls() {
-    let _storage = ConfigUtils::get_distributed_storage_url();
+fn test_get_monitoring_url() {
     let monitoring = ConfigUtils::get_monitoring_endpoint();
-    // Storage may be empty (capability discovery); monitoring has URL format
     assert!(monitoring.starts_with("http://") || !monitoring.is_empty());
 }
 
