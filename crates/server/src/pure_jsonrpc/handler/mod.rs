@@ -309,6 +309,10 @@ impl JsonRpcHandler {
             "toadstool.list_workloads" => return self.job.list_workloads(params).await,
             "toadstool.validate" => return self.workload.validate(params).await,
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
+            // GuideStone-mandated bare health probe (Wave 113): {status, primal, version}
+            "health" => {
+                return core::health_simple(&self.version).await;
+            }
             // Wire Standard L1/L2: triad shapes differ; full payload only for check + legacy name.
             "toadstool.health" | "health.check" => {
                 return core::health(&self.version, self.start_time, &self.error_count).await;

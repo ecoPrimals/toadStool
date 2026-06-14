@@ -130,10 +130,50 @@ pub fn spawn_early_health_responder(
     })
 }
 
-async fn handle_early_health(stream: UnixStream) {
+async fn handle_early_health(mut stream: UnixStream) {
+    // Strip riboCipher prefix if present (Wave 113: early-health must accept signalled clients)
+    let mut first = [0u8; 1];
+    if tokio::io::AsyncReadExt::read(&mut stream, &mut first)
+        .await
+        .is_err()
+    {
+        return;
+    }
+    if first[0] == 0xEC {
+        // riboCipher clear prefix — consume protocol-type byte and proceed
+        let mut pt = [0u8; 1];
+        if tokio::io::AsyncReadExt::read_exact(&mut stream, &mut pt)
+            .await
+            .is_err()
+        {
+            return;
+        }
+        if pt[0] == 0x00 {
+            // PROBE: immediate liveness response
+            let response =
+                serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
+            let mut buf = serde_json::to_vec(&response).unwrap_or_default();
+            buf.push(b'\n');
+            let (_, mut writer) = stream.into_split();
+            let _ = writer.write_all(&buf).await;
+            let _ = writer.flush().await;
+            return;
+        }
+        // 0x01 (NDJSON) or 0x04 (HTTP) — fall through to JSON line read
+    } else if first[0] == 0xED || first[0] == 0xEE {
+        // MITO/NUCLEAR — not supported during early health
+        return;
+    } else {
+        // Non-riboCipher byte — push back into the line buffer below
+    }
+
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
-    let mut line = String::new();
+    let mut line = if first[0] != 0xEC {
+        String::from(first[0] as char)
+    } else {
+        String::new()
+    };
     if reader.read_line(&mut line).await.is_err() || line.trim().is_empty() {
         return;
     }
@@ -148,6 +188,9 @@ async fn handle_early_health(stream: UnixStream) {
         .unwrap_or(serde_json::Value::Null);
 
     let response = match method.as_deref() {
+        Some("health") => {
+            serde_json::json!({"jsonrpc":"2.0","result":{"status":"starting","primal":"toadstool","version":"0.2.0"},"id":id})
+        }
         Some("health.liveness") => {
             serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":id})
         }
@@ -233,33 +276,26 @@ pub(super) async fn handle_unix_connection(
         Err(stream) => stream,
     };
 
-    // Legacy path: ERROR (Wave 112) and reconstruct first line from consumed byte
+    // Wave 113: REJECT unsignalled connections (upgraded from ERROR in Wave 112)
     error!(
         first_byte = format_args!("0x{:02X}", first[0]),
-        "DEPRECATED: unsignalled connection (no riboCipher prefix). \
-         Clients MUST prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD. \
-         Wave 113 will REJECT unsignalled connections."
+        "REJECTED: unsignalled connection (no riboCipher prefix). \
+         Clients MUST prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
     );
-
-    let (reader, mut writer) = stream.into_split();
-    let mut reader = BufReader::new(reader);
-    let mut first_line = String::from(first[0] as char);
-    let n2 = reader
-        .read_line(&mut first_line)
-        .await
-        .map_err(|e| ServerError::Network(e.to_string()))?;
-    if n2 == 0 && first_line.trim().is_empty() {
-        return Ok(());
-    }
-
-    if first_line.starts_with("POST")
-        || first_line.starts_with("GET")
-        || first_line.starts_with("HTTP")
-    {
-        return handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await;
-    }
-
-    handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await
+    let (_, mut writer) = stream.into_split();
+    let reject = serde_json::json!({
+        "jsonrpc": "2.0",
+        "error": {
+            "code": -32600,
+            "message": "Connection rejected: missing riboCipher signal. Prepend [0xEC, 0x01]."
+        },
+        "id": null
+    });
+    let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+    buf.push(b'\n');
+    let _ = writer.write_all(&buf).await;
+    let _ = writer.flush().await;
+    Ok(())
 }
 
 /// Attempt riboCipher dispatch on a Unix stream. If the first byte is a
@@ -289,11 +325,29 @@ pub(super) async fn try_ribocipher_dispatch(
             ))
         }
         ribocipher::MITO => {
-            warn!("riboCipher mito-obfuscated tier not yet supported — closing connection");
+            warn!("riboCipher mito-obfuscated tier not yet supported — rejecting");
+            let reject = serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32600, "message": "riboCipher tier 2 (mito) not yet supported"},
+                "id": null
+            });
+            let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+            buf.push(b'\n');
+            let _ = tokio::io::AsyncWriteExt::write_all(&mut stream, &buf).await;
+            let _ = tokio::io::AsyncWriteExt::flush(&mut stream).await;
             Ok(Some(Ok(())))
         }
         ribocipher::NUCLEAR => {
-            warn!("riboCipher nuclear-sealed tier not yet supported — closing connection");
+            warn!("riboCipher nuclear-sealed tier not yet supported — rejecting");
+            let reject = serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32600, "message": "riboCipher tier 3 (nuclear) not yet supported"},
+                "id": null
+            });
+            let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+            buf.push(b'\n');
+            let _ = tokio::io::AsyncWriteExt::write_all(&mut stream, &buf).await;
+            let _ = tokio::io::AsyncWriteExt::flush(&mut stream).await;
             Ok(Some(Ok(())))
         }
         _ => Err(stream),

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::JsonRpcHandler;
@@ -101,48 +101,47 @@ pub(crate) async fn handle_tcp_connection(
             );
             return handle_ribocipher_clear_tcp(handler, stream, pt[0]).await;
         }
-        ribocipher::MITO => {
-            info!("riboCipher mito-obfuscated tier not yet supported on TCP — closing");
-            return Ok(());
-        }
-        ribocipher::NUCLEAR => {
-            info!("riboCipher nuclear-sealed tier not yet supported on TCP — closing");
+        ribocipher::MITO | ribocipher::NUCLEAR => {
+            let tier = if first[0] == ribocipher::MITO {
+                "mito"
+            } else {
+                "nuclear"
+            };
+            warn!("riboCipher {tier} tier not yet supported on TCP — rejecting");
+            let reject = serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32600, "message": format!("riboCipher tier {tier} not yet supported")},
+                "id": null
+            });
+            let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+            buf.push(b'\n');
+            let _ = tokio::io::AsyncWriteExt::write_all(&mut stream, &buf).await;
+            let _ = tokio::io::AsyncWriteExt::flush(&mut stream).await;
             return Ok(());
         }
         _ => {}
     }
 
-    // Legacy path: ERROR (Wave 112) and reconstruct first line from consumed byte
+    // Wave 113: REJECT unsignalled connections
     error!(
         first_byte = format_args!("0x{:02X}", first[0]),
-        "DEPRECATED: unsignalled TCP connection (no riboCipher prefix). \
-         Wave 113 will REJECT unsignalled connections."
+        "REJECTED: unsignalled TCP connection (no riboCipher prefix). \
+         Clients MUST prepend [0xEC, 0x01]."
     );
-
-    let (reader, mut writer) = stream.into_split();
-    let mut reader = BufReader::new(reader);
-    let mut first_line = String::from(first[0] as char);
-    let n2 = match tokio::time::timeout(idle_timeout, reader.read_line(&mut first_line)).await {
-        Ok(Ok(n)) => n,
-        Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
-        Err(_) => {
-            return Err(ServerError::Network(
-                "TCP idle timeout on initial read".into(),
-            ));
-        }
-    };
-    if n2 == 0 && first_line.trim().is_empty() {
-        return Ok(());
-    }
-
-    if first_line.starts_with("POST")
-        || first_line.starts_with("GET")
-        || first_line.starts_with("HTTP")
-    {
-        return handle_http_keepalive_tcp(handler, &mut reader, &mut writer, first_line).await;
-    }
-
-    handle_ndjson_tcp(handler, &mut reader, &mut writer, first_line).await
+    let (_, mut writer) = stream.into_split();
+    let reject = serde_json::json!({
+        "jsonrpc": "2.0",
+        "error": {
+            "code": -32600,
+            "message": "Connection rejected: missing riboCipher signal. Prepend [0xEC, 0x01]."
+        },
+        "id": null
+    });
+    let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+    buf.push(b'\n');
+    let _ = writer.write_all(&buf).await;
+    let _ = writer.flush().await;
+    Ok(())
 }
 
 /// Handle a riboCipher clear-signalled TCP connection, routed by protocol type.

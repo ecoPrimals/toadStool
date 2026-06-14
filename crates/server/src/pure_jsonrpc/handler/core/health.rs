@@ -10,6 +10,18 @@ use toadstool_common::constants::PRIMAL_NAME;
 
 use super::JsonRpcResult;
 
+/// GuideStone-mandated bare `health` probe.
+///
+/// Returns the minimum shape required by all primals: `{status, primal, version}`.
+/// Used by cellMembrane probes and inter-primal health checks.
+pub(crate) async fn health_simple(version: &str) -> JsonRpcResult {
+    Ok(serde_json::json!({
+        "status": "alive",
+        "primal": PRIMAL_NAME,
+        "version": version,
+    }))
+}
+
 /// Wire Standard L1: minimal liveness probe (`health.liveness`).
 ///
 /// Always returns `{"status":"alive"}` — if the caller can reach this

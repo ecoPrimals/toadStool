@@ -24,6 +24,7 @@ pub(super) fn cost_estimates() -> serde_json::Value {
 
     // Meta / discovery — pure in-memory, no I/O
     for m in [
+        "health",
         "health.liveness",
         "health.check",
         "health.readiness",

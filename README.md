@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S314 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S315 | v0.2.0
 
 ---
 
@@ -57,7 +57,7 @@ Nest    = Tower  + Storage            <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| JSON-RPC surface | **111** JSON-RPC methods (direct) + semantic registry |
+| JSON-RPC surface | **112** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | File size limit | Non-hardware production files target **< 500 lines**. **0 production files >750L** (S284 split large files, S303+S306+S307 tightened gate to 750L); test-only files in `tests/` directories may exceed limit. |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
@@ -151,6 +151,7 @@ Callers probing `health.liveness` should use a timeout of **≥3 seconds** (reco
 
 | Probe | During init | After ready |
 |-------|-------------|-------------|
+| `health` | `{"status":"starting","primal":"toadstool","version":"..."}` | `{"status":"alive","primal":"toadstool","version":"..."}` |
 | `health.liveness` | `{"status":"alive"}` | `{"status":"alive"}` |
 | `health.readiness` | `{"status":"starting","version":"..."}` | `{"status":"ready","version":"..."}` |
 | `health.check` | Full envelope (always `"alive"`) | Full envelope |
@@ -171,12 +172,13 @@ For GPU workloads, callers should set `timeout_ms` proportional to expected comp
 
 All JSON-RPC methods expect **pre-resolved** parameter values. The server does **not** perform `${VAR}`/`$VAR` environment variable expansion on any string fields. Env expansion is a **CLI-only** convenience in `load_workload_file` for locally-authored TOML/JSON specs. IPC callers must send fully resolved paths, identifiers, and metadata values. In cross-primal composition, the server's process env differs from the caller's — implicit expansion would create ambiguity. Graph specs and composition callers should pre-expand variables on the client side. See `crates/server/src/pure_jsonrpc/METHODS.md` for full details.
 
-### JSON-RPC Methods (111 direct + semantic registry; S286+ adds `dispatch.verify_trust`, `dispatch.telemetry.schema`)
+### JSON-RPC Methods (112 direct + semantic registry; S286+ adds `dispatch.verify_trust`, `dispatch.telemetry.schema`)
 
 Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ intelligence service), **`shader.compile.*`** (→ visualization service), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ orchestration and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in visualization service).
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
+| `health` | `health` | GuideStone-mandated bare probe: `{status, primal, version}` |
 | `toadstool.*` | `health`, `version`, `query_capabilities`, `validate`, `list_workloads` | Canonical namespace |
 | `toadstool.resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | Canonical namespace |
 | `resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | biomeOS neural API routing aliases |
@@ -306,6 +308,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S315 (Jun 14, 2026)**: **Wave 113 Compliance** — Bare `"health"` JSON-RPC method added (`{status, primal, version}` — guideStone-mandated shape). Early-health responder now accepts riboCipher `[0xEC, 0x01]` prefix. Wave 113 REJECT enforced: unsignalled connections on all accept loops (Unix, TCP, BTSP) now return `-32600` error instead of legacy fallback. MITO/NUCLEAR tiers send error response instead of silent close. Tests updated to use riboCipher signal.
 - **S314 (Jun 14, 2026)**: **Deprecated Symbol Evolution** — `node_type::{BEARDOG,SONGBIRD,NESTGATE}` deleted (zero production callers). `FeatureFlags::enable_grpc` field removed (dead — populated but never read). `DISTRIBUTED_URL` + `get_distributed_storage_url()` dead API bundle removed. `TOADSTOOL_ENABLE_GRPC` env constant deprecated.
 - **S313 (Jun 14, 2026)**: **Deep Debt XVI** — 3 production `unreachable!()` → typed `ServerError::Internal` (zero production panics). `unix.rs` split: 815L → `unix.rs` (512L) + `btsp_unix.rs` (334L). `#[allow(dead_code)]` → `#[expect]` in `executor/types.rs`. Federation re-export `#[allow]` documented.
 - **S312 (Jun 13, 2026)**: **riboCipher Wave 112 escalation** — legacy unsignalled connections upgraded from WARN → ERROR on all 4 accept loops. Wave 113 will REJECT.
@@ -378,7 +381,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S314. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **111 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher COMPLIANT** — server detect + client signal, ERROR on unsignalled (S311–S312, Wave 112).
+**Last Updated**: Jun 2026 — S315. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced: unsignalled connections rejected with error response (S315). **GuideStone `health` method** — `{status, primal, version}` (S315).
 
 ---
 

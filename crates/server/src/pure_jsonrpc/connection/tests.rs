@@ -83,6 +83,8 @@ async fn test_serve_tcp_accepts_raw_json() {
     });
 
     let mut client = TcpStream::connect(addr).await.expect("connect");
+    // riboCipher CLEAR + NDJSON_JSONRPC signal
+    client.write_all(&[0xEC, 0x01]).await.expect("signal");
     let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
     client.write_all(request).await.expect("write");
     client.shutdown().await.ok();
@@ -115,6 +117,8 @@ async fn test_serve_tcp_accepts_http_post() {
     );
 
     let mut client = TcpStream::connect(addr).await.expect("connect");
+    // riboCipher CLEAR + HTTP signal
+    client.write_all(&[0xEC, 0x04]).await.expect("signal");
     client.write_all(http.as_bytes()).await.expect("write");
     client.shutdown().await.ok();
 
@@ -147,6 +151,8 @@ async fn test_serve_tcp_accepts_http_get_with_body() {
     );
 
     let mut client = TcpStream::connect(addr).await.expect("connect");
+    // riboCipher CLEAR + HTTP signal
+    client.write_all(&[0xEC, 0x04]).await.expect("signal");
     client.write_all(http.as_bytes()).await.expect("write");
     client.shutdown().await.ok();
 
@@ -185,6 +191,8 @@ async fn test_serve_unix_accepts_raw_json() {
     });
 
     let mut stream = await_unix_socket(&socket_path).await;
+    // riboCipher CLEAR + NDJSON_JSONRPC signal
+    stream.write_all(&[0xEC, 0x01]).await.expect("signal");
     let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
     stream.write_all(request).await.expect("write");
     stream.shutdown().await.ok();
@@ -215,6 +223,8 @@ async fn test_serve_unix_accepts_http_post() {
     );
 
     let mut stream = await_unix_socket(&socket_path).await;
+    // riboCipher CLEAR + HTTP signal
+    stream.write_all(&[0xEC, 0x04]).await.expect("signal");
     stream.write_all(http.as_bytes()).await.expect("write");
     stream.shutdown().await.ok();
 
@@ -240,6 +250,8 @@ async fn test_tcp_http_keepalive_multi_request() {
     });
 
     let mut client = TcpStream::connect(addr).await.expect("connect");
+    // riboCipher CLEAR + HTTP signal
+    client.write_all(&[0xEC, 0x04]).await.expect("signal");
 
     // First request (keep-alive default)
     let body1 = r#"{"jsonrpc":"2.0","method":"toadstool.health","id":1}"#;
@@ -292,6 +304,8 @@ async fn test_unix_http_keepalive_multi_request() {
     });
 
     let mut stream = await_unix_socket(&socket_path).await;
+    // riboCipher CLEAR + HTTP signal
+    stream.write_all(&[0xEC, 0x04]).await.expect("signal");
 
     // First request (keep-alive)
     let body1 = r#"{"jsonrpc":"2.0","method":"toadstool.health","id":1}"#;
@@ -338,6 +352,8 @@ async fn test_ndjson_with_blank_lines_between_requests() {
     });
 
     let mut client = TcpStream::connect(addr).await.expect("connect");
+    // riboCipher CLEAR + NDJSON_JSONRPC signal
+    client.write_all(&[0xEC, 0x01]).await.expect("signal");
 
     // Send two NDJSON requests with a blank line between them
     let requests = concat!(
@@ -377,6 +393,8 @@ async fn test_ndjson_unix_persistent_multi_request() {
     });
 
     let mut stream = await_unix_socket(&socket_path).await;
+    // riboCipher CLEAR + NDJSON_JSONRPC signal
+    stream.write_all(&[0xEC, 0x01]).await.expect("signal");
 
     // Send three requests on the same connection
     let r1 = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
@@ -494,47 +512,46 @@ fn is_plaintext_protocol_byte_whitespace() {
     assert!(super::unix::is_plaintext_protocol_byte(b' '), "space");
 }
 
-/// Verify that `handle_btsp_connection` auto-detects plain NDJSON
-/// and degrades gracefully instead of rejecting the connection.
+/// Wave 113: unsignalled NDJSON on BTSP socket is REJECTED with error response.
 #[tokio::test]
-async fn test_btsp_autodetect_plain_ndjson() {
+async fn test_btsp_rejects_unsignalled_ndjson() {
     let handler = Arc::new(test_handler());
     let (server_stream, mut client_stream) = UnixStream::pair().expect("pair");
 
     let server_handle = tokio::spawn(async move {
-        super::unix::handle_btsp_connection(handler, server_stream)
+        super::btsp_unix::handle_btsp_connection(handler, server_stream)
             .await
             .expect("btsp handler");
     });
 
     let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
     client_stream.write_all(request).await.expect("write");
-    client_stream.shutdown().await.ok();
 
-    let mut buf = Vec::new();
-    client_stream.read_to_end(&mut buf).await.expect("read");
+    // Read rejection response (bounded read avoids RST race from server-side unread data)
+    let mut buf = vec![0u8; 4096];
+    let n = client_stream.read(&mut buf).await.expect("read");
+    assert!(n > 0, "BTSP socket should send rejection error");
     server_handle.await.expect("join");
 
-    let text = String::from_utf8_lossy(&buf);
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("json");
+    assert_eq!(resp["error"]["code"], -32600, "rejected with -32600: {resp}");
     assert!(
-        !text.is_empty(),
-        "BTSP socket should serve plain JSON-RPC via auto-detect"
-    );
-    let resp: serde_json::Value = serde_json::from_slice(&buf).expect("json");
-    assert!(
-        resp["result"]["healthy"].as_bool().is_some(),
-        "health response should be valid: {resp}"
+        resp["error"]["message"]
+            .as_str()
+            .unwrap_or("")
+            .contains("riboCipher"),
+        "rejection mentions riboCipher: {resp}"
     );
 }
 
-/// Verify that `handle_btsp_connection` auto-detects HTTP and serves it.
+/// Wave 113: unsignalled HTTP on BTSP socket is REJECTED with error response.
 #[tokio::test]
-async fn test_btsp_autodetect_plain_http() {
+async fn test_btsp_rejects_unsignalled_http() {
     let handler = Arc::new(test_handler());
     let (server_stream, mut client_stream) = UnixStream::pair().expect("pair");
 
     let server_handle = tokio::spawn(async move {
-        super::unix::handle_btsp_connection(handler, server_stream)
+        super::btsp_unix::handle_btsp_connection(handler, server_stream)
             .await
             .expect("btsp handler");
     });
@@ -550,19 +567,14 @@ async fn test_btsp_autodetect_plain_http() {
         .await
         .expect("write");
 
-    let mut buf = Vec::new();
-    client_stream.read_to_end(&mut buf).await.expect("read");
+    // Read rejection response (bounded read avoids RST race from server-side unread data)
+    let mut buf = vec![0u8; 4096];
+    let n = client_stream.read(&mut buf).await.expect("read");
+    assert!(n > 0, "BTSP socket should send rejection for unsignalled HTTP");
     server_handle.await.expect("join");
 
-    let response = String::from_utf8_lossy(&buf);
-    assert!(
-        response.contains("HTTP/1.1 200 OK"),
-        "BTSP socket should serve HTTP via auto-detect: {response}"
-    );
-    assert!(
-        response.contains("test-conn-1.0.0"),
-        "version in response: {response}"
-    );
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("json");
+    assert_eq!(resp["error"]["code"], -32600, "rejected with -32600: {resp}");
 }
 
 /// Verify that EOF on a BTSP socket is handled gracefully.
@@ -573,7 +585,7 @@ async fn test_btsp_autodetect_eof() {
 
     drop(client_stream);
 
-    let result = super::unix::handle_btsp_connection(handler, server_stream).await;
+    let result = super::btsp_unix::handle_btsp_connection(handler, server_stream).await;
     assert!(result.is_ok(), "EOF should be handled gracefully");
 }
 

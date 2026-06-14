@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 14, 2026 (Sessions 43-314)
+## [Unreleased] - Jun 14, 2026 (Sessions 43-315)
+
+### Session S315 (Jun 14, 2026) — Wave 113 Compliance: health Method + riboCipher REJECT
+
+All three toadStool Wave 113 P1 items completed. Bare `"health"` JSON-RPC method added per guideStone mandate — returns `{status, primal, version}`. Early-health responder now strips riboCipher `[0xEC, 0x01]` prefix during startup window. Wave 113 REJECT enforced: unsignalled connections on all 4 accept loop families (JSON-RPC Unix, TCP, BTSP w/feature, BTSP w/o feature) return `-32600 Invalid Request` error with `riboCipher` migration guidance instead of legacy fallback processing. MITO/NUCLEAR tier connections send error response instead of silent close. All connection tests updated to send riboCipher signal.
+
+- `handler/core/health.rs` — NEW `health_simple()` → `{status, primal, version}`
+- `handler/core/mod.rs` — `"health"` added to `DIRECT_JSONRPC_METHODS` + export
+- `handler/mod.rs` — `"health"` match arm in `handle_method` dispatch
+- `handler/method_gate.rs` — `"health"` classified as `Public` (health probes never gated)
+- `handler/core/wire_l3.rs` — `"health"` added to L1 in-memory cost tier
+- `connection/unix.rs` — `handle_early_health` accepts riboCipher prefix; `"health"` method in early-health dispatch; Wave 113 REJECT for unsignalled (Unix); MITO/NUCLEAR send error response
+- `connection/tcp.rs` — Wave 113 REJECT for unsignalled (TCP); MITO/NUCLEAR send error response
+- `connection/btsp_unix.rs` — Wave 113 REJECT for unsignalled (both cfg variants); legacy BTSP/plaintext fallback removed; BTSP session functions marked `#[expect(dead_code)]` (pending riboCipher 0x02/0x03 routing)
+- `connection/tests.rs` — all 11 connection tests updated to prepend riboCipher signal; 2 new BTSP rejection tests
 
 ### Session S314 (Jun 14, 2026) — Deprecated Symbol Evolution: Dead Code Deletion
 
