@@ -23,35 +23,31 @@ fn test_replication_settings_serialization() {
 }
 
 #[test]
-#[expect(deprecated)]
 fn test_storage_backend_impl_new_configuration() {
-    let backend = SocketStorageBackend::new("http://ignored", "fast-tier", true, 3);
+    let backend = SocketStorageBackend::new_test("fast-tier", true, 3);
     assert_eq!(backend.storage_tier, "fast-tier");
     assert!(backend.replication_enabled);
     assert_eq!(backend.replication_factor, 3);
 }
 
 #[test]
-#[expect(deprecated)]
 fn test_storage_backend_impl_new_storage_tier_into() {
     let tier = String::from("ssd-tier");
-    let backend = SocketStorageBackend::new("x", tier, false, 1);
+    let backend = SocketStorageBackend::new_test(tier, false, 1);
     assert_eq!(backend.storage_tier, "ssd-tier");
     assert!(!backend.replication_enabled);
 }
 
 #[test]
-#[expect(deprecated)]
 fn test_storage_backend_impl_new_replication_disabled() {
-    let backend = SocketStorageBackend::new("", "cold", false, 0);
+    let backend = SocketStorageBackend::new_test("cold", false, 0);
     assert!(!backend.replication_enabled);
     assert_eq!(backend.replication_factor, 0);
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_nestgate_initialize_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "test", false, 1);
+    let backend = SocketStorageBackend::new_test("test", false, 1);
     let result = backend.initialize().await;
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -176,9 +172,8 @@ fn test_delete_volume_params_structure() {
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_provision_volume_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let config = VolumeConfig {
         name: "test-vol".to_string(),
         size: "10Gi".to_string(),
@@ -196,17 +191,15 @@ async fn test_provision_volume_fails_without_service() {
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_list_volumes_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let result = backend.list_volumes().await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_provision_persistent_volume_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let pv = PersistentVolume {
         name: "pv-test".to_string(),
         capacity: "10Gi".to_string(),
@@ -219,33 +212,29 @@ async fn test_provision_persistent_volume_fails_without_service() {
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_mount_volume_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let result = backend.mount_volume("vol1", "svc1", "/mnt/data").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_unmount_volume_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let result = backend.unmount_volume("vol1", "svc1").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_delete_volume_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let result = backend.delete_volume("vol1").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
-#[expect(deprecated)]
 async fn test_get_volume_status_fails_without_service() {
-    let backend = SocketStorageBackend::new("", "tier", false, 1);
+    let backend = SocketStorageBackend::new_test("tier", false, 1);
     let result = backend.get_volume_status("vol1").await;
     assert!(result.is_err());
 }

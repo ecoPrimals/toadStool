@@ -136,11 +136,16 @@ impl UniversalServiceAdapter {
 
         match protocol.as_str() {
             "jsonrpc" | "unix" => self.invoke_jsonrpc(provider, request).await,
-            #[expect(
-                deprecated,
-                reason = "HTTP invoke kept for legacy providers; prefer unix/jsonrpc"
-            )]
-            "http" | "https" => self.invoke_http(provider, request).await,
+            "http" | "https" => {
+                tracing::error!(
+                    "HTTP protocol deprecated. Migrate to JSON-RPC over Unix socket."
+                );
+                Err(crate::CliError::Other(
+                    "HTTP adapter removed (S317). Use Unix socket RPC for primal-to-primal communication. \
+                     For external HTTP, route through the coordination service (Concentrated Gap architecture)."
+                        .to_string(),
+                ))?
+            }
             "grpc" => {
                 tracing::error!(
                     "gRPC protocol deprecated (UNIVERSAL_IPC_STANDARD_V3). Migrate to JSON-RPC over Unix socket."
@@ -253,35 +258,6 @@ impl UniversalServiceAdapter {
                 Err(e.into())
             }
         }
-    }
-
-    /// Invoke via HTTP/REST — always returns an error.
-    ///
-    /// HTTP is not supported for primal-to-primal. External HTTP routes through
-    /// the coordination service (Concentrated Gap architecture).
-    #[deprecated(
-        since = "0.92.0",
-        note = "HTTP adapter removed. Use Unix socket RPC for primal-to-primal."
-    )]
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by trait/interface"
-    )]
-    async fn invoke_http(
-        &self,
-        _provider: &ServiceProvider,
-        _request: Request,
-    ) -> Result<Response> {
-        // External HTTP should go through the coordination service (Concentrated Gap architecture)
-        tracing::error!(
-            "HTTP invoke deprecated - use Unix socket RPC for primal-to-primal communication"
-        );
-
-        Err(crate::CliError::Other(
-            "HTTP adapter removed. Use Unix socket RPC instead. \
-             For external HTTP, route through the coordination service (Concentrated Gap architecture)."
-                .to_string(),
-        ))?
     }
 }
 

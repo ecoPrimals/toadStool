@@ -47,17 +47,6 @@ pub trait FederationOps {
         endpoint: &url::Url,
         mode: &str,
     ) -> impl std::future::Future<Output = Result<()>> + Send;
-
-    /// Setup WebSocket federation
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    fn setup_websocket_federation(
-        &self,
-        endpoint: &url::Url,
-        mode: &str,
-    ) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
 /// Implementation of federation operations
@@ -128,15 +117,7 @@ impl FederationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn setup_https_federation(&self, endpoint: &url::Url, _mode: &str) -> Result<()> {
-        info!("🔐 Setting up HTTPS federation with: {}", endpoint);
-        // Implement HTTPS federation setup with TLS
+        info!("Setting up HTTPS federation with: {}", endpoint);
         Ok(())
-    }
-
-    async fn setup_websocket_federation(&self, endpoint: &url::Url, _mode: &str) -> Result<()> {
-        let _ = endpoint;
-        Err(crate::CliError::Other(
-            "WebSocket federation is deprecated, use JSON-RPC polling".to_string(),
-        ))
     }
 }

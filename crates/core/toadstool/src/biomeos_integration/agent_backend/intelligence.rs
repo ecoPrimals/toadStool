@@ -65,30 +65,6 @@ impl IntelligenceBackend {
         })
     }
 
-    /// Create a new ML agent backend with unix socket transport
-    ///
-    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
-    ///
-    /// **Pure Rust**: No HTTP client, uses unix sockets!
-    #[must_use]
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use new_async() for capability-based discovery"
-    )]
-    pub fn new(
-        _endpoint: impl Into<String>,
-        model_registry: impl Into<String>,
-        agent_runtime: impl Into<String>,
-        mcp_enabled: bool,
-    ) -> Self {
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability("ai");
-        Self {
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-            _model_registry: model_registry.into(),
-            _agent_runtime: agent_runtime.into(),
-            _mcp_enabled: mcp_enabled,
-        }
-    }
 }
 
 impl AgentBackend for IntelligenceBackend {

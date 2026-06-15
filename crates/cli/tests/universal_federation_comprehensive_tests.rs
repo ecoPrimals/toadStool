@@ -4,7 +4,7 @@
 //! Tests for federation functionality in universal compute manager.
 //! Coverage target: Get federation.rs from current low coverage to >80%
 
-#![allow(deprecated)] // setup_websocket_federation deprecated; tests validate error behavior
+// WebSocket federation tests removed S317 — setup_websocket_federation deleted.
 
 use anyhow::Result;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -137,66 +137,6 @@ async fn test_setup_https_federation_various_endpoints() -> Result<()> {
 // ==================================================
 // WebSocket Federation Tests
 // ==================================================
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_setup_websocket_federation_basic() -> Result<()> {
-    let manager = create_manager().await?;
-    let endpoint = Url::parse("wss://example.com:8443")?;
-
-    let result = manager
-        .setup_websocket_federation(&endpoint, "client")
-        .await;
-    let _ = result;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_setup_websocket_federation_client_mode() -> Result<()> {
-    let manager = create_manager().await?;
-    let endpoint = Url::parse("wss://localhost:8443")?;
-
-    let result = manager
-        .setup_websocket_federation(&endpoint, "client")
-        .await;
-    let _ = result;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_setup_websocket_federation_server_mode() -> Result<()> {
-    let manager = create_manager().await?;
-    let endpoint = Url::parse("wss://localhost:8443")?;
-
-    let result = manager
-        .setup_websocket_federation(&endpoint, "server")
-        .await;
-    let _ = result;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_setup_websocket_federation_various_endpoints() -> Result<()> {
-    let manager = create_manager().await?;
-
-    let endpoints = vec![
-        "wss://localhost:8443",
-        "wss://127.0.0.1:9000",
-        "wss://peer.example.com:8080",
-    ];
-
-    for endpoint_str in endpoints {
-        let endpoint = Url::parse(endpoint_str)?;
-        let result = manager
-            .setup_websocket_federation(&endpoint, "client")
-            .await;
-        let _ = result;
-    }
-
-    Ok(())
-}
 
 // ==================================================
 // Heartbeat Tests
@@ -345,23 +285,6 @@ async fn test_https_federation_with_port_variations() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_websocket_federation_with_port_variations() -> Result<()> {
-    let manager = create_manager().await?;
-
-    let ports = vec![80, 443, 8080, 8443, 9000];
-
-    for port in ports {
-        let endpoint = Url::parse(&format!("wss://localhost:{port}"))?;
-        let result = manager
-            .setup_websocket_federation(&endpoint, "client")
-            .await;
-        let _ = result;
-    }
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capabilities_zero_copy_optimization() -> Result<()> {
     let manager = create_manager().await?;
 
@@ -384,11 +307,6 @@ async fn test_rapid_federation_setups() -> Result<()> {
     for i in 0..10 {
         let endpoint = Url::parse(&format!("https://localhost:{}", 8000 + i))?;
         let _ = manager.setup_https_federation(&endpoint, "client").await;
-
-        let ws_endpoint = Url::parse(&format!("wss://localhost:{}", 9000 + i))?;
-        let _ = manager
-            .setup_websocket_federation(&ws_endpoint, "client")
-            .await;
     }
 
     Ok(())
@@ -411,11 +329,6 @@ async fn test_federation_full_lifecycle() -> Result<()> {
         .setup_https_federation(&https_endpoint, "client")
         .await;
 
-    // Setup WebSocket federation
-    let ws_endpoint = Url::parse("wss://localhost:8444")?;
-    let _ = manager
-        .setup_websocket_federation(&ws_endpoint, "client")
-        .await;
 
     // Start peer monitoring
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
@@ -473,17 +386,3 @@ async fn test_federation_different_modes() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_websocket_different_modes() -> Result<()> {
-    let manager = create_manager().await?;
-    let endpoint = Url::parse("wss://localhost:8443")?;
-
-    let modes = vec!["client", "server", "peer", "hub"];
-
-    for mode in modes {
-        let result = manager.setup_websocket_federation(&endpoint, mode).await;
-        let _ = result;
-    }
-
-    Ok(())
-}

@@ -25,10 +25,9 @@ fn test_security_discovery_new() {
 }
 
 #[test]
-#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_new() {
     let config = SecurityConfig::default();
-    let _client = SecurityClient::new(config);
+    let _client = SecurityClient::new_test(config);
 }
 
 #[tokio::test]
@@ -76,19 +75,17 @@ async fn test_security_discovery_preferred_location_network() {
 }
 
 #[test]
-#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_provider_id() {
     let config = SecurityConfig::default();
-    let client = Arc::new(SecurityClient::new(config).unwrap());
+    let client = Arc::new(SecurityClient::new_test(config).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     assert_eq!(crypto.provider_id(), "crypto");
 }
 
 #[test]
-#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_capabilities() {
     let config = SecurityConfig::default();
-    let client = Arc::new(SecurityClient::new(config).unwrap());
+    let client = Arc::new(SecurityClient::new_test(config).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     assert!(!crypto.capabilities().algorithms.is_empty());
 }
@@ -179,7 +176,6 @@ async fn test_security_discovery_get_best_endpoint_no_latency_uses_max() {
 }
 
 #[test]
-#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_creation_with_custom_config() {
     let config = SecurityConfig {
         auto_discover: false,
@@ -187,14 +183,13 @@ fn test_security_client_creation_with_custom_config() {
         preferred_location: ServiceLocation::Network,
         fallback_enabled: false,
     };
-    assert!(SecurityClient::new(config).is_ok());
+    assert!(SecurityClient::new_test(config).is_ok());
 }
 
 #[test]
-#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_creation_default_config() {
     let config = SecurityConfig::default();
-    let client = Arc::new(SecurityClient::new(config).unwrap());
+    let client = Arc::new(SecurityClient::new_test(config).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     assert_eq!(crypto.provider_id(), "crypto");
 }

@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use base64::Engine;
-use toadstool_common::primal_sockets::{discover_crypto_socket, get_socket_path_for_capability};
+use toadstool_common::primal_sockets::discover_crypto_socket;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
 
@@ -102,22 +102,13 @@ impl SecurityClient {
         })
     }
 
-    /// Create new Security client with unix socket transport
+    /// Synchronous constructor for testing (no async discovery).
     ///
-    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
-    ///
-    /// # Errors
-    /// Returns error if socket path discovery fails
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use new_async() for capability-based discovery"
-    )]
-    #[expect(
-        deprecated,
-        reason = "new() uses deprecated SecurityConfig; migration in progress"
-    )]
-    pub fn new(config: SecurityConfig) -> ToadStoolResult<Self> {
-        let socket_path = get_socket_path_for_capability("crypto");
+    /// Uses `get_socket_path_for_capability` directly. Production callers
+    /// should use [`new_async`](Self::new_async) for proper capability discovery.
+    pub fn new_test(config: SecurityConfig) -> ToadStoolResult<Self> {
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
         let rpc_client = UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {

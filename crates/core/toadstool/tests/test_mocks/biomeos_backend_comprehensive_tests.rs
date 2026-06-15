@@ -213,36 +213,31 @@ async fn test_inmemory_auth_backend_refresh_token_fields() {
 
 #[test]
 fn test_storage_backend_impl_creation() {
-    let _backend = SocketStorageBackend::new("http://nestgate:8082", "standard", true, 3);
-    // Backend should be constructed successfully
+    let _backend = SocketStorageBackend::new_test("standard", true, 3);
 }
 
 #[test]
 fn test_storage_backend_impl_creation_with_string() {
-    let endpoint = String::from("http://nestgate:8082");
     let storage_tier = String::from("premium");
-    let _backend = SocketStorageBackend::new(endpoint, storage_tier, false, 1);
-    // Backend should accept String as parameters
+    let _backend = SocketStorageBackend::new_test(storage_tier, false, 1);
 }
 
 #[test]
 fn test_storage_backend_impl_creation_with_str() {
-    let _backend = SocketStorageBackend::new("http://nestgate:8082", "hot", true, 2);
-    // Backend should accept &str as parameters
+    let _backend = SocketStorageBackend::new_test("hot", true, 2);
 }
 
 #[test]
 fn test_storage_backend_impl_creation_various_configs() {
-    let configs = vec![
-        ("http://localhost:8082", "standard", false, 1),
-        ("http://nestgate:8082", "premium", true, 3),
-        ("https://storage.example.com", "hot", true, 5),
-        ("http://192.168.1.100:8082", "cold", false, 1),
+    let configs: Vec<(&str, bool, u32)> = vec![
+        ("standard", false, 1),
+        ("premium", true, 3),
+        ("hot", true, 5),
+        ("cold", false, 1),
     ];
 
-    for (endpoint, tier, replication, factor) in configs {
-        let _backend = SocketStorageBackend::new(endpoint, tier, replication, factor);
-        // Each config should create a valid backend
+    for (tier, replication, factor) in configs {
+        let _backend = SocketStorageBackend::new_test(tier, replication, factor);
     }
 }
 

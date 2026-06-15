@@ -169,10 +169,10 @@ async fn handle_early_health(mut stream: UnixStream) {
 
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
-    let mut line = if first[0] != 0xEC {
-        String::from(first[0] as char)
-    } else {
+    let mut line = if first[0] == 0xEC {
         String::new()
+    } else {
+        String::from(first[0] as char)
     };
     if reader.read_line(&mut line).await.is_err() || line.trim().is_empty() {
         return;

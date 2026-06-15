@@ -74,40 +74,37 @@ fn parse_capabilities_empty_defaults() {
     assert!(!cap.hardware_backed);
 }
 
-// ─── SecurityClient::new (deprecated, sync) ─────────────────────────────────
+// ─── SecurityClient::new_test (sync, test-only) ─────────────────────────────
 
 #[test]
-#[expect(deprecated)]
 fn security_client_new_creates() {
     let config = SecurityConfig::default();
-    let result = SecurityClient::new(config);
+    let result = SecurityClient::new_test(config);
     assert!(result.is_ok());
 }
 
 // ─── CryptoProvider trait (via toadstool::encryption::CryptoProvider) ───────
 
 #[test]
-#[expect(deprecated)]
 fn provider_id_returns_security() {
     use std::sync::Arc;
 
     use toadstool::encryption::CryptoProvider;
     use toadstool_distributed::security::DistributedCryptoProvider;
 
-    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let client = Arc::new(SecurityClient::new_test(SecurityConfig::default()).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     assert_eq!(crypto.provider_id(), "crypto");
 }
 
 #[test]
-#[expect(deprecated)]
 fn capabilities_returns_default() {
     use std::sync::Arc;
 
     use toadstool::encryption::CryptoProvider;
     use toadstool_distributed::security::DistributedCryptoProvider;
 
-    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let client = Arc::new(SecurityClient::new_test(SecurityConfig::default()).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     let caps = crypto.capabilities();
     assert!(!caps.algorithms.is_empty());
@@ -118,7 +115,7 @@ fn capabilities_returns_default() {
 #[tokio::test]
 async fn query_capabilities_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let result: Result<_, _> = client.query_capabilities_async().await;
     assert!(result.is_err());
 }
@@ -126,7 +123,7 @@ async fn query_capabilities_service_unavailable() {
 #[tokio::test]
 async fn encrypt_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let req = EncryptionRequest {
         request_id: Uuid::new_v4(),
         operation: EncryptionOperation::Encrypt,
@@ -142,7 +139,7 @@ async fn encrypt_service_unavailable() {
 #[tokio::test]
 async fn decrypt_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let req = EncryptionRequest {
         request_id: Uuid::new_v4(),
         operation: EncryptionOperation::Decrypt,
@@ -158,7 +155,7 @@ async fn decrypt_service_unavailable() {
 #[tokio::test]
 async fn sign_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let result: Result<_, _> = client.sign(b"data").await;
     assert!(result.is_err());
 }
@@ -166,7 +163,7 @@ async fn sign_service_unavailable() {
 #[tokio::test]
 async fn verify_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let result: Result<_, _> = client.verify(b"data", b"sig", "key-1").await;
     assert!(result.is_err());
 }
@@ -174,7 +171,7 @@ async fn verify_service_unavailable() {
 #[tokio::test]
 async fn key_management_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let req = KeyManagementRequest {
         request_id: Uuid::new_v4(),
         operation: KeyOperation::Generate,
@@ -188,7 +185,7 @@ async fn key_management_service_unavailable() {
 #[tokio::test]
 async fn create_permission_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let req = PermissionRequest {
         requester_id: "test".to_string(),
         target: ExternalTarget::ExternalTool {
@@ -212,7 +209,7 @@ async fn create_permission_service_unavailable() {
 #[tokio::test]
 async fn validate_permission_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let perm = SecurityPermission {
         permission_id: Uuid::new_v4(),
         holder_id: "u1".to_string(),
@@ -248,7 +245,7 @@ async fn validate_permission_service_unavailable() {
 #[tokio::test]
 async fn revoke_permission_service_unavailable() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let result: Result<_, _> = client
         .revoke_permission(&Uuid::new_v4(), "test reason")
         .await;
@@ -258,7 +255,7 @@ async fn revoke_permission_service_unavailable() {
 #[tokio::test]
 async fn health_check_returns_empty_or_unhealthy() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
+    let client = SecurityClient::new_test(config).unwrap();
     let result = client.health_check().await;
     assert!(result.is_ok());
     let endpoints = result.unwrap();
@@ -267,7 +264,7 @@ async fn health_check_returns_empty_or_unhealthy() {
 
 #[tokio::test]
 async fn discover_returns_empty_without_service() {
-    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
+    let client = SecurityClient::new_test(SecurityConfig::default()).unwrap();
     let result = client.discover().await;
     assert!(result.is_ok());
 }

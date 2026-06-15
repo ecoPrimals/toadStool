@@ -234,23 +234,6 @@ impl SecurityBackend {
         })
     }
 
-    /// Create a new crypto authentication backend with unix socket transport
-    ///
-    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
-    ///
-    /// **Pure Rust**: No HTTP client, uses unix sockets!
-    #[must_use]
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use new_async() for capability-based discovery"
-    )]
-    pub fn new(_endpoint: impl Into<String>) -> Self {
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
-        Self {
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
-        }
-    }
 }
 
 impl AuthBackend for SecurityBackend {

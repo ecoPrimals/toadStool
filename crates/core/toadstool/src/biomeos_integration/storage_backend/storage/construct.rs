@@ -47,18 +47,10 @@ impl SocketStorageBackend {
         })
     }
 
-    /// Create a new storage backend with unix socket transport
-    ///
-    /// **DEPRECATED**: Use `new_async()` for capability-based discovery.
-    ///
-    /// **Pure Rust**: No HTTP client, uses unix sockets!
+    /// Test-only synchronous constructor (no actual service discovery).
+    #[cfg(any(test, feature = "test-mocks"))]
     #[must_use]
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use new_async() for capability-based discovery"
-    )]
-    pub fn new(
-        _endpoint: impl Into<String>,
+    pub fn new_test(
         storage_tier: impl Into<String>,
         replication_enabled: bool,
         replication_factor: u32,

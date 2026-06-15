@@ -54,10 +54,8 @@ impl DistributedSecurityProvider {
     pub async fn with_config(config: SecurityConfig) -> ToadStoolResult<Self> {
         let discovery = SecurityDiscovery::new(config.clone());
 
-        // Attempt to discover and create Security client
-        let client = match SecurityClient::new(config.clone()) {
+        let client = match SecurityClient::new_async(config.clone()).await {
             Ok(client) => {
-                // Verify we can discover endpoints
                 match client.discover().await {
                     Ok(endpoints) if !endpoints.is_empty() => Some(Arc::new(client)),
                     _ => None,
@@ -105,10 +103,16 @@ impl DistributedSecurityProvider {
 
         drop(client_lock);
 
-        // No client, try to discover and create
-        let client = Arc::new(SecurityClient::new(SecurityConfig::default())?);
+        let client = Arc::new(
+            SecurityClient::new_async(SecurityConfig::default())
+                .await
+                .map_err(|e| {
+                    ToadStoolError::not_found(format!(
+                        "security service not found - security provider unavailable: {e}"
+                    ))
+                })?,
+        );
 
-        // Verify we can discover endpoints
         let endpoints = client.discover().await?;
         if endpoints.is_empty() {
             return Err(ToadStoolError::not_found(

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Jun 14, 2026 (Sessions 43-315)
 
+### Session S317 (Jun 15, 2026) — Deprecated Symbol Evolution II: Sync Ctor Purge + Migration
+
+6 deprecated symbols deleted. Production callers migrated where needed, test callers evolved to test-only constructors.
+
+**Deleted (zero production callers):**
+- `IntelligenceBackend::new` — sync ctor deleted (zero callers; `new_async` is the production path)
+- `SecurityBackend::new` — sync ctor deleted (zero callers; `new_async` is the production path)
+- `SocketStorageBackend::new` — deprecated ctor replaced with `#[cfg(any(test, feature = "test-mocks"))]` `new_test()` (12 test callers migrated, endpoint param dropped)
+- `SecurityClient::new` — deprecated sync ctor deleted; 2 production callers in `security_impl/client.rs` migrated to `new_async()`; ~30 test callers migrated to `new_test()`
+- `invoke_http` — function deleted; HTTP match arm inlined as error (was already hard error since S92)
+- `FederationOps::setup_websocket_federation` — trait method + impl deleted; 7 WebSocket-only tests removed
+
+**Other:**
+- `unix.rs:172` — clippy `if_not_else` fixed (flipped `first[0] != 0xEC` → `first[0] == 0xEC`)
+- `executor/types.rs` — `#[expect(dead_code)]` narrowed to `HealthCheck` variant only
+- ~25 `#[expect(deprecated)]` test attrs removed (no longer needed after ctor evolution)
+- `crypto_dispatch.rs` — `#[expect(deprecated)]` test helper evolved to `new_test()`
+
 ### Session S316 (Jun 15, 2026) — Deep Debt XVII: File Splits + Dead Symbol Deletion
 
 `cpu_resource.rs` split (749→673L): dispatch enums (`UniversalComputeResourceDispatch`, `ComputeContextDispatch`, trait impls) extracted to `compute_dispatch.rs` (93L). `glowplug_client.rs` split (729→635L): 9 serde DTO types extracted to `glowplug_types.rs` (105L). `TOADSTOOL_ENABLE_GRPC` constant deleted (zero callers since S314 deprecated it). Unfulfilled `#[expect(dead_code)]` removed from `executor/types.rs` — `ProcessType` enum is now alive (health-check wiring completed).

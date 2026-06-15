@@ -247,11 +247,7 @@ mod tests {
     fn make_provider() -> DistributedCryptoProvider {
         use crate::security::SecurityConfig;
         let config = SecurityConfig::default();
-        #[expect(
-            deprecated,
-            reason = "SecurityClient::new uses deprecated SecurityConfig; test helper"
-        )]
-        let client = SecurityClient::new(config).unwrap();
+        let client = SecurityClient::new_test(config).unwrap();
         DistributedCryptoProvider::Security(Arc::new(client))
     }
 

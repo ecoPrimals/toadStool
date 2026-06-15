@@ -7,25 +7,22 @@ use toadstool::encryption::CryptoProvider;
 use toadstool_common::interned_strings::capabilities;
 
 #[test]
-#[expect(deprecated)]
 fn test_security_client_new_creates_client() {
     let config = SecurityConfig::default();
-    let result = SecurityClient::new(config);
+    let result = SecurityClient::new_test(config);
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_provider_id_returns_security() {
-    #[expect(deprecated)]
-    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let client = Arc::new(SecurityClient::new_test(SecurityConfig::default()).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     assert_eq!(crypto.provider_id(), capabilities::CRYPTO);
 }
 
 #[test]
 fn test_capabilities_returns_default() {
-    #[expect(deprecated)]
-    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let client = Arc::new(SecurityClient::new_test(SecurityConfig::default()).unwrap());
     let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
     let caps = crypto.capabilities();
     assert!(!caps.algorithms.is_empty());
