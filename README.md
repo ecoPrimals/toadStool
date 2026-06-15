@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S315 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S316 | v0.2.0
 
 ---
 
@@ -309,6 +309,7 @@ toadStool/
 
 ### Recently Completed
 - **S315 (Jun 14, 2026)**: **Wave 113 Compliance** — Bare `"health"` JSON-RPC method added (`{status, primal, version}` — guideStone-mandated shape). Early-health responder now accepts riboCipher `[0xEC, 0x01]` prefix. Wave 113 REJECT enforced: unsignalled connections on all accept loops (Unix, TCP, BTSP) now return `-32600` error instead of legacy fallback. MITO/NUCLEAR tiers send error response instead of silent close. Tests updated to use riboCipher signal.
+- **S316 (Jun 15, 2026)**: **Deep Debt XVII: File Splits + Dead Symbol Deletion** — `cpu_resource.rs` split (749→673L): dispatch enums extracted to `compute_dispatch.rs`. `glowplug_client.rs` split (729→635L): serde types extracted to `glowplug_types.rs`. `TOADSTOOL_ENABLE_GRPC` constant deleted (zero callers since S314). Unfulfilled `#[expect(dead_code)]` removed from `executor/types.rs` (code now alive).
 - **S314 (Jun 14, 2026)**: **Deprecated Symbol Evolution** — `node_type::{BEARDOG,SONGBIRD,NESTGATE}` deleted (zero production callers). `FeatureFlags::enable_grpc` field removed (dead — populated but never read). `DISTRIBUTED_URL` + `get_distributed_storage_url()` dead API bundle removed. `TOADSTOOL_ENABLE_GRPC` env constant deprecated.
 - **S313 (Jun 14, 2026)**: **Deep Debt XVI** — 3 production `unreachable!()` → typed `ServerError::Internal` (zero production panics). `unix.rs` split: 815L → `unix.rs` (512L) + `btsp_unix.rs` (334L). `#[allow(dead_code)]` → `#[expect]` in `executor/types.rs`. Federation re-export `#[allow]` documented.
 - **S312 (Jun 13, 2026)**: **riboCipher Wave 112 escalation** — legacy unsignalled connections upgraded from WARN → ERROR on all 4 accept loops. Wave 113 will REJECT.
@@ -381,7 +382,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S315. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S307). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced: unsignalled connections rejected with error response (S315). **GuideStone `health` method** — `{status, primal, version}` (S315).
+**Last Updated**: Jun 2026 — S316. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S316: cpu_resource split 749→673, glowplug_client split 729→635). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced: unsignalled connections rejected with error response (S315). **GuideStone `health` method** — `{status, primal, version}` (S315).
 
 ---
 

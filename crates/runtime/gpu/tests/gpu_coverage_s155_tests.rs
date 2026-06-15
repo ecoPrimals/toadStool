@@ -290,7 +290,7 @@ async fn scheduler_with_cpu_resource() {
     let cpu = toadstool_runtime_gpu::cpu_resource::CpuComputeResource::new().expect("CPU");
     scheduler
         .register_resource(Arc::new(
-            toadstool_runtime_gpu::cpu_resource::UniversalComputeResourceDispatch::Cpu(cpu),
+            toadstool_runtime_gpu::compute_dispatch::UniversalComputeResourceDispatch::Cpu(cpu),
         ))
         .await;
 
@@ -305,7 +305,7 @@ async fn scheduler_select_resource_with_cpu() {
     let cpu = toadstool_runtime_gpu::cpu_resource::CpuComputeResource::new().expect("CPU");
     scheduler
         .register_resource(Arc::new(
-            toadstool_runtime_gpu::cpu_resource::UniversalComputeResourceDispatch::Cpu(cpu),
+            toadstool_runtime_gpu::compute_dispatch::UniversalComputeResourceDispatch::Cpu(cpu),
         ))
         .await;
 
@@ -321,7 +321,7 @@ async fn scheduler_record_performance() {
     let id = cpu.resource_id().to_string();
     scheduler
         .register_resource(Arc::new(
-            toadstool_runtime_gpu::cpu_resource::UniversalComputeResourceDispatch::Cpu(cpu),
+            toadstool_runtime_gpu::compute_dispatch::UniversalComputeResourceDispatch::Cpu(cpu),
         ))
         .await;
 

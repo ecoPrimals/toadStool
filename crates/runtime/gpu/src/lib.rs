@@ -39,6 +39,7 @@ pub mod aggregation;
 pub mod compiler;
 pub mod config;
 pub mod coordinator;
+pub mod compute_dispatch;
 pub mod cpu_resource;
 pub mod distributed; // Refactored from distributed_scheduler
 pub mod engine;
@@ -70,9 +71,8 @@ pub use config::{
     UniversalIrConfig, UniversalIrFormat,
 };
 pub use coordinator::ComputeResourceCoordinator;
-pub use cpu_resource::{
-    ComputeContextDispatch, CpuComputeResource, UniversalComputeResourceDispatch,
-};
+pub use compute_dispatch::{ComputeContextDispatch, UniversalComputeResourceDispatch};
+pub use cpu_resource::CpuComputeResource;
 pub use engine::UniversalGpuEngine;
 pub use frameworks::{FallbackFramework, WebGPUAdapter, WebGpuFramework};
 pub use parallel_framework_dispatch::ParallelComputeFrameworkDispatch;

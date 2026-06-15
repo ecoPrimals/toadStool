@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Jun 14, 2026 (Sessions 43-315)
 
+### Session S316 (Jun 15, 2026) — Deep Debt XVII: File Splits + Dead Symbol Deletion
+
+`cpu_resource.rs` split (749→673L): dispatch enums (`UniversalComputeResourceDispatch`, `ComputeContextDispatch`, trait impls) extracted to `compute_dispatch.rs` (93L). `glowplug_client.rs` split (729→635L): 9 serde DTO types extracted to `glowplug_types.rs` (105L). `TOADSTOOL_ENABLE_GRPC` constant deleted (zero callers since S314 deprecated it). Unfulfilled `#[expect(dead_code)]` removed from `executor/types.rs` — `ProcessType` enum is now alive (health-check wiring completed).
+
+- `cpu_resource.rs` — 749→673L: dispatch enums + trait impls removed
+- `compute_dispatch.rs` (NEW) — 93L: `UniversalComputeResourceDispatch`, `ComputeContextDispatch`, `UniversalComputeResource`/`ComputeContext` trait impls
+- `glowplug_client.rs` — 729→635L: serde types removed, re-exported from `glowplug_types`
+- `glowplug_types.rs` (NEW) — 105L: `EmberDeviceList`, `EmberDeviceInfo`, `EmberDeviceListEnriched`, `EmberStatus`, `EmberReacquireResult`, `DeviceSwapResult`, `ExperimentSession`, `ExperimentLifecycleResult`, `DeviceSwapStep`
+- `socket_env.rs` — `TOADSTOOL_ENABLE_GRPC` deleted (was deprecated S314, zero callers)
+- `executor/types.rs` — `#[expect(dead_code)]` removed (code now alive)
+- `scheduler.rs`, `universal/execution.rs`, `distributed/mod_tests.rs`, examples — imports updated to `compute_dispatch::` path
+
 ### Session S315 (Jun 14, 2026) — Wave 113 Compliance: health Method + riboCipher REJECT
 
 All three toadStool Wave 113 P1 items completed. Bare `"health"` JSON-RPC method added per guideStone mandate — returns `{status, primal, version}`. Early-health responder now strips riboCipher `[0xEC, 0x01]` prefix during startup window. Wave 113 REJECT enforced: unsignalled connections on all 4 accept loop families (JSON-RPC Unix, TCP, BTSP w/feature, BTSP w/o feature) return `-32600 Invalid Request` error with `riboCipher` migration guidance instead of legacy fallback processing. MITO/NUCLEAR tier connections send error response instead of silent close. All connection tests updated to send riboCipher signal.
@@ -23,7 +35,7 @@ All three toadStool Wave 113 P1 items completed. Bare `"health"` JSON-RPC method
 
 ### Session S314 (Jun 14, 2026) — Deprecated Symbol Evolution: Dead Code Deletion
 
-Deleted 3 legacy `node_type` wire-label constants (BEARDOG, SONGBIRD, NESTGATE) — zero production callers. Removed dead `FeatureFlags::enable_grpc` field (populated but never read for behavior). Removed dead `DISTRIBUTED_URL` constant + `get_distributed_storage_url()` API bundle. `TOADSTOOL_ENABLE_GRPC` env constant deprecated. Tests updated.
+Deleted 3 legacy `node_type` wire-label constants (BEARDOG, SONGBIRD, NESTGATE) — zero production callers. Removed dead `FeatureFlags::enable_grpc` field (populated but never read for behavior). Removed dead `DISTRIBUTED_URL` constant + `get_distributed_storage_url()` API bundle. `TOADSTOOL_ENABLE_GRPC` env constant deprecated (deleted S316). Tests updated.
 
 - `constants/ecosystem.rs` — `node_type::BEARDOG`, `node_type::SONGBIRD`, `node_type::NESTGATE` deleted
 - `types/features.rs` — `enable_grpc` field removed from `FeatureFlags`

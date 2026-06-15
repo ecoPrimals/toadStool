@@ -119,6 +119,7 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 pub mod mocks;
 
 pub mod glowplug_client;
+pub mod glowplug_types;
 pub(crate) mod visualization_client; // Shader / GPU-dispatch helper client (capability-discovered)
 
 // ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)

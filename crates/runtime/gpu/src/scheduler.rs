@@ -3,7 +3,7 @@
 //!
 //! Matches workloads to compute resources based on capabilities
 
-use crate::cpu_resource::UniversalComputeResourceDispatch;
+use crate::compute_dispatch::UniversalComputeResourceDispatch;
 use crate::universal::{ComputeRequirements, UniversalComputeResource};
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -26,7 +26,6 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[expect(dead_code, reason = "inner field names read by tests; HealthCheck reserved for health-check wiring")]
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),

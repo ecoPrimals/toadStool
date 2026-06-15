@@ -14,7 +14,8 @@
 
 use std::sync::Arc;
 use toadstool_runtime_gpu::{
-    cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch},
+    compute_dispatch::UniversalComputeResourceDispatch,
+    cpu_resource::CpuComputeResource,
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
     universal::{
         ComputeBuffer, ComputeContext, ComputeRequirements, Operation, OptimizationHints,

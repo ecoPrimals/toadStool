@@ -51,7 +51,8 @@ async fn test_statistics() {
 
 #[tokio::test]
 async fn test_execute_distributed_single() {
-    use crate::cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch};
+    use crate::compute_dispatch::UniversalComputeResourceDispatch;
+    use crate::cpu_resource::CpuComputeResource;
     use crate::universal::{
         ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
     };
@@ -86,7 +87,8 @@ async fn test_execute_distributed_single() {
 
 #[tokio::test]
 async fn test_execute_distributed_data_parallel() {
-    use crate::cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch};
+    use crate::compute_dispatch::UniversalComputeResourceDispatch;
+    use crate::cpu_resource::CpuComputeResource;
     use crate::universal::{
         ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
     };
@@ -121,7 +123,8 @@ async fn test_execute_distributed_data_parallel() {
 
 #[tokio::test]
 async fn test_execute_distributed_pipeline() {
-    use crate::cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch};
+    use crate::compute_dispatch::UniversalComputeResourceDispatch;
+    use crate::cpu_resource::CpuComputeResource;
     use crate::universal::{
         ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
     };

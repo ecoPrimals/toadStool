@@ -31,7 +31,7 @@ pub trait UniversalComputeResource: Send + Sync {
     }
 
     /// Create execution context for this resource
-    async fn create_context(&self) -> ToadStoolResult<crate::cpu_resource::ComputeContextDispatch>;
+    async fn create_context(&self) -> ToadStoolResult<crate::compute_dispatch::ComputeContextDispatch>;
 
     /// Get current utilization (0.0 = idle, 1.0 = fully utilized)
     async fn utilization(&self) -> f32;
