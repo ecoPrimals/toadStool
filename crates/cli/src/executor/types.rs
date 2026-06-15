@@ -29,7 +29,7 @@ pub(super) struct BiomeProcess {
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),
-    #[expect(dead_code, reason = "reserved for health-check wiring via process executor")]
+    #[cfg_attr(not(test), expect(dead_code, reason = "reserved for health-check wiring via process executor"))]
     HealthCheck(String),
 }
 

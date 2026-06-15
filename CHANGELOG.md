@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Jun 14, 2026 (Sessions 43-315)
 
+### Session S318 (Jun 15, 2026) — Deep Debt XVIII: Router Split + Legacy Env Purge + Lint Hygiene
+
+`handler/mod.rs` over 750L gate — split into `router.rs` (method dispatch tables). Legacy `PRIMAL_SOCKET` env fallback deleted (constant + reader + tests). `#[allow(unused_imports)]` in federation removed (last production `#[allow]`). 7 unfulfilled `#[expect]` attrs fixed across neuromorphic and CLI crates.
+
+- `handler/mod.rs` — 753→315L: routing tables (`handle_method`, `dispatch_by_impl_name`, `toadstool_provenance`) extracted
+- `handler/router.rs` (NEW) — 437L: all JSON-RPC method routing logic
+- `socket_env.rs` — `PRIMAL_SOCKET` constant deleted (deprecated S4, zero callers since S318)
+- `unibin/format.rs` — `PRIMAL_SOCKET` fallback branch removed from `get_socket_path`; doc updated
+- `unibin/tests.rs` — `PRIMAL_SOCKET`-specific test removed; env cleanup simplified
+- `federation/mod.rs` — `#[allow(unused_imports)]` removed (pub re-exports don't need lint suppression)
+- `akida-driver/vfio/types.rs` — 4 unfulfilled `#[expect]` removed (pub items never trigger dead_code/unused_imports)
+- `akida-setup/pcie.rs` — 2 unfulfilled `#[expect(dead_code)]` removed (pub fields)
+- `executor/types.rs` — `#[expect(dead_code)]` on `HealthCheck` variant gated with `#[cfg_attr(not(test), ...)]`
+
 ### Session S317 (Jun 15, 2026) — Deprecated Symbol Evolution II: Sync Ctor Purge + Migration
 
 6 deprecated symbols deleted. Production callers migrated where needed, test callers evolved to test-only constructors.

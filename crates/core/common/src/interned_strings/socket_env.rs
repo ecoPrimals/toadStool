@@ -68,9 +68,6 @@ pub const LEGACY_NESTGATE_SOCKET_ENV: &str = "NESTGATE_SOCKET";
 pub const LEGACY_SQUIRREL_SOCKET_ENV: &str = "SQUIRREL_SOCKET";
 
 pub const TOADSTOOL_SOCKET: &str = "TOADSTOOL_SOCKET";
-/// **Deprecated** (identity-based). Prefer `TOADSTOOL_SOCKET` or capability discovery.
-#[deprecated(since = "0.4.0", note = "use TOADSTOOL_SOCKET or capability discovery")]
-pub const PRIMAL_SOCKET: &str = "PRIMAL_SOCKET";
 pub const TOADSTOOL_TARPC_SOCKET: &str = "TOADSTOOL_TARPC_SOCKET";
 pub const BIOMEOS_SOCKET_PATH: &str = "BIOMEOS_SOCKET_PATH";
 pub const NUCLEUS_SOCKET: &str = "NUCLEUS_SOCKET";

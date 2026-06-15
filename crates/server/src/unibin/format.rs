@@ -89,11 +89,9 @@ pub fn legacy_socket_filename_for_family(family_id: &str) -> String {
 /// Priority order:
 /// 0. CLI `--socket` override
 /// 1. TOADSTOOL_SOCKET env var
-/// 2. PRIMAL_SOCKET env var (with family suffix)
-/// 3. CLI `--biomeos-socket` override or BIOMEOS_SOCKET_PATH env var
-/// 4. XDG runtime directory
-/// 5. /tmp fallback
-#[expect(deprecated, reason = "reads legacy PRIMAL_SOCKET as backward-compat fallback")]
+/// 2. CLI `--biomeos-socket` override or BIOMEOS_SOCKET_PATH env var
+/// 3. XDG runtime directory
+/// 4. /tmp fallback
 pub fn get_socket_path(
     family_id: &str,
     _node_id: &str,
@@ -108,15 +106,6 @@ pub fn get_socket_path(
     if let Ok(socket) = std::env::var(socket_env::TOADSTOOL_SOCKET) {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
         return Ok(PathBuf::from(socket));
-    }
-
-    if let Ok(socket) = std::env::var(socket_env::PRIMAL_SOCKET) {
-        let socket_with_family = format!("{socket}-{family_id}");
-        info!(
-            "✅ Using socket path from PRIMAL_SOCKET: {}",
-            socket_with_family
-        );
-        return Ok(PathBuf::from(socket_with_family));
     }
 
     if let Some(path) = biomeos_socket_override {
@@ -272,7 +261,6 @@ mod tests {
         temp_env::with_vars(
             [
                 ("TOADSTOOL_SOCKET", None::<&str>),
-                ("PRIMAL_SOCKET", None::<&str>),
                 ("BIOMEOS_SOCKET_PATH", None::<&str>),
                 ("XDG_RUNTIME_DIR", Some("/nonexistent-path-12345-abcd")),
             ],
@@ -319,7 +307,6 @@ mod tests {
         temp_env::with_vars(
             [
                 ("TOADSTOOL_SOCKET", None::<&str>),
-                ("PRIMAL_SOCKET", None::<&str>),
                 ("BIOMEOS_SOCKET_PATH", Some(env_str.as_str())),
             ],
             || {
@@ -356,30 +343,10 @@ mod tests {
     }
 
     #[test]
-    fn get_socket_path_from_primal_socket_with_family_suffix() {
-        temp_env::with_vars(
-            [
-                ("TOADSTOOL_SOCKET", None::<&str>),
-                ("BIOMEOS_SOCKET_PATH", None::<&str>),
-                ("PRIMAL_SOCKET", Some("/run/primal")),
-            ],
-            || {
-                let result = get_socket_path("family-x", "node1", None, None);
-                assert!(result.is_ok());
-                assert_eq!(
-                    result.unwrap(),
-                    std::path::PathBuf::from("/run/primal-family-x")
-                );
-            },
-        );
-    }
-
-    #[test]
     fn get_socket_path_temp_dir_fallback_no_xdg() {
         temp_env::with_vars_unset(
             [
                 "TOADSTOOL_SOCKET",
-                "PRIMAL_SOCKET",
                 "BIOMEOS_SOCKET_PATH",
                 "XDG_RUNTIME_DIR",
             ],

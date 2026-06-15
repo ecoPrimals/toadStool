@@ -285,7 +285,6 @@ async fn run_server_main_fails_when_socket_path_unavailable() {
     temp_env::async_with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
             ("XDG_RUNTIME_DIR", Some(path_str.as_str())),
             ("TOADSTOOL_STANDALONE", Some("1")),
@@ -316,30 +315,10 @@ fn get_socket_path_from_toadstool_socket() {
 }
 
 #[test]
-fn get_socket_path_from_primal_socket() {
-    temp_env::with_vars(
-        [
-            ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", Some("/run/primal")),
-            ("BIOMEOS_SOCKET_PATH", None::<&str>),
-        ],
-        || {
-            let result = get_socket_path("nat0", "node1", None, None);
-            assert!(result.is_ok());
-            assert_eq!(
-                result.unwrap(),
-                std::path::PathBuf::from("/run/primal-nat0")
-            );
-        },
-    );
-}
-
-#[test]
 fn get_socket_path_from_biomeos_socket_path() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", Some("/run/biomeos/toadstool.sock")),
         ],
         || {
@@ -360,7 +339,6 @@ fn get_socket_path_xdg_runtime_dir_fallback() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
             ("XDG_RUNTIME_DIR", Some(xdg_path.as_str())),
         ],
