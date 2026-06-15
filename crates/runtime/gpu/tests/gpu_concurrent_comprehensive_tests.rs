@@ -60,7 +60,7 @@ async fn test_concurrent_engine_creation_with_config() {
             // Try different framework preferences
             let frameworks = vec![
                 GpuFramework::WebGpu,
-                GpuFramework::OpenCl,
+                GpuFramework::Vulkan,
                 GpuFramework::Vulkan,
             ];
 
@@ -160,7 +160,7 @@ async fn test_concurrent_framework_queries() {
 
     let frameworks = vec![
         GpuFramework::Cuda,
-        GpuFramework::OpenCl,
+        GpuFramework::Vulkan,
         GpuFramework::Vulkan,
         GpuFramework::Metal,
         GpuFramework::WebGpu,
@@ -480,7 +480,7 @@ async fn test_concurrent_framework_compatibility_checks() {
 
     let frameworks = vec![
         GpuFramework::Cuda,
-        GpuFramework::OpenCl,
+        GpuFramework::Vulkan,
         GpuFramework::Vulkan,
         GpuFramework::Metal,
         GpuFramework::WebGpu,
@@ -559,7 +559,7 @@ async fn test_concurrent_gpu_framework_type_operations() {
 
             let frameworks = [
                 GpuFramework::Cuda,
-                GpuFramework::OpenCl,
+                GpuFramework::Vulkan,
                 GpuFramework::Vulkan,
                 GpuFramework::Metal,
                 GpuFramework::WebGpu,

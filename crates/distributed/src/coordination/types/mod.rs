@@ -73,8 +73,7 @@ pub use node::{NodeCapabilities, NodeId};
 
 // Re-exports: protocols
 pub use protocols::{
-    CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
-    ProtocolConfig,
+    CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
 };
 
 // Re-exports: receiver

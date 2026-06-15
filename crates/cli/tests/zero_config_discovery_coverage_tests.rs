@@ -297,10 +297,9 @@ async fn test_discover_system_os_kernel() {
 }
 
 #[tokio::test]
-async fn test_discover_system_gpu_cuda_opencl() {
+async fn test_discover_system_gpu_cuda() {
     let mut deployment = ZeroConfigDeployment::new();
     if deployment.discover_system().await.is_ok() {
         let _ = deployment.system_info.gpu.cuda;
-        let _ = deployment.system_info.gpu.opencl;
     }
 }

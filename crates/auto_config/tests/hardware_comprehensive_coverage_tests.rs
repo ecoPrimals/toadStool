@@ -73,7 +73,6 @@ fn test_gpu_info_structure() {
         driver_version: "1.0".to_string(),
         compute_capability: "8.6".to_string(),
         supports_cuda: true,
-        supports_opencl: false,
     };
 
     assert_eq!(gpu.name, "Test GPU");
@@ -473,7 +472,6 @@ fn test_system_capabilities_structure() {
             driver_version: "1.0".to_string(),
             compute_capability: "8.6".to_string(),
             supports_cuda: true,
-            supports_opencl: false,
         }],
         storage_info: StorageInfo::default(),
         network_info: NetworkInfo {

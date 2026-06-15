@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 use super::*;
 use crate::coordination::types::{
     CapacityConfig, ConnectionHealth, CoordinationConnection, CoordinationTransport,
-    GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
+    HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
 };
 use crate::{
     DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJob, UniversalJobType,
@@ -15,7 +15,7 @@ use crate::{
 use toadstool_common::constants::network::LOCALHOST_IPV4;
 use uuid::Uuid;
 
-fn grpc_connection() -> CoordinationConnection {
+fn test_connection() -> CoordinationConnection {
     let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, 50051_u16);
     CoordinationConnection {
         endpoints: vec![endpoint.clone()],
@@ -23,16 +23,11 @@ fn grpc_connection() -> CoordinationConnection {
         auth_token: None,
         health_status: ConnectionHealth::Healthy,
         protocol_config: ProtocolConfig {
-            protocol: CoordinationTransport::GRPC,
+            protocol: CoordinationTransport::HTTP,
             http: HttpProtocolConfig {
                 timeout_ms: 5000,
                 max_retries: 3,
                 headers: std::collections::HashMap::new(),
-            },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 10_000,
-                max_message_size: 4 * 1024 * 1024,
-                compression: false,
             },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "jobs".to_string(),
@@ -79,7 +74,7 @@ async fn test_integration() -> ToadStoolCoordinationIntegration {
     let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
     ToadStoolCoordinationIntegration::new(
         "messaging-test".to_string(),
-        grpc_connection(),
+        test_connection(),
         capacity_config(),
         scheduler,
     )

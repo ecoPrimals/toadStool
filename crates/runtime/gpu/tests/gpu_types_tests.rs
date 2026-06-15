@@ -22,13 +22,6 @@ fn test_gpu_framework_vulkan() {
 }
 
 #[test]
-fn test_gpu_framework_opencl() {
-    let framework = GpuFramework::OpenCl;
-    assert_eq!(framework.name(), "OpenCL");
-    assert!(!framework.is_universal());
-}
-
-#[test]
 fn test_gpu_framework_cuda() {
     let framework = GpuFramework::Cuda;
     assert_eq!(framework.name(), "CUDA");
@@ -190,7 +183,7 @@ fn test_device_id_equality() {
 
 #[test]
 fn test_device_id_serialization() {
-    let device_id = DeviceId::new(GpuFramework::OpenCl, 2, "opencl-device".to_string());
+    let device_id = DeviceId::new(GpuFramework::Vulkan, 2, "vulkan-device".to_string());
 
     let serialized = serde_json::to_string(&device_id).unwrap();
     let deserialized: DeviceId = serde_json::from_str(&serialized).unwrap();

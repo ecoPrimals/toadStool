@@ -22,13 +22,6 @@ fn test_gpu_framework_vulkan() {
 }
 
 #[test]
-fn test_gpu_framework_opencl() {
-    let framework = GpuFramework::OpenCl;
-    assert_eq!(framework.name(), "OpenCL");
-    assert!(!framework.is_universal());
-}
-
-#[test]
 fn test_gpu_framework_cuda() {
     let framework = GpuFramework::Cuda;
     assert_eq!(framework.name(), "CUDA");
@@ -344,7 +337,6 @@ fn test_multi_framework_support() {
     let frameworks = [
         GpuFramework::WebGpu,
         GpuFramework::Vulkan,
-        GpuFramework::OpenCl,
         GpuFramework::Cuda,
         GpuFramework::Metal,
     ];

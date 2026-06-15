@@ -56,7 +56,7 @@ fn test_workload_type_for_all_variants() {
     assert_eq!(container.workload_type(), WorkloadType::Container);
 
     let gpu = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void k() {}".to_string(),
         },
         kernel_name: "k".to_string(),
@@ -217,20 +217,6 @@ fn test_validate_wasm_bytes_ok() {
 }
 
 #[test]
-fn test_validate_gpu_empty_opencl() {
-    let spec = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
-            source: String::new(),
-        },
-        kernel_name: "k".to_string(),
-        work_group_size: None,
-        global_work_size: (1, 1, 1),
-        args: vec![],
-    };
-    assert!(spec.validate().is_err());
-}
-
-#[test]
 fn test_validate_gpu_empty_cuda() {
     let spec = WorkloadSpec::Gpu {
         program: GpuProgramSource::Cuda {
@@ -259,7 +245,7 @@ fn test_validate_gpu_empty_vulkan() {
 #[test]
 fn test_validate_gpu_ok() {
     let spec = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void k() {}".to_string(),
         },
         kernel_name: "k".to_string(),
@@ -447,15 +433,7 @@ fn test_validators_wasm_url_very_long() {
     validators::validate_wasm_module(&WasmModuleSource::Url { url }).unwrap();
 }
 
-// --- validators.rs: validate_gpu_program (OpenCL / Cuda / Vulkan) ---
-
-#[test]
-fn test_validators_gpu_opencl_ok() {
-    validators::validate_gpu_program(&GpuProgramSource::OpenCL {
-        source: "kernel void k() {}".to_string(),
-    })
-    .unwrap();
-}
+// --- validators.rs: validate_gpu_program (Cuda / Vulkan) ---
 
 #[test]
 fn test_validators_gpu_cuda_ok() {

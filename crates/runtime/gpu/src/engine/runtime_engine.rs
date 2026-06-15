@@ -173,17 +173,13 @@ impl UniversalGpuEngine {
         request: &ExecutionRequest,
     ) -> ToadStoolResult<ComputeWorkload> {
         let kernel_source = match &request.workload {
-            WorkloadSpec::Gpu { program, .. } => {
-                #[expect(deprecated, reason = "OpenCL/CUDA arms for persisted GPU specs (S198)")]
-                match program {
-                    toadstool::workload::GpuProgramSource::OpenCL { source }
-                    | toadstool::workload::GpuProgramSource::Cuda { source } => source.clone(),
-                    toadstool::workload::GpuProgramSource::Vulkan { spirv } => {
+            WorkloadSpec::Gpu { program, .. } => match program {
+                toadstool::workload::GpuProgramSource::Cuda { source } => source.clone(),
+                toadstool::workload::GpuProgramSource::Vulkan { spirv } => {
                         // Convert SPIR-V bytes to string representation
                         format!("SPIR-V binary: {} bytes", spirv.len())
-                    }
                 }
-            }
+            },
             _ => {
                 return Err(ToadStoolError::runtime(
                     "Only GPU workloads are supported by GPU runtime",

@@ -18,14 +18,13 @@ fn test_all_gpu_frameworks_defined() {
     let frameworks = vec![
         GpuFramework::WebGpu,
         GpuFramework::Vulkan,
-        GpuFramework::OpenCl,
         GpuFramework::Cuda,
         GpuFramework::Metal,
         GpuFramework::Rocm,
         GpuFramework::DirectCompute,
     ];
 
-    assert_eq!(frameworks.len(), 7, "Should have 7 standard frameworks");
+    assert_eq!(frameworks.len(), 6, "Should have 6 standard frameworks");
 }
 
 #[test]
@@ -42,8 +41,8 @@ fn test_gpu_framework_names() {
     let cuda = GpuFramework::Cuda;
     assert_eq!(cuda.name(), "CUDA");
 
-    let opencl = GpuFramework::OpenCl;
-    assert_eq!(opencl.name(), "OpenCL");
+    let vulkan = GpuFramework::Vulkan;
+    assert_eq!(vulkan.name(), "Vulkan");
 }
 
 #[test]
@@ -56,9 +55,9 @@ fn test_gpu_framework_universality() {
     let cuda = GpuFramework::Cuda;
     assert!(!cuda.is_universal());
 
-    // OpenCL: serialization-only in-tree (S198); not `is_universal()`
-    let opencl = GpuFramework::OpenCl;
-    assert!(!opencl.is_universal());
+    // Vulkan is cross-platform
+    let vulkan = GpuFramework::Vulkan;
+    assert!(vulkan.is_universal());
 }
 
 #[test]
@@ -188,7 +187,7 @@ fn test_universal_gpu_config_default() {
 #[test]
 fn test_universal_gpu_config_discovery() {
     let mut config = UniversalGpuConfig::default();
-    config.discovery.enabled_frameworks = vec![GpuFramework::Vulkan, GpuFramework::OpenCl];
+    config.discovery.enabled_frameworks = vec![GpuFramework::Vulkan, GpuFramework::Cuda];
 
     assert_eq!(config.discovery.enabled_frameworks.len(), 2);
     assert!(
@@ -230,11 +229,10 @@ fn test_framework_priority_ordering() {
     let frameworks = vec![
         GpuFramework::Cuda,   // NVIDIA high-perf
         GpuFramework::Vulkan, // Cross-platform high-perf
-        GpuFramework::OpenCl, // Legacy label in config lists
         GpuFramework::WebGpu, // Future-ready
     ];
 
-    assert_eq!(frameworks.len(), 4);
+    assert_eq!(frameworks.len(), 3);
 
     // Verify we can iterate and prioritize
     for (idx, framework) in frameworks.iter().enumerate() {
@@ -326,7 +324,7 @@ fn test_device_feature_detection() {
 #[test]
 fn test_framework_fallback_chain() {
     let primary = GpuFramework::Cuda;
-    let fallback1 = GpuFramework::OpenCl;
+    let fallback1 = GpuFramework::Vulkan;
     let fallback2 = GpuFramework::WebGpu;
 
     let chain = vec![primary, fallback1, fallback2];
@@ -338,7 +336,7 @@ fn test_fallback_strategy() {
     let mut config = UniversalGpuConfig::default();
     config.discovery.enabled_frameworks = vec![
         GpuFramework::Cuda,
-        GpuFramework::OpenCl, // Legacy label
+        GpuFramework::Vulkan,
         GpuFramework::WebGpu, // Final fallback
     ];
 

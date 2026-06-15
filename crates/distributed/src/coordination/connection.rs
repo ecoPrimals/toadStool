@@ -75,21 +75,7 @@ impl CoordinationConnection {
                 // Plain HTTP URL — refuse with a clear error so callers migrate.
                 Err(ToadStoolError::runtime(format!(
                     "HTTP health check rejected for {endpoint:?}: \
-                     HTTP is deprecated in ecoPrimals; use Unix socket RPC (unix://…) or gRPC"
-                )))
-            }
-            #[expect(deprecated, reason = "exhaustive match — gRPC arm routes to UDS or returns error")]
-            CoordinationTransport::GRPC => {
-                if endpoint.starts_with("unix://") || endpoint.starts_with("file://") {
-                    let path = endpoint
-                        .trim_start_matches("unix://")
-                        .trim_start_matches("file://");
-                    return Self::probe_unix_socket(path).await;
-                }
-                Err(ToadStoolError::not_supported(format!(
-                    "gRPC TCP health check not implemented for {endpoint:?}: \
-                     use Unix socket (unix://…) for coordination IPC. \
-                     TCP gRPC requires protocol-level probing not available in uniBin."
+                     HTTP is deprecated in ecoPrimals; use Unix socket RPC (unix://…)"
                 )))
             }
             CoordinationTransport::MessageQueue => {
@@ -135,15 +121,13 @@ impl CoordinationConnection {
 mod tests {
     use super::*;
     use crate::coordination::types::{
-        CoordinationConnectionConfig, GrpcProtocolConfig, HttpProtocolConfig,
-        MessageQueueProtocolConfig,
+        CoordinationConnectionConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
     };
     use std::collections::HashMap;
     use toadstool_common::auth::{AuthCredentials, ServiceAuthConfig};
     use toadstool_common::config_bases::ConnectionPoolConfig;
 
     // Test endpoint constants (avoid hardcoded ports/IPs)
-    const TEST_GRPC_ENDPOINT_9999: &str = "http://localhost:9999";
     const TEST_AMQP_ENDPOINT: &str = "amqp://localhost:5672";
     const TEST_HTTP_ENDPOINT_8080: &str = "http://localhost:8080";
     const TEST_HTTP_ENDPOINT_9000: &str = "http://localhost:9000";
@@ -159,11 +143,6 @@ mod tests {
                 max_retries: 3,
                 headers: HashMap::new(),
             },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 5000,
-                max_message_size: 1024 * 1024,
-                compression: false,
-            },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "default".to_string(),
                 exchange: "default".to_string(),
@@ -176,7 +155,7 @@ mod tests {
     async fn test_connection_empty_endpoints() {
         let config = CoordinationConnectionConfig {
             endpoints: vec![],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
@@ -192,25 +171,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_tcp_endpoint_rejected() -> ToadStoolResult<()> {
+    async fn test_connection_http_tcp_endpoint_degraded() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
-            endpoints: vec![TEST_GRPC_ENDPOINT_9999.to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
 
         let conn = CoordinationConnection::new(config).await?;
-        assert_eq!(conn.active_endpoint, TEST_GRPC_ENDPOINT_9999);
+        assert_eq!(conn.active_endpoint, TEST_HTTP_ENDPOINT_8080);
         assert_eq!(conn.health_status, ConnectionHealth::Degraded);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_https_endpoint_rejected() -> ToadStoolResult<()> {
+    async fn test_connection_http_https_endpoint_degraded() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec!["https://coordination.example.com:443".to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
@@ -243,7 +222,7 @@ mod tests {
         };
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig {
                 auth_type: AuthType::ApiKey,
                 credentials: creds,
@@ -264,7 +243,7 @@ mod tests {
         };
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig {
                 auth_type: AuthType::Bearer,
                 credentials: creds,
@@ -285,7 +264,7 @@ mod tests {
         };
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_HTTP_ENDPOINT_8080.to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig {
                 auth_type: AuthType::OAuth2,
                 credentials: creds,
@@ -299,13 +278,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_all_tcp_endpoints_degrade() -> ToadStoolResult<()> {
+    async fn test_connection_http_all_tcp_endpoints_degrade() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![
                 "invalid-endpoint".to_string(),
                 TEST_HTTP_ENDPOINT_9000.to_string(),
             ],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
@@ -319,7 +298,7 @@ mod tests {
     async fn test_connection_all_endpoints_fail_uses_first_degraded() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec!["invalid".to_string(), "also-invalid".to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
@@ -352,7 +331,7 @@ mod tests {
                 TEST_PLACEHOLDER_ENDPOINT_A.to_string(),
                 TEST_PLACEHOLDER_ENDPOINT_B.to_string(),
             ],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
@@ -368,7 +347,7 @@ mod tests {
     async fn test_connection_protocol_config_preserved() -> ToadStoolResult<()> {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_MINIMAL_ENDPOINT.to_string()],
-            protocol_config: base_protocol_config(CoordinationTransport::GRPC),
+            protocol_config: base_protocol_config(CoordinationTransport::HTTP),
             auth_config: ServiceAuthConfig::default(),
             pool: ConnectionPoolConfig::default(),
         };
@@ -376,7 +355,7 @@ mod tests {
         let conn = CoordinationConnection::new(config).await?;
         assert!(matches!(
             conn.protocol_config.protocol,
-            CoordinationTransport::GRPC
+            CoordinationTransport::HTTP
         ));
         Ok(())
     }

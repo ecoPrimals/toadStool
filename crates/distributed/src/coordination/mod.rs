@@ -40,7 +40,7 @@ pub use types::{
     CoordinationJobMessage, CoordinationJobRequest, CoordinationJobResponse,
     CoordinationLoadBalancer, CoordinationNetworkDiscovery, CoordinationStrategy,
     CoordinationTransport, DiscoveryClient, DistributionAlgorithm, DistributionConfig,
-    DistributionPlan, ExecutionMetrics, GrpcProtocolConfig, HttpProtocolConfig, IntensityLevel,
+    DistributionPlan, ExecutionMetrics, HttpProtocolConfig, IntensityLevel,
     JobAnalysis, JobComplexity, JobCoordinator, JobDistributionStrategy, JobReceiver, JobResult,
     JobSplittingStrategy, LoadBalancerConfig, LoadBalancingAdvice, LoadBalancingStrategy,
     LoadEstimator, LoadMetric, LocalCapacityManager, MassiveJobDistributor, MassiveJobResult,

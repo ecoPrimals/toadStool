@@ -260,10 +260,6 @@ pub fn validate_migration(
 }
 
 #[cfg(test)]
-#[expect(
-    deprecated,
-    reason = "tests exercise deprecated MigrationRecommendation/MigrationTarget APIs"
-)]
 mod tests {
     use super::*;
     use crate::workload_migration::{MigrationRecommendation, MigrationTarget};
@@ -366,7 +362,7 @@ mod tests {
     fn test_resource_requirements_from_gpu_spec() {
         // GPU workloads must require a GPU and at least 1 GiB at destination.
         let spec = WorkloadSpec::Gpu {
-            program: crate::workload::GpuProgramSource::OpenCL {
+            program: crate::workload::GpuProgramSource::Cuda {
                 source: String::new(),
             },
             kernel_name: "main".into(),

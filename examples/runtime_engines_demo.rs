@@ -423,8 +423,7 @@ fn create_gpu_request() -> Result<ExecutionRequest, Box<dyn std::error::Error>> 
     Ok(ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            #[expect(deprecated, reason = "demo uses legacy OpenCL variant to show backward compat")]
-            program: GpuProgramSource::OpenCL {
+            program: GpuProgramSource::Cuda {
                 source: "// GPU kernel placeholder".to_string(),
             },
             kernel_name: "test_kernel".to_string(),

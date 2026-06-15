@@ -151,10 +151,6 @@ fn test_standard_capability_as_str_networking() {
         StandardCapability::NetworkingHttp.as_str(),
         "networking.http"
     );
-    assert_eq!(
-        StandardCapability::NetworkingGrpc.as_str(),
-        "networking.grpc"
-    );
 }
 
 #[test]

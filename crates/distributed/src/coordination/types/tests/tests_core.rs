@@ -586,7 +586,7 @@ fn test_coordination_feedback_sender_default() {
 #[test]
 fn test_coordination_connection_constructor() {
     use protocols::{
-        CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
+        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
     };
     let conn = CoordinationConnection {
         endpoints: vec!["http://a".to_string(), "http://b".to_string()],
@@ -599,11 +599,6 @@ fn test_coordination_connection_constructor() {
                 timeout_ms: 5000,
                 max_retries: 3,
                 headers: HashMap::new(),
-            },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 5000,
-                max_message_size: 1024 * 1024,
-                compression: false,
             },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "default".to_string(),

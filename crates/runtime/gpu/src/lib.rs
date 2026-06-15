@@ -120,14 +120,13 @@ mod tests {
     fn test_gpu_framework_variants() {
         let frameworks = [
             GpuFramework::Cuda,
-            GpuFramework::OpenCl,
             GpuFramework::Vulkan,
             GpuFramework::Metal,
             GpuFramework::WebGpu,
             GpuFramework::DirectCompute,
         ];
 
-        assert_eq!(frameworks.len(), 6);
+        assert_eq!(frameworks.len(), 5);
     }
 
     #[test]
@@ -158,14 +157,6 @@ mod tests {
         assert!(!cuda.is_universal());
         assert_eq!(cuda.name(), "CUDA");
         assert!(cuda.platform_compatibility().contains(&"Linux"));
-    }
-
-    #[test]
-    fn test_opencl_framework() {
-        let opencl = GpuFramework::OpenCl;
-        assert!(!opencl.is_universal());
-        assert!(opencl.platform_compatibility().len() >= 3);
-        assert_eq!(opencl.name(), "OpenCL");
     }
 
     #[test]
@@ -242,7 +233,7 @@ mod tests {
     fn test_multiple_frameworks_compatibility() {
         let frameworks = vec![
             (GpuFramework::Cuda, false),
-            (GpuFramework::OpenCl, false),
+            (GpuFramework::Vulkan, true),
             (GpuFramework::WebGpu, true),
         ];
 

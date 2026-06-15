@@ -112,7 +112,6 @@ impl UniversalGpuEngine {
     }
 
     /// Create instance of specific framework
-    #[expect(deprecated, reason = "exhaustive match includes deprecated OpenCl variant")]
     async fn create_framework_instance(
         &self,
         framework_type: GpuFramework,
@@ -132,10 +131,6 @@ impl UniversalGpuEngine {
                      Consider using WebGPU for cross-platform compatibility.",
                 ))
             }
-            GpuFramework::OpenCl => Err(ToadStoolError::configuration(
-                "OpenCL framework removed from this crate (S198). Use gpu.dispatch.opencl \
-                 capability provider via IPC, or WebGPU/Vulkan for in-tree GPU compute.",
-            )),
             _ => {
                 // For other frameworks, use fallback implementation
                 let framework = crate::frameworks::FallbackFramework::new(framework_type);

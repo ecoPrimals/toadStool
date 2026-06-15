@@ -109,7 +109,7 @@ mod tests {
     use super::*;
     use crate::coordination::types::{
         ConnectionHealth, CoordinationBroadcastMessage, CoordinationConnection,
-        CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
+        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
         NodeCapabilities, ProtocolConfig,
     };
     use std::collections::HashMap;
@@ -135,11 +135,6 @@ mod tests {
                     timeout_ms: 5000,
                     max_retries: 3,
                     headers: HashMap::new(),
-                },
-                grpc: GrpcProtocolConfig {
-                    timeout_ms: 5000,
-                    max_message_size: 1024 * 1024,
-                    compression: false,
                 },
                 message_queue: MessageQueueProtocolConfig {
                     queue_name: "default".to_string(),

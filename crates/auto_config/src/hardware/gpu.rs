@@ -26,13 +26,6 @@ pub struct GpuInfo {
     pub compute_capability: String,
     /// CUDA support.
     pub supports_cuda: bool,
-    /// Legacy field retained for serde compatibility.
-    ///
-    /// DEPRECATED S198: OpenCL removed — use `gpu.dispatch.opencl` capability provider via IPC. Always `false`.
-    #[deprecated(
-        note = "DEPRECATED S198: OpenCL removed — use gpu.dispatch.opencl capability provider via IPC"
-    )]
-    pub supports_opencl: bool,
 }
 
 /// Detect GPU capabilities
@@ -58,7 +51,6 @@ pub async fn detect_gpus(_detector: &HardwareDetector) -> ToadStoolResult<Vec<Gp
 
 /// Parse nvidia-smi CSV output (--format=csv,noheader,nounits).
 /// Columns: name, memory.total (MB), `driver_version`
-#[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
 pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
@@ -76,7 +68,6 @@ pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
                 driver_version: "unknown".to_string(),
                 compute_capability: get_nvidia_compute_capability(&name),
                 supports_cuda: true,
-                supports_opencl: false,
             });
         }
     }
@@ -101,7 +92,6 @@ async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 }
 
 /// Detect AMD GPUs
-#[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
 async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
     let mut gpus = Vec::new();
 
@@ -122,7 +112,6 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
                 driver_version: "Unknown".to_string(),
                 compute_capability: "RDNA".to_string(),
                 supports_cuda: false,
-                supports_opencl: false,
             });
         }
     }
@@ -131,7 +120,6 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 }
 
 /// Detect Intel GPUs
-#[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
 fn detect_intel_gpus() -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
@@ -146,7 +134,6 @@ fn detect_intel_gpus() -> Vec<GpuInfo> {
             driver_version: "Unknown".to_string(),
             compute_capability: "Gen9+".to_string(),
             supports_cuda: false,
-            supports_opencl: false,
         });
     }
 
@@ -205,10 +192,6 @@ pub fn calculate_gpu_score(gpu_info: &[GpuInfo]) -> f64 {
 }
 
 #[cfg(test)]
-#[expect(
-    deprecated,
-    reason = "tests exercise legacy GPU config APIs pending migration"
-)]
 mod tests {
     use super::*;
 
@@ -221,7 +204,6 @@ mod tests {
             driver_version: "535.0".to_string(),
             compute_capability: "8.9".to_string(),
             supports_cuda: true,
-            supports_opencl: true,
         };
 
         let json = serde_json::to_string(&gpu).unwrap();
@@ -328,7 +310,6 @@ mod tests {
             driver_version: "535.0".to_string(),
             compute_capability: "8.9".to_string(),
             supports_cuda: true,
-            supports_opencl: true,
         }];
         let score = calculate_gpu_score(&gpus);
         assert!(score >= 90.0);
@@ -343,7 +324,6 @@ mod tests {
             driver_version: "Unknown".to_string(),
             compute_capability: "RDNA".to_string(),
             supports_cuda: false,
-            supports_opencl: true,
         }];
         let score = calculate_gpu_score(&gpus);
         assert!(score >= 80.0);
@@ -358,7 +338,6 @@ mod tests {
             driver_version: "Unknown".to_string(),
             compute_capability: "Gen9+".to_string(),
             supports_cuda: false,
-            supports_opencl: true,
         }];
         let score = calculate_gpu_score(&gpus);
         assert!(score >= 20.0);
@@ -374,7 +353,6 @@ mod tests {
             driver_version: "Unknown".to_string(),
             compute_capability: "Unknown".to_string(),
             supports_cuda: false,
-            supports_opencl: false,
         }];
         let score = calculate_gpu_score(&gpus);
         assert!(score >= 15.0);
@@ -390,7 +368,6 @@ mod tests {
                 driver_version: "535.0".to_string(),
                 compute_capability: "6.1".to_string(),
                 supports_cuda: true,
-                supports_opencl: true,
             },
             GpuInfo {
                 name: "NVIDIA GeForce RTX 4090".to_string(),
@@ -399,7 +376,6 @@ mod tests {
                 driver_version: "535.0".to_string(),
                 compute_capability: "8.9".to_string(),
                 supports_cuda: true,
-                supports_opencl: true,
             },
         ];
         let score = calculate_gpu_score(&gpus);

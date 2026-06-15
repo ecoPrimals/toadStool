@@ -181,8 +181,8 @@ mod tests {
     use toadstool_common::constants::ecosystem::node_type;
 
     use crate::coordination::types::{
-        ConnectionHealth, CoordinationConnection, CoordinationTransport, GrpcProtocolConfig,
-        HttpProtocolConfig, MessageQueueProtocolConfig, NodeType, ProtocolConfig,
+        ConnectionHealth, CoordinationConnection, CoordinationTransport, HttpProtocolConfig,
+        MessageQueueProtocolConfig, NodeType, ProtocolConfig,
     };
 
     fn test_client() -> super::DiscoveryClient {
@@ -192,11 +192,6 @@ mod tests {
                 timeout_ms: 5000,
                 max_retries: 3,
                 headers: Default::default(),
-            },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 5000,
-                max_message_size: 1024 * 1024,
-                compression: false,
             },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "q".to_string(),

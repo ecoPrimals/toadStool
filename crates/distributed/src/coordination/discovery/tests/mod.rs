@@ -17,7 +17,7 @@ use crate::coordination::types::ConnectionHealth;
 
 fn make_protocol_config() -> ProtocolConfig {
     use crate::coordination::types::{
-        CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
+        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
     };
     use std::collections::HashMap;
 
@@ -27,11 +27,6 @@ fn make_protocol_config() -> ProtocolConfig {
             timeout_ms: 5000,
             max_retries: 3,
             headers: HashMap::new(),
-        },
-        grpc: GrpcProtocolConfig {
-            timeout_ms: 5000,
-            max_message_size: 1024 * 1024,
-            compression: false,
         },
         message_queue: MessageQueueProtocolConfig {
             queue_name: "test".to_string(),

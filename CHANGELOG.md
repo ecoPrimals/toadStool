@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Jun 14, 2026 (Sessions 43-315)
 
+### Session S319 (Jun 15, 2026) — Dead Protocol Purge: gRPC + OpenCL Deleted
+
+gRPC coordination and OpenCL GPU framework deleted entirely — both were deprecated C-dependent dead stubs. Project uses tarpc/JSON-RPC over Unix sockets; no persisted gRPC configs exist. OpenCL had C dependencies violating pure-Rust evolution.
+
+**gRPC deleted (coordination subsystem):**
+- `CoordinationTransport::GRPC` — enum variant removed
+- `GrpcProtocolConfig` — struct deleted entirely
+- `ProtocolConfig.grpc` — field removed from all constructions
+- `submit_via_grpc()` — dead stub method deleted from `transport.rs`
+- gRPC health-check arm, label conversion, and capability taxonomy removed
+- 5 `#[expect(deprecated)]` annotations eliminated
+
+**OpenCL deleted (GPU + workload subsystem):**
+- `GpuFramework::OpenCl` — enum variant removed; `name()`/`is_universal()`/`platform_compatibility()` match arms deleted
+- `GpuProgramSource::OpenCL` — enum variant removed; validation, source extraction, and test uses deleted or migrated to Cuda/Vulkan
+- `GpuInfo::supports_opencl` — field removed from `auto_config` struct (was always `false` in production)
+- `GpuInfo::opencl` — field removed from CLI `zero_config` struct
+- `SpecializedArchitecture::OpenCL` — variant removed from distributed detection
+- `NetworkingGrpc` capability variant removed from CLI taxonomy
+- OpenCL guard clause deleted from `compiler.rs`, error arm from `engine/init.rs`
+- ~15 `#[expect(deprecated)]` annotations eliminated
+
+**60 files changed, −458 net lines.**
+
 ### Session S318 (Jun 15, 2026) — Deep Debt XVIII: Router Split + Legacy Env Purge + Lint Hygiene
 
 `handler/mod.rs` over 750L gate — split into `router.rs` (method dispatch tables). Legacy `PRIMAL_SOCKET` env fallback deleted (constant + reader + tests). `#[allow(unused_imports)]` in federation removed (last production `#[allow]`). 7 unfulfilled `#[expect]` attrs fixed across neuromorphic and CLI crates.

@@ -10,12 +10,6 @@ use serde::{Deserialize, Serialize};
 pub enum CoordinationTransport {
     /// JSON-RPC or REST-style HTTP transport.
     HTTP,
-    /// gRPC (deprecated; prefer JSON-RPC per project IPC standard).
-    #[deprecated(
-        since = "0.3.0",
-        note = "gRPC deprecated per UNIVERSAL_IPC_STANDARD_V3. Use JSON-RPC over Unix socket."
-    )]
-    GRPC,
     /// Brokered message-queue transport.
     MessageQueue,
 }
@@ -27,9 +21,6 @@ pub struct ProtocolConfig {
     pub protocol: CoordinationTransport,
     /// Settings when using HTTP.
     pub http: HttpProtocolConfig,
-    /// Settings when using gRPC (deprecated).
-    #[expect(deprecated, reason = "field retained for config deserialization backward compat")]
-    pub grpc: GrpcProtocolConfig,
     /// Settings when using a message queue.
     pub message_queue: MessageQueueProtocolConfig,
 }
@@ -43,26 +34,6 @@ pub struct HttpProtocolConfig {
     pub max_retries: u32,
     /// Extra HTTP headers to send on each request.
     pub headers: HashMap<String, String>,
-}
-
-/// gRPC protocol configuration
-///
-/// # Deprecation
-///
-/// gRPC is deprecated per wateringHole UNIVERSAL_IPC_STANDARD_V3.
-/// Migrate to JSON-RPC 2.0 over Unix sockets.
-#[deprecated(
-    since = "0.3.0",
-    note = "gRPC deprecated per UNIVERSAL_IPC_STANDARD_V3. Use JSON-RPC over Unix socket."
-)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GrpcProtocolConfig {
-    /// Per-call timeout in milliseconds.
-    pub timeout_ms: u64,
-    /// Maximum encoded message size in bytes.
-    pub max_message_size: usize,
-    /// Whether to enable compression on the channel.
-    pub compression: bool,
 }
 
 /// Message queue protocol configuration
@@ -86,13 +57,12 @@ mod tests {
     #[test]
     fn test_coordination_protocol_variants() {
         let _http = CoordinationTransport::HTTP;
-        let _grpc = CoordinationTransport::GRPC;
         let _mq = CoordinationTransport::MessageQueue;
     }
 
     #[test]
     fn test_coordination_protocol_serialization_roundtrip() {
-        for protocol in [CoordinationTransport::HTTP, CoordinationTransport::GRPC] {
+        for protocol in [CoordinationTransport::HTTP, CoordinationTransport::MessageQueue] {
             let json = serde_json::to_string(&protocol).unwrap();
             let parsed: CoordinationTransport = serde_json::from_str(&json).unwrap();
             assert!(std::mem::discriminant(&protocol) == std::mem::discriminant(&parsed));
@@ -110,17 +80,6 @@ mod tests {
         };
         assert_eq!(config.timeout_ms, 5000);
         assert_eq!(config.max_retries, 3);
-    }
-
-    #[test]
-    fn test_grpc_protocol_config_construction() {
-        let config = GrpcProtocolConfig {
-            timeout_ms: 10_000,
-            max_message_size: 4 * 1024 * 1024,
-            compression: true,
-        };
-        assert_eq!(config.max_message_size, 4 * 1024 * 1024);
-        assert!(config.compression);
     }
 
     #[test]
@@ -142,11 +101,6 @@ mod tests {
                 timeout_ms: 3000,
                 max_retries: 5,
                 headers: HashMap::new(),
-            },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 5000,
-                max_message_size: 1024 * 1024,
-                compression: false,
             },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "test".to_string(),

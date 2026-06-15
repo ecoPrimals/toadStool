@@ -22,7 +22,7 @@ use toadstool_distributed::cloud::{
 use toadstool_distributed::coordination::{
     BroadcastConfig, ConnectionHealth, CoordinationBroadcaster, CoordinationConnection,
     CoordinationConnectionConfig, CoordinationLoadBalancer, CoordinationTransport,
-    DistributionConfig, GrpcProtocolConfig, HttpProtocolConfig, JobAnalysis, JobComplexity,
+    DistributionConfig, HttpProtocolConfig, JobAnalysis, JobComplexity,
     JobDistributionStrategy, LoadBalancerConfig as CoordinationLoadBalancerConfig,
     MassiveJobDistributor, MessageQueueProtocolConfig, ProtocolConfig,
 };
@@ -140,11 +140,6 @@ fn make_protocol_config(protocol: CoordinationTransport) -> ProtocolConfig {
             max_retries: 3,
             headers: HashMap::new(),
         },
-        grpc: GrpcProtocolConfig {
-            timeout_ms: 5000,
-            max_message_size: 1024 * 1024,
-            compression: false,
-        },
         message_queue: MessageQueueProtocolConfig {
             queue_name: "default".to_string(),
             exchange: "default".to_string(),
@@ -167,7 +162,7 @@ fn make_connection_config(
 
 #[tokio::test]
 async fn test_coordination_connection_empty_endpoints_fails() {
-    let config = make_connection_config(vec![], CoordinationTransport::GRPC);
+    let config = make_connection_config(vec![], CoordinationTransport::HTTP);
     let result: Result<_, _> = CoordinationConnection::new(config).await;
     assert!(result.is_err());
     assert!(
@@ -179,13 +174,13 @@ async fn test_coordination_connection_empty_endpoints_fails() {
 }
 
 #[tokio::test]
-async fn test_coordination_connection_grpc_http_succeeds() {
+async fn test_coordination_connection_http_degraded() {
     let config = make_connection_config(
         vec!["http://localhost:9999".to_string()],
-        CoordinationTransport::GRPC,
+        CoordinationTransport::HTTP,
     );
     let conn = CoordinationConnection::new(config).await.unwrap();
-    assert_eq!(conn.active_endpoint, "http://localhost:9999");
+    assert_eq!(conn.health_status, ConnectionHealth::Degraded);
 }
 
 // ============================================================================
@@ -201,7 +196,7 @@ async fn test_coordination_broadcaster_new() {
     let conn = Arc::new(
         CoordinationConnection::new(make_connection_config(
             vec!["http://localhost:1".to_string()],
-            CoordinationTransport::GRPC,
+            CoordinationTransport::HTTP,
         ))
         .await
         .unwrap(),
@@ -223,7 +218,7 @@ async fn test_coordination_load_balancer_new_and_request_advice() {
     let conn = Arc::new(
         CoordinationConnection::new(make_connection_config(
             vec!["http://localhost:1".to_string()],
-            CoordinationTransport::GRPC,
+            CoordinationTransport::HTTP,
         ))
         .await
         .unwrap(),
@@ -672,7 +667,7 @@ async fn test_workload_executor_execute() {
 async fn test_coordination_connection_invalid_endpoint_degraded() {
     let config = make_connection_config(
         vec!["invalid".to_string(), "also-invalid".to_string()],
-        CoordinationTransport::GRPC,
+        CoordinationTransport::HTTP,
     );
     let conn = CoordinationConnection::new(config).await.unwrap();
     assert_eq!(conn.health_status, ConnectionHealth::Degraded);

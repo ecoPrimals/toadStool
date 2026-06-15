@@ -15,12 +15,6 @@ pub enum GpuFramework {
     WebGpu,
     /// Vulkan compute (cross-platform, high-performance)
     Vulkan,
-    /// Serialization / discovery only: OpenCL-class GPUs use the `gpu.dispatch.opencl` capability provider via IPC.
-    #[deprecated(
-        since = "0.2.0",
-        note = "OpenCL removed S198 — use gpu.dispatch.opencl capability provider via IPC"
-    )]
-    OpenCl,
     /// NVIDIA CUDA (NVIDIA-specific, high-performance)
     Cuda,
     /// Apple Metal (Apple-specific, optimized)
@@ -36,12 +30,10 @@ pub enum GpuFramework {
 impl GpuFramework {
     /// Get human-readable framework name
     #[must_use]
-    #[expect(deprecated, reason = "exhaustive match includes deprecated OpenCl variant")]
     pub fn name(&self) -> &str {
         match self {
             Self::WebGpu => "WebGPU",
             Self::Vulkan => "Vulkan",
-            Self::OpenCl => "OpenCL",
             Self::Cuda => "CUDA",
             Self::Metal => "Metal",
             Self::Rocm => "ROCm",
@@ -58,12 +50,10 @@ impl GpuFramework {
 
     /// Get platform compatibility information
     #[must_use]
-    #[expect(deprecated, reason = "exhaustive match includes deprecated OpenCl variant")]
     pub fn platform_compatibility(&self) -> Vec<&str> {
         match self {
             Self::WebGpu => vec!["Windows", "macOS", "Linux", "Web"],
             Self::Vulkan => vec!["Windows", "macOS", "Linux", "Android"],
-            Self::OpenCl => vec!["Windows", "macOS", "Linux"],
             Self::Cuda => vec!["Windows", "Linux"],
             Self::Metal => vec!["macOS", "iOS"],
             Self::Rocm => vec!["Linux"],

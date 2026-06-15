@@ -67,13 +67,6 @@ fn test_discovery_config_has_vulkan() {
 }
 
 #[test]
-fn test_discovery_config_no_opencl_by_default_s198() {
-    let config = GpuDiscoveryConfig::default();
-
-    assert!(!config.enabled_frameworks.contains(&GpuFramework::OpenCl));
-}
-
-#[test]
 fn test_discovery_config_has_cuda() {
     let config = GpuDiscoveryConfig::default();
 

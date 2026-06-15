@@ -100,7 +100,7 @@ fn test_workload_spec_validate_python_empty_module_error() {
 #[test]
 fn test_workload_spec_validate_gpu_success() {
     let workload = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void test() {}".to_string(),
         },
         kernel_name: "test".to_string(),
@@ -311,7 +311,7 @@ fn test_workload_spec_python_with_many_requirements() {
 #[test]
 fn test_workload_spec_gpu_with_3d_work_group() {
     let workload = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void compute() {}".to_string(),
         },
         kernel_name: "compute".to_string(),

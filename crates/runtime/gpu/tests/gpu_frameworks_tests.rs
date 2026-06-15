@@ -84,11 +84,11 @@ fn test_compute_capabilities() {
 fn test_gpu_framework_name() {
     let webgpu = GpuFramework::WebGpu;
     let cuda = GpuFramework::Cuda;
-    let opencl = GpuFramework::OpenCl;
+    let vulkan = GpuFramework::Vulkan;
 
     assert_eq!(webgpu.name(), "WebGPU");
     assert_eq!(cuda.name(), "CUDA");
-    assert_eq!(opencl.name(), "OpenCL");
+    assert_eq!(vulkan.name(), "Vulkan");
 }
 
 #[test]

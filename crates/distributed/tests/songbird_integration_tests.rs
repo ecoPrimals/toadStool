@@ -370,15 +370,6 @@ fn test_coordination_protocol_http() {
 }
 
 #[test]
-fn test_coordination_protocol_grpc() {
-    let protocol = CoordinationTransport::GRPC;
-
-    assert!(matches!(protocol, CoordinationTransport::GRPC));
-}
-
-// WebSocket removed — use JSON-RPC 2.0 (biomeOS/coordination)
-
-#[test]
 fn test_coordination_protocol_message_queue() {
     let protocol = CoordinationTransport::MessageQueue;
 

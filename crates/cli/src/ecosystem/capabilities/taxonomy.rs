@@ -194,8 +194,6 @@ pub enum StandardCapability {
     // ===== NETWORKING CAPABILITIES =====
     /// HTTP/REST endpoint
     NetworkingHttp,
-    /// gRPC service
-    NetworkingGrpc,
     /// GraphQL API
     NetworkingGraphql,
     /// Load balancing
@@ -291,7 +289,6 @@ impl StandardCapability {
 
             // Networking
             Self::NetworkingHttp => "networking.http",
-            Self::NetworkingGrpc => "networking.grpc",
             Self::NetworkingGraphql => "networking.graphql",
             Self::NetworkingLoadBalancer => "networking.load-balancer",
             Self::NetworkingServiceMesh => "networking.service-mesh",

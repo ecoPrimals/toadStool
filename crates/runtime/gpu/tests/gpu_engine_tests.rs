@@ -34,7 +34,7 @@ fn create_test_request() -> ExecutionRequest {
     ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: GpuProgramSource::OpenCL {
+            program: GpuProgramSource::Cuda {
                 source: "kernel void test() {}".to_string(),
             },
             kernel_name: "test".to_string(),
@@ -271,7 +271,7 @@ async fn test_engine_framework_fallback() {
     // Include multiple frameworks for fallback
     config.discovery.enabled_frameworks = vec![
         GpuFramework::Cuda,
-        GpuFramework::OpenCl,
+        GpuFramework::Vulkan,
         GpuFramework::WebGpu,
     ];
 
@@ -286,8 +286,8 @@ async fn test_engine_framework_fallback() {
 fn test_gpu_framework_variants() {
     // Test that all GPU frameworks are distinct
     assert_ne!(GpuFramework::WebGpu, GpuFramework::Cuda);
-    assert_ne!(GpuFramework::WebGpu, GpuFramework::OpenCl);
-    assert_ne!(GpuFramework::Cuda, GpuFramework::OpenCl);
+    assert_ne!(GpuFramework::WebGpu, GpuFramework::Vulkan);
+    assert_ne!(GpuFramework::Cuda, GpuFramework::Vulkan);
     assert_ne!(GpuFramework::Vulkan, GpuFramework::Metal);
 }
 
@@ -334,7 +334,7 @@ fn test_resource_config_defaults() {
 #[test]
 fn test_workload_spec_gpu() {
     let spec = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void test() {}".to_string(),
         },
         kernel_name: "test".to_string(),
@@ -345,10 +345,10 @@ fn test_workload_spec_gpu() {
 
     match spec {
         WorkloadSpec::Gpu { program, .. } => match program {
-            GpuProgramSource::OpenCL { source } => {
+            GpuProgramSource::Cuda { source } => {
                 assert!(source.contains("test"));
             }
-            _ => panic!("Expected OpenCL program source"),
+            GpuProgramSource::Vulkan { .. } => panic!("Expected CUDA program source"),
         },
         _ => panic!("Expected Gpu workload spec"),
     }

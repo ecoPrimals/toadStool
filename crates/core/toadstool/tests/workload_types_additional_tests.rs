@@ -206,14 +206,6 @@ fn test_port_protocol_serialization() {
 // ============================================================================
 
 #[test]
-fn test_gpu_program_source_opencl() {
-    let source = GpuProgramSource::OpenCL {
-        source: "__kernel void test() {}".to_string(),
-    };
-    assert!(matches!(source, GpuProgramSource::OpenCL { .. }));
-}
-
-#[test]
 fn test_gpu_program_source_cuda() {
     let source = GpuProgramSource::Cuda {
         source: "__global__ void kernel() {}".to_string(),
@@ -230,17 +222,17 @@ fn test_gpu_program_source_vulkan() {
 
 #[test]
 fn test_gpu_program_source_serialization() {
-    let source = GpuProgramSource::OpenCL {
+    let source = GpuProgramSource::Cuda {
         source: "test".to_string(),
     };
     let serialized = serde_json::to_string(&source).expect("Failed to serialize");
     let deserialized: GpuProgramSource =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-    if let GpuProgramSource::OpenCL { source } = deserialized {
+    if let GpuProgramSource::Cuda { source } = deserialized {
         assert_eq!(source, "test");
     } else {
-        panic!("Expected OpenCL variant");
+        panic!("Expected CUDA variant");
     }
 }
 

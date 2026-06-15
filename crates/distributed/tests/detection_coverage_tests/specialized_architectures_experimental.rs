@@ -51,7 +51,7 @@ fn experimental_platform_remaining_variants_roundtrip() {
 }
 
 #[test]
-fn specialized_architecture_npu_cuda_rocm_opencl_dpu_asic_dsp_ipu_roundtrip() {
+fn specialized_architecture_npu_cuda_rocm_dpu_asic_dsp_ipu_roundtrip() {
     let samples = [
         SpecializedArchitecture::NPU {
             chip: "c".into(),
@@ -72,11 +72,6 @@ fn specialized_architecture_npu_cuda_rocm_opencl_dpu_asic_dsp_ipu_roundtrip() {
             version: "5".into(),
             gfx_version: "gfx1030".into(),
             memory_gb: 8,
-        },
-        SpecializedArchitecture::OpenCL {
-            version: "3".into(),
-            device_type: "GPU".into(),
-            compute_units: 32,
         },
         SpecializedArchitecture::DSP {
             family: "f".into(),

@@ -47,8 +47,8 @@ impl JobReceiver {
 mod tests {
     use super::super::types::{
         CapacityConfig, ConnectionHealth, CoordinationConnection, CoordinationTransport,
-        GrpcProtocolConfig, HttpProtocolConfig, LocalCapacityManager, MessageQueueProtocolConfig,
-        ProtocolConfig, ReceiverConfig, ToadStoolCoordinationIntegration,
+        HttpProtocolConfig, LocalCapacityManager, MessageQueueProtocolConfig, ProtocolConfig,
+        ReceiverConfig, ToadStoolCoordinationIntegration,
     };
     use super::*;
     use crate::UniversalJob;
@@ -58,7 +58,7 @@ mod tests {
     use toadstool_common::constants::PRIMAL_NAME;
     use uuid::Uuid;
 
-    fn grpc_connection() -> CoordinationConnection {
+    fn test_connection() -> CoordinationConnection {
         let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, 50051_u16);
         CoordinationConnection {
             endpoints: vec![endpoint.clone()],
@@ -66,16 +66,11 @@ mod tests {
             auth_token: None,
             health_status: ConnectionHealth::Healthy,
             protocol_config: ProtocolConfig {
-                protocol: CoordinationTransport::GRPC,
+                protocol: CoordinationTransport::HTTP,
                 http: HttpProtocolConfig {
                     timeout_ms: 5000,
                     max_retries: 3,
                     headers: std::collections::HashMap::new(),
-                },
-                grpc: GrpcProtocolConfig {
-                    timeout_ms: 10_000,
-                    max_message_size: 4 * 1024 * 1024,
-                    compression: false,
                 },
                 message_queue: MessageQueueProtocolConfig {
                     queue_name: "jobs".to_string(),
@@ -152,7 +147,7 @@ mod tests {
             max_concurrent_jobs: 10,
             job_timeout: Duration::from_secs(60),
         };
-        let conn = Arc::new(grpc_connection());
+        let conn = Arc::new(test_connection());
         let mut receiver = JobReceiver::new(config, conn).await.unwrap();
         assert!(receiver.receiver.try_recv().is_err());
     }
@@ -163,7 +158,7 @@ mod tests {
         let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
         let _integration = ToadStoolCoordinationIntegration::new(
             "test-instance".to_string(),
-            grpc_connection(),
+            test_connection(),
             capacity_config(),
             scheduler,
         )
@@ -177,7 +172,7 @@ mod tests {
         let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
         let integration = ToadStoolCoordinationIntegration::new(
             "test".to_string(),
-            grpc_connection(),
+            test_connection(),
             capacity_config(),
             scheduler,
         )
@@ -189,70 +184,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_submit_job_grpc_returns_error() {
-        let config = UniversalSchedulerConfig::default();
-        let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
-        let integration = ToadStoolCoordinationIntegration::new(
-            "test".to_string(),
-            grpc_connection(),
-            capacity_config(),
-            scheduler,
-        )
-        .await
-        .unwrap();
-        let mut job = simple_job();
-        job.resource_requirements.cpu.min_cores = 8.0;
-        job.resource_requirements.memory.min_bytes = 32 * 1024 * 1024 * 1024;
-        let result = integration.submit_job(job).await;
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("gRPC job submission removed"),
-            "error should direct users to migrate to JSON-RPC"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_submit_via_grpc_returns_not_supported() {
-        use toadstool::error::{SystemError, ToadStoolError};
-        let config = UniversalSchedulerConfig::default();
-        let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
-        let integration = ToadStoolCoordinationIntegration::new(
-            "test".to_string(),
-            grpc_connection(),
-            capacity_config(),
-            scheduler,
-        )
-        .await
-        .unwrap();
-        let mut job = simple_job();
-        job.resource_requirements.cpu.min_cores = 8.0;
-        job.resource_requirements.memory.min_bytes = 32 * 1024 * 1024 * 1024;
-        let err = integration.submit_job(job).await.unwrap_err();
-        assert!(
-            matches!(
-                err,
-                ToadStoolError::System(SystemError::NotSupported { .. })
-            ),
-            "submit_via_grpc must return not_supported error variant"
-        );
-        assert!(
-            err.to_string().contains("JSON-RPC"),
-            "error should mention JSON-RPC migration path"
-        );
-    }
-
-    #[tokio::test]
     async fn test_submit_job_http_returns_error() {
         let config = UniversalSchedulerConfig::default();
         let scheduler = Arc::new(UniversalScheduler::new(config).await.unwrap());
-        let mut conn = grpc_connection();
-        conn.protocol_config.protocol = CoordinationTransport::HTTP;
         let integration = ToadStoolCoordinationIntegration::new(
             "test".to_string(),
-            conn,
+            test_connection(),
             capacity_config(),
             scheduler,
         )
@@ -260,6 +197,7 @@ mod tests {
         .unwrap();
         let mut job = simple_job();
         job.resource_requirements.cpu.min_cores = 8.0;
+        job.resource_requirements.memory.min_bytes = 32 * 1024 * 1024 * 1024;
         let result = integration.submit_job(job).await;
         assert!(result.is_err());
         assert!(

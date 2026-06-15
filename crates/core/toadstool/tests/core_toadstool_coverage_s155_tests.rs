@@ -643,12 +643,12 @@ fn test_port_protocol_tcp() {
 }
 
 #[test]
-fn test_gpu_program_source_opencl() {
-    let src = GpuProgramSource::OpenCL {
+fn test_gpu_program_source_cuda_debug() {
+    let src = GpuProgramSource::Cuda {
         source: "kernel void foo() {}".to_string(),
     };
     let s = format!("{src:?}");
-    assert!(s.contains("OpenCL"));
+    assert!(s.contains("Cuda"));
 }
 
 #[test]

@@ -338,7 +338,7 @@ mod tests {
     use crate::ResourceRequirements;
     use crate::coordination::types::{
         ConnectionHealth, CoordinationConnection, CoordinationDiscoveryConfig,
-        CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
+        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
         NodeCapabilities, NodeMetadata, NodeRegistration, NodeType, ProtocolConfig, SubTask,
     };
     use crate::types::resources::{
@@ -352,11 +352,6 @@ mod tests {
                 timeout_ms: 5000,
                 max_retries: 3,
                 headers: HashMap::new(),
-            },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 5000,
-                max_message_size: 1024 * 1024,
-                compression: false,
             },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "test".to_string(),

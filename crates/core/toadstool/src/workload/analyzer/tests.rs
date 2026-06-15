@@ -68,7 +68,7 @@ fn test_cuda_large_workload() {
 fn test_gpu_workload_analysis() {
     let analyzer = WorkloadAnalyzer::new();
     let spec = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void k() {}".to_string(),
         },
         kernel_name: "k".to_string(),

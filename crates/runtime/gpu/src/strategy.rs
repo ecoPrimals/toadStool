@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn test_specific_framework_unavailable_falls_back() {
         let strategy = BackendSelectionStrategy::Specific(GpuFramework::Cuda);
-        let available = vec![GpuFramework::WebGpu, GpuFramework::OpenCl];
+        let available = vec![GpuFramework::WebGpu, GpuFramework::Vulkan];
         let selected = strategy.select_framework(None, &available);
         assert_eq!(selected, Some(GpuFramework::WebGpu));
     }
@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn test_automatic_workload_needs_cuda_when_no_webgpu() {
         let strategy = BackendSelectionStrategy::Automatic;
-        let available = vec![GpuFramework::Cuda, GpuFramework::OpenCl];
+        let available = vec![GpuFramework::Cuda, GpuFramework::Vulkan];
         let workload = WorkloadType::Python;
         let selected = strategy.select_framework(Some(&workload), &available);
         assert_eq!(selected, Some(GpuFramework::Cuda));

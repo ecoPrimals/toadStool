@@ -26,7 +26,7 @@ fn sample_gpu_request() -> ExecutionRequest {
     ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: GpuProgramSource::OpenCL {
+            program: GpuProgramSource::Cuda {
                 source: "kernel void k() {}".to_string(),
             },
             kernel_name: "k".to_string(),
@@ -356,7 +356,7 @@ async fn execute_vulkan_spirv_source_hits_device_gate() {
 }
 
 #[test]
-fn execution_request_gpu_opencl_serde_round_trip() {
+fn execution_request_gpu_cuda_serde_round_trip() {
     let r = sample_gpu_request();
     let json = serde_json::to_string(&r).unwrap();
     let back: ExecutionRequest = serde_json::from_str(&json).unwrap();
@@ -424,7 +424,6 @@ fn gpu_framework_serde_variants() {
     let frameworks = [
         GpuFramework::WebGpu,
         GpuFramework::Vulkan,
-        GpuFramework::OpenCl,
         GpuFramework::Cuda,
         GpuFramework::Metal,
         GpuFramework::Rocm,

@@ -54,7 +54,6 @@ async fn test_intelligent_autoconfig_generate_optimal_config_high_end() {
                 driver_version: "1.0".to_string(),
                 compute_capability: "8.0".to_string(),
                 supports_cuda: true,
-                supports_opencl: true,
             },
             toadstool_auto_config::hardware::GpuInfo {
                 name: "Test GPU 2".to_string(),
@@ -63,7 +62,6 @@ async fn test_intelligent_autoconfig_generate_optimal_config_high_end() {
                 driver_version: "1.0".to_string(),
                 compute_capability: "8.0".to_string(),
                 supports_cuda: true,
-                supports_opencl: true,
             },
         ],
         gpu_count: 2,
@@ -206,7 +204,6 @@ async fn test_config_validation_valid() {
             driver_version: "1.0".to_string(),
             compute_capability: "8.0".to_string(),
             supports_cuda: true,
-            supports_opencl: true,
         }],
         gpu_count: 1,
         gpu_memory_gb: Some(8.0),

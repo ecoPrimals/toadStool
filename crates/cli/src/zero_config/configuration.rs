@@ -188,7 +188,6 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
-    #[expect(deprecated, reason = "test constructs deprecated opencl field")]
     fn test_deployment() -> ZeroConfigDeployment {
         ZeroConfigDeployment {
             system_info: SystemInfo {
@@ -224,7 +223,6 @@ mod tests {
                     model: "none".to_string(),
                     memory_bytes: 0,
                     cuda: false,
-                    opencl: false,
                 },
             },
             ecosystem_services: EcosystemServices::default(),

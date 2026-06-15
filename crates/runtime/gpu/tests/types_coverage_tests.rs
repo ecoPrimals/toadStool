@@ -211,7 +211,7 @@ fn debug_all_public_types_non_empty() {
 
     let cr = ComputeResult {
         session_id: Uuid::nil(),
-        device_id: DeviceId::new(GpuFramework::OpenCl, 0, "u".into()),
+        device_id: DeviceId::new(GpuFramework::Vulkan, 0, "u".into()),
         primary_output: ko,
         recursive_results: vec![],
         total_execution_time: Duration::from_secs(1),
@@ -244,7 +244,7 @@ fn serde_gpu_framework_all_variants() {
     let variants = vec![
         GpuFramework::WebGpu,
         GpuFramework::Vulkan,
-        GpuFramework::OpenCl,
+        GpuFramework::Vulkan,
         GpuFramework::Cuda,
         GpuFramework::Metal,
         GpuFramework::Rocm,
@@ -391,7 +391,6 @@ fn serde_access_pattern_all_variants() {
 fn gpu_framework_name_and_universal_and_platforms() {
     assert_eq!(GpuFramework::WebGpu.name(), "WebGPU");
     assert_eq!(GpuFramework::Vulkan.name(), "Vulkan");
-    assert_eq!(GpuFramework::OpenCl.name(), "OpenCL");
     assert_eq!(GpuFramework::Cuda.name(), "CUDA");
     assert_eq!(GpuFramework::Metal.name(), "Metal");
     assert_eq!(GpuFramework::Rocm.name(), "ROCm");
@@ -400,7 +399,6 @@ fn gpu_framework_name_and_universal_and_platforms() {
 
     assert!(GpuFramework::WebGpu.is_universal());
     assert!(GpuFramework::Vulkan.is_universal());
-    assert!(!GpuFramework::OpenCl.is_universal());
     assert!(!GpuFramework::Cuda.is_universal());
 
     let custom = GpuFramework::Custom("x".into());
@@ -450,8 +448,8 @@ fn device_requirements_minimal_and_high_performance_invariants() {
 
 #[test]
 fn gpu_framework_eq_hash_as_map_key() {
-    let a = GpuFramework::OpenCl;
-    let b = GpuFramework::OpenCl;
+    let a = GpuFramework::Vulkan;
+    let b = GpuFramework::Vulkan;
     assert_eq!(a, b);
 
     let mut m = HashMap::new();
@@ -513,7 +511,7 @@ async fn universal_compute_device_usage_rwlock_readable() {
         active_sessions: 0,
     }));
     let d = UniversalComputeDevice {
-        id: DeviceId::new(GpuFramework::OpenCl, 0, "u".into()),
+        id: DeviceId::new(GpuFramework::Vulkan, 0, "u".into()),
         info: sample_device_info(),
         capabilities: sample_device_capabilities(),
         usage: Arc::clone(&usage),

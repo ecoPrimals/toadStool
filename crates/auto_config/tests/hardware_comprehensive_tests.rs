@@ -347,14 +347,12 @@ fn test_gpu_info_creation() {
         driver_version: "535.54".to_string(),
         compute_capability: "8.9".to_string(),
         supports_cuda: true,
-        supports_opencl: true,
     };
 
     assert_eq!(gpu.name, "NVIDIA RTX 4090");
     assert_eq!(gpu.vendor, "NVIDIA");
     assert_eq!(gpu.memory_gb, 24.0);
     assert!(gpu.supports_cuda);
-    assert!(gpu.supports_opencl);
 }
 
 #[test]
@@ -366,7 +364,6 @@ fn test_gpu_info_serialization() {
         driver_version: "23.10".to_string(),
         compute_capability: "RDNA3".to_string(),
         supports_cuda: false,
-        supports_opencl: true,
     };
 
     let json = serde_json::to_string(&gpu).expect("Should serialize");
@@ -386,7 +383,6 @@ fn test_gpu_info_clone() {
         driver_version: "30.0.101.1191".to_string(),
         compute_capability: "Gen12".to_string(),
         supports_cuda: false,
-        supports_opencl: true,
     };
 
     let cloned = original.clone();
@@ -527,7 +523,6 @@ fn test_multiple_gpus() {
         driver_version: "535.54".to_string(),
         compute_capability: "8.6".to_string(),
         supports_cuda: true,
-        supports_opencl: true,
     };
 
     let gpu2 = GpuInfo {
@@ -537,7 +532,6 @@ fn test_multiple_gpus() {
         driver_version: "535.54".to_string(),
         compute_capability: "7.5".to_string(),
         supports_cuda: true,
-        supports_opencl: true,
     };
 
     let capabilities = SystemCapabilities {

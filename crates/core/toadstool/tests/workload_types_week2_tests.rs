@@ -386,20 +386,6 @@ fn test_registry_auth_clone() {
 // ============================================================================
 
 #[test]
-fn test_gpu_program_opencl() {
-    let source = GpuProgramSource::OpenCL {
-        source: "kernel void hello() { }".to_string(),
-    };
-
-    match source {
-        GpuProgramSource::OpenCL { source: s } => {
-            assert!(s.contains("kernel"));
-        }
-        _ => panic!("Expected OpenCL variant"),
-    }
-}
-
-#[test]
 fn test_gpu_program_cuda() {
     let source = GpuProgramSource::Cuda {
         source: "__global__ void kernel() { }".to_string(),
@@ -409,7 +395,7 @@ fn test_gpu_program_cuda() {
         GpuProgramSource::Cuda { source: s } => {
             assert!(s.contains("__global__"));
         }
-        _ => panic!("Expected CUDA variant"),
+        GpuProgramSource::Vulkan { .. } => panic!("Expected CUDA variant"),
     }
 }
 
@@ -424,19 +410,19 @@ fn test_gpu_program_vulkan() {
         GpuProgramSource::Vulkan { spirv: s } => {
             assert_eq!(s, spirv);
         }
-        _ => panic!("Expected Vulkan variant"),
+        GpuProgramSource::Cuda { .. } => panic!("Expected Vulkan variant"),
     }
 }
 
 #[test]
 fn test_gpu_program_source_clone() {
-    let source = GpuProgramSource::OpenCL {
+    let source = GpuProgramSource::Cuda {
         source: "test".to_string(),
     };
     let cloned = source.clone();
 
     match (source, cloned) {
-        (GpuProgramSource::OpenCL { source: s1 }, GpuProgramSource::OpenCL { source: s2 }) => {
+        (GpuProgramSource::Cuda { source: s1 }, GpuProgramSource::Cuda { source: s2 }) => {
             assert_eq!(s1, s2);
         }
         _ => panic!("Clone failed"),
@@ -618,7 +604,7 @@ fn test_workload_spec_container() {
 #[test]
 fn test_workload_spec_gpu() {
     let spec = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel void test() { }".to_string(),
         },
         kernel_name: "test".to_string(),

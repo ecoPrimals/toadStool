@@ -32,7 +32,6 @@ async fn test_platform_optimizer_optimize_linux() {
             driver_version: "1.0".to_string(),
             compute_capability: "8.0".to_string(),
             supports_cuda: true,
-            supports_opencl: true,
         }],
         gpu_count: 1,
         gpu_memory_gb: Some(8.0),

@@ -128,14 +128,6 @@ pub struct RegistryAuth {
 /// Source of a GPU program
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GpuProgramSource {
-    /// `OpenCL` source code (serde-compatible only).
-    #[deprecated(
-        note = "DEPRECATED S198: OpenCL removed — use gpu.dispatch.opencl capability provider via IPC"
-    )]
-    OpenCL {
-        /// `OpenCL` C source string.
-        source: String,
-    },
     /// CUDA source code
     Cuda {
         /// CUDA C++ source string.

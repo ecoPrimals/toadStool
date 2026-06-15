@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Protocol-specific submission paths (HTTP, gRPC, message queue) for Coordination jobs.
+//! Protocol-specific submission paths (HTTP, message queue) for Coordination jobs.
 
 use std::time::SystemTime;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 
 use super::types::{
     CoordinationJobRequest, CoordinationJobResponse, CoordinationTransport, SubTask, SubTaskHandle,
@@ -36,11 +36,6 @@ impl ToadStoolCoordinationIntegration {
         let response = match &self.connection.protocol_config.protocol {
             CoordinationTransport::HTTP => {
                 self.submit_via_http(coordination_request, &self.connection.active_endpoint)
-                    .await?
-            }
-            #[expect(deprecated, reason = "exhaustive match — gRPC arm delegates to stub")]
-            CoordinationTransport::GRPC => {
-                self.submit_via_grpc(coordination_request, &self.connection.active_endpoint)
                     .await?
             }
             CoordinationTransport::MessageQueue => {
@@ -82,22 +77,6 @@ impl ToadStoolCoordinationIntegration {
         ))
     }
 
-    async fn submit_via_grpc(
-        &self,
-        _request: CoordinationJobRequest,
-        endpoint: &str,
-    ) -> ToadStoolResult<CoordinationJobResponse> {
-        error!(
-            "gRPC protocol deprecated (UNIVERSAL_IPC_STANDARD_V3) for endpoint: {}. Migrate to JSON-RPC.",
-            endpoint
-        );
-
-        Err(ToadStoolError::not_supported(
-            "gRPC job submission removed. Migrate to JSON-RPC over Unix socket via the coordination service client. \
-             (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through the coordination service (Coordination).",
-        ))
-    }
-
     async fn submit_via_message_queue(
         &self,
         _request: CoordinationJobRequest,
@@ -128,8 +107,8 @@ mod tests {
 
     use super::super::types::{
         CapacityConfig, ConnectionHealth, CoordinationConnection, CoordinationTransport,
-        GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
-        SubTask, ToadStoolCoordinationIntegration,
+        HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig, SubTask,
+        ToadStoolCoordinationIntegration,
     };
     use crate::universal::{UniversalScheduler, UniversalSchedulerConfig};
     use toadstool_common::constants::network::LOCALHOST_IPV4;
@@ -148,11 +127,6 @@ mod tests {
                     timeout_ms: 5000,
                     max_retries: 3,
                     headers: HashMap::new(),
-                },
-                grpc: GrpcProtocolConfig {
-                    timeout_ms: 10_000,
-                    max_message_size: 4 * 1024 * 1024,
-                    compression: false,
                 },
                 message_queue: MessageQueueProtocolConfig {
                     queue_name: "jobs".to_string(),
@@ -217,26 +191,6 @@ mod tests {
         assert!(
             err.to_string().contains("HTTP job submission removed"),
             "message should mention HTTP removal: {err}"
-        );
-    }
-
-    #[tokio::test]
-    async fn submit_subtask_grpc_returns_not_supported() {
-        let integration = integration_with_protocol(CoordinationTransport::GRPC).await;
-        let err = integration
-            .submit_subtask_to_coordination(sample_subtask(), vec!["n1".to_string()])
-            .await
-            .expect_err("gRPC submission must be rejected");
-        assert!(
-            matches!(
-                err,
-                ToadStoolError::System(SystemError::NotSupported { .. })
-            ),
-            "expected NotSupported, got {err:?}"
-        );
-        assert!(
-            err.to_string().contains("gRPC job submission removed"),
-            "message should mention gRPC removal: {err}"
         );
     }
 

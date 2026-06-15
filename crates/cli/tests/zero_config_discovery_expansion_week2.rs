@@ -110,7 +110,6 @@ fn test_gpu_info_creation() {
         model: "RTX 4090".to_string(),
         memory_bytes: 24_000_000_000,
         cuda: true,
-        opencl: true,
     };
     assert_eq!(gpu.count, 2);
     assert!(gpu.cuda);
@@ -160,7 +159,6 @@ fn test_system_info_aggregation() {
             model: "None".to_string(),
             memory_bytes: 0,
             cuda: false,
-            opencl: false,
         },
     };
 

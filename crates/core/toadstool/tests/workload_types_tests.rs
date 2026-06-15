@@ -106,7 +106,7 @@ fn test_workload_spec_python() {
 #[test]
 fn test_workload_spec_gpu() {
     let workload = WorkloadSpec::Gpu {
-        program: GpuProgramSource::OpenCL {
+        program: GpuProgramSource::Cuda {
             source: "kernel code".to_string(),
         },
         kernel_name: "main_kernel".to_string(),
@@ -392,21 +392,6 @@ fn test_python_source_clone() {
 // ============================================================================
 
 #[test]
-fn test_gpu_program_source_opencl() {
-    let code = "kernel void test() {}";
-    let source = GpuProgramSource::OpenCL {
-        source: code.to_string(),
-    };
-
-    match source {
-        GpuProgramSource::OpenCL { source: s } => {
-            assert_eq!(s, code);
-        }
-        _ => panic!("Expected OpenCL source"),
-    }
-}
-
-#[test]
 fn test_gpu_program_source_cuda() {
     let code = "__global__ void test() {}";
     let source = GpuProgramSource::Cuda {
@@ -417,7 +402,7 @@ fn test_gpu_program_source_cuda() {
         GpuProgramSource::Cuda { source: s } => {
             assert_eq!(s, code);
         }
-        _ => panic!("Expected CUDA source"),
+        GpuProgramSource::Vulkan { .. } => panic!("Expected CUDA source"),
     }
 }
 
@@ -432,21 +417,21 @@ fn test_gpu_program_source_vulkan() {
         GpuProgramSource::Vulkan { spirv: s } => {
             assert_eq!(s, spirv);
         }
-        _ => panic!("Expected Vulkan source"),
+        GpuProgramSource::Cuda { .. } => panic!("Expected Vulkan source"),
     }
 }
 
 #[test]
 fn test_gpu_program_source_clone() {
-    let source1 = GpuProgramSource::OpenCL {
+    let source1 = GpuProgramSource::Cuda {
         source: "test".to_string(),
     };
     let source2 = source1.clone();
 
     match (source1, source2) {
         (
-            GpuProgramSource::OpenCL { source: source1 },
-            GpuProgramSource::OpenCL { source: source2 },
+            GpuProgramSource::Cuda { source: source1 },
+            GpuProgramSource::Cuda { source: source2 },
         ) => {
             assert_eq!(source1, source2);
         }

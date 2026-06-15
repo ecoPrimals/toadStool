@@ -187,11 +187,11 @@ async fn test_engine_auto_fallback_on_framework_failure() {
     config.discovery.auto_fallback = true;
     config.discovery.enabled_frameworks = vec![
         GpuFramework::Vulkan,
-        GpuFramework::OpenCl,
+        GpuFramework::Vulkan,
         GpuFramework::Metal,
     ];
     let result = UniversalGpuEngine::with_config(config).await;
-    assert!(result.is_ok(), "Should fallback when Vulkan/OpenCL fail");
+    assert!(result.is_ok(), "Should fallback when Vulkan fails");
     let engine = result.unwrap();
     let frameworks = engine.get_statistics().await;
     assert!(frameworks.frameworks_available >= 1);
@@ -213,7 +213,7 @@ async fn test_engine_execute_gpu_workload_no_devices() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: GpuProgramSource::OpenCL {
+            program: GpuProgramSource::Cuda {
                 source: "void kernel main() {}".to_string(),
             },
             kernel_name: "main".to_string(),

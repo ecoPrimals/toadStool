@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(deprecated)]
+#![allow(clippy::float_cmp)]
 //! Tests for `ExecutionRequest` → `ComputeWorkload` conversion.
 
 use super::*;
 
 #[test]
-fn test_convert_request_to_workload_opencl() {
+fn test_convert_request_to_workload_vulkan_source() {
     use toadstool::workload::GpuProgramSource;
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: GpuProgramSource::OpenCL {
-                source: "void kernel main() {}".to_string(),
+            program: GpuProgramSource::Vulkan {
+                spirv: vec![0x03, 0x02, 0x23, 0x07],
             },
             kernel_name: "main".to_string(),
             global_work_size: (1, 1, 1),
@@ -30,7 +30,7 @@ fn test_convert_request_to_workload_opencl() {
     let result = UniversalGpuEngine::convert_request_to_workload(&request);
     assert!(result.is_ok());
     let workload = result.unwrap();
-    assert_eq!(workload.kernel_source, "void kernel main() {}");
+    assert!(workload.kernel_source.contains("SPIR-V binary"));
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn test_convert_request_to_workload_with_errors_in_output() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: GpuProgramSource::OpenCL {
+            program: GpuProgramSource::Cuda {
                 source: "kernel void main() {}".to_string(),
             },
             kernel_name: "main".to_string(),

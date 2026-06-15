@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use crate::coordination::types::protocols::{
-    CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
-    ProtocolConfig,
+    CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
 };
 use crate::coordination::types::{
     BroadcastConfig, CapacityConfig, CoordinationConnectionConfig, CoordinationDiscoveryConfig,
@@ -24,11 +23,6 @@ pub(super) fn sample_coordination_connection_config_with_endpoints(
                 timeout_ms: 5000,
                 max_retries: 3,
                 headers: HashMap::new(),
-            },
-            grpc: GrpcProtocolConfig {
-                timeout_ms: 5000,
-                max_message_size: 1024 * 1024,
-                compression: false,
             },
             message_queue: MessageQueueProtocolConfig {
                 queue_name: "default".to_string(),
