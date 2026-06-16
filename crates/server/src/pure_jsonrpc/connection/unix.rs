@@ -160,8 +160,35 @@ async fn handle_early_health(mut stream: UnixStream) {
             return;
         }
         // 0x01 (NDJSON) or 0x04 (HTTP) — fall through to JSON line read
-    } else if first[0] == 0xED || first[0] == 0xEE {
-        // MITO/NUCLEAR — not supported during early health
+    } else if first[0] == 0xED {
+        // MitoBeacon (Wave 114): consume 4-byte HMAC tag + protocol-type byte
+        let mut hmac_tag = [0u8; 4];
+        if tokio::io::AsyncReadExt::read_exact(&mut stream, &mut hmac_tag)
+            .await
+            .is_err()
+        {
+            return;
+        }
+        let mut pt = [0u8; 1];
+        if tokio::io::AsyncReadExt::read_exact(&mut stream, &mut pt)
+            .await
+            .is_err()
+        {
+            return;
+        }
+        if pt[0] == 0x00 {
+            let response =
+                serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
+            let mut buf = serde_json::to_vec(&response).unwrap_or_default();
+            buf.push(b'\n');
+            let (_, mut writer) = stream.into_split();
+            let _ = writer.write_all(&buf).await;
+            let _ = writer.flush().await;
+            return;
+        }
+        // 0x01 (NDJSON) or 0x04 (HTTP) — fall through to JSON line read
+    } else if first[0] == 0xEE {
+        // Nuclear tier — not supported during early health
         return;
     } else {
         // Non-riboCipher byte — push back into the line buffer below
@@ -169,7 +196,7 @@ async fn handle_early_health(mut stream: UnixStream) {
 
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
-    let mut line = if first[0] == 0xEC {
+    let mut line = if first[0] == 0xEC || first[0] == 0xED {
         String::new()
     } else {
         String::from(first[0] as char)
@@ -325,17 +352,28 @@ pub(super) async fn try_ribocipher_dispatch(
             ))
         }
         ribocipher::MITO => {
-            warn!("riboCipher mito-obfuscated tier not yet supported — rejecting");
-            let reject = serde_json::json!({
-                "jsonrpc": "2.0",
-                "error": {"code": -32600, "message": "riboCipher tier 2 (mito) not yet supported"},
-                "id": null
-            });
-            let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
-            buf.push(b'\n');
-            let _ = tokio::io::AsyncWriteExt::write_all(&mut stream, &buf).await;
-            let _ = tokio::io::AsyncWriteExt::flush(&mut stream).await;
-            Ok(Some(Ok(())))
+            // MitoBeacon (Wave 114): read 4-byte HMAC tag, then protocol type.
+            // HMAC validation deferred to Wave 115 (HKDF from FAMILY_SEED).
+            let mut hmac_tag = [0u8; 4];
+            if let Err(e) = tokio::io::AsyncReadExt::read_exact(&mut stream, &mut hmac_tag).await {
+                return Ok(Some(Err(ServerError::Network(format!(
+                    "riboCipher mito: failed to read HMAC tag: {e}"
+                )))));
+            }
+            let mut pt = [0u8; 1];
+            if let Err(e) = tokio::io::AsyncReadExt::read_exact(&mut stream, &mut pt).await {
+                return Ok(Some(Err(ServerError::Network(format!(
+                    "riboCipher mito: failed to read protocol type: {e}"
+                )))));
+            }
+            info!(
+                protocol_type = format_args!("0x{:02X}", pt[0]),
+                hmac = format_args!("{:02x}{:02x}{:02x}{:02x}", hmac_tag[0], hmac_tag[1], hmac_tag[2], hmac_tag[3]),
+                "riboCipher mito-beacon signal accepted"
+            );
+            Ok(Some(
+                handle_ribocipher_clear_unix(handler.clone(), stream, pt[0]).await,
+            ))
         }
         ribocipher::NUCLEAR => {
             warn!("riboCipher nuclear-sealed tier not yet supported — rejecting");

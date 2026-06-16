@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Jun 14, 2026 (Sessions 43-315)
 
+### Session S320 (Jun 16, 2026) — Wave 114: MitoBeacon Acceptance (Genetics-Layer Wiring)
+
+toadStool now accepts `0xED` mito-beacon signal on all accept loops (Unix, TCP, BTSP, early-health). Previously rejected with `-32600`; now reads 4-byte HMAC tag (validation deferred to Wave 115 HKDF), then dispatches to the same protocol handlers as `0xEC` CLEAR. This unblocks NUCLEUS probe validation and ABG relay access.
+
+- `connection/unix.rs` — `try_ribocipher_dispatch` MITO arm: read HMAC tag + protocol type, dispatch to `handle_ribocipher_clear_unix`
+- `connection/unix.rs` — `handle_early_health` MITO arm: read HMAC tag + protocol type, handle PROBE or fall through to JSON dispatch
+- `connection/tcp.rs` — inline MITO arm: read HMAC tag + protocol type, dispatch to `handle_ribocipher_clear_tcp`
+- `connection/mod.rs` — riboCipher constant docs updated to Wave 114 eukaryotic naming (MitoBeacon/Nuclear Lineage)
+- Nuclear (`0xEE`) still rejects — per-user tiered access is Wave 115
+
 ### Session S319 (Jun 15, 2026) — Dead Protocol Purge: gRPC + OpenCL Deleted
 
 gRPC coordination and OpenCL GPU framework deleted entirely — both were deprecated C-dependent dead stubs. Project uses tarpc/JSON-RPC over Unix sockets; no persisted gRPC configs exist. OpenCL had C dependencies violating pure-Rust evolution.

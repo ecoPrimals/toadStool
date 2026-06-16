@@ -27,14 +27,16 @@ use crate::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
 /// Every connection declares its intended protocol via a signal prefix instead
 /// of fragile peek-and-guess detection.
 pub(crate) mod ribocipher {
-    /// Clear signal prefix — local/trusted wire (2 bytes total: prefix + protocol type).
+    /// MitoBeacon CLEAR — local/trusted wire (2 bytes: prefix + protocol type).
     pub const CLEAR: u8 = 0xEC;
-    /// Mito-obfuscated prefix — cross-gate WAN (5 bytes: prefix + 4-byte HMAC tag).
+    /// MitoBeacon MITO — cross-gate relay (6 bytes: prefix + 4-byte HMAC tag + protocol type).
+    /// HMAC validation deferred to Wave 115; currently accepted and logged.
     pub const MITO: u8 = 0xED;
-    /// Nuclear-sealed prefix — privileged channel (7 bytes: prefix + 6-byte ciphertext).
+    /// Nuclear Lineage — per-user privileged channel (7+ bytes: prefix + 6-byte ciphertext).
+    /// Not yet implemented; connections rejected.
     pub const NUCLEAR: u8 = 0xEE;
 
-    /// Protocol type byte (second byte after `CLEAR` prefix).
+    /// Protocol type byte (after CLEAR prefix, or after MITO HMAC tag).
     pub mod protocol_type {
         pub const PROBE: u8 = 0x00;
         pub const NDJSON_JSONRPC: u8 = 0x01;

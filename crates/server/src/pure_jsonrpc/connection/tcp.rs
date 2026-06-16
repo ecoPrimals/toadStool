@@ -101,16 +101,34 @@ pub(crate) async fn handle_tcp_connection(
             );
             return handle_ribocipher_clear_tcp(handler, stream, pt[0]).await;
         }
-        ribocipher::MITO | ribocipher::NUCLEAR => {
-            let tier = if first[0] == ribocipher::MITO {
-                "mito"
-            } else {
-                "nuclear"
-            };
-            warn!("riboCipher {tier} tier not yet supported on TCP — rejecting");
+        ribocipher::MITO => {
+            // MitoBeacon (Wave 114): read 4-byte HMAC tag, then protocol type.
+            let mut hmac_tag = [0u8; 4];
+            tokio::io::AsyncReadExt::read_exact(&mut stream, &mut hmac_tag)
+                .await
+                .map_err(|e| {
+                    ServerError::Network(format!("riboCipher mito: failed to read HMAC tag: {e}"))
+                })?;
+            let mut pt = [0u8; 1];
+            tokio::io::AsyncReadExt::read_exact(&mut stream, &mut pt)
+                .await
+                .map_err(|e| {
+                    ServerError::Network(format!(
+                        "riboCipher mito: failed to read protocol type: {e}"
+                    ))
+                })?;
+            info!(
+                protocol_type = format_args!("0x{:02X}", pt[0]),
+                hmac = format_args!("{:02x}{:02x}{:02x}{:02x}", hmac_tag[0], hmac_tag[1], hmac_tag[2], hmac_tag[3]),
+                "riboCipher mito-beacon signal accepted on TCP"
+            );
+            return handle_ribocipher_clear_tcp(handler, stream, pt[0]).await;
+        }
+        ribocipher::NUCLEAR => {
+            warn!("riboCipher nuclear tier not yet supported on TCP — rejecting");
             let reject = serde_json::json!({
                 "jsonrpc": "2.0",
-                "error": {"code": -32600, "message": format!("riboCipher tier {tier} not yet supported")},
+                "error": {"code": -32600, "message": "riboCipher nuclear tier not yet supported"},
                 "id": null
             });
             let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
