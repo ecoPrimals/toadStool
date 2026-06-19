@@ -8,7 +8,9 @@ use crate::vfio::sovereign_stages::{
     PmcEnableResult, cg_sweep, pgob_ungating, pgraph_engine_reset, pmc_enable, pri_bus_recover,
 };
 use crate::vfio::sovereign_strategy::{FalconWarmState, SovereignStrategy};
-use crate::vfio::sovereign_types::{HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus};
+use crate::vfio::sovereign_types::{
+    HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus,
+};
 
 use super::context::PipelineCtx;
 
@@ -38,7 +40,10 @@ pub(crate) fn run(
             ctx.stages.push(StageResult {
                 name: "identity_probe".into(),
                 status: StageStatus::Ok,
-                detail: Some(format!("raw=0x{:08x} chip=0x{:03x}", ctx.boot0, ctx.chip_id)),
+                detail: Some(format!(
+                    "raw=0x{:08x} chip=0x{:03x}",
+                    ctx.boot0, ctx.chip_id
+                )),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
         }

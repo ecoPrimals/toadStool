@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+use super::policy::MIN_HEARTBEAT_INTERVAL_SECS;
 use super::*;
 use crate::cloud::ReplicaStatus;
 

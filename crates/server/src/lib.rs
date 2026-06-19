@@ -84,9 +84,7 @@ pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerSta
 // See pure_jsonrpc::connection::serve_unix() and tarpc_server::serve_unix()
 // for correct implementations.
 
-// Test-only mocks (not compiled in production library builds)
-#[cfg(test)]
-pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
+// Test mocks live in toadstool-testing crate — no duplicate mock module here.
 
 // RESOLVED (S155b): SIGSEGV on process exit (Vulkan+Nvidia+Linux)
 // Root cause: wgpu adapter drops during process exit segfault on NVIDIA proprietary
@@ -115,8 +113,6 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 // handlers: REMOVED — HTTP REST is out of scope here; use pure_jsonrpc
 
 // Test-only mocks (see also `toadstool_testing::mocks` for integration test helpers)
-#[cfg(test)]
-pub mod mocks;
 
 pub mod glowplug_client;
 pub mod glowplug_types;

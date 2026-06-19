@@ -2,8 +2,8 @@
 
 use std::time::SystemTime;
 
-use super::paths::{autoconf_path, kernel_image_path, kernel_release};
 use super::KernelHealthError;
+use super::paths::{autoconf_path, kernel_image_path, kernel_release};
 
 /// Compare mtime of `autoconf.h` against the kernel image.
 ///

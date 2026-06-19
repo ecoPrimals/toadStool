@@ -16,9 +16,9 @@ use tracing::info;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
+use crate::EdgeRuntimeConfig;
 #[cfg(not(feature = "serial-transport"))]
 use crate::serial_transport::SERIAL_TRANSPORT_UNAVAILABLE;
-use crate::EdgeRuntimeConfig;
 
 /// Communication Manager
 pub struct CommunicationManager {

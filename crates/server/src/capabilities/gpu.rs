@@ -153,7 +153,9 @@ fn detect_nvidia_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
 
 #[cfg(target_os = "linux")]
 fn detect_drm_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
-    if let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_join(&["class", "drm"])) {
+    if let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_join(&[
+        "class", "drm",
+    ])) {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
             if !name.starts_with("card") || name.contains("render") {
@@ -337,9 +339,17 @@ fn read_driver_name(device_path: &std::path::Path) -> Option<String> {
 /// Detect NVIDIA driver type from loaded kernel modules.
 #[cfg(target_os = "linux")]
 fn detect_nvidia_driver() -> Option<String> {
-    if std::path::Path::new(&toadstool_cylinder::linux_paths::sysfs_module_path("nvidia")).exists() {
+    if std::path::Path::new(&toadstool_cylinder::linux_paths::sysfs_module_path(
+        "nvidia",
+    ))
+    .exists()
+    {
         Some("nvidia".to_string())
-    } else if std::path::Path::new(&toadstool_cylinder::linux_paths::sysfs_module_path("nouveau")).exists() {
+    } else if std::path::Path::new(&toadstool_cylinder::linux_paths::sysfs_module_path(
+        "nouveau",
+    ))
+    .exists()
+    {
         Some("nouveau".to_string())
     } else {
         None

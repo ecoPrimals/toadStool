@@ -5,8 +5,8 @@ mod gr_init;
 mod lifecycle;
 mod vfio;
 
-use super::submit;
 use super::DispatchHandler;
+use super::submit;
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_ember::VfioAnchor;
@@ -55,7 +55,9 @@ impl DispatchHandler {
     pub(super) async fn get_or_create_device(
         &self,
         bdf: &str,
-    ) -> Option<tokio::sync::MutexGuard<'_, HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>> {
+    ) -> Option<
+        tokio::sync::MutexGuard<'_, HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>,
+    > {
         let factory = self.local_device_factory.as_ref()?;
         let mut cache = self.cached_devices.lock().await;
         if !cache.contains_key(bdf) {
@@ -63,12 +65,16 @@ impl DispatchHandler {
 
             if let Some(anchor_fds) = device.dup_anchor_fds() {
                 let anchor = match anchor_fds {
-                    toadstool_cylinder::vfio::DupAnchorFds::Iommufd { device_fd, iommufd, ioas_id } => {
-                        VfioAnchor::from_iommufd(bdf.to_string(), device_fd, iommufd, ioas_id)
-                    }
-                    toadstool_cylinder::vfio::DupAnchorFds::Legacy { device_fd, container, group } => {
-                        VfioAnchor::from_legacy(bdf.to_string(), device_fd, container, group)
-                    }
+                    toadstool_cylinder::vfio::DupAnchorFds::Iommufd {
+                        device_fd,
+                        iommufd,
+                        ioas_id,
+                    } => VfioAnchor::from_iommufd(bdf.to_string(), device_fd, iommufd, ioas_id),
+                    toadstool_cylinder::vfio::DupAnchorFds::Legacy {
+                        device_fd,
+                        container,
+                        group,
+                    } => VfioAnchor::from_legacy(bdf.to_string(), device_fd, container, group),
                 };
                 let mut anchors = self.anchor_store.lock().await;
                 tracing::info!(bdf, "VfioAnchor created — warm keepalive active");
@@ -80,7 +86,10 @@ impl DispatchHandler {
                 if let Some(received) = self.dup_received_fds_from_anchor(bdf).await {
                     match device.adopt_anchor_fds(received) {
                         Ok(()) => {
-                            tracing::info!(bdf, "VFIO session adopted from anchor fds — dispatch ready");
+                            tracing::info!(
+                                bdf,
+                                "VFIO session adopted from anchor fds — dispatch ready"
+                            );
                         }
                         Err(e) => {
                             tracing::warn!(bdf, err = %e, "adopt_anchor_fds failed — caps-only mode persists");
@@ -123,7 +132,11 @@ impl DispatchHandler {
         let mut cache = self.get_or_create_device(bdf).await?;
         let device = cache.get_mut(bdf)?;
 
-        tracing::info!(bdf, binary_len = binary.len(), "Phase D: local dispatch via cylinder");
+        tracing::info!(
+            bdf,
+            binary_len = binary.len(),
+            "Phase D: local dispatch via cylinder"
+        );
 
         let dims = toadstool_cylinder::DispatchDims::new(
             workgroup_size[0],
@@ -140,7 +153,13 @@ impl DispatchHandler {
             }
         };
 
-        Some(Self::run_local_lifecycle(&mut **device, binary, &dims, &info, buffer_descs))
+        Some(Self::run_local_lifecycle(
+            &mut **device,
+            binary,
+            &dims,
+            &info,
+            buffer_descs,
+        ))
     }
 
     /// Full alloc → upload → dispatch → sync → readback lifecycle on a local device.
@@ -258,40 +277,49 @@ impl DispatchHandler {
 ///    FECS detection → `NvVfioComputeDevice` (NVIDIA, warm-handoff only)
 #[cfg(target_os = "linux")]
 pub(super) fn create_cylinder_device_factory() -> super::LocalDeviceFactory {
-    Arc::new(|bdf: &str| -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> {
-        // Path 1: DRM render node available → kernel driver active
-        if let Some(render_path) = resolve_render_node(bdf)
-            && let Ok(drm_dev) = toadstool_cylinder::drm::DrmDevice::open(&render_path)
-            && let Ok(driver) = drm_dev.driver_name()
-        {
-            drop(drm_dev);
-            match driver.as_str() {
-                "amdgpu" => {
-                    return match toadstool_cylinder::amd::AmdDevice::open_path(&render_path) {
-                        Ok(dev) => {
-                            tracing::info!(bdf, render = %render_path, "Phase D: opened AMD compute device");
-                            Some(Box::new(dev))
-                        }
-                        Err(e) => {
-                            tracing::warn!(bdf, render = %render_path, error = %e, "AMD device open failed");
-                            None
-                        }
-                    };
-                }
-                "nouveau" => {
-                    tracing::debug!(bdf, "NVIDIA on nouveau — not available for VFIO dispatch while kernel driver is bound");
-                    return None;
-                }
-                other => {
-                    tracing::debug!(bdf, driver = other, "no local ComputeDevice impl for this driver");
-                    return None;
+    Arc::new(
+        |bdf: &str| -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> {
+            // Path 1: DRM render node available → kernel driver active
+            if let Some(render_path) = resolve_render_node(bdf)
+                && let Ok(drm_dev) = toadstool_cylinder::drm::DrmDevice::open(&render_path)
+                && let Ok(driver) = drm_dev.driver_name()
+            {
+                drop(drm_dev);
+                match driver.as_str() {
+                    "amdgpu" => {
+                        return match toadstool_cylinder::amd::AmdDevice::open_path(&render_path) {
+                            Ok(dev) => {
+                                tracing::info!(bdf, render = %render_path, "Phase D: opened AMD compute device");
+                                Some(Box::new(dev))
+                            }
+                            Err(e) => {
+                                tracing::warn!(bdf, render = %render_path, error = %e, "AMD device open failed");
+                                None
+                            }
+                        };
+                    }
+                    "nouveau" => {
+                        tracing::debug!(
+                            bdf,
+                            "NVIDIA on nouveau — not available for VFIO dispatch while kernel driver is bound"
+                        );
+                        return None;
+                    }
+                    other => {
+                        tracing::debug!(
+                            bdf,
+                            driver = other,
+                            "no local ComputeDevice impl for this driver"
+                        );
+                        return None;
+                    }
                 }
             }
-        }
 
-        // Path 2: No DRM render node — check for VFIO-bound NVIDIA GPU
-        try_vfio_nvidia(bdf)
-    })
+            // Path 2: No DRM render node — check for VFIO-bound NVIDIA GPU
+            try_vfio_nvidia(bdf)
+        },
+    )
 }
 
 /// Attempt to open an NVIDIA GPU via VFIO with warm FECS detection.
@@ -313,11 +341,18 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
     let driver_name = driver_target.file_name()?.to_str()?;
 
     if driver_name != "vfio-pci" {
-        tracing::debug!(bdf, driver = driver_name, "not vfio-pci — skipping VFIO path");
+        tracing::debug!(
+            bdf,
+            driver = driver_name,
+            "not vfio-pci — skipping VFIO path"
+        );
         return None;
     }
 
-    tracing::info!(bdf, "VFIO-bound device detected — probing for identity and FECS");
+    tracing::info!(
+        bdf,
+        "VFIO-bound device detected — probing for identity and FECS"
+    );
 
     // Bypass ember gate for server-internal probes — toadstool IS ember,
     // so the gate would deadlock or reject our own BAR0 access.
@@ -340,9 +375,8 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
         let sm = dev.sm_version();
         if sm > 0 {
             let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
-            let bridge = toadstool_cylinder::nv::nv_gsp_bridge::NvGspBridge::new(
-                profile.firmware_chip,
-            );
+            let bridge =
+                toadstool_cylinder::nv::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
             bridge.has_gr_firmware()
         } else {
             false
@@ -364,7 +398,10 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
 
         match dev.open_vfio() {
             Ok(()) => {
-                tracing::info!(bdf, "Phase D: NVIDIA VFIO device opened — PBDMA dispatch ready");
+                tracing::info!(
+                    bdf,
+                    "Phase D: NVIDIA VFIO device opened — PBDMA dispatch ready"
+                );
             }
             Err(e) => {
                 tracing::warn!(bdf, error = %e, "VFIO device open failed — caps-only mode");

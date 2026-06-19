@@ -107,7 +107,10 @@ impl DispatchTelemetryRecord {
     ///
     /// String fields are hashed via FNV-1a to produce stable `f64` values.
     /// Boolean fields map to `0.0` / `1.0`. Nullable fields use `0.0` for `None`.
-    #[cfg_attr(not(test), expect(dead_code, reason = "barraCuda ml.mlp_train consumer API"))]
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "barraCuda ml.mlp_train consumer API")
+    )]
     #[must_use]
     pub fn to_feature_vector(&self) -> [f64; 36] {
         [
@@ -215,7 +218,7 @@ pub struct DispatchTelemetryEmit<'a> {
     pub readback_ms: u64,
     pub dispatch_mode: &'a str,
     pub bdf: &'a str,
-    pub binary_bytes: &'a [u8],
+    pub binary_size: usize,
     pub workgroup_size: [u32; 3],
     pub timeout_ms: u64,
     pub success: bool,
@@ -234,7 +237,7 @@ pub fn emit_dispatch_completion_telemetry(p: &DispatchTelemetryEmit<'_>) {
     telemetry.readback_ms = p.readback_ms;
     telemetry.total_ms = p.dispatch_ms.saturating_add(p.readback_ms);
     telemetry.timeout_ms = p.timeout_ms;
-    telemetry.binary_size_bytes = p.binary_bytes.len() as u64;
+    telemetry.binary_size_bytes = p.binary_size as u64;
     telemetry.workgroup_x = p.workgroup_size[0];
     telemetry.workgroup_y = p.workgroup_size[1];
     telemetry.workgroup_z = p.workgroup_size[2];

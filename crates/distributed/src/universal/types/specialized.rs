@@ -146,10 +146,7 @@ impl SpecializedArchitecture {
     pub const fn is_gpu_compute(&self) -> bool {
         matches!(
             self,
-            Self::CUDA { .. }
-                | Self::ROCm { .. }
-                | Self::Vulkan { .. }
-                | Self::Metal { .. }
+            Self::CUDA { .. } | Self::ROCm { .. } | Self::Vulkan { .. } | Self::Metal { .. }
         )
     }
 

@@ -25,7 +25,10 @@ use toadstool_cli::ecosystem::discovery::{
 };
 
 static CWD_LOCK: Mutex<()> = Mutex::new(());
-#[expect(deprecated, reason = "testing legacy ecosystem discovery types during migration")]
+#[expect(
+    deprecated,
+    reason = "testing legacy ecosystem discovery types during migration"
+)]
 use toadstool_cli::ecosystem::types::{EcosystemService, ServiceEndpoint, TrustLevel};
 
 // ─── discover_from_environment ──────────────────────────────────────────────

@@ -4,9 +4,7 @@
 use super::types::{GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, is_nvidia_ada_lovelace};
 use crate::types::*;
 use std::sync::Arc;
-use toadstool_common::pci::vendors::{
-    AMD_VENDOR_ID, INTEL_VENDOR_ID, NVIDIA_VENDOR_ID,
-};
+use toadstool_common::pci::vendors::{AMD_VENDOR_ID, INTEL_VENDOR_ID, NVIDIA_VENDOR_ID};
 use toadstool_core::silicon::{RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen};
 
 use super::WgpuComputeUnit;

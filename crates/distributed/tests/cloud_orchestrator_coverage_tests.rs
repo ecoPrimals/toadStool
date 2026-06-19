@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
-// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for cloud orchestrator (cloud/orchestrator/mod.rs) - coverage target 90%
 //!
 //! Tests `deploy_universal_job`, `register_provider`, deployment strategies,
@@ -20,8 +19,7 @@ use toadstool_distributed::cloud::{
 };
 use toadstool_distributed::{
     CpuRequirements, DistributedRetryConfig, ExecutionTarget, JobPriority, MemoryRequirements,
-    NetworkRequirements, ResourceRequirements, StorageRequirements, UniversalJob,
-    UniversalJobType,
+    NetworkRequirements, ResourceRequirements, StorageRequirements, UniversalJob, UniversalJobType,
 };
 
 type TestUniversalOrchestrator = UniversalCloudOrchestrator<MockCloudProvider>;

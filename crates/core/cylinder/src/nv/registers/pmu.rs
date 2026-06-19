@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code, reason = "hardware register constants — comprehensive coverage for evolving absorption")]
+#![allow(
+    dead_code,
+    reason = "hardware register constants — comprehensive coverage for evolving absorption"
+)]
 
 //! PMU falcon registers beyond the common falcon layout.
 

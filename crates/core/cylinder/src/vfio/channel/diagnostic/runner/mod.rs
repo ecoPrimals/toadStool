@@ -25,7 +25,10 @@ mod matrix_support;
 ///
 /// The GPU should be warm from nouveau (bind nouveau → unbind → bind vfio-pci)
 /// so the PFIFO scheduler is already running.
-#[expect(clippy::cast_possible_truncation, reason = "register offsets and buffer sizes fit in u32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "register offsets and buffer sizes fit in u32"
+)]
 #[expect(
     clippy::too_many_arguments,
     reason = "diagnostic matrix needs all buffers and configs"

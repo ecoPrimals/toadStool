@@ -3,9 +3,9 @@
 use crate::nv::registers::pmc::InterruptProfile;
 
 use super::{
-    BootStrategy, CE0_BASE, CompletionStrategy, FECS_PC, GenerationProfile, GPC_BROADCAST,
-    InstanceBlockFormat, LaunchMethod, LOCAL_MEM_WINDOW_LEGACY, MemoryType, NctaidSource,
-    PageTableFormat, PGRAPH_STATUS, PowerSafetyProfile, PTOP_DEVICE_INFO, QmdVersion,
+    BootStrategy, CE0_BASE, CompletionStrategy, FECS_PC, GPC_BROADCAST, GenerationProfile,
+    InstanceBlockFormat, LOCAL_MEM_WINDOW_LEGACY, LaunchMethod, MemoryType, NctaidSource,
+    PGRAPH_STATUS, PTOP_DEVICE_INFO, PageTableFormat, PowerSafetyProfile, QmdVersion,
     RUNLIST_PBDMA_MAP, RunlistFormat,
 };
 

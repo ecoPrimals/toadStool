@@ -141,10 +141,7 @@ pub trait SovereignStrategy: Send + Sync {
     ///
     /// Default: reads NVIDIA BOOT0 at offset 0. Override for AMD
     /// (GRBM_STATUS), NPU, or other register layouts.
-    fn probe_identity(
-        &self,
-        bar0: &MappedBar,
-    ) -> Result<ProbeIdentity, SovereignStagesError> {
+    fn probe_identity(&self, bar0: &MappedBar) -> Result<ProbeIdentity, SovereignStagesError> {
         crate::vfio::sovereign_stages::bar0_probe(bar0).map(|(raw, chip)| ProbeIdentity {
             identity_raw: raw,
             identity_chip: chip,
@@ -155,10 +152,7 @@ pub trait SovereignStrategy: Send + Sync {
     ///
     /// Default: NVIDIA PTIMER + PMC_ENABLE + PRAMIN sentinel check.
     /// Override for AMD (GRBM idle), NPU, or other verification schemes.
-    fn verify_device(
-        &self,
-        bar0: &MappedBar,
-    ) -> Result<String, SovereignStagesError> {
+    fn verify_device(&self, bar0: &MappedBar) -> Result<String, SovereignStagesError> {
         crate::vfio::sovereign_stages::verify(bar0)
     }
 
@@ -170,10 +164,7 @@ pub trait SovereignStrategy: Send + Sync {
     /// during channel setup. Returns stage results for logging.
     ///
     /// Default: no-op (empty stages).
-    fn pre_channel_init(
-        &self,
-        _bar0: &MappedBar,
-    ) -> Vec<StageResult> {
+    fn pre_channel_init(&self, _bar0: &MappedBar) -> Vec<StageResult> {
         Vec::new()
     }
 
@@ -213,11 +204,7 @@ pub trait SovereignStrategy: Send + Sync {
     /// Default: NVIDIA FECS register-based detection (Volta+ ACR path).
     /// Kepler overrides to always return `Cold` (PIO path doesn't need
     /// warm detection). Future AMD/NPU strategies return `Cold` as well.
-    fn detect_falcon_warm_state(
-        &self,
-        bar0: &MappedBar,
-        warm_detected: bool,
-    ) -> FalconWarmState {
+    fn detect_falcon_warm_state(&self, bar0: &MappedBar, warm_detected: bool) -> FalconWarmState {
         if !warm_detected {
             return FalconWarmState::Cold;
         }
@@ -234,9 +221,7 @@ pub trait SovereignStrategy: Send + Sync {
         let in_hreset = cpuctl & falcon::CPUCTL_HRESET != 0;
         let is_0x12 = cpuctl == (falcon::CPUCTL_STARTCPU | falcon::CPUCTL_HRESET);
 
-        let pc = bar0
-            .read_u32(falcon::FECS_BASE + falcon::PC)
-            .unwrap_or(0);
+        let pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0);
         // ACR-loaded firmware PCs are typically 0x80+ (firmware code section).
         // Post-FLR residual PCs are 0x00-0x10 (boot ROM artifacts).
         // Require PC >= 0x40 to avoid false positives from FLR residuals.
@@ -248,9 +233,17 @@ pub trait SovereignStrategy: Send + Sync {
             // HS ACR falcon: CPUCTL shows HRESET (0x10) but PC is advancing
             // and firmware is executing. This is the normal post-ACR-boot state
             // where the HS-secure falcon's true status isn't reflected in CPUCTL.
-            FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 }
+            FalconWarmState::WarmRunning {
+                cpuctl,
+                pc,
+                mailbox0,
+            }
         } else if !halted && !in_hreset && pc_valid {
-            FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 }
+            FalconWarmState::WarmRunning {
+                cpuctl,
+                pc,
+                mailbox0,
+            }
         } else if is_0x12 {
             FalconWarmState::Inconsistent { cpuctl }
         } else {
@@ -341,11 +334,7 @@ impl SovereignStrategy for NvKeplerStrategy {
         &*self.gsp_bridge
     }
 
-    fn detect_falcon_warm_state(
-        &self,
-        _bar0: &MappedBar,
-        _warm_detected: bool,
-    ) -> FalconWarmState {
+    fn detect_falcon_warm_state(&self, _bar0: &MappedBar, _warm_detected: bool) -> FalconWarmState {
         FalconWarmState::Cold
     }
 }
@@ -579,8 +568,11 @@ mod tests {
             &[("PGRAPH", 0x400000, 0x420000)],
             InitSource::Manual { experiment: 212 },
         );
-        let strat = NvAcrStrategy::new(profile.clone(), bridge, 70)
-            .with_golden_sequences(vec![("GR_INIT".into(), seq, None)]);
+        let strat = NvAcrStrategy::new(profile.clone(), bridge, 70).with_golden_sequences(vec![(
+            "GR_INIT".into(),
+            seq,
+            None,
+        )]);
         let seqs = strat.engine_ungate_sequences();
         assert!(seqs.is_some());
         assert_eq!(seqs.unwrap().len(), 1);

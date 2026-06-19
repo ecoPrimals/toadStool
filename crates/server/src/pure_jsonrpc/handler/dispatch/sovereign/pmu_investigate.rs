@@ -31,27 +31,22 @@ pub(crate) async fn sovereign_pmu_investigate(
     }
 
     let sysfs_bar;
-    let bar0_ref: &toadstool_cylinder::vfio::device::MappedBar = if let Some(ref engaged) =
-        clutch
-    {
+    let bar0_ref: &toadstool_cylinder::vfio::device::MappedBar = if let Some(ref engaged) = clutch {
         engaged.bar0()
     } else {
-        tracing::warn!(bdf, "no clutch for PMU investigate — sysfs BAR0 rw fallback");
-        let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(
+        tracing::warn!(
             bdf,
-            16 * 1024 * 1024,
-        )
-        .map_err(|e| {
-            JsonRpcError::internal_error(format!(
-                "sysfs BAR0 open failed for {bdf}: {e}"
-            ))
-        })?;
+            "no clutch for PMU investigate — sysfs BAR0 rw fallback"
+        );
+        let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("sysfs BAR0 open failed for {bdf}: {e}"))
+            })?;
         sysfs_bar = bar;
         &sysfs_bar
     };
 
-    let result =
-        toadstool_cylinder::vfio::pmu_investigate::investigate_pmu(bar0_ref);
+    let result = toadstool_cylinder::vfio::pmu_investigate::investigate_pmu(bar0_ref);
 
     if let Some(engaged) = clutch {
         engaged.disengage();

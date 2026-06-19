@@ -176,8 +176,8 @@ impl UniversalGpuEngine {
             WorkloadSpec::Gpu { program, .. } => match program {
                 toadstool::workload::GpuProgramSource::Cuda { source } => source.clone(),
                 toadstool::workload::GpuProgramSource::Vulkan { spirv } => {
-                        // Convert SPIR-V bytes to string representation
-                        format!("SPIR-V binary: {} bytes", spirv.len())
+                    // Convert SPIR-V bytes to string representation
+                    format!("SPIR-V binary: {} bytes", spirv.len())
                 }
             },
             _ => {

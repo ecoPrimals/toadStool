@@ -94,7 +94,10 @@ pub fn investigate_pmu_phase_c(bar0: &MappedBar) -> PhaseC {
                 break;
             }
         }
-        notes.push(format!("DMEM dump: {} words read successfully", dmem_dump.len()));
+        notes.push(format!(
+            "DMEM dump: {} words read successfully",
+            dmem_dump.len()
+        ));
     }
 
     // ── Step 3: Test PIO DMEM write ─────────────────────────────────
@@ -246,11 +249,7 @@ pub fn investigate_pmu_phase_c(bar0: &MappedBar) -> PhaseC {
         let dmem_size = 64 * 1024u32; // 64KB for GV100 PMU
         let mut candidate_offsets: Vec<(usize, u32)> = Vec::new();
         for (i, &word) in dmem_scan.iter().enumerate() {
-            if word > 0x100
-                && word < dmem_size
-                && word & 0xFF == 0
-                && !is_pri_fault(word)
-            {
+            if word > 0x100 && word < dmem_size && word & 0xFF == 0 && !is_pri_fault(word) {
                 candidate_offsets.push((i * 4, word));
             }
         }

@@ -316,7 +316,7 @@ pub(crate) fn simulated_resource_usage(
 
     for service_spec in services.values() {
         if let Some(cpu_cores) = service_spec.resources.cpu_cores {
-            cpu_total += cpu_cores * 0.65;
+            cpu_total = cpu_cores.mul_add(0.65, cpu_total);
         }
         if let Some(memory_bytes) = service_spec.resources.memory_bytes {
             total_memory += (memory_bytes * 3) / 4;

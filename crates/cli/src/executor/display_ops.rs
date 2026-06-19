@@ -102,7 +102,8 @@ impl BiomeExecutor {
 
         // Poll at interval (proper async pattern for tail -f without inotify)
         const LOG_POLL_INTERVAL_MS: u64 = 100;
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(LOG_POLL_INTERVAL_MS));
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_millis(LOG_POLL_INTERVAL_MS));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
         loop {

@@ -10,7 +10,9 @@ use toadstool_ember::pri_ring_anchor::{BootServiceEvidence, PriRingAnchor, PriRi
 
 use super::lock::HandoffGuard;
 use super::steps;
-use super::types::{HandoffCapabilityProfile, HandoffConfig, HandoffResult, HandoffStep, RmChannelEvidence};
+use super::types::{
+    HandoffCapabilityProfile, HandoffConfig, HandoffResult, HandoffStep, RmChannelEvidence,
+};
 
 /// Shared mutable state for the sovereign handoff pipeline steps.
 pub(crate) struct PipelineContext<'a> {
@@ -83,7 +85,12 @@ pub fn execute_handoff_with_signals(
     heartbeat_fn: impl Fn() + Send + 'static,
     signal_fn: impl Fn(PipelineSignal) + Send + 'static,
 ) -> HandoffResult {
-    execute_handoff_inner(config, bar0, Some(Box::new(heartbeat_fn)), Some(Box::new(signal_fn)))
+    execute_handoff_inner(
+        config,
+        bar0,
+        Some(Box::new(heartbeat_fn)),
+        Some(Box::new(signal_fn)),
+    )
 }
 
 fn execute_handoff_inner(
@@ -131,7 +138,10 @@ fn execute_handoff_inner(
         crate::vfio::sovereign_handoff::forensics::breadcrumb(&format!("PIPELINE: {msg}"));
     }
 
-    crumb(&format!("=== HANDOFF START bdf={} strategy={} ===", config.bdf, config.seeder_driver));
+    crumb(&format!(
+        "=== HANDOFF START bdf={} strategy={} ===",
+        config.bdf, config.seeder_driver
+    ));
 
     ctx.heartbeat();
     crumb("preflight");
@@ -181,19 +191,16 @@ fn execute_handoff_inner(
 
     let pri_ring_anchor = ctx.boot_evidence.as_ref().map(|ev| {
         let mut anchor = PriRingAnchor::from_evidence(&ctx.config.bdf, ev.clone());
-        let health = if let Ok(bar0) = crate::vfio::device::MappedBar::from_sysfs_rw(
-            &ctx.config.bdf,
-            16 * 1024 * 1024,
-        ) {
+        let health = if let Ok(bar0) =
+            crate::vfio::device::MappedBar::from_sysfs_rw(&ctx.config.bdf, 16 * 1024 * 1024)
+        {
             let pmc = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
             let fecs = bar0
                 .read_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize)
                 .unwrap_or(0xDEAD);
             let pgraph_on = pmc & (1 << 12) != 0;
             let fecs_ok = fecs & 0xBADF_0000 != 0xBADF_0000;
-            let tpc0 = bar0
-                .read_u32(gpc::gpc_tpc0(0) as usize)
-                .unwrap_or(0xBADF);
+            let tpc0 = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xBADF);
             let tpc_ok = tpc0 & 0xBADF_0000 != 0xBADF_0000;
             if pgraph_on && fecs_ok && tpc_ok {
                 PriRingHealth::Healthy

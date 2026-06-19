@@ -6,11 +6,13 @@ use std::time::Instant;
 use crate::vfio::boot_state::{SovereignBootState, probe_boot_state};
 use crate::vfio::device::MappedBar;
 use crate::vfio::sovereign_stages::{
-    MemoryTrainingResult, PMC_ENABLE,
-    dispatch_memory_training, falcon_boot, pmc_enable_full, pmc_enable_rollback, pramin_sentinel_test,
+    MemoryTrainingResult, PMC_ENABLE, dispatch_memory_training, falcon_boot, pmc_enable_full,
+    pmc_enable_rollback, pramin_sentinel_test,
 };
 use crate::vfio::sovereign_strategy::SovereignStrategy;
-use crate::vfio::sovereign_types::{HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus};
+use crate::vfio::sovereign_types::{
+    HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus,
+};
 
 use super::context::PipelineCtx;
 use super::engine_ungate::{self, PGRAPH_STATUS};
@@ -177,10 +179,7 @@ pub(crate) fn run(
 
             if power.rollback_on_devinit_failure {
                 let rollback_detail = match pmc_enable_rollback(bar0, pre.pmc_result.before) {
-                    Ok(()) => format!(
-                        "rolled back PMC_ENABLE to 0x{:08x}",
-                        pre.pmc_result.before
-                    ),
+                    Ok(()) => format!("rolled back PMC_ENABLE to 0x{:08x}", pre.pmc_result.before),
                     Err(e) => format!("rollback attempted but failed: {e}"),
                 };
                 ctx.stages.push(StageResult {
@@ -196,10 +195,7 @@ pub(crate) fn run(
         }
     }
 
-    if devinit_ok
-        && power.full_enable_after_devinit
-        && pre.pmc_result.mask != 0xFFFF_FFFF
-    {
+    if devinit_ok && power.full_enable_after_devinit && pre.pmc_result.mask != 0xFFFF_FFFF {
         let t = Instant::now();
         match pmc_enable_full(bar0) {
             Ok(detail) => {
@@ -231,7 +227,10 @@ pub(crate) fn run(
     })
 }
 
-fn cold_early_exit(ctx: &mut PipelineCtx<'_>, boot_state: SovereignBootState) -> SovereignInitResult {
+fn cold_early_exit(
+    ctx: &mut PipelineCtx<'_>,
+    boot_state: SovereignBootState,
+) -> SovereignInitResult {
     SovereignInitResult {
         bdf: ctx.bdf.to_string(),
         identity_chip: ctx.chip_id,

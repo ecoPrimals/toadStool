@@ -20,8 +20,8 @@ mod shader_dispatch;
 mod sovereign;
 mod state;
 mod submit;
-pub(crate) mod trust;
 pub mod telemetry;
+pub(crate) mod trust;
 mod types;
 mod wgpu_dispatch;
 
@@ -32,10 +32,10 @@ use crate::visualization_client::SharedVisualizationClient;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
-use tokio::sync::RwLock;
 use toadstool_ember::VfioAnchor;
 use toadstool_ember::held_resource::HeldResource;
 use toadstool_ember::vfio_handle::VfioResourceHandle;
+use tokio::sync::RwLock;
 use types::{DispatchJob, PipelineJob};
 
 /// Shared collection of VFIO warm-keepalive anchors.
@@ -61,7 +61,8 @@ pub struct DispatchHandler {
     coral_client: SharedVisualizationClient,
     crypto_client: Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>>,
     /// Cached compute purpose key (lazily fetched on first encrypted dispatch).
-    cached_purpose_key: Arc<RwLock<Option<toadstool::encryption::EncryptionKey>>>,
+    /// Arc-wrapped to avoid cloning key material on every cache hit.
+    cached_purpose_key: Arc<RwLock<Option<Arc<toadstool::encryption::EncryptionKey>>>>,
     jobs: Arc<RwLock<HashMap<String, DispatchJob>>>,
     pipelines: Arc<RwLock<HashMap<String, PipelineJob>>>,
     dispatch_count: AtomicU64,
@@ -74,7 +75,8 @@ pub struct DispatchHandler {
     /// Persistent cache of opened VFIO compute devices keyed by BDF.
     /// Devices hold iommufd/VFIO FDs and DMA mappings — dropping them
     /// triggers GPU reset. Cached to survive across multiple RPC calls.
-    cached_devices: Arc<tokio::sync::Mutex<HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>>,
+    cached_devices:
+        Arc<tokio::sync::Mutex<HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>>,
     /// Warm-keepalive anchors — dup'd VFIO fds that persist independently
     /// of cached_devices. On SIGTERM, these are leaked to prevent bus reset.
     anchor_store: AnchorStore,

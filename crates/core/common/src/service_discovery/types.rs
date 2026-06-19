@@ -135,9 +135,7 @@ impl DiscoveredService {
     /// Returns whether `last_seen` is within the given TTL.
     #[must_use]
     pub fn is_fresh(&self, ttl: Duration) -> bool {
-        self.last_seen
-            .elapsed()
-            .is_ok_and(|elapsed| elapsed < ttl)
+        self.last_seen.elapsed().is_ok_and(|elapsed| elapsed < ttl)
     }
 }
 

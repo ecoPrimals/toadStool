@@ -176,14 +176,11 @@ fn apply_env_overrides_enable_cache_true() {
 
 #[test]
 fn apply_env_overrides_feature_flags() {
-    temp_env::with_vars(
-        [("TOADSTOOL_ENABLE_FEDERATION", Some("true"))],
-        || {
-            let mut c = ToadStoolConfig::default();
-            c.apply_env_overrides().unwrap();
-            assert!(c.features.enable_federation);
-        },
-    );
+    temp_env::with_vars([("TOADSTOOL_ENABLE_FEDERATION", Some("true"))], || {
+        let mut c = ToadStoolConfig::default();
+        c.apply_env_overrides().unwrap();
+        assert!(c.features.enable_federation);
+    });
 }
 
 #[test]

@@ -210,8 +210,8 @@ impl SecurityMonitor {
     )] // numeric conversions for metrics
     pub async fn sample_resources(&self) {
         let cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0);
-        let (mem_used, mem_total) = toadstool_sysmon::memory_info()
-            .map_or((0, 1), |m| (m.used, m.total));
+        let (mem_used, mem_total) =
+            toadstool_sysmon::memory_info().map_or((0, 1), |m| (m.used, m.total));
         let timestamp_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)

@@ -15,8 +15,8 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
-use crate::interned_strings::runtime_types;
 use crate::constants::network::{HTTP_PROTOCOL, UNIX_SOCKET_URL_PREFIX};
+use crate::interned_strings::runtime_types;
 use crate::interned_strings::socket_env;
 use crate::platform_paths::{PathEnv, PlatformPaths};
 use crate::{ToadStoolError, ToadStoolResult};

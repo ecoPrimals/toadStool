@@ -136,7 +136,11 @@ impl VendorLifecycle for AmdRdnaLifecycle {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
 
-        tracing::info!(bdf, bridges_pinned = pinned, "AMD RDNA: disabling reset_method (conservative)");
+        tracing::info!(
+            bdf,
+            bridges_pinned = pinned,
+            "AMD RDNA: disabling reset_method (conservative)"
+        );
         sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -161,7 +165,11 @@ impl VendorLifecycle for AmdRdnaLifecycle {
     fn stabilize_after_bind(&self, bdf: &str, target_driver: &str) {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "AMD RDNA: re-pinned hierarchy post-bind");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "AMD RDNA: re-pinned hierarchy post-bind"
+        );
 
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")

@@ -14,8 +14,8 @@ use std::mem::MaybeUninit;
 use std::os::fd::{AsRawFd, BorrowedFd, FromRawFd, OwnedFd};
 use std::sync::Arc;
 
-use tracing::{info, warn};
 use toadstool_ember::VfioAnchor;
+use tracing::{info, warn};
 
 const SD_LISTEN_FDS_START: i32 = 3;
 
@@ -200,9 +200,9 @@ pub(crate) fn retrieve_anchors() -> HashMap<String, VfioAnchor> {
         named_fds.push((name, fd));
     }
 
-    // SAFETY: single-threaded at this point in startup (before tokio runtime
-    // spawns worker threads). Clearing these prevents child processes from
-    // accidentally consuming the stored fds.
+    // Clearing these prevents child processes from accidentally consuming
+    // the stored fds. Safe: called single-threaded at startup before tokio
+    // runtime spawns worker threads.
     unsafe {
         std::env::remove_var("LISTEN_FDS");
         std::env::remove_var("LISTEN_PID");
@@ -218,7 +218,7 @@ fn reconstruct_anchors(named_fds: Vec<(String, OwnedFd)>) -> HashMap<String, Vfi
     // Parse names and group by BDF
     struct FdSet {
         device_fd: Option<OwnedFd>,
-        iommufd: Option<(OwnedFd, u32)>,  // fd + ioas_id
+        iommufd: Option<(OwnedFd, u32)>, // fd + ioas_id
         container: Option<OwnedFd>,
         group: Option<OwnedFd>,
     }
@@ -228,9 +228,15 @@ fn reconstruct_anchors(named_fds: Vec<(String, OwnedFd)>) -> HashMap<String, Vfi
     for (name, fd) in named_fds {
         if let Some(rest) = name.strip_prefix("vfio-dev-") {
             let bdf = fdname_to_bdf(rest);
-            by_bdf.entry(bdf).or_insert_with(|| FdSet {
-                device_fd: None, iommufd: None, container: None, group: None,
-            }).device_fd = Some(fd);
+            by_bdf
+                .entry(bdf)
+                .or_insert_with(|| FdSet {
+                    device_fd: None,
+                    iommufd: None,
+                    container: None,
+                    group: None,
+                })
+                .device_fd = Some(fd);
         } else if let Some(rest) = name.strip_prefix("vfio-iommufd-") {
             // Format: vfio-iommufd-{bdf}-{ioas_id}
             // Find the last `-` to split bdf from ioas_id
@@ -239,20 +245,38 @@ fn reconstruct_anchors(named_fds: Vec<(String, OwnedFd)>) -> HashMap<String, Vfi
                 let ioas_str = &rest[last_dash + 1..];
                 let bdf = fdname_to_bdf(bdf_part);
                 let ioas_id: u32 = ioas_str.parse().unwrap_or(0);
-                by_bdf.entry(bdf).or_insert_with(|| FdSet {
-                    device_fd: None, iommufd: None, container: None, group: None,
-                }).iommufd = Some((fd, ioas_id));
+                by_bdf
+                    .entry(bdf)
+                    .or_insert_with(|| FdSet {
+                        device_fd: None,
+                        iommufd: None,
+                        container: None,
+                        group: None,
+                    })
+                    .iommufd = Some((fd, ioas_id));
             }
         } else if let Some(rest) = name.strip_prefix("vfio-container-") {
             let bdf = fdname_to_bdf(rest);
-            by_bdf.entry(bdf).or_insert_with(|| FdSet {
-                device_fd: None, iommufd: None, container: None, group: None,
-            }).container = Some(fd);
+            by_bdf
+                .entry(bdf)
+                .or_insert_with(|| FdSet {
+                    device_fd: None,
+                    iommufd: None,
+                    container: None,
+                    group: None,
+                })
+                .container = Some(fd);
         } else if let Some(rest) = name.strip_prefix("vfio-group-") {
             let bdf = fdname_to_bdf(rest);
-            by_bdf.entry(bdf).or_insert_with(|| FdSet {
-                device_fd: None, iommufd: None, container: None, group: None,
-            }).group = Some(fd);
+            by_bdf
+                .entry(bdf)
+                .or_insert_with(|| FdSet {
+                    device_fd: None,
+                    iommufd: None,
+                    container: None,
+                    group: None,
+                })
+                .group = Some(fd);
         } else {
             warn!(fdname = %name, "unrecognized stored fd name — skipping");
         }
@@ -262,7 +286,10 @@ fn reconstruct_anchors(named_fds: Vec<(String, OwnedFd)>) -> HashMap<String, Vfi
 
     for (bdf, fds) in by_bdf {
         let Some(device_fd) = fds.device_fd else {
-            warn!(bdf, "no device fd found in stored fds — cannot reconstruct anchor");
+            warn!(
+                bdf,
+                "no device fd found in stored fds — cannot reconstruct anchor"
+            );
             continue;
         };
 
@@ -272,7 +299,10 @@ fn reconstruct_anchors(named_fds: Vec<(String, OwnedFd)>) -> HashMap<String, Vfi
             if let Some(group) = fds.group {
                 VfioAnchor::from_legacy(bdf.clone(), device_fd, Arc::new(container), group)
             } else {
-                warn!(bdf, "legacy backend missing group fd — cannot reconstruct anchor");
+                warn!(
+                    bdf,
+                    "legacy backend missing group fd — cannot reconstruct anchor"
+                );
                 continue;
             }
         } else {

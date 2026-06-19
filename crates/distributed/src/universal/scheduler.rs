@@ -279,7 +279,10 @@ impl Default for NetworkEffectsConfig {
 }
 
 impl Default for CoordinationSchedulerConfig {
-    #[expect(deprecated, reason = "reads legacy TOADSTOOL_SONGBIRD_PORT as backward-compat fallback")]
+    #[expect(
+        deprecated,
+        reason = "reads legacy TOADSTOOL_SONGBIRD_PORT as backward-compat fallback"
+    )]
     fn default() -> Self {
         let port: u16 = std::env::var(socket_env::TOADSTOOL_COORDINATION_PORT)
             .or_else(|_| std::env::var(socket_env::TOADSTOOL_SONGBIRD_PORT)) // legacy env alias

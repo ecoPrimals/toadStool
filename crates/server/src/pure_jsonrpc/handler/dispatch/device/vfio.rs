@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! `device.vfio.*` JSON-RPC handlers — VFIO open and roundtrip dispatch.
 
-use super::{submit, DispatchHandler};
+use super::{DispatchHandler, submit};
 use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use std::sync::atomic::Ordering;
@@ -28,9 +28,9 @@ impl DispatchHandler {
 
         match self.get_or_create_device(bdf).await {
             Some(cache) => {
-                let device = cache
-                    .get(bdf)
-                    .ok_or_else(|| JsonRpcError::internal_error("device cache miss after insert"))?;
+                let device = cache.get(bdf).ok_or_else(|| {
+                    JsonRpcError::internal_error("device cache miss after insert")
+                })?;
                 let caps = device.capabilities();
                 Ok(serde_json::json!({
                     "domain": "device.vfio",
@@ -93,9 +93,7 @@ impl DispatchHandler {
         })?;
 
         let device = cache.get_mut(bdf).ok_or_else(|| {
-            JsonRpcError::internal_error(format!(
-                "VFIO device {bdf} not in cache after creation"
-            ))
+            JsonRpcError::internal_error(format!("VFIO device {bdf} not in cache after creation"))
         })?;
 
         let workgroup_size = submit::resolve_workgroup_size(p);
@@ -117,7 +115,10 @@ impl DispatchHandler {
             }
         };
 
-        if let Some(entries_arr) = p.get("gr_init_entries").and_then(serde_json::Value::as_array) {
+        if let Some(entries_arr) = p
+            .get("gr_init_entries")
+            .and_then(serde_json::Value::as_array)
+        {
             let method_entries: Vec<(u32, u32)> = entries_arr
                 .iter()
                 .filter_map(|entry| {
@@ -188,9 +189,7 @@ impl DispatchHandler {
         let cache = self
             .get_or_create_device(bdf)
             .await
-            .ok_or_else(|| {
-                String::from("device not available — FECS cold or not VFIO-bound")
-            })?;
+            .ok_or_else(|| String::from("device not available — FECS cold or not VFIO-bound"))?;
 
         let device = cache
             .get(bdf)

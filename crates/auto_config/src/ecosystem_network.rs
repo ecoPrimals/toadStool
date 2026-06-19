@@ -13,10 +13,10 @@ use tracing::debug;
 use crate::ecosystem_types::{ServiceInfo, ServicePattern, ServiceStatus};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::network::HTTP_PROTOCOL;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_config::defaults::network::{
     COMMON_SCAN_SUFFIXES, PROBE_DEFAULT_PORT, RFC1918_SCAN_RANGES,
 };
-use toadstool_common::interned_strings::socket_env;
 use toadstool_config::env_config::EnvironmentConfig;
 
 /// TCP connect timeout for `probe_service`. Production uses 2s; tests use a
@@ -38,7 +38,8 @@ const FALLBACK_SCAN_SUBNET: &str = "192.168.1.0";
 fn default_scan_subnet() -> &'static str {
     static RESOLVED: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     RESOLVED.get_or_init(|| {
-        std::env::var(socket_env::TOADSTOOL_SCAN_SUBNET).unwrap_or_else(|_| FALLBACK_SCAN_SUBNET.to_string())
+        std::env::var(socket_env::TOADSTOOL_SCAN_SUBNET)
+            .unwrap_or_else(|_| FALLBACK_SCAN_SUBNET.to_string())
     })
 }
 
@@ -119,7 +120,10 @@ pub async fn scan_network_range(
 ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
     let mut services = HashMap::new();
 
-    let base_ip = range.split('/').next().unwrap_or_else(|| default_scan_subnet());
+    let base_ip = range
+        .split('/')
+        .next()
+        .unwrap_or_else(|| default_scan_subnet());
     let ip_parts: Vec<&str> = base_ip.split('.').collect();
 
     if ip_parts.len() != 4 {

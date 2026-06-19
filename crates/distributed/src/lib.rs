@@ -16,7 +16,6 @@
     clippy::cast_sign_loss,
     clippy::doc_markdown,
     clippy::missing_errors_doc,
-    clippy::assigning_clones,
     clippy::default_trait_access,
     clippy::cast_lossless,
     clippy::if_not_else,

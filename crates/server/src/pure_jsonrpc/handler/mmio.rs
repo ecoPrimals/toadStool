@@ -81,7 +81,9 @@ fn parse_u32_param(
                     .map(u64::from)
             })
             .and_then(|n| u32::try_from(n).ok())
-            .ok_or_else(|| JsonRpcError::invalid_params(format!("Invalid '{key}' (u32 or hex string)"))),
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params(format!("Invalid '{key}' (u32 or hex string)"))
+            }),
         None => default.ok_or_else(|| JsonRpcError::invalid_params(format!("Missing '{key}'"))),
     }
 }
@@ -111,19 +113,31 @@ fn parse_bdf(params: Option<&Value>) -> Result<String, JsonRpcError> {
 fn parse_offset(params: Option<&Value>) -> Result<u32, JsonRpcError> {
     params
         .and_then(|p| p.get("offset"))
-        .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| u32::from_str_radix(s.trim_start_matches("0x"), 16).ok()).map(u64::from)))
+        .and_then(|v| {
+            v.as_u64().or_else(|| {
+                v.as_str()
+                    .and_then(|s| u32::from_str_radix(s.trim_start_matches("0x"), 16).ok())
+                    .map(u64::from)
+            })
+        })
         .and_then(|v| u32::try_from(v).ok())
-        .ok_or_else(|| JsonRpcError::invalid_params("Missing or invalid 'offset' (u32 or hex string)"))
+        .ok_or_else(|| {
+            JsonRpcError::invalid_params("Missing or invalid 'offset' (u32 or hex string)")
+        })
 }
 
 /// Open a read-only sysfs BAR0 mapping for a PCI device.
-fn open_sysfs_bar0(bdf: &str) -> Result<toadstool_cylinder::vfio::sysfs_bar0::SysfsBar0, JsonRpcError> {
+fn open_sysfs_bar0(
+    bdf: &str,
+) -> Result<toadstool_cylinder::vfio::sysfs_bar0::SysfsBar0, JsonRpcError> {
     toadstool_cylinder::vfio::sysfs_bar0::SysfsBar0::open(bdf, DEFAULT_BAR0_SIZE)
         .map_err(|e| JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}")))
 }
 
 /// Open a read-write sysfs BAR0 mapping for a PCI device.
-fn open_sysfs_bar0_rw(bdf: &str) -> Result<toadstool_cylinder::vfio::sysfs_bar0::SysfsBar0Rw, JsonRpcError> {
+fn open_sysfs_bar0_rw(
+    bdf: &str,
+) -> Result<toadstool_cylinder::vfio::sysfs_bar0::SysfsBar0Rw, JsonRpcError> {
     toadstool_cylinder::vfio::sysfs_bar0::SysfsBar0Rw::open(bdf, DEFAULT_BAR0_SIZE)
         .map_err(|e| JsonRpcError::internal_error(format!("BAR0 open (rw) failed for {bdf}: {e}")))
 }
@@ -169,8 +183,16 @@ pub fn mmio_batch(params: Option<&Value>) -> Result<Value, JsonRpcError> {
         .ok_or_else(|| JsonRpcError::invalid_params("Missing 'ops' array"))?;
 
     let has_writes = ops.iter().any(|op| op.get("value").is_some());
-    let bar_rw = if has_writes { Some(open_sysfs_bar0_rw(&bdf)?) } else { None };
-    let bar_ro = if has_writes { None } else { Some(open_sysfs_bar0(&bdf)?) };
+    let bar_rw = if has_writes {
+        Some(open_sysfs_bar0_rw(&bdf)?)
+    } else {
+        None
+    };
+    let bar_ro = if has_writes {
+        None
+    } else {
+        Some(open_sysfs_bar0(&bdf)?)
+    };
     let mut results = Vec::with_capacity(ops.len());
 
     for op in ops {
@@ -186,7 +208,8 @@ pub fn mmio_batch(params: Option<&Value>) -> Result<Value, JsonRpcError> {
             if let Some(ref rw) = bar_rw {
                 match rw.write_u32(offset as usize, val32) {
                     Ok(()) => results.push(serde_json::json!({ "offset": offset, "wrote": val32 })),
-                    Err(e) => results.push(serde_json::json!({ "offset": offset, "error": e.to_string() })),
+                    Err(e) => results
+                        .push(serde_json::json!({ "offset": offset, "error": e.to_string() })),
                 }
             }
         } else if let Some(ref rw) = bar_rw {
@@ -209,9 +232,9 @@ pub fn mmio_pramin_read32(params: Option<&Value>) -> Result<Value, JsonRpcError>
     let bdf = parse_bdf(params)?;
     let offset = parse_offset(params)?;
 
-    let phys_offset = PRAMIN_BASE.checked_add(offset).ok_or_else(|| {
-        JsonRpcError::invalid_params("PRAMIN offset overflow")
-    })?;
+    let phys_offset = PRAMIN_BASE
+        .checked_add(offset)
+        .ok_or_else(|| JsonRpcError::invalid_params("PRAMIN offset overflow"))?;
 
     let bar = open_sysfs_bar0(&bdf)?;
     let value = bar.read_u32(phys_offset as usize);
@@ -523,7 +546,9 @@ pub fn pramin_read(params: Option<&Value>) -> Result<Value, JsonRpcError> {
         )));
     }
     if !size.is_multiple_of(4) {
-        return Err(JsonRpcError::invalid_params("'size' must be 4-byte aligned"));
+        return Err(JsonRpcError::invalid_params(
+            "'size' must be 4-byte aligned",
+        ));
     }
 
     let bar = open_sysfs_bar0_rw(&bdf)?;
@@ -569,8 +594,9 @@ pub fn pramin_write(params: Option<&Value>) -> Result<Value, JsonRpcError> {
             chunk.get(3).copied().unwrap_or(0),
         ]);
         let offset = PRAMIN_BASE as usize + i * 4;
-        bar.write_u32(offset, word)
-            .map_err(|e| JsonRpcError::internal_error(format!("PRAMIN write at {offset:#x} failed: {e}")))?;
+        bar.write_u32(offset, word).map_err(|e| {
+            JsonRpcError::internal_error(format!("PRAMIN write at {offset:#x} failed: {e}"))
+        })?;
     }
 
     debug!(bdf = %bdf, page, bytes = data.len(), "ember.pramin.write");

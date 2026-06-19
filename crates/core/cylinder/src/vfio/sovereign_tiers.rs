@@ -98,7 +98,9 @@ impl SovereignTier {
     pub const fn description(&self) -> &'static str {
         match self {
             Self::Cold => "Cold boot — below hardware line, power cycle required",
-            Self::WarmInfrastructure => "Warm infrastructure — VFIO/DMA/PFIFO functional, engines gated",
+            Self::WarmInfrastructure => {
+                "Warm infrastructure — VFIO/DMA/PFIFO functional, engines gated"
+            }
             Self::WarmCompute => "Warm compute — full shader dispatch and readback",
             Self::FullSovereign => "Full sovereign — cold boot without vendor VBIOS",
         }
@@ -254,7 +256,9 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
             // GPC_BCAST may read zero even when individual GPCs are accessible
             // (observed on Titan V after nouveau warm handoff).
             (0..6u32).any(|gpc| {
-                let val = bar0.read_u32(0x500000 + gpc as usize * 0x8000).unwrap_or(0xDEAD_DEAD);
+                let val = bar0
+                    .read_u32(0x500000 + gpc as usize * 0x8000)
+                    .unwrap_or(0xDEAD_DEAD);
                 !crate::nv::pri::is_pri_fault(val) && val != 0
             })
         }
@@ -271,7 +275,9 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
         } else {
             // Fallback: scan CE1-CE5 for any alive instance
             (1..6u32).any(|i| {
-                let val = bar0.read_u32(0x104000 + i as usize * 0x1000).unwrap_or(0xDEAD_DEAD);
+                let val = bar0
+                    .read_u32(0x104000 + i as usize * 0x1000)
+                    .unwrap_or(0xDEAD_DEAD);
                 !crate::nv::pri::is_pri_fault(val) && val != 0
             })
         }
@@ -311,7 +317,8 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     let pbdma_map = bar0.read_u32(0x2004).unwrap_or(0);
     let first_pbdma = (0..32_u32).find(|&p| pbdma_map & (1 << p) != 0);
     let pbdma_intr = first_pbdma.and_then(|p| {
-        bar0.read_u32(0x0004_0000 + (p as usize) * 0x2000 + 0x100).ok()
+        bar0.read_u32(0x0004_0000 + (p as usize) * 0x2000 + 0x100)
+            .ok()
     });
 
     TierEvidence {
@@ -372,7 +379,9 @@ pub fn classify_tier_for_profile(
             true
         } else {
             (0..6u32).any(|gpc| {
-                let val = bar0.read_u32(0x500000 + gpc as usize * 0x8000).unwrap_or(0xDEAD_DEAD);
+                let val = bar0
+                    .read_u32(0x500000 + gpc as usize * 0x8000)
+                    .unwrap_or(0xDEAD_DEAD);
                 !crate::nv::pri::is_pri_fault(val) && val != 0
             })
         }
@@ -387,7 +396,9 @@ pub fn classify_tier_for_profile(
             true
         } else {
             (1..6u32).any(|i| {
-                let val = bar0.read_u32(0x104000 + i as usize * 0x1000).unwrap_or(0xDEAD_DEAD);
+                let val = bar0
+                    .read_u32(0x104000 + i as usize * 0x1000)
+                    .unwrap_or(0xDEAD_DEAD);
                 !crate::nv::pri::is_pri_fault(val) && val != 0
             })
         }
@@ -414,7 +425,8 @@ pub fn classify_tier_for_profile(
     let pbdma_map = bar0.read_u32(0x2004).unwrap_or(0);
     let first_pbdma = (0..32_u32).find(|&p| pbdma_map & (1 << p) != 0);
     let pbdma_intr = first_pbdma.and_then(|p| {
-        bar0.read_u32(0x0004_0000 + (p as usize) * 0x2000 + 0x100).ok()
+        bar0.read_u32(0x0004_0000 + (p as usize) * 0x2000 + 0x100)
+            .ok()
     });
 
     TierEvidence {

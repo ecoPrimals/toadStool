@@ -51,10 +51,7 @@ pub struct VfioAnchor {
 #[derive(Debug)]
 enum AnchorBackend {
     /// Modern iommufd path: holds `/dev/iommu` fd + IOAS ID.
-    Iommufd {
-        iommufd: Arc<OwnedFd>,
-        ioas_id: u32,
-    },
+    Iommufd { iommufd: Arc<OwnedFd>, ioas_id: u32 },
     /// Legacy container/group path: holds container + group fds.
     LegacyGroup {
         container: Arc<OwnedFd>,
@@ -65,7 +62,12 @@ enum AnchorBackend {
 impl VfioAnchor {
     /// Create an anchor from pre-opened VFIO fds (iommufd backend).
     #[must_use]
-    pub fn from_iommufd(bdf: String, device_fd: OwnedFd, iommufd: Arc<OwnedFd>, ioas_id: u32) -> Self {
+    pub fn from_iommufd(
+        bdf: String,
+        device_fd: OwnedFd,
+        iommufd: Arc<OwnedFd>,
+        ioas_id: u32,
+    ) -> Self {
         Self {
             bdf,
             device_fd,
@@ -75,7 +77,12 @@ impl VfioAnchor {
 
     /// Create an anchor from pre-opened VFIO fds (legacy group backend).
     #[must_use]
-    pub fn from_legacy(bdf: String, device_fd: OwnedFd, container: Arc<OwnedFd>, group: OwnedFd) -> Self {
+    pub fn from_legacy(
+        bdf: String,
+        device_fd: OwnedFd,
+        container: Arc<OwnedFd>,
+        group: OwnedFd,
+    ) -> Self {
         Self {
             bdf,
             device_fd,
@@ -108,10 +115,8 @@ impl VfioAnchor {
     pub fn release_prepared(self) {
         #[cfg(debug_assertions)]
         {
-            let reset_path = toadstool_common::sysfs_paths::sysfs_pci_device_file(
-                &self.bdf,
-                "reset_method",
-            );
+            let reset_path =
+                toadstool_common::sysfs_paths::sysfs_pci_device_file(&self.bdf, "reset_method");
             if let Ok(method) = std::fs::read_to_string(&reset_path) {
                 let trimmed = method.trim();
                 assert!(

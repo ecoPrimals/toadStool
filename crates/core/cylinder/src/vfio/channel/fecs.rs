@@ -130,7 +130,9 @@ pub fn fecs_method_on(
     use std::borrow::Cow;
 
     let mthd_cmd_readable = {
-        let probe = bar0.read_u32(falcon_base + falcon::MTHD_CMD).unwrap_or(0xBADF_DEAD);
+        let probe = bar0
+            .read_u32(falcon_base + falcon::MTHD_CMD)
+            .unwrap_or(0xBADF_DEAD);
         probe & 0xBAD0_0000 != 0xBAD0_0000
     };
 
@@ -157,8 +159,7 @@ pub fn fecs_method_on(
         let _ = bar0.write_u32(falcon_base + falcon::MAILBOX1, 1);
 
         // Poll PC for up to 200ms — generous for cold FECS wakeup
-        let pc_deadline = std::time::Instant::now()
-            + std::time::Duration::from_millis(200);
+        let pc_deadline = std::time::Instant::now() + std::time::Duration::from_millis(200);
         let mut poll_count = 0u32;
         let mut pc_changed = false;
 
@@ -182,7 +183,9 @@ pub fn fecs_method_on(
 
         let pc_after = bar0.read_u32(falcon_base + falcon::PC).unwrap_or(0);
         let mbox0 = bar0.read_u32(falcon_base + falcon::MAILBOX0).unwrap_or(0);
-        let mb1_after = bar0.read_u32(falcon_base + falcon::MAILBOX1).unwrap_or(0xDEAD);
+        let mb1_after = bar0
+            .read_u32(falcon_base + falcon::MAILBOX1)
+            .unwrap_or(0xDEAD);
 
         tracing::info!(
             method = ?method,
@@ -206,20 +209,18 @@ pub fn fecs_method_on(
 
     // Standard path: MTHD_CMD is readable — poll bit 0
     bar0.write_u32(falcon_base + falcon::MTHD_DATA, 0)
-        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(
-            format!("FECS MTHD_DATA write: {e}")
-        )))?;
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FECS MTHD_DATA write: {e}"))))?;
     bar0.write_u32(falcon_base + falcon::MTHD_CMD, method as u32)
-        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(
-            format!("FECS MTHD_CMD write: {e}")
-        )))?;
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FECS MTHD_CMD write: {e}"))))?;
 
-    let deadline = std::time::Instant::now()
-        + std::time::Duration::from_millis(FECS_METHOD_TIMEOUT_MS);
+    let deadline =
+        std::time::Instant::now() + std::time::Duration::from_millis(FECS_METHOD_TIMEOUT_MS);
     let mut poll_count = 0u32;
 
     loop {
-        let cmd = bar0.read_u32(falcon_base + falcon::MTHD_CMD).unwrap_or(0xDEAD);
+        let cmd = bar0
+            .read_u32(falcon_base + falcon::MTHD_CMD)
+            .unwrap_or(0xDEAD);
         if cmd & 1 == 0 {
             break;
         }
@@ -227,8 +228,12 @@ pub fn fecs_method_on(
 
         if std::time::Instant::now() > deadline {
             let pc = bar0.read_u32(falcon_base + falcon::PC).unwrap_or(0xDEAD);
-            let alias = bar0.read_u32(falcon_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
-            let mbox = bar0.read_u32(falcon_base + falcon::GR_FECS_MAILBOX0).unwrap_or(0xDEAD);
+            let alias = bar0
+                .read_u32(falcon_base + falcon::CPUCTL_ALIAS)
+                .unwrap_or(0xDEAD);
+            let mbox = bar0
+                .read_u32(falcon_base + falcon::GR_FECS_MAILBOX0)
+                .unwrap_or(0xDEAD);
             tracing::warn!(
                 method = ?method,
                 cmd = format_args!("{cmd:#010x}"),
@@ -242,15 +247,22 @@ pub fn fecs_method_on(
                 format!(
                     "FECS method {method:?} timed out after {FECS_METHOD_TIMEOUT_MS}ms \
                      (cmd={cmd:#x}, pc={pc:#x})"
-                ).into()
+                )
+                .into(),
             ));
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(FECS_METHOD_POLL_INTERVAL_MS));
+        std::thread::sleep(std::time::Duration::from_millis(
+            FECS_METHOD_POLL_INTERVAL_MS,
+        ));
     }
 
-    let mailbox0 = bar0.read_u32(falcon_base + falcon::GR_FECS_MAILBOX0).unwrap_or(0);
-    let status = bar0.read_u32(falcon_base + falcon::MTHD_STATUS).unwrap_or(0xDEAD);
+    let mailbox0 = bar0
+        .read_u32(falcon_base + falcon::GR_FECS_MAILBOX0)
+        .unwrap_or(0);
+    let status = bar0
+        .read_u32(falcon_base + falcon::MTHD_STATUS)
+        .unwrap_or(0xDEAD);
 
     tracing::info!(
         method = ?method,
@@ -335,7 +347,9 @@ pub fn fecs_set_watchdog_timeout(bar0: &MappedBar, timeout: u32) -> DriverResult
 /// Uses CPUCTL_ALIAS (0x130) which bypasses the HS security lock
 /// on Volta+ falcons.
 pub fn fecs_is_alive(bar0: &MappedBar) -> bool {
-    let alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+    let alias = bar0
+        .read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS)
+        .unwrap_or(0xDEAD);
     let is_bad = alias & 0xBADF_0000 == 0xBADF_0000 || alias & 0xBAD0_0000 == 0xBAD0_0000;
     if is_bad {
         return false;
@@ -356,11 +370,7 @@ pub fn fecs_is_alive(bar0: &MappedBar) -> bool {
 ///
 /// Reads up to `len` bytes (must be 4-byte aligned). Returns the data
 /// or an error if BAR0 reads fail. Window changes for each 64 KiB block.
-pub fn pramin_read(
-    bar0: &MappedBar,
-    vram_addr: u64,
-    len: usize,
-) -> DriverResult<Vec<u8>> {
+pub fn pramin_read(bar0: &MappedBar, vram_addr: u64, len: usize) -> DriverResult<Vec<u8>> {
     use std::borrow::Cow;
 
     const PRAMIN_BASE: usize = 0x0070_0000;
@@ -369,7 +379,7 @@ pub fn pramin_read(
 
     if !len.is_multiple_of(4) {
         return Err(DriverError::MmapFailed(Cow::Borrowed(
-            "PRAMIN read length must be 4-byte aligned"
+            "PRAMIN read length must be 4-byte aligned",
         )));
     }
 
@@ -383,10 +393,9 @@ pub fn pramin_read(
         let within = (addr & 0xFFFF) as usize;
 
         if window != current_window {
-            bar0.write_u32(BAR0_WINDOW, window as u32)
-                .map_err(|e| DriverError::MmapFailed(Cow::Owned(
-                    format!("PRAMIN window set: {e}")
-                )))?;
+            bar0.write_u32(BAR0_WINDOW, window as u32).map_err(|e| {
+                DriverError::MmapFailed(Cow::Owned(format!("PRAMIN window set: {e}")))
+            })?;
             current_window = window;
         }
 
@@ -395,10 +404,12 @@ pub fn pramin_read(
         let chunk = remaining.min(window_remaining);
 
         for i in (0..chunk).step_by(4) {
-            let val = bar0.read_u32(PRAMIN_BASE + within + i)
-                .map_err(|e| DriverError::MmapFailed(Cow::Owned(
-                    format!("PRAMIN read at {:#x}: {e}", addr + i as u64)
-                )))?;
+            let val = bar0.read_u32(PRAMIN_BASE + within + i).map_err(|e| {
+                DriverError::MmapFailed(Cow::Owned(format!(
+                    "PRAMIN read at {:#x}: {e}",
+                    addr + i as u64
+                )))
+            })?;
             result[offset + i..offset + i + 4].copy_from_slice(&val.to_le_bytes());
         }
 
@@ -411,11 +422,7 @@ pub fn pramin_read(
 /// Write a block of data to VRAM via the BAR0 PRAMIN window.
 ///
 /// Inverse of `pramin_read`. Writes system memory data into VRAM.
-pub fn pramin_write(
-    bar0: &MappedBar,
-    vram_addr: u64,
-    data: &[u8],
-) -> DriverResult<()> {
+pub fn pramin_write(bar0: &MappedBar, vram_addr: u64, data: &[u8]) -> DriverResult<()> {
     use std::borrow::Cow;
 
     const PRAMIN_BASE: usize = 0x0070_0000;
@@ -424,7 +431,7 @@ pub fn pramin_write(
 
     if !data.len().is_multiple_of(4) {
         return Err(DriverError::MmapFailed(Cow::Borrowed(
-            "PRAMIN write length must be 4-byte aligned"
+            "PRAMIN write length must be 4-byte aligned",
         )));
     }
 
@@ -437,10 +444,9 @@ pub fn pramin_write(
         let within = (addr & 0xFFFF) as usize;
 
         if window != current_window {
-            bar0.write_u32(BAR0_WINDOW, window as u32)
-                .map_err(|e| DriverError::MmapFailed(Cow::Owned(
-                    format!("PRAMIN window set: {e}")
-                )))?;
+            bar0.write_u32(BAR0_WINDOW, window as u32).map_err(|e| {
+                DriverError::MmapFailed(Cow::Owned(format!("PRAMIN window set: {e}")))
+            })?;
             current_window = window;
         }
 
@@ -455,10 +461,12 @@ pub fn pramin_write(
                 data[offset + i + 2],
                 data[offset + i + 3],
             ]);
-            bar0.write_u32(PRAMIN_BASE + within + i, val)
-                .map_err(|e| DriverError::MmapFailed(Cow::Owned(
-                    format!("PRAMIN write at {:#x}: {e}", addr + i as u64)
-                )))?;
+            bar0.write_u32(PRAMIN_BASE + within + i, val).map_err(|e| {
+                DriverError::MmapFailed(Cow::Owned(format!(
+                    "PRAMIN write at {:#x}: {e}",
+                    addr + i as u64
+                )))
+            })?;
         }
 
         offset += chunk;
@@ -498,9 +506,7 @@ pub fn probe_golden_context_vram_addr(bar0: &MappedBar) -> u64 {
             Ok(data) => {
                 let word0 = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
                 let word1 = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
-                if word0 != 0 && word0 != 0xFFFF_FFFF
-                    && word0 & 0xBAD0_0000 != 0xBAD0_0000
-                {
+                if word0 != 0 && word0 != 0xFFFF_FFFF && word0 & 0xBAD0_0000 != 0xBAD0_0000 {
                     tracing::info!(
                         vram_offset = format_args!("{offset:#010x}"),
                         word0 = format_args!("{word0:#010x}"),

@@ -29,8 +29,8 @@ pub async fn run_server_daemon(
         biomeos_socket_override,
         headless,
     )
-        .await
-        .map_err(|e| CliError::Other(format!("Server failed: {e}")))?;
+    .await
+    .map_err(|e| CliError::Other(format!("Server failed: {e}")))?;
 
     Ok(())
 }
@@ -97,7 +97,7 @@ mod tests {
         temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
             let result = tokio::time::timeout(
                 Duration::from_millis(80),
-                    super::run_server_daemon(
+                super::run_server_daemon(
                     Some("test-family-id".to_string()),
                     None,
                     None,

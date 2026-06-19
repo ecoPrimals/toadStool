@@ -36,7 +36,10 @@ use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatu
 /// Communication manager for service channels and messaging
 pub struct CommunicationManager {
     channels: Arc<RwLock<HashMap<String, ServiceChannel>>>,
-    #[cfg_attr(not(test), expect(dead_code, reason = "timeout consumed only in test assertions"))]
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "timeout consumed only in test assertions")
+    )]
     default_timeout: Duration,
 }
 
@@ -102,9 +105,12 @@ impl CommunicationManager {
     /// # Errors
     ///
     /// Returns error if the RPC client is unavailable or the remote call fails.
-    #[expect(
-        clippy::significant_drop_tightening,
-        reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
+    #[cfg_attr(
+        feature = "networking",
+        expect(
+            clippy::significant_drop_tightening,
+            reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
+        )
     )]
     pub async fn send_message(
         &self,
@@ -146,9 +152,12 @@ impl CommunicationManager {
     /// # Errors
     ///
     /// Returns error if the health RPC fails or the client is not initialized.
-    #[expect(
-        clippy::significant_drop_tightening,
-        reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
+    #[cfg_attr(
+        feature = "networking",
+        expect(
+            clippy::significant_drop_tightening,
+            reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
+        )
     )]
     pub async fn check_health(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
         debug!("🔍 Checking health of service: {}", channel.service_name);

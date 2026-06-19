@@ -58,9 +58,7 @@ impl InitPipeline for KeplerInit {
             .map_err(|e| DriverError::Unsupported(format!("bar0_probe: {e}").into()))?;
 
         let sm = sovereign_stages::chip_id_to_sm(chip_id);
-        let pmc = bar0
-            .read_u32(sovereign_stages::PMC_ENABLE)
-            .unwrap_or(0);
+        let pmc = bar0.read_u32(sovereign_stages::PMC_ENABLE).unwrap_or(0);
         let warm = sovereign_stages::is_warm_gpu(pmc, bar0);
 
         Ok(ProbeResult {
@@ -72,11 +70,7 @@ impl InitPipeline for KeplerInit {
         })
     }
 
-    fn devinit(
-        &self,
-        bar0: &MappedBar,
-        probe: &ProbeResult,
-    ) -> Result<DevinitResult, DriverError> {
+    fn devinit(&self, bar0: &MappedBar, probe: &ProbeResult) -> Result<DevinitResult, DriverError> {
         if probe.warm {
             return Ok(DevinitResult {
                 vram_alive: true,
@@ -140,9 +134,7 @@ impl InitPipeline for KeplerInit {
                         method: EngineInitMethod::WarmGated,
                     })
                 } else {
-                    Err(DriverError::Unsupported(
-                        format!("falcon boot: {e}").into(),
-                    ))
+                    Err(DriverError::Unsupported(format!("falcon boot: {e}").into()))
                 }
             }
         }
@@ -153,14 +145,10 @@ impl InitPipeline for KeplerInit {
             Ok(detail) => Ok(VerifyResult {
                 ptimer_alive: true,
                 vram_ok: true,
-                pmc_enable: bar0
-                    .read_u32(sovereign_stages::PMC_ENABLE)
-                    .unwrap_or(0),
+                pmc_enable: bar0.read_u32(sovereign_stages::PMC_ENABLE).unwrap_or(0),
                 detail,
             }),
-            Err(e) => Err(DriverError::Unsupported(
-                format!("verify: {e}").into(),
-            )),
+            Err(e) => Err(DriverError::Unsupported(format!("verify: {e}").into())),
         }
     }
 }
@@ -175,10 +163,7 @@ impl BootPipeline for KeplerInit {
         "Kepler"
     }
 
-    fn probe(
-        &self,
-        bar: &dyn RegisterAccess,
-    ) -> Result<ProbeResult, DriverError> {
+    fn probe(&self, bar: &dyn RegisterAccess) -> Result<ProbeResult, DriverError> {
         let boot0 = bar
             .read_u32(0x0000_0000)
             .map_err(|e| DriverError::Unsupported(format!("BOOT0 read: {e}").into()))?;
@@ -252,10 +237,7 @@ impl BootPipeline for KeplerInit {
         ))
     }
 
-    fn verify(
-        &self,
-        bar: &dyn RegisterAccess,
-    ) -> Result<bool, DriverError> {
+    fn verify(&self, bar: &dyn RegisterAccess) -> Result<bool, DriverError> {
         let ptimer_lo = bar.read_u32(0x0000_9400).unwrap_or(0);
         let ptimer_hi = bar.read_u32(0x0000_9410).unwrap_or(0);
         let pmc = bar.read_u32(NV_PMC_ENABLE).unwrap_or(0);

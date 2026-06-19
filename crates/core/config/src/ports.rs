@@ -231,7 +231,10 @@ pub fn resolve_capability_port(capability: &str, fallback_port: u16) -> u16 {
         std::env::var(key).ok()?.parse().ok()
     }
 
-    #[expect(deprecated, reason = "legacy primal port env names in capability resolution chain")]
+    #[expect(
+        deprecated,
+        reason = "legacy primal port env names in capability resolution chain"
+    )]
     let ordered_keys: &[&str] = match capability {
         "COORDINATION" => &[
             socket_env::TOADSTOOL_COORDINATION_PORT,

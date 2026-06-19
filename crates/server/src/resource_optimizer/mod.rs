@@ -96,8 +96,8 @@ impl ResourceOptimizer {
     }
 
     async fn query_system_capabilities(&self) -> Result<SystemCapabilities, OptimizationError> {
-        let total_cpu_cores = std::thread::available_parallelism()
-            .map_or(4, |n| u32::try_from(n.get()).unwrap_or(4));
+        let total_cpu_cores =
+            std::thread::available_parallelism().map_or(4, |n| u32::try_from(n.get()).unwrap_or(4));
         let available_cpu_cores = (total_cpu_cores * 80) / 100;
 
         let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {

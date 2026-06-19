@@ -85,7 +85,9 @@ impl DiscoveryClient {
         node_data: &serde_json::Value,
     ) -> ToadStoolResult<NodeRegistration> {
         use toadstool_common::constants::ecosystem::node_type;
-        use toadstool_common::interned_strings::capabilities;
+        use toadstool_common::interned_strings::{
+            biomeos_manifest_serde as legacy_wire, capabilities,
+        };
 
         let node_id = node_data["node_id"]
             .as_str()
@@ -95,11 +97,22 @@ impl DiscoveryClient {
         let type_str = node_data["type"].as_str().unwrap_or(node_type::TOADSTOOL);
         let parsed_node_type = match type_str {
             s if s == node_type::TOADSTOOL => NodeType::ToadStool,
-            s if s == "NestGate" || s == capabilities::STORAGE => NodeType::Storage,
-            s if s == "BearDog" || s == capabilities::CRYPTO || s == "security" => {
+            s if s == capabilities::STORAGE
+                || s == legacy_wire::LEGACY_NESTGATE_PASCAL
+                || s.eq_ignore_ascii_case(capabilities::STORAGE) =>
+            {
+                NodeType::Storage
+            }
+            s if s == capabilities::CRYPTO
+                || s == legacy_wire::LEGACY_BEARDOG_PASCAL
+                || s.eq_ignore_ascii_case("security") =>
+            {
                 NodeType::Security
             }
-            s if s == "Songbird" || s == capabilities::COORDINATION => {
+            s if s == capabilities::COORDINATION
+                || s == legacy_wire::LEGACY_SONGBIRD_PASCAL
+                || s.eq_ignore_ascii_case(capabilities::COORDINATION) =>
+            {
                 NodeType::Coordination
             }
             custom => NodeType::Custom(custom.to_string()),

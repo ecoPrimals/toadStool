@@ -2,8 +2,8 @@
 
 use crate::vfio::device::MappedBar;
 
-pub use super::experiment_chip::{ChipDetection, detect_chip};
 pub(crate) use super::experiment_chip::{AMD_GRBM_STATUS, detect_chip_legacy};
+pub use super::experiment_chip::{ChipDetection, detect_chip};
 pub use super::experiment_snapshot::{
     ExperimentResult, ExperimentWrite, SnapshotDelta, SovereignSnapshot, sovereign_snapshot_only,
 };

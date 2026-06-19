@@ -199,9 +199,7 @@ impl MappedBar {
             })?;
 
         let mmap = toadstool_hw_safe::DeviceMmap::map_shared_rw(&file, 0, size).map_err(|e| {
-            DriverError::MmapFailed(Cow::Owned(format!(
-                "sysfs BAR0 mmap failed for {bdf}: {e}"
-            )))
+            DriverError::MmapFailed(Cow::Owned(format!("sysfs BAR0 mmap failed for {bdf}: {e}")))
         })?;
 
         // Leak the file descriptor — the mmap keeps the mapping alive.

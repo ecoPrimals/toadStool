@@ -18,7 +18,9 @@ pub enum HandoffError {
     #[error("failed to read /proc/devices: {0}")]
     ProcDevicesRead(#[from] std::io::Error),
 
-    #[error("{module_name} chardev not found in /proc/devices — __register_chrdev may have been NOPed")]
+    #[error(
+        "{module_name} chardev not found in /proc/devices — __register_chrdev may have been NOPed"
+    )]
     ChardevNotFound { module_name: String },
 
     #[error("mknodat({path}): {detail}")]

@@ -4,7 +4,11 @@
 //! This module is the **canonical source** for RM ABI definitions in toadStool.
 //! Local duplicates in `src/bin/rm_trigger.rs` (and elsewhere) should migrate here.
 
-#![allow(dead_code, missing_docs, reason = "RM ABI definitions — hardware constants and ioctl structs")]
+#![allow(
+    dead_code,
+    missing_docs,
+    reason = "RM ABI definitions — hardware constants and ioctl structs"
+)]
 
 use bytemuck::Zeroable;
 

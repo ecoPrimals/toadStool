@@ -241,7 +241,12 @@ async fn test_query_capabilities_executor_error() {
         .await;
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("capabilities failed"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("capabilities failed")
+    );
 }
 
 #[tokio::test]

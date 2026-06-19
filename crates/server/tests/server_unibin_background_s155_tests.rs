@@ -13,8 +13,8 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tokio::sync::{RwLock, broadcast};
 
@@ -79,17 +79,22 @@ fn s155_get_socket_path_from_toadstool_socket_env() {
 }
 
 #[test]
-fn s155_get_socket_path_from_primal_socket_with_family() {
+fn s155_get_socket_path_from_biomeos_socket_dir_with_family() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let dir_str = temp_dir.path().to_string_lossy().to_string();
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", Some("/run/primal")),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
+            ("BIOMEOS_SOCKET_DIR", Some(dir_str.as_str())),
         ],
         || {
             let result = get_socket_path("family-x", "node1", None, None);
             assert!(result.is_ok());
-            assert_eq!(result.unwrap(), PathBuf::from("/run/primal-family-x"));
+            assert_eq!(
+                result.unwrap(),
+                temp_dir.path().join("compute-family-x.sock")
+            );
         },
     );
 }
@@ -99,7 +104,6 @@ fn s155_get_socket_path_tmp_fallback_when_xdg_not_exists() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
             ("XDG_RUNTIME_DIR", Some("/nonexistent-path-12345-abcd")),
         ],

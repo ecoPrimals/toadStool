@@ -26,9 +26,7 @@ mod catalog;
 mod vram_capture;
 
 pub use catalog::{FirmwareBlob, catalog_linux_firmware};
-pub use vram_capture::{
-    capture_vram_firmware, read_vram_via_pramin, vram_firmware_addrs,
-};
+pub use vram_capture::{capture_vram_firmware, read_vram_via_pramin, vram_firmware_addrs};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -77,7 +75,9 @@ pub enum ReagentError {
     #[error("PRAMIN register access failed: {0}")]
     PraminAccess(#[from] crate::error::DriverError),
 
-    #[error("{name} VRAM capture mostly zeros ({nonzero}/{total} nonzero) — firmware may not be staged at 0x{addr:x}")]
+    #[error(
+        "{name} VRAM capture mostly zeros ({nonzero}/{total} nonzero) — firmware may not be staged at 0x{addr:x}"
+    )]
     VramCaptureEmpty {
         name: &'static str,
         nonzero: usize,
@@ -402,9 +402,7 @@ pub fn distill_mmiotrace_to_reagent(
     let recipe_steps = recipe.len();
 
     // Filter to ACR/falcon-relevant domains
-    let acr_domains = [
-        "PMC", "PRI_MASTER", "PMU", "PFIFO", "PBDMA", "PRAMIN",
-    ];
+    let acr_domains = ["PMC", "PRI_MASTER", "PMU", "PFIFO", "PBDMA", "PRAMIN"];
     let acr_recipe: Vec<_> = recipe
         .iter()
         .filter(|s| acr_domains.contains(&s.domain.as_str()) || s.domain == "UNKNOWN")
@@ -618,18 +616,16 @@ pub fn execute_reagent_capture(
 fn detect_kernel_version() -> String {
     std::fs::read_to_string("/proc/version")
         .ok()
-        .and_then(|v| {
-            v.split_whitespace()
-                .nth(2)
-                .map(|s| s.to_owned())
-        })
+        .and_then(|v| v.split_whitespace().nth(2).map(|s| s.to_owned()))
         .unwrap_or_else(|| "unknown".to_owned())
 }
 
 fn probe_nvidia_bar0_state(bdf: &str) -> Result<String, ReagentError> {
     let resource_path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
     if !Path::new(&resource_path).exists() {
-        return Err(ReagentError::NoBar0Resource { path: resource_path });
+        return Err(ReagentError::NoBar0Resource {
+            path: resource_path,
+        });
     }
 
     let driver_path = crate::linux_paths::sysfs_pci_device_file(bdf, "driver");
@@ -675,8 +671,7 @@ fn copy_catalyst_artifacts(
     let fw_dir = catalyst_dir.join("firmware");
     if fw_dir.is_dir() {
         let reagent_fw_dir = reagent_dir.join("firmware");
-        std::fs::create_dir_all(&reagent_fw_dir)
-            .map_err(ReagentError::CatalystMkdirFailed)?;
+        std::fs::create_dir_all(&reagent_fw_dir).map_err(ReagentError::CatalystMkdirFailed)?;
 
         if let Ok(entries) = std::fs::read_dir(&fw_dir) {
             for entry in entries.flatten() {
@@ -695,10 +690,10 @@ fn copy_catalyst_artifacts(
                         manifest.firmware.pmu_dmem = Some(dest.clone());
                     }
                     manifest.completeness.falcon_firmware = true;
-                    manifest.firmware.provenance.insert(
-                        name.to_string(),
-                        "catalyst_capture".to_owned(),
-                    );
+                    manifest
+                        .firmware
+                        .provenance
+                        .insert(name.to_string(), "catalyst_capture".to_owned());
                 }
             }
         }
@@ -734,7 +729,12 @@ mod tests {
 
     #[test]
     fn dir_name_format() {
-        let m = ReagentManifest::new("GV100", "470.256.02", "6.17.9-76061709-generic", "0000:02:00.0");
+        let m = ReagentManifest::new(
+            "GV100",
+            "470.256.02",
+            "6.17.9-76061709-generic",
+            "0000:02:00.0",
+        );
         assert_eq!(m.dir_name(), "gv100_nvidia47025602_k6.17.9");
     }
 

@@ -188,23 +188,24 @@ impl CryptoServiceClient {
         purpose: &str,
         family: Option<&str>,
     ) -> ToadStoolResult<toadstool::encryption::EncryptionKey> {
-        let family_id = match family {
-            Some(f) => f.to_string(),
-            None => std::env::var(
-                toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY_ID,
-            )
-            .or_else(|_| {
-                std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY)
-            })
-            .or_else(|_| {
-                std::env::var(toadstool_common::interned_strings::socket_env::BIOMEOS_FAMILY_ID)
-            })
-            .map_err(|_| {
-                ToadStoolError::configuration(
-                    "TOADSTOOL_FAMILY_ID not set — cannot derive purpose key name",
+        let family_id =
+            match family {
+                Some(f) => f.to_string(),
+                None => std::env::var(
+                    toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY_ID,
                 )
-            })?,
-        };
+                .or_else(|_| {
+                    std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY)
+                })
+                .or_else(|_| {
+                    std::env::var(toadstool_common::interned_strings::socket_env::BIOMEOS_FAMILY_ID)
+                })
+                .map_err(|_| {
+                    ToadStoolError::configuration(
+                        "TOADSTOOL_FAMILY_ID not set — cannot derive purpose key name",
+                    )
+                })?,
+            };
 
         let key_name = format!("nucleus:{family_id}:purpose:{purpose}");
 

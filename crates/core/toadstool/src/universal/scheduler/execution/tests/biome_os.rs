@@ -10,7 +10,7 @@ use crate::universal::registry::UniversalPrimalRegistry;
 use crate::universal::requests::ResponseStatus;
 use crate::universal::types::PrimalType;
 
-use super::{sample_context, TypedRoutePrimal};
+use super::{TypedRoutePrimal, sample_context};
 
 #[tokio::test]
 async fn execute_biome_os_success() {

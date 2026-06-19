@@ -97,9 +97,9 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty());
             let original_driver = original_driver.unwrap_or_else(|| {
-                if std::path::Path::new(
-                    &toadstool_cylinder::linux_paths::sysfs_join(&["bus", "pci", "drivers", "nvidia"]),
-                )
+                if std::path::Path::new(&toadstool_cylinder::linux_paths::sysfs_join(&[
+                    "bus", "pci", "drivers", "nvidia",
+                ]))
                 .exists()
                 {
                     "nvidia".to_string()
@@ -155,11 +155,12 @@ mod tests {
     #[test]
     fn gpu_mode_state_path_sanitizes_colons() {
         let path = gpu_mode_state_path("0000:01:00.0");
-        assert!(path
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .contains("0000-01-00.0"));
+        assert!(
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .contains("0000-01-00.0")
+        );
         assert!(path.to_string_lossy().contains("toadstool-gpu-mode"));
     }
 
@@ -173,10 +174,7 @@ mod tests {
             binding_state_driver_name(&BindingState::KernelDriver("nvidia".into())),
             "nvidia"
         );
-        assert_eq!(
-            binding_state_driver_name(&BindingState::Unbound),
-            "none"
-        );
+        assert_eq!(binding_state_driver_name(&BindingState::Unbound), "none");
     }
 
     #[test]

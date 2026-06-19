@@ -13,9 +13,7 @@ use std::path::Path;
 
 use libloading::{Library, Symbol};
 
-use super::abi::{
-    PLUGIN_ABI_VERSION, PluginInitFn, PluginNameFn, PluginVTable, PluginVersionFn,
-};
+use super::abi::{PLUGIN_ABI_VERSION, PluginInitFn, PluginNameFn, PluginVTable, PluginVersionFn};
 use super::types::PluginError;
 
 /// Owning handle for a loaded plugin shared object and its vtable.
@@ -42,9 +40,13 @@ impl LoadedPlugin {
     pub fn load(path: &Path, expected_name: &str) -> Result<Self, PluginError> {
         let library = open_library(path)?;
 
-        let init = resolve_required_symbol::<PluginInitFn>(&library, b"plugin_init", "plugin_init")?;
-        let version_fn =
-            resolve_required_symbol::<PluginVersionFn>(&library, b"plugin_version", "plugin_version")?;
+        let init =
+            resolve_required_symbol::<PluginInitFn>(&library, b"plugin_init", "plugin_init")?;
+        let version_fn = resolve_required_symbol::<PluginVersionFn>(
+            &library,
+            b"plugin_version",
+            "plugin_version",
+        )?;
 
         let plugin_ver = call_plugin_version(&version_fn);
         if plugin_ver != PLUGIN_ABI_VERSION {
@@ -137,9 +139,8 @@ fn open_library(path: &Path) -> Result<Library, PluginError> {
     // SAFETY: `Library::new` calls `dlopen` on `path`. The caller must supply a path to a
     // shared object built against the PluginVTable ABI. Constructors in the .so may run
     // arbitrary code; we rely on the plugin contract.
-    unsafe { Library::new(path) }.map_err(|e| {
-        PluginError::LoadFailed(format!("Library::new({}): {e}", path.display()))
-    })
+    unsafe { Library::new(path) }
+        .map_err(|e| PluginError::LoadFailed(format!("Library::new({}): {e}", path.display())))
 }
 
 fn resolve_required_symbol<'lib, T>(
@@ -189,9 +190,7 @@ fn call_on_unload(f: unsafe extern "C" fn()) {
 
 fn vtable_ref<'a>(vtable: *mut PluginVTable) -> Result<&'a PluginVTable, PluginError> {
     if vtable.is_null() {
-        return Err(PluginError::LoadFailed(
-            "null vtable pointer".to_string(),
-        ));
+        return Err(PluginError::LoadFailed("null vtable pointer".to_string()));
     }
     // SAFETY: Non-null pointer returned by `plugin_init` from an ABI-compatible library;
     // valid for `'a` while the host holds the loaded library handle.
@@ -213,8 +212,6 @@ fn utf8_from_plugin_c_str(ptr: *const c_char) -> Result<String, PluginError> {
     // C string that lives as long as the loaded library.
     let cstr = unsafe { CStr::from_ptr(ptr) };
     cstr.to_str()
-        .map_err(|_| {
-            PluginError::InvalidManifest("plugin C string is not valid UTF-8".to_string())
-        })
+        .map_err(|_| PluginError::InvalidManifest("plugin C string is not valid UTF-8".to_string()))
         .map(|s| s.to_owned())
 }

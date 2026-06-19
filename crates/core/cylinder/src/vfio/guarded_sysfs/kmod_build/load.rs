@@ -4,8 +4,8 @@ use std::ffi::CString;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use super::super::driver_ops::reap_forked_child;
 use super::super::GuardedSysfsError;
+use super::super::driver_ops::reap_forked_child;
 
 /// Wait for a forked kmod child with timeout, kill on timeout.
 fn wait_for_kmod_child(
@@ -23,9 +23,12 @@ fn wait_for_kmod_child(
         match waitpid(Some(child_pid), WaitOptions::NOHANG) {
             Ok(Some((_pid, status))) => {
                 if status.exited() && status.exit_status() == Some(0) {
-                    tracing::info!(label, args = args_str,
-                                   elapsed_ms = start.elapsed().as_millis() as u64,
-                                   "kmod operation completed");
+                    tracing::info!(
+                        label,
+                        args = args_str,
+                        elapsed_ms = start.elapsed().as_millis() as u64,
+                        "kmod operation completed"
+                    );
                     return Ok(());
                 }
                 let code = status.exit_status().unwrap_or(-1);
@@ -37,9 +40,12 @@ fn wait_for_kmod_child(
             }
             Ok(None) => {
                 if start.elapsed() >= timeout {
-                    tracing::warn!(label, args = args_str,
-                                   timeout_ms = timeout.as_millis() as u64,
-                                   "kmod operation timed out — killing child");
+                    tracing::warn!(
+                        label,
+                        args = args_str,
+                        timeout_ms = timeout.as_millis() as u64,
+                        "kmod operation timed out — killing child"
+                    );
                     let _ = rustix::process::kill_process(child_pid, Signal::KILL);
                     reap_forked_child(child_pid);
                     return Err(GuardedSysfsError::KmodTimeout {
@@ -74,9 +80,12 @@ pub fn insmod_guarded_with_params(
     timeout: Duration,
 ) -> Result<(), GuardedSysfsError> {
     let path_str = ko_path.display().to_string();
-    tracing::info!(path = path_str.as_str(), params,
-                   timeout_ms = timeout.as_millis() as u64,
-                   "guarded insmod (finit_module)");
+    tracing::info!(
+        path = path_str.as_str(),
+        params,
+        timeout_ms = timeout.as_millis() as u64,
+        "guarded insmod (finit_module)"
+    );
 
     let ko_file = std::fs::File::open(ko_path).map_err(|e| GuardedSysfsError::KmodFailed {
         cmd: "finit_module".into(),
@@ -134,8 +143,7 @@ pub fn insmod_guarded_with_params(
                     return Err(GuardedSysfsError::KmodFailed {
                         cmd: "finit_module".into(),
                         args: path_str,
-                        reason: format!("finit_module errno {errno} ({})",
-                            errno_name(errno)),
+                        reason: format!("finit_module errno {errno} ({})", errno_name(errno)),
                     });
                 }
             }
@@ -189,11 +197,17 @@ const O_TRUNC: i32 = 0x200;
 
 /// Inner `delete_module` with configurable flags.
 fn rmmod_with_flags(name: &str, flags: i32, timeout: Duration) -> Result<(), GuardedSysfsError> {
-    let flag_desc = if flags == 0 { "normal".to_string() }
-                    else { format!("flags=0x{flags:x}") };
-    tracing::info!(module = name, timeout_ms = timeout.as_millis() as u64,
-                   mode = flag_desc.as_str(),
-                   "guarded rmmod (delete_module)");
+    let flag_desc = if flags == 0 {
+        "normal".to_string()
+    } else {
+        format!("flags=0x{flags:x}")
+    };
+    tracing::info!(
+        module = name,
+        timeout_ms = timeout.as_millis() as u64,
+        mode = flag_desc.as_str(),
+        "guarded rmmod (delete_module)"
+    );
 
     let name_c = CString::new(name).map_err(|_| GuardedSysfsError::KmodFailed {
         cmd: "delete_module".into(),
@@ -240,8 +254,10 @@ fn rmmod_with_flags(name: &str, flags: i32, timeout: Duration) -> Result<(), Gua
                     return Err(GuardedSysfsError::KmodFailed {
                         cmd: "delete_module".into(),
                         args: name.into(),
-                        reason: format!("delete_module errno {errno} ({}) [flags=0x{flags:x}]",
-                            errno_name(errno)),
+                        reason: format!(
+                            "delete_module errno {errno} ({}) [flags=0x{flags:x}]",
+                            errno_name(errno)
+                        ),
                     });
                 }
             }

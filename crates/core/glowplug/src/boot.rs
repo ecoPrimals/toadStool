@@ -83,7 +83,11 @@ impl BootResult {
 impl BootStep {
     /// Create a successful step.
     #[must_use]
-    pub fn ok(name: impl Into<String>, detail: impl Into<Option<String>>, duration_ms: u64) -> Self {
+    pub fn ok(
+        name: impl Into<String>,
+        detail: impl Into<Option<String>>,
+        duration_ms: u64,
+    ) -> Self {
         Self {
             name: name.into(),
             status: StepStatus::Ok,
@@ -105,7 +109,11 @@ impl BootStep {
 
     /// Create a failed step.
     #[must_use]
-    pub fn failed(name: impl Into<String>, detail: impl Into<Option<String>>, duration_ms: u64) -> Self {
+    pub fn failed(
+        name: impl Into<String>,
+        detail: impl Into<Option<String>>,
+        duration_ms: u64,
+    ) -> Self {
         Self {
             name: name.into(),
             status: StepStatus::Failed,

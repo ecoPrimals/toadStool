@@ -5,10 +5,10 @@
 //! to understand strengths, weaknesses, and use cases.
 
 use std::time::Instant;
-use tracing::info;
 use toadstool_runtime_universal::{
     ComputeUnitType, OperationType, UniversalRuntime, WorkloadBuilder,
 };
+use tracing::info;
 
 /// Specification for a single benchmark workload.
 #[derive(Debug, Clone)]
@@ -214,10 +214,18 @@ pub async fn run_comprehensive_benchmark(runtime: &UniversalRuntime) -> Vec<Benc
     let suite = get_benchmark_suite();
     let mut results = Vec::new();
 
-    info!(workload_count = suite.len(), "starting comprehensive benchmark suite");
+    info!(
+        workload_count = suite.len(),
+        "starting comprehensive benchmark suite"
+    );
 
     for (i, spec) in suite.iter().enumerate() {
-        info!(progress = i + 1, total = suite.len(), workload = spec.name, "testing workload");
+        info!(
+            progress = i + 1,
+            total = suite.len(),
+            workload = spec.name,
+            "testing workload"
+        );
 
         // Generate test data
         let input: Vec<f32> = (0..spec.size).map(|i| i as f32 * 0.1).collect();
@@ -369,13 +377,7 @@ pub fn print_results_summary(results: &[BenchmarkResult]) {
 
     info!(
         total,
-        cpu_wins,
-        amd_wins,
-        nvidia_wins,
-        npu_wins,
-        avg_speedup,
-        max_speedup,
-        "benchmark summary"
+        cpu_wins, amd_wins, nvidia_wins, npu_wins, avg_speedup, max_speedup, "benchmark summary"
     );
 }
 

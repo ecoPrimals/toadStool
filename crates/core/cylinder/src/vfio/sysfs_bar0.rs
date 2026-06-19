@@ -61,12 +61,11 @@ impl SysfsBar0 {
             .open(&path)
             .map_err(|e| ChannelError::resource_io("open", path.clone(), e))?;
 
-        let mmap = DeviceMmap::map_shared_ro(&file, 0, size).map_err(|e| {
-            ChannelError::Bar0Mmap {
+        let mmap =
+            DeviceMmap::map_shared_ro(&file, 0, size).map_err(|e| ChannelError::Bar0Mmap {
                 path: path.clone(),
                 source: device_mmap_err_to_errno(e),
-            }
-        })?;
+            })?;
 
         Ok(Self {
             _file: file,
@@ -124,12 +123,11 @@ impl SysfsBar0Rw {
             .open(&path)
             .map_err(|e| ChannelError::resource_io("open (rw)", path.clone(), e))?;
 
-        let mmap = DeviceMmap::map_shared_rw(&file, 0, size).map_err(|e| {
-            ChannelError::Bar0Mmap {
+        let mmap =
+            DeviceMmap::map_shared_rw(&file, 0, size).map_err(|e| ChannelError::Bar0Mmap {
                 path: path.clone(),
                 source: device_mmap_err_to_errno(e),
-            }
-        })?;
+            })?;
 
         Ok(Self {
             _file: file,

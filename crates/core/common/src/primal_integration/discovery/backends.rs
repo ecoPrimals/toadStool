@@ -105,7 +105,8 @@ pub fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoin
     debug!("Probing Kubernetes DNS for capability '{}'", capability);
 
     let _k8s_host = std::env::var(socket_env::KUBERNETES_SERVICE_HOST).ok()?;
-    let namespace = std::env::var(socket_env::POD_NAMESPACE).unwrap_or_else(|_| "default".to_string());
+    let namespace =
+        std::env::var(socket_env::POD_NAMESPACE).unwrap_or_else(|_| "default".to_string());
     let service_name = capability.replace('_', "-");
     let dns_name = format!("{service_name}.{namespace}.svc.cluster.local");
     let port = discovery_http_port();
@@ -293,11 +294,13 @@ pub const fn builtin_default_endpoint(_capability: &str) -> Option<String> {
 pub fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing filesystem for capability '{}'", capability);
 
-    let base = std::env::var(socket_env::TOADSTOOL_SERVICE_DIR).ok().or_else(|| {
-        std::env::var(socket_env::XDG_RUNTIME_DIR)
-            .ok()
-            .map(|xdg| format!("{xdg}/biomeos"))
-    })?;
+    let base = std::env::var(socket_env::TOADSTOOL_SERVICE_DIR)
+        .ok()
+        .or_else(|| {
+            std::env::var(socket_env::XDG_RUNTIME_DIR)
+                .ok()
+                .map(|xdg| format!("{xdg}/biomeos"))
+        })?;
 
     let full_path = std::path::Path::new(&base).join(capability);
     if full_path.exists() {

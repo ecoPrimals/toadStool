@@ -340,12 +340,7 @@ pub(super) fn all_vram_direct_pbdma(ctx: &mut ExperimentContext<'_>) -> DriverRe
     let userd_vram: u32 = 0xA000;
     let _ = wv(ctx, PM, ib + ramfc::GP_BASE_LO, gpfifo_vram);
     let _ = wv(ctx, PM, ib + ramfc::GP_BASE_HI, ctx.limit2 << 16);
-    let _ = wv(
-        ctx,
-        PM,
-        ib + ramfc::USERD_LO,
-        userd_vram & 0xFFFF_FE00,
-    );
+    let _ = wv(ctx, PM, ib + ramfc::USERD_LO, userd_vram & 0xFFFF_FE00);
     let _ = wv(ctx, PM, ib + ramfc::USERD_HI, 0);
     let _ = wv(ctx, PM, ib + ramfc::SIGNATURE, 0x0000_FACE);
     let _ = wv(ctx, PM, ib + ramfc::ACQUIRE, 0x7FFF_F902);

@@ -79,7 +79,6 @@ fn unibin_s172_get_socket_path_toadstool_overrides_primal_and_biomeos() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", Some(primary_str.as_str())),
-            ("PRIMAL_SOCKET", Some("/should-not-use")),
             ("BIOMEOS_SOCKET_PATH", Some("/also-not-this")),
         ],
         || {
@@ -90,16 +89,18 @@ fn unibin_s172_get_socket_path_toadstool_overrides_primal_and_biomeos() {
 }
 
 #[test]
-fn unibin_s172_get_socket_path_primal_socket_empty_family_suffix() {
+fn unibin_s172_get_socket_path_biomeos_socket_dir_empty_family() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let dir_str = temp_dir.path().to_string_lossy().to_string();
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
-            ("PRIMAL_SOCKET", Some("/run/primal")),
+            ("BIOMEOS_SOCKET_DIR", Some(dir_str.as_str())),
         ],
         || {
             let p = get_socket_path("", "node", None, None).expect("path");
-            assert_eq!(p, PathBuf::from("/run/primal-"));
+            assert_eq!(p, temp_dir.path().join("compute.sock"));
         },
     );
 }
@@ -109,7 +110,6 @@ fn unibin_s172_get_socket_path_biomeos_only() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", Some("/var/biomeos/custom.sock")),
         ],
         || {
@@ -125,7 +125,6 @@ fn unibin_s172_get_socket_path_xdg_empty_string_uses_fallback_or_tmp() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
             ("XDG_RUNTIME_DIR", Some("")),
         ],
@@ -335,13 +334,13 @@ async fn unibin_s172_run_server_main_fails_when_runtime_parent_is_file() {
     temp_env::async_with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
-            ("PRIMAL_SOCKET", None::<&str>),
             ("BIOMEOS_SOCKET_PATH", None::<&str>),
             ("XDG_RUNTIME_DIR", Some(path_str.as_str())),
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
         async {
-            let result = toadstool_server::run_server_main(None, None, None, None, None, false).await;
+            let result =
+                toadstool_server::run_server_main(None, None, None, None, None, false).await;
             assert!(
                 result.is_err(),
                 "expected error when biomeos cannot be created"

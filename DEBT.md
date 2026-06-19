@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: June 13, 2026 — S310
+**Date**: June 19, 2026 — S320+
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -664,13 +664,13 @@ Files: `embedded/cpu6502/{mod,alu,decode,tests}.rs`, `embedded/cpuz80.rs`, `embe
 
 ### D-COVERAGE-GAP
 **Scope**: Workspace | **Metric**: `cargo llvm-cov`
-Line coverage at 83.6% (target: 90%). Gap concentrated in integration crates,
+Line coverage at ~85%+ (target: 90%). S294–S298: +174 tests. Gap concentrated in integration crates,
 runtime backends (GPU/container/WASM), and distributed coordination paths.
 `cudarc` blocker resolved S197 (removed). `--all-features` should now work on
 machines without CUDA toolkit.
 **S203l**: +29 tests across 4 previously-untested production modules:
 coordination messaging (complexity analysis, subtask estimation), coordination transport
-(HTTP/gRPC deprecated, MQ success), scheduler config defaults, container engine
+(HTTP removed, gRPC **deleted S319**, MQ success), scheduler config defaults, container engine
 (resource validation, workload support, capabilities).
 **S203n**: +129 tests across 15 previously-untested production modules:
 server (shader dispatch param parsing, system query helpers, cross-gate routing),
@@ -2275,7 +2275,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~83.6% line coverage** (185K lines, llvm-cov). **22,000+ tests** (S213). Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. S212: +100 tests across 10 files. |
+| D-COV | Test coverage → 90% | Medium | **~85%+ line coverage** (llvm-cov). **23,000+ tests** (S294–S298: +174 tests, 9,069+ lib-only). Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
@@ -2749,7 +2749,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |------|-----------|
 | metalForge streaming pipeline | `PipelineBuilder` → `StreamingPipeline` (staging/pipeline.rs) |
 | manual_jsonrpc → pure_jsonrpc | Full migration — all handlers, Unix/TCP, unibin migrated |
-| 4 production stubs | biome.rs (real validation), container benchmark (runtime detection), gRPC (deprecated), OpenCL (capability-based) |
+| 2 production stubs | biome.rs (real validation), container benchmark (runtime detection). gRPC + OpenCL **deleted S319**. |
 | 16 large files | Smart-refactored to domain modules (all < 1000 lines) |
 | 66 ComputeDispatch ops | 5 linalg + 15 special + 14 MD/bio + 7 reduce + 6 attention + 5 tensor + 3 index + 4 FFT + 7 misc (~9,000+ lines removed) |
 | NAK workgroup tuning | `workgroup_size_for_arch()` — Volta 64, Ada 256, RDNA 64, Intel Arc 128 |

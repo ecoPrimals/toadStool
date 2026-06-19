@@ -5,11 +5,11 @@ mod bar0;
 mod types;
 mod walk;
 
+pub use types::EngineRegisters;
 pub use types::{
     ChannelCapture, ChannelInfo, EntryFlags, InstanceBlock, PageDirectory, PageEntry, PageTable,
     PageTableDump, Pd0Directory, Pd0Entry, decode_entry_addr,
 };
-pub use types::EngineRegisters;
 
 pub(crate) use bar0::Bar0Rw;
 

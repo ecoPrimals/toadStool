@@ -368,7 +368,9 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * `WorkloadResult` - Initial submission result with workload ID
-    async fn submit_workload(submission: WorkloadSubmission) -> Result<WorkloadResult, ServiceError>;
+    async fn submit_workload(
+        submission: WorkloadSubmission,
+    ) -> Result<WorkloadResult, ServiceError>;
 
     /// Query workload execution status
     ///

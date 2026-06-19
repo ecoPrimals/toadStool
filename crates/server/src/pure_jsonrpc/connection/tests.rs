@@ -8,17 +8,23 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, UnixStream};
 
 use super::process_request;
-use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 use super::serve_unix;
 use super::tcp::handle_tcp_connection;
 use crate::pure_jsonrpc::JsonRpcHandler;
+use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 use crate::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-conn-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)), None)
+    JsonRpcHandler::new(
+        executor,
+        "test-conn-1.0.0".to_string(),
+        None,
+        Arc::new(AtomicBool::new(true)),
+        None,
+    )
 }
 
 #[tokio::test]
@@ -534,7 +540,10 @@ async fn test_btsp_rejects_unsignalled_ndjson() {
     server_handle.await.expect("join");
 
     let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("json");
-    assert_eq!(resp["error"]["code"], -32600, "rejected with -32600: {resp}");
+    assert_eq!(
+        resp["error"]["code"], -32600,
+        "rejected with -32600: {resp}"
+    );
     assert!(
         resp["error"]["message"]
             .as_str()
@@ -570,11 +579,17 @@ async fn test_btsp_rejects_unsignalled_http() {
     // Read rejection response (bounded read avoids RST race from server-side unread data)
     let mut buf = vec![0u8; 4096];
     let n = client_stream.read(&mut buf).await.expect("read");
-    assert!(n > 0, "BTSP socket should send rejection for unsignalled HTTP");
+    assert!(
+        n > 0,
+        "BTSP socket should send rejection for unsignalled HTTP"
+    );
     server_handle.await.expect("join");
 
     let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("json");
-    assert_eq!(resp["error"]["code"], -32600, "rejected with -32600: {resp}");
+    assert_eq!(
+        resp["error"]["code"], -32600,
+        "rejected with -32600: {resp}"
+    );
 }
 
 /// Verify that EOF on a BTSP socket is handled gracefully.
@@ -688,7 +703,12 @@ async fn early_health_unknown_method_returns_error() {
     let n = stream.read(&mut buf).await.unwrap();
     let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap();
     assert_eq!(resp["error"]["code"], -32002);
-    assert!(resp["error"]["message"].as_str().unwrap().contains("initializing"));
+    assert!(
+        resp["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("initializing")
+    );
 
     let _ = stop_tx.send(true);
     handle.await.unwrap();

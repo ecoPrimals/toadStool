@@ -150,7 +150,6 @@ struct NouveauChannelFree {
     channel: i32,
 }
 
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -365,11 +364,11 @@ pub fn nvif_query_classes(fd: RawFd, channel: u32) -> DriverResult<Vec<u32>> {
     drm::drm_ioctl_named(fd, ioctl_nr, &mut args, "nvif_sclass")?;
 
     let count = usize::from(args.sclass.count).min(MAX_NVIF_CLASSES);
-    #[expect(clippy::cast_sign_loss, reason = "kernel returns non-negative class IDs")]
-    let classes: Vec<u32> = args.list[..count]
-        .iter()
-        .map(|e| e.oclass as u32)
-        .collect();
+    #[expect(
+        clippy::cast_sign_loss,
+        reason = "kernel returns non-negative class IDs"
+    )]
+    let classes: Vec<u32> = args.list[..count].iter().map(|e| e.oclass as u32).collect();
     Ok(classes)
 }
 
@@ -486,7 +485,11 @@ pub fn create_channel_nvk_style(fd: RawFd) -> DriverResult<(u32, u32, u32)> {
     // Bind copy engine (handle 0, matching NVK).
     if let Some(copy_class) = find_class(0xB5) {
         let _ = nvif_new_object(fd, channel, 0, copy_class);
-        tracing::debug!(channel, class = format_args!("0x{copy_class:04X}"), "NVIF NEW: copy engine bound");
+        tracing::debug!(
+            channel,
+            class = format_args!("0x{copy_class:04X}"),
+            "NVIF NEW: copy engine bound"
+        );
     }
 
     // Bind compute engine.
@@ -501,7 +504,6 @@ pub fn create_channel_nvk_style(fd: RawFd) -> DriverResult<(u32, u32, u32)> {
 
     Ok((channel, compute_class, compute_handle))
 }
-
 
 #[cfg(test)]
 mod tests {

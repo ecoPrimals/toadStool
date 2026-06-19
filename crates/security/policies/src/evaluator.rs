@@ -129,8 +129,8 @@ impl ConditionEvaluator {
                     clippy::cast_possible_truncation,
                     reason = "used memory in MB fits u32 (max 4 TB)"
                 )]
-                let current_mem_mb = toadstool_sysmon::memory_info()
-                    .map_or(0, |m| (m.used / (1024 * 1024)) as u32);
+                let current_mem_mb =
+                    toadstool_sysmon::memory_info().map_or(0, |m| (m.used / (1024 * 1024)) as u32);
 
                 let cpu_ok =
                     cpu_percent.is_none_or(|threshold| f64::from(current_cpu) <= threshold);

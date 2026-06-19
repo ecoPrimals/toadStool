@@ -64,7 +64,10 @@ fn test_json_rpc_request_format() {
     let params = request.get("params").unwrap();
     assert_eq!(params.get("primal_id").unwrap(), "toadstool");
     let caps = params.get("capabilities").unwrap().as_array().unwrap();
-    assert!(caps.len() >= 5, "Node Atomic capability set should have 5+ entries");
+    assert!(
+        caps.len() >= 5,
+        "Node Atomic capability set should have 5+ entries"
+    );
     assert!(caps.contains(&json!("compute")));
     assert!(caps.contains(&json!("workload")));
     assert!(caps.contains(&json!("orchestration")));

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use super::init;
 use super::DispatchHandler;
+use super::init;
 
 /// Catalyst-free boot: nouveau warm handoff + golden state replay + tier classification.
 ///
@@ -23,9 +23,11 @@ pub(crate) async fn sovereign_catalyst_boot(
     let engine_init_path = params
         .and_then(|p| p.get("engine_init_path"))
         .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| JsonRpcError::invalid_params(
-            "Missing 'engine_init_path' — path to catalyst replay JSON"
-        ))?;
+        .ok_or_else(|| {
+            JsonRpcError::invalid_params(
+                "Missing 'engine_init_path' — path to catalyst replay JSON",
+            )
+        })?;
 
     // Validate the replay file exists and parses before starting handoff
     let replay_json = std::fs::read_to_string(engine_init_path).map_err(|e| {
@@ -49,7 +51,10 @@ pub(crate) async fn sovereign_catalyst_boot(
 
     // Step 1: Nouveau warm handoff
     let mut config = HandoffConfig::nouveau_titanv(bdf);
-    if let Some(secs) = params.and_then(|p| p.get("settle_secs")).and_then(serde_json::Value::as_u64) {
+    if let Some(secs) = params
+        .and_then(|p| p.get("settle_secs"))
+        .and_then(serde_json::Value::as_u64)
+    {
         config.settle = std::time::Duration::from_secs(secs);
     }
 
@@ -63,9 +68,8 @@ pub(crate) async fn sovereign_catalyst_boot(
             excluded_bdfs.push(bridge_bdf.clone());
         }
     }
-    let _keepalive_exclusion = crate::background::pcie_keepalive::HandoffExclusionGuard::new(
-        excluded_bdfs,
-    );
+    let _keepalive_exclusion =
+        crate::background::pcie_keepalive::HandoffExclusionGuard::new(excluded_bdfs);
 
     // Suppress FLR before releasing anchor (Exp 225 fix).
     // catalyst_boot always uses nouveau which doesn't need RM DEVINIT,
@@ -88,7 +92,11 @@ pub(crate) async fn sovereign_catalyst_boot(
     {
         let closed = toadstool_cylinder::vfio::guarded_sysfs::release_bar0_fds(bdf);
         if closed > 0 {
-            tracing::info!(bdf, closed, "catalyst_boot: released leaked BAR0 resource0 fds");
+            tracing::info!(
+                bdf,
+                closed,
+                "catalyst_boot: released leaked BAR0 resource0 fds"
+            );
         }
     }
 
@@ -115,9 +123,9 @@ pub(crate) async fn sovereign_catalyst_boot(
     let handoff_result = match tokio::time::timeout(rpc_timeout, blocking_future).await {
         Ok(Ok(r)) => r,
         Ok(Err(e)) => {
-            return Err(JsonRpcError::internal_error(
-                format!("handoff task panicked: {e}"),
-            ));
+            return Err(JsonRpcError::internal_error(format!(
+                "handoff task panicked: {e}"
+            )));
         }
         Err(_) => {
             return Err(JsonRpcError::internal_error(
@@ -156,7 +164,8 @@ pub(crate) async fn sovereign_catalyst_boot(
 
     match init_result {
         Ok(init_val) => {
-            let final_tier = init_val.get("compute_ready")
+            let final_tier = init_val
+                .get("compute_ready")
                 .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
@@ -178,17 +187,15 @@ pub(crate) async fn sovereign_catalyst_boot(
                 "catalyst_free": true,
             }))
         }
-        Err(e) => {
-            Ok(serde_json::json!({
-                "success": false,
-                "phase": "sovereign_init",
-                "handoff": {
-                    "success": handoff_result.success,
-                    "tier": handoff_result.tier,
-                    "total_ms": handoff_result.total_ms,
-                },
-                "error": format!("{e:?}"),
-            }))
-        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "phase": "sovereign_init",
+            "handoff": {
+                "success": handoff_result.success,
+                "tier": handoff_result.tier,
+                "total_ms": handoff_result.total_ms,
+            },
+            "error": format!("{e:?}"),
+        })),
     }
 }

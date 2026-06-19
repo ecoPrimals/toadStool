@@ -75,31 +75,31 @@ pub struct SeederDriver {
 /// (Fermi through Turing/Ampere — register layout is largely stable across
 /// architectures, though some offsets shift on Volta+).
 pub const NV_BAR0_DOMAINS: &[(&str, usize, usize)] = &[
-    ("PMC",         0x0000_0000, 0x0000_1000),
-    ("PBUS",        0x0000_1000, 0x0000_2000),
-    ("PFIFO",       0x0000_2000, 0x0000_4000),
-    ("PTIMER",      0x0000_9000, 0x0000_A000),
-    ("PFB",         0x0010_0000, 0x0010_1000),
-    ("PFB_PRI",     0x0010_1000, 0x0010_2000),
-    ("PBUS_PRI",    0x0010_2000, 0x0010_3000),
-    ("PMCR",        0x0010_4000, 0x0010_5000),
-    ("PFIFO_PRI",   0x0010_5000, 0x0010_6000),
-    ("PMU",         0x0010_A000, 0x0010_B000),
-    ("FECS",        0x0040_9000, 0x0040_A000),
-    ("GPCCS",       0x0041_A000, 0x0041_B000),
-    ("PRI_RING",    0x0012_0000, 0x0012_4000),
-    ("PGRAPH",      0x0040_0000, 0x0040_1000),
-    ("PGRAPH_GPC",  0x0041_0000, 0x0042_0000),
-    ("PBDMA0",      0x0004_0000, 0x0004_1000),
-    ("PBDMA1",      0x0004_1000, 0x0004_2000),
-    ("PBDMA2",      0x0004_2000, 0x0004_3000),
-    ("PBDMA3",      0x0004_3000, 0x0004_4000),
-    ("CE0",         0x0010_4000, 0x0010_5000),
-    ("PDISP",       0x0061_0000, 0x0061_2000),
-    ("SEC2",        0x0010_AC00, 0x0010_B000),
-    ("TOP",         0x0002_2400, 0x0002_2800),
-    ("PRAMIN",      0x0070_0000, 0x0080_0000),
-    ("PCFG",        0x0008_8000, 0x0008_9000),
+    ("PMC", 0x0000_0000, 0x0000_1000),
+    ("PBUS", 0x0000_1000, 0x0000_2000),
+    ("PFIFO", 0x0000_2000, 0x0000_4000),
+    ("PTIMER", 0x0000_9000, 0x0000_A000),
+    ("PFB", 0x0010_0000, 0x0010_1000),
+    ("PFB_PRI", 0x0010_1000, 0x0010_2000),
+    ("PBUS_PRI", 0x0010_2000, 0x0010_3000),
+    ("PMCR", 0x0010_4000, 0x0010_5000),
+    ("PFIFO_PRI", 0x0010_5000, 0x0010_6000),
+    ("PMU", 0x0010_A000, 0x0010_B000),
+    ("FECS", 0x0040_9000, 0x0040_A000),
+    ("GPCCS", 0x0041_A000, 0x0041_B000),
+    ("PRI_RING", 0x0012_0000, 0x0012_4000),
+    ("PGRAPH", 0x0040_0000, 0x0040_1000),
+    ("PGRAPH_GPC", 0x0041_0000, 0x0042_0000),
+    ("PBDMA0", 0x0004_0000, 0x0004_1000),
+    ("PBDMA1", 0x0004_1000, 0x0004_2000),
+    ("PBDMA2", 0x0004_2000, 0x0004_3000),
+    ("PBDMA3", 0x0004_3000, 0x0004_4000),
+    ("CE0", 0x0010_4000, 0x0010_5000),
+    ("PDISP", 0x0061_0000, 0x0061_2000),
+    ("SEC2", 0x0010_AC00, 0x0010_B000),
+    ("TOP", 0x0002_2400, 0x0002_2800),
+    ("PRAMIN", 0x0070_0000, 0x0080_0000),
+    ("PCFG", 0x0008_8000, 0x0008_9000),
 ];
 
 impl WarmInitPlan {
@@ -309,37 +309,32 @@ mod tests {
         let plan = WarmInitPlan::nvidia470_titanv("0000:02:00.0");
         assert!(!plan.is_bare_metal());
         assert!(plan.requires_containment());
-        assert_eq!(
-            plan.reagent_template(),
-            Some("reagent-nvidia470-titanv")
-        );
+        assert_eq!(plan.reagent_template(), Some("reagent-nvidia470-titanv"));
         assert_eq!(plan.final_target, "vm-passthrough");
     }
 
     #[test]
     fn nvidia470_seeder_documents_hazard() {
         let plan = WarmInitPlan::nvidia470_titanv("0000:02:00.0");
-        assert!(plan
-            .seeder
-            .limitations
-            .iter()
-            .any(|l| l.contains("HAZARDOUS")));
-        assert!(plan
-            .seeder
-            .limitations
-            .iter()
-            .any(|l| l.contains("never on bare metal")));
+        assert!(
+            plan.seeder
+                .limitations
+                .iter()
+                .any(|l| l.contains("HAZARDOUS"))
+        );
+        assert!(
+            plan.seeder
+                .limitations
+                .iter()
+                .any(|l| l.contains("never on bare metal"))
+        );
     }
 
     #[test]
     fn k80_plan_is_bare_metal_with_plx_warning() {
         let plan = WarmInitPlan::nouveau_k80("0000:4b:00.0");
         assert!(plan.is_bare_metal());
-        assert!(plan
-            .seeder
-            .limitations
-            .iter()
-            .any(|l| l.contains("PLX")));
+        assert!(plan.seeder.limitations.iter().any(|l| l.contains("PLX")));
     }
 
     #[test]
@@ -372,18 +367,9 @@ mod tests {
     #[test]
     fn nv_domain_hints_all_valid_ranges() {
         for &(name, start, end) in NV_BAR0_DOMAINS {
-            assert!(
-                start < end,
-                "{name}: start {start:#x} >= end {end:#x}"
-            );
-            assert!(
-                start % 4 == 0 && end % 4 == 0,
-                "{name}: not 4-byte aligned"
-            );
-            assert!(
-                end <= 0x0100_0000,
-                "{name}: exceeds 16MB BAR0"
-            );
+            assert!(start < end, "{name}: start {start:#x} >= end {end:#x}");
+            assert!(start % 4 == 0 && end % 4 == 0, "{name}: not 4-byte aligned");
+            assert!(end <= 0x0100_0000, "{name}: exceeds 16MB BAR0");
         }
     }
 }

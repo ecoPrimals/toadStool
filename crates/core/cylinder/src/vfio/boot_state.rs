@@ -166,9 +166,7 @@ impl SovereignBootState {
                 pramin_ok,
                 falcon,
             } => {
-                format!(
-                    "warm (pmc={pmc_popcount} engines, pramin={pramin_ok}, falcon={falcon:?})"
-                )
+                format!("warm (pmc={pmc_popcount} engines, pramin={pramin_ok}, falcon={falcon:?})")
             }
             Self::Cold { reason, pmc_enable } => {
                 format!("cold ({reason:?}, pmc=0x{pmc_enable:08x})")
@@ -198,10 +196,7 @@ pub fn probe_boot_state(
 
     if pmc_popcount < 8 {
         let reason = classify_cold_reason(pmc_enable);
-        return SovereignBootState::Cold {
-            reason,
-            pmc_enable,
-        };
+        return SovereignBootState::Cold { reason, pmc_enable };
     }
 
     let pramin_ok = pramin_sentinel_test(bar0);

@@ -109,8 +109,8 @@ mod tests {
     use super::*;
     use crate::coordination::types::{
         ConnectionHealth, CoordinationBroadcastMessage, CoordinationConnection,
-        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
-        NodeCapabilities, ProtocolConfig,
+        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig, NodeCapabilities,
+        ProtocolConfig,
     };
     use std::collections::HashMap;
     use std::time::Duration;

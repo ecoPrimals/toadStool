@@ -45,13 +45,16 @@ impl ChipDetection {
     pub fn diagnostic(&self) -> String {
         match self {
             Self::Nvidia { chip, sm } => format!("NVIDIA {chip} (SM {sm})"),
-            Self::AmdPresent { family, grbm_status } => format!(
+            Self::AmdPresent {
+                family,
+                grbm_status,
+            } => format!(
                 "AMD {family} present (GRBM_STATUS=0x{grbm_status:08x}) — \
                  cold boot not implemented; warm probe via VegaInit only"
             ),
-            Self::NotFound { boot0, grbm_status } => format!(
-                "no GPU found (BOOT0=0x{boot0:08x}, GRBM_STATUS=0x{grbm_status:08x})"
-            ),
+            Self::NotFound { boot0, grbm_status } => {
+                format!("no GPU found (BOOT0=0x{boot0:08x}, GRBM_STATUS=0x{grbm_status:08x})")
+            }
         }
     }
 }
@@ -64,11 +67,13 @@ pub(crate) const AMD_GRBM_STATUS: u32 = 0x8010;
 pub fn detect_chip(bar0: &MappedBar) -> ChipDetection {
     let boot0 = bar0.read_u32(0x0000_0000).unwrap_or(0xFFFF_FFFF);
 
-    if boot0 != 0 && boot0 != 0xFFFF_FFFF
-        && let Some(sm) = crate::nv::identity::boot0_to_sm(boot0) {
-            let chip = crate::nv::identity::chip_name(sm);
-            return ChipDetection::Nvidia { chip, sm };
-        }
+    if boot0 != 0
+        && boot0 != 0xFFFF_FFFF
+        && let Some(sm) = crate::nv::identity::boot0_to_sm(boot0)
+    {
+        let chip = crate::nv::identity::chip_name(sm);
+        return ChipDetection::Nvidia { chip, sm };
+    }
 
     let grbm_status = bar0
         .read_u32(AMD_GRBM_STATUS as usize)
@@ -84,10 +89,7 @@ pub fn detect_chip(bar0: &MappedBar) -> ChipDetection {
         };
     }
 
-    ChipDetection::NotFound {
-        boot0,
-        grbm_status,
-    }
+    ChipDetection::NotFound { boot0, grbm_status }
 }
 
 /// Legacy `(chip_name, sm_version)` tuple for experiment stages.

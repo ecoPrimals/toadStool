@@ -224,7 +224,10 @@ mod tests {
             if name == "unbound" {
                 assert!(p.driver_module().is_none());
             } else {
-                assert!(p.driver_module().is_some(), "{name} should have a driver module");
+                assert!(
+                    p.driver_module().is_some(),
+                    "{name} should have a driver module"
+                );
             }
         }
     }

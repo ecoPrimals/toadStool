@@ -3,8 +3,8 @@
 
 use super::probe;
 use super::types::PlatformType;
-use toadstool_common::interned_strings::socket_env;
 use toadstool::ToadStoolResult;
+use toadstool_common::interned_strings::socket_env;
 
 const QUANTUM_FRAMEWORKS: &[(&str, &str)] = &[
     ("qiskit", "IBM Qiskit"),

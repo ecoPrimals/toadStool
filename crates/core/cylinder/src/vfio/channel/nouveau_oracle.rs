@@ -12,7 +12,7 @@
 //! arbitrary VRAM locations.
 
 use crate::error::ChannelError;
-use crate::vfio::sysfs_bar0::{SysfsBar0Rw, DEFAULT_BAR0_SIZE};
+use crate::vfio::sysfs_bar0::{DEFAULT_BAR0_SIZE, SysfsBar0Rw};
 
 use super::registers::{misc, pccsr, ramin};
 

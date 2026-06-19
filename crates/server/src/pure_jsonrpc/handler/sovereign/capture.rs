@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::pure_jsonrpc::types::JsonRpcError;
 use serde_json::Value;
 use tracing::info;
 
-use super::snapshot::sovereign_snapshot;
 use super::DEFAULT_BAR0_SIZE;
+use super::snapshot::sovereign_snapshot;
 
 /// `sovereign.kernel_health` — kernel build environment health check.
 ///
@@ -127,10 +128,12 @@ pub fn sovereign_reagent_capture(params: Option<&Value>) -> Result<Value, JsonRp
     if let Some(trace_path) = mmiotrace_path {
         let trace = std::path::Path::new(trace_path);
         if trace.exists() {
-            let output = result.manifest.store_path().join("mmiotrace").join(
-                format!("{}_recipe.json", trace.file_stem()
-                    .map_or_else(|| "trace".to_owned(), |s| s.to_string_lossy().to_string()))
-            );
+            let output = result.manifest.store_path().join("mmiotrace").join(format!(
+                "{}_recipe.json",
+                trace
+                    .file_stem()
+                    .map_or_else(|| "trace".to_owned(), |s| s.to_string_lossy().to_string())
+            ));
             match reagent::distill_mmiotrace_to_reagent(trace, &output) {
                 Ok(summary) => {
                     result.manifest.mmiotrace_recipe = Some(output);
@@ -231,28 +234,37 @@ pub fn sovereign_recipe_replay(params: Option<&Value>) -> Result<Value, JsonRpcE
 
     info!(bdf, recipe_path, "sovereign.recipe_replay: loading recipe");
 
-    let recipe = replay::load_recipe(std::path::Path::new(recipe_path)).map_err(|e| {
-        JsonRpcError::internal_error(format!("Failed to load recipe: {e}"))
-    })?;
+    let recipe = replay::load_recipe(std::path::Path::new(recipe_path))
+        .map_err(|e| JsonRpcError::internal_error(format!("Failed to load recipe: {e}")))?;
 
-    info!(bdf, steps = recipe.len(), "sovereign.recipe_replay: opening sysfs BAR0");
+    info!(
+        bdf,
+        steps = recipe.len(),
+        "sovereign.recipe_replay: opening sysfs BAR0"
+    );
 
     let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
         .map_err(|e| {
-            JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
-        })?;
-
-    info!(bdf, steps = recipe.len(), "sovereign.recipe_replay: applying recipe");
-
-    let result = replay::apply_recipe_to_bar0(&bar0, &recipe).map_err(|e| {
-        JsonRpcError::internal_error(format!("Replay failed: {e}"))
+        JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
     })?;
+
+    info!(
+        bdf,
+        steps = recipe.len(),
+        "sovereign.recipe_replay: applying recipe"
+    );
+
+    let result = replay::apply_recipe_to_bar0(&bar0, &recipe)
+        .map_err(|e| JsonRpcError::internal_error(format!("Replay failed: {e}")))?;
 
     let domain_summary: serde_json::Map<String, Value> = result
         .domain_counts
         .iter()
         .map(|(k, (ok, fail))| {
-            (k.clone(), serde_json::json!({"applied": ok, "failed": fail}))
+            (
+                k.clone(),
+                serde_json::json!({"applied": ok, "failed": fail}),
+            )
         })
         .collect();
 
@@ -268,15 +280,16 @@ pub fn sovereign_recipe_replay(params: Option<&Value>) -> Result<Value, JsonRpcE
         "domains": domain_summary,
     });
 
-    if take_snapshot
-        && let Some(obj) = resp.as_object_mut()
-    {
+    if take_snapshot && let Some(obj) = resp.as_object_mut() {
         match sovereign_snapshot(Some(&serde_json::json!({"bdf": bdf}))) {
             Ok(snap) => {
                 obj.insert("post_snapshot".to_owned(), snap);
             }
             Err(e) => {
-                obj.insert("snapshot_error".to_owned(), Value::String(e.message.to_string()));
+                obj.insert(
+                    "snapshot_error".to_owned(),
+                    Value::String(e.message.to_string()),
+                );
             }
         }
     }
@@ -299,7 +312,10 @@ pub fn sovereign_runtime_services_probe(params: Option<&Value>) -> Result<Value,
         .and_then(Value::as_str)
         .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
-    info!(bdf = bdf, "sovereign.runtime_services_probe: probing nvidia state");
+    info!(
+        bdf = bdf,
+        "sovereign.runtime_services_probe: probing nvidia state"
+    );
 
     let probe = sovereign_handoff::probe_runtime_services(bdf);
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::pure_jsonrpc::types::JsonRpcError;
 use serde_json::Value;
 use tracing::info;
@@ -20,11 +21,10 @@ pub fn sovereign_snapshot(params: Option<&Value>) -> Result<Value, JsonRpcError>
 
     info!(bdf, "sovereign.snapshot: capturing read-only snapshot");
 
-    let bar0 =
-        toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-            .map_err(|e| {
-                JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
-            })?;
+    let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+        .map_err(|e| {
+        JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+    })?;
 
     let (snapshot, tier) =
         toadstool_cylinder::vfio::sovereign_stages::sovereign_snapshot_only(&bar0);
@@ -68,7 +68,7 @@ pub fn sovereign_snapshot(params: Option<&Value>) -> Result<Value, JsonRpcError>
 /// - `bdf_a` (required): First PCI BDF address
 /// - `bdf_b` (required): Second PCI BDF address
 pub fn sovereign_compare(params: Option<&Value>) -> Result<Value, JsonRpcError> {
-    use toadstool_cylinder::vfio::sovereign_stages::{sovereign_snapshot_only, SovereignSnapshot};
+    use toadstool_cylinder::vfio::sovereign_stages::{SovereignSnapshot, sovereign_snapshot_only};
 
     let bdf_a = params
         .and_then(|p| p.get("bdf_a"))
@@ -156,8 +156,12 @@ pub fn sovereign_catalyst_diff(params: Option<&Value>) -> Result<Value, JsonRpcE
         .and_then(Value::as_str);
 
     let domains = &VOLTA_BAR0_DOMAINS;
-    info!(bdf_cold, bdf_warm, num_domains = domains.len(),
-          "sovereign.catalyst_diff: capturing domain-scoped BAR0 snapshots");
+    info!(
+        bdf_cold,
+        bdf_warm,
+        num_domains = domains.len(),
+        "sovereign.catalyst_diff: capturing domain-scoped BAR0 snapshots"
+    );
 
     let bar0_cold =
         toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf_cold, DEFAULT_BAR0_SIZE)
@@ -186,7 +190,8 @@ pub fn sovereign_catalyst_diff(params: Option<&Value>) -> Result<Value, JsonRpcE
     );
 
     info!(
-        bdf_cold, bdf_warm,
+        bdf_cold,
+        bdf_warm,
         changed = diff.changed_count(),
         replay_writes = replay.len(),
         domains = replay.domains().len(),
@@ -225,7 +230,8 @@ pub fn sovereign_catalyst_diff(params: Option<&Value>) -> Result<Value, JsonRpcE
         }
     }
 
-    let domain_summary: Vec<_> = replay.domain_summary()
+    let domain_summary: Vec<_> = replay
+        .domain_summary()
         .into_iter()
         .map(|(d, c)| serde_json::json!({"domain": d, "writes": c}))
         .collect();

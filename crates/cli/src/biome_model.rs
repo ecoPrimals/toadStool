@@ -102,10 +102,7 @@ impl BiomeManifest {
     }
 
     /// Find the first manifest primal that provides the given capability.
-    pub fn find_primal_with_capability(
-        &self,
-        capability: &str,
-    ) -> Option<(&str, &PrimalConfig)> {
+    pub fn find_primal_with_capability(&self, capability: &str) -> Option<(&str, &PrimalConfig)> {
         self.primals.iter().find_map(|(name, config)| {
             Self::entry_provides_capability(name, config, capability)
                 .then_some((name.as_str(), config))
@@ -123,7 +120,8 @@ impl BiomeManifest {
         }
         let name_lower = name.to_ascii_lowercase();
         name_lower.contains(&target)
-            || (target == "crypto" && (name_lower.contains("pki") || name_lower.contains("security")))
+            || (target == "crypto"
+                && (name_lower.contains("pki") || name_lower.contains("security")))
     }
 }
 

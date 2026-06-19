@@ -101,10 +101,8 @@ pub fn sovereign_profile(
     let profile_start = Instant::now();
 
     // Pre-pipeline boot state probe
-    let pre_boot_state = probe_boot_state(
-        bar0,
-        Some(&|b, w| strategy.detect_falcon_warm_state(b, w)),
-    );
+    let pre_boot_state =
+        probe_boot_state(bar0, Some(&|b, w| strategy.detect_falcon_warm_state(b, w)));
 
     // Pre-pipeline register snapshot
     let pre_snapshot = take_snapshot(bar0, "pre_pipeline");

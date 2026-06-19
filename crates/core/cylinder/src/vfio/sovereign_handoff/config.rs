@@ -183,7 +183,9 @@ impl HandoffConfig {
             "nvidia_titanv" => Some(Self::nvidia_titanv(bdf)),
             "nvidia_patched_titanv" => Some(Self::nvidia_patched_titanv(bdf)),
             "nvidia_catalyst_titanv" => Some(Self::nvidia_catalyst_titanv(bdf)),
-            "nvidia_catalyst_minimal_nop_titanv" => Some(Self::nvidia_catalyst_minimal_nop_titanv(bdf)),
+            "nvidia_catalyst_minimal_nop_titanv" => {
+                Some(Self::nvidia_catalyst_minimal_nop_titanv(bdf))
+            }
             "nvidia_boot_services_titanv" => Some(Self::nvidia_boot_services_titanv(bdf)),
             "nvidia_runtime_services" => Some(Self::nvidia_runtime_services(bdf)),
             _ => None,

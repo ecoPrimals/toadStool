@@ -155,10 +155,12 @@ impl WorkloadExecutor for TestWorkloadDouble {
                     },
                     metadata: std::collections::HashMap::new(),
                 }),
-                Self::FailingUnit => Err(ServiceError::ExecutionFailed("capabilities failed".into())),
-                Self::FailingIntegration => {
-                    Err(ServiceError::ExecutionFailed("capabilities unavailable".into()))
+                Self::FailingUnit => {
+                    Err(ServiceError::ExecutionFailed("capabilities failed".into()))
                 }
+                Self::FailingIntegration => Err(ServiceError::ExecutionFailed(
+                    "capabilities unavailable".into(),
+                )),
                 Self::QueuedUnit => Ok(ComputeCapabilities {
                     service_id: "queued".to_string(),
                     compute_units: vec![],

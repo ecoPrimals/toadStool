@@ -170,8 +170,7 @@ mod tests {
             stabilize_ms: 78,
             total_ms: 6000,
         };
-        let phase_sum =
-            timing.prepare_ms + timing.unbind_ms + timing.bind_ms + timing.stabilize_ms;
+        let phase_sum = timing.prepare_ms + timing.unbind_ms + timing.bind_ms + timing.stabilize_ms;
         assert!(
             phase_sum <= timing.total_ms,
             "recorded phases should fit within wall-clock total (phase_sum={phase_sum}, total={})",

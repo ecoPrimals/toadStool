@@ -3,9 +3,9 @@
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
 
-use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::capabilities;
+use toadstool_common::interned_strings::socket_env;
 // No longer using reqwest - using unix sockets (pure Rust!)
 use serde::{Deserialize, Serialize};
 

@@ -15,10 +15,7 @@ impl GspBridge for NvGspBridge {
     fn apply_gr_bar0_init(&self, bar0: &MappedBar, _sm_version: u32) -> DriverResult<()> {
         // Load and apply sw_nonctx.bin (non-context state init registers)
         if let Ok(nonctx) = self.load_gr_blob("sw_nonctx.bin") {
-            tracing::info!(
-                bytes = nonctx.len(),
-                "applying sw_nonctx.bin GR BAR0 init"
-            );
+            tracing::info!(bytes = nonctx.len(), "applying sw_nonctx.bin GR BAR0 init");
             for chunk in nonctx.chunks_exact(8) {
                 let addr = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                 let val = u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
@@ -192,7 +189,9 @@ impl GspBridge for NvGspBridge {
         Ok(FalconBootResult {
             cpuctl_after: fecs_ctl,
             mailbox0: fecs_mb0,
-            mailbox1: bar0.read_u32(falcon::FECS_BASE + falcon::MAILBOX1).unwrap_or(0),
+            mailbox1: bar0
+                .read_u32(falcon::FECS_BASE + falcon::MAILBOX1)
+                .unwrap_or(0),
             running,
         })
     }
@@ -208,7 +207,9 @@ impl GspBridge for NvGspBridge {
         Ok(FalconBootResult {
             cpuctl_after: ctl,
             mailbox0: mb0,
-            mailbox1: bar0.read_u32(falcon::FECS_BASE + falcon::MAILBOX1).unwrap_or(0),
+            mailbox1: bar0
+                .read_u32(falcon::FECS_BASE + falcon::MAILBOX1)
+                .unwrap_or(0),
             running,
         })
     }
@@ -255,14 +256,18 @@ impl GspBridge for NvGspBridge {
         // Step 3: GPC broadcast — disable PGOB via PGRAPH GPC broadcast control.
         // Write 0x0110 to ungate GPC power-gated domains (from nouveau ctxgf100).
         bar0.write_u32(PGRAPH_GPC_BCAST_CONTROL as usize, 0x0000_0110)
-            .map_err(|e| DriverError::OracleError(format!("GPC broadcast PGOB disable: {e}").into()))?;
+            .map_err(|e| {
+                DriverError::OracleError(format!("GPC broadcast PGOB disable: {e}").into())
+            })?;
         tracing::debug!("PGOB: wrote GPC broadcast control = 0x110");
 
         // Step 4: Per-GPC power gate disable via broadcast offset + 0x1028.
         // Writing 0 to each GPC's power gate control disables power gating.
         let gpc_pgob_offset = PGRAPH_GPC_BCAST_CONTROL + 0x1028;
         bar0.write_u32(gpc_pgob_offset as usize, 0x0000_0000)
-            .map_err(|e| DriverError::OracleError(format!("GPC PGOB per-GPC disable: {e}").into()))?;
+            .map_err(|e| {
+                DriverError::OracleError(format!("GPC PGOB per-GPC disable: {e}").into())
+            })?;
         tracing::debug!(
             offset = format!("{gpc_pgob_offset:#010x}"),
             "PGOB: wrote per-GPC power gate disable"

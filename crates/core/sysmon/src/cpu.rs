@@ -10,8 +10,7 @@ use std::time::Duration;
 /// Uses `std::thread::available_parallelism` (no FFI).
 #[must_use]
 pub fn cpu_count() -> usize {
-    thread::available_parallelism()
-        .map_or(1, std::num::NonZero::get)
+    thread::available_parallelism().map_or(1, std::num::NonZero::get)
 }
 
 /// CPU brand/model string from `/proc/cpuinfo`.

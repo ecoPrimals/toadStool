@@ -60,9 +60,8 @@ impl ToadStoolTarpcServer {
     /// - Graceful degradation on query failure
     async fn calculate_resource_utilization(&self) -> f32 {
         let active_count = self.workloads.read().await.len();
-        let max_capacity = std::thread::available_parallelism()
-            .map_or(4, std::num::NonZero::get)
-            * 4; // ~4 workloads per core
+        let max_capacity =
+            std::thread::available_parallelism().map_or(4, std::num::NonZero::get) * 4; // ~4 workloads per core
 
         #[expect(
             clippy::cast_precision_loss,
@@ -94,8 +93,8 @@ impl ToadStoolTarpcServer {
                     clippy::cast_precision_loss,
                     reason = "precision loss acceptable for this conversion"
                 )]
-                let cpu_count = std::thread::available_parallelism()
-                    .map_or(4.0, |n| n.get() as f32);
+                let cpu_count =
+                    std::thread::available_parallelism().map_or(4.0, |n| n.get() as f32);
                 return Some((load / cpu_count).min(1.0));
             }
         }
@@ -224,10 +223,12 @@ impl ToadStoolTarpcServer {
             .map_err(|e| ServerError::Network(e.to_string()))?;
         info!("✅ tarpc server listening on TCP: {}", local_addr);
 
-        let idle_secs = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_TCP_IDLE_TIMEOUT_SECS)
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS);
+        let idle_secs = std::env::var(
+            toadstool_common::interned_strings::socket_env::TOADSTOOL_TCP_IDLE_TIMEOUT_SECS,
+        )
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS);
         let idle_timeout = std::time::Duration::from_secs(idle_secs);
 
         loop {
@@ -298,7 +299,11 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         })
     }
 
-    async fn cancel_workload(self, _context: Context, workload_id: String) -> Result<(), ServiceError> {
+    async fn cancel_workload(
+        self,
+        _context: Context,
+        workload_id: String,
+    ) -> Result<(), ServiceError> {
         self.executor.cancel(&workload_id).await.inspect_err(|_| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
         })?;
@@ -325,7 +330,10 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
     ///
     /// Following the principle: "Primal code only has self knowledge
     /// and discovers other primals at runtime"
-    async fn query_capabilities(self, _context: Context) -> Result<ComputeCapabilities, ServiceError> {
+    async fn query_capabilities(
+        self,
+        _context: Context,
+    ) -> Result<ComputeCapabilities, ServiceError> {
         // Query OUR capabilities only (not other primals)
         self.executor.query_capabilities().await.inspect_err(|_| {
             self.error_count.fetch_add(1, Ordering::Relaxed);

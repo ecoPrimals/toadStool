@@ -14,9 +14,9 @@
 //! Pure Rust: Unix sockets for inter-service communication (no reqwest!)
 
 // Sub-modules
-pub mod security_client;
 pub mod client;
 pub mod config;
+pub mod security_client;
 #[cfg(feature = "tarpc-transport")]
 pub mod tarpc_service;
 pub mod transport;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use super::{detect_chip, AMD_GRBM_STATUS, ChipDetection};
+use super::{AMD_GRBM_STATUS, ChipDetection, detect_chip};
 use crate::vfio::device::MappedBar;
 
 fn test_bar_with(boot0: u32, grbm: u32) -> MappedBar {
@@ -27,10 +27,17 @@ fn detect_chip_nvidia_from_boot0() {
 fn detect_chip_amd_from_grbm() {
     let bar = test_bar_with(0xFFFF_FFFF, 0x0000_3000);
     match detect_chip(&bar) {
-        ChipDetection::AmdPresent { family, grbm_status } => {
+        ChipDetection::AmdPresent {
+            family,
+            grbm_status,
+        } => {
             assert_eq!(family, "Vega 20");
             assert_eq!(grbm_status, 0x0000_3000);
-            assert!(detect_chip(&bar).diagnostic().contains("cold boot not implemented"));
+            assert!(
+                detect_chip(&bar)
+                    .diagnostic()
+                    .contains("cold boot not implemented")
+            );
         }
         other => panic!("expected AmdPresent, got {other:?}"),
     }

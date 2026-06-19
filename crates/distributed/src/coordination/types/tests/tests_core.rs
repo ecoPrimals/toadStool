@@ -585,9 +585,7 @@ fn test_coordination_feedback_sender_default() {
 
 #[test]
 fn test_coordination_connection_constructor() {
-    use protocols::{
-        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
-    };
+    use protocols::{CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig};
     let conn = CoordinationConnection {
         endpoints: vec!["http://a".to_string(), "http://b".to_string()],
         active_endpoint: "http://a".to_string(),

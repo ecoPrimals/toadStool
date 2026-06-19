@@ -7,7 +7,10 @@ use std::time::Duration;
 fn sysfs_write_nonexistent_path_fails() {
     let result = sysfs_write("/sys/nonexistent/path/12345", "test");
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), GuardedSysfsError::WriteFailed { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        GuardedSysfsError::WriteFailed { .. }
+    ));
 }
 
 #[test]
@@ -27,11 +30,7 @@ fn is_module_stuck_unknown_module() {
 
 #[test]
 fn guarded_write_timeout_fires() {
-    let result = sysfs_write_guarded(
-        "/dev/null",
-        "test",
-        Duration::from_millis(100),
-    );
+    let result = sysfs_write_guarded("/dev/null", "test", Duration::from_millis(100));
     // /dev/null write should succeed fast, not timeout
     assert!(result.is_ok());
 }
@@ -58,13 +57,12 @@ fn guarded_write_timeout_actually_fires() {
 
 #[test]
 fn kmod_guarded_timeout_fires() {
-    let result = kmod_guarded(
-        "/bin/sleep",
-        &["60"],
-        Duration::from_millis(300),
-    );
+    let result = kmod_guarded("/bin/sleep", &["60"], Duration::from_millis(300));
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), GuardedSysfsError::KmodTimeout { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        GuardedSysfsError::KmodTimeout { .. }
+    ));
 }
 
 #[test]
@@ -104,7 +102,10 @@ fn parse_module_stuck_live_is_ok() {
 #[test]
 fn parse_module_stuck_unknown_module_is_ok() {
     let content = "nouveau 2654208 1 - Live 0xffffffffc1234000\n";
-    assert!(!proc_scan::parse_module_stuck("nonexistent_module_xyz", content));
+    assert!(!proc_scan::parse_module_stuck(
+        "nonexistent_module_xyz",
+        content
+    ));
 }
 
 #[test]

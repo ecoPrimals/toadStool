@@ -47,8 +47,9 @@ pub struct ServerConfig {
 
 impl Default for ServerConfig {
     fn default() -> Self {
-        let host = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_BIND_ADDRESS)
-            .unwrap_or_else(|_| toadstool_config::constants::network::LOCALHOST.to_string());
+        let host =
+            std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_BIND_ADDRESS)
+                .unwrap_or_else(|_| toadstool_config::constants::network::LOCALHOST.to_string());
         let port = toadstool_config::ports::daemon_port();
         Self {
             bind_address: format!("{host}:{port}"),

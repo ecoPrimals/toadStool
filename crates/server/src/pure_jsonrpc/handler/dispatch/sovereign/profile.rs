@@ -38,11 +38,10 @@ pub(crate) async fn sovereign_profile_ember(
         (engaged.bar0(), Some(engaged.dma_backend_clone()))
     } else {
         tracing::warn!(bdf, "no clutch available — sysfs BAR0 fallback");
-        let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(
-            bdf, 16 * 1024 * 1024,
-        ).map_err(|e| {
-            JsonRpcError::internal_error(format!("sysfs BAR0 open failed for {bdf}: {e}"))
-        })?;
+        let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("sysfs BAR0 open failed for {bdf}: {e}"))
+            })?;
         let dma = {
             let cache = handler.cached_devices.lock().await;
             cache.get(bdf).and_then(|d| d.dma_backend().cloned())
@@ -90,9 +89,8 @@ pub(crate) async fn sovereign_profile_ember(
     };
 
     let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
-    let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
-        profile, bridge, sm,
-    );
+    let strategy =
+        toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(profile, bridge, sm);
 
     tracing::info!(bdf, "sovereign.profile: starting instrumented pipeline");
 

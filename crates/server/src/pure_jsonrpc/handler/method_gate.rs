@@ -249,17 +249,19 @@ pub fn classify_method(method: &str) -> MethodVisibility {
         | "health.drain" | "toadstool.health" | "compute.health" => MethodVisibility::Public,
 
         // Identity and capabilities — introspection is always public
-        "identity.get" | "primal.announce" | "toadstool.version" | "compute.version"
-        | "capabilities.list" | "capability.list" | "primal.capabilities"
-        | "compute.capabilities" | "compute.discover_capabilities"
-        | "toadstool.query_capabilities" => {
-            MethodVisibility::Public
-        }
+        "identity.get"
+        | "primal.announce"
+        | "toadstool.version"
+        | "compute.version"
+        | "capabilities.list"
+        | "capability.list"
+        | "primal.capabilities"
+        | "compute.capabilities"
+        | "compute.discover_capabilities"
+        | "toadstool.query_capabilities" => MethodVisibility::Public,
 
         // Provenance — read-only introspection
-        "provenance.query" | "provenance.get" | "toadstool.provenance" => {
-            MethodVisibility::Public
-        }
+        "provenance.query" | "provenance.get" | "toadstool.provenance" => MethodVisibility::Public,
 
         // Dispatch telemetry schema — public introspection for ml.mlp_train
         "dispatch.telemetry.schema" => MethodVisibility::Public,
@@ -327,9 +329,10 @@ mod tests {
             envelope: Some(ResourceEnvelope::default()),
             ..CallerContext::anonymous()
         };
-        assert!(gate
-            .check_with_context("compute.dispatch.submit", &ctx)
-            .is_ok());
+        assert!(
+            gate.check_with_context("compute.dispatch.submit", &ctx)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -370,9 +373,7 @@ mod tests {
             err.code,
             toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED
         );
-        assert!(gate
-            .check_with_context("shader.dispatch", &ctx)
-            .is_ok());
+        assert!(gate.check_with_context("shader.dispatch", &ctx).is_ok());
     }
 
     #[test]
@@ -461,10 +462,7 @@ mod tests {
     #[test]
     fn resource_envelope_allows_method_in_list() {
         let env = ResourceEnvelope {
-            method_allowlist: vec![
-                "compute.dispatch.submit".into(),
-                "shader.dispatch".into(),
-            ],
+            method_allowlist: vec!["compute.dispatch.submit".into(), "shader.dispatch".into()],
             ..ResourceEnvelope::default()
         };
         assert!(env.allows_method("compute.dispatch.submit"));
@@ -528,9 +526,7 @@ mod tests {
     fn enforcing_public_method_ignores_missing_identity() {
         let gate = MethodGate::new(GateMode::Enforcing);
         let ctx = CallerContext::anonymous();
-        assert!(gate
-            .check_with_context("capabilities.list", &ctx)
-            .is_ok());
+        assert!(gate.check_with_context("capabilities.list", &ctx).is_ok());
     }
 
     #[test]
@@ -542,21 +538,18 @@ mod tests {
             ..CallerContext::anonymous()
         };
         assert!(gate.check_with_context("compute.cancel", &ctx).is_ok());
-        assert!(gate
-            .check_with_context("compute.performance_surface.report", &ctx)
-            .is_ok());
+        assert!(
+            gate.check_with_context("compute.performance_surface.report", &ctx)
+                .is_ok()
+        );
     }
 
     #[test]
     fn permissive_without_envelope_allows_restricted_methods() {
         let gate = MethodGate::permissive();
         let ctx = CallerContext::anonymous();
-        assert!(gate
-            .check_with_context("gate.update", &ctx)
-            .is_ok());
-        assert!(gate
-            .check_with_context("transport.open", &ctx)
-            .is_ok());
+        assert!(gate.check_with_context("gate.update", &ctx).is_ok());
+        assert!(gate.check_with_context("transport.open", &ctx).is_ok());
     }
 
     #[test]
@@ -583,7 +576,10 @@ mod tests {
     #[test]
     fn classify_auth_prefix_methods_are_public() {
         assert_eq!(classify_method("auth.check"), MethodVisibility::Public);
-        assert_eq!(classify_method("auth.custom_probe"), MethodVisibility::Public);
+        assert_eq!(
+            classify_method("auth.custom_probe"),
+            MethodVisibility::Public
+        );
     }
 
     #[test]
@@ -608,7 +604,10 @@ mod tests {
             assert!(ConnectionTrustHints::UNIX_BTSP.btsp_verified);
             assert!(ConnectionTrustHints::UNIX_MUTUAL_BTSP.mutually_authenticated);
         }
-        assert_eq!(ConnectionTrustHints::TCP.transport, ConnectionTransport::Tcp);
+        assert_eq!(
+            ConnectionTrustHints::TCP.transport,
+            ConnectionTransport::Tcp
+        );
     }
 
     #[test]
@@ -635,9 +634,7 @@ mod tests {
             }),
             ..CallerContext::anonymous()
         };
-        let err = gate
-            .check_with_context("compute.submit", &ctx)
-            .unwrap_err();
+        let err = gate.check_with_context("compute.submit", &ctx).unwrap_err();
         assert_eq!(
             err.code,
             toadstool_common::constants::jsonrpc::error_codes::UNAUTHORIZED

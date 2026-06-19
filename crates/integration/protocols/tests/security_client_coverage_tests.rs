@@ -11,8 +11,8 @@ use std::sync::Arc;
 use temp_env::with_var;
 use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::{
-    AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, SecurityServiceIntegration, PolicyRule,
-    SecurityAuditEvent, SecurityConfig, SecurityPolicy, SecurityServiceConfig,
+    AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, PolicyRule, SecurityAuditEvent,
+    SecurityConfig, SecurityPolicy, SecurityServiceConfig, SecurityServiceIntegration,
 };
 
 #[test]

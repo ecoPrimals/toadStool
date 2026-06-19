@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use crate::error::{DriverError, DriverResult};
 use crate::nv::hardware_guard::GuardedBar;
 
-use super::super::registers::{pbdma, pmc, pfifo, pri};
+use super::super::registers::{pbdma, pfifo, pmc, pri};
 
 /// Kepler (GK104/GK110) PFIFO engine initialization.
 ///
@@ -15,9 +15,7 @@ use super::super::registers::{pbdma, pmc, pfifo, pri};
 /// On GK104+, PBDMA count comes from `PMC_SUBDEV_ENABLE` (0x204), not
 /// the `PFIFO_PBDMA_MAP` register (which is unreliable on warm handoff).
 /// Uses GK104 global runlist base/submit. Returns `(runq, runlist_id)`.
-pub fn init_pfifo_engine_kepler(
-    guard: &GuardedBar<'_>,
-) -> DriverResult<(u32, u32)> {
+pub fn init_pfifo_engine_kepler(guard: &GuardedBar<'_>) -> DriverResult<(u32, u32)> {
     let gw = |reg: u32, val: u32| {
         guard.write_u32(reg, val).map_err(|refusal| {
             DriverError::SubmitFailed(Cow::Owned(format!("PFIFO init {reg:#x}: {refusal}")))

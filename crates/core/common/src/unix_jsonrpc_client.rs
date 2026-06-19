@@ -130,10 +130,9 @@ impl UnixJsonRpcClient {
         let (reader, mut writer) = stream.into_split();
 
         // riboCipher clear signal: [0xEC, 0x01] = NDJSON JSON-RPC
-        writer
-            .write_all(&[0xEC, 0x01])
-            .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to send riboCipher signal: {e}")))?;
+        writer.write_all(&[0xEC, 0x01]).await.map_err(|e| {
+            ToadStoolError::network(format!("Failed to send riboCipher signal: {e}"))
+        })?;
 
         writer
             .write_all(request_json.as_bytes())

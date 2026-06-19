@@ -9,7 +9,15 @@ use std::process::Command;
 #[derive(Debug, Clone)]
 pub struct AkidaDevice {
     pub pcie_address: String,
+    #[expect(
+        dead_code,
+        reason = "retained for device identification in future multi-vendor support"
+    )]
     pub vendor_id: String,
+    #[expect(
+        dead_code,
+        reason = "retained for device identification in future multi-vendor support"
+    )]
     pub device_id: String,
 }
 

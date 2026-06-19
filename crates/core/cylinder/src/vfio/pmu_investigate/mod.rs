@@ -167,9 +167,14 @@ pub fn investigate_pmu(bar0: &MappedBar) -> PmuInvestigationResult {
     let pc_advancing = pc_0 != pc_1 && !is_pri_fault(pc_0) && !is_pri_fault(pc_1);
 
     if pc_advancing {
-        notes.push(format!("PMU PC advancing: {pc_0:#x} → {pc_1:#x} (delta {})", pc_1.wrapping_sub(pc_0)));
+        notes.push(format!(
+            "PMU PC advancing: {pc_0:#x} → {pc_1:#x} (delta {})",
+            pc_1.wrapping_sub(pc_0)
+        ));
     } else if pc_0 == pc_1 {
-        notes.push(format!("PMU PC static: {pc_0:#x} (may be in tight loop or halted)"));
+        notes.push(format!(
+            "PMU PC static: {pc_0:#x} (may be in tight loop or halted)"
+        ));
     }
 
     let hs_locked = snapshot.sctl & 0x02 != 0;
@@ -200,12 +205,18 @@ pub fn investigate_pmu(bar0: &MappedBar) -> PmuInvestigationResult {
     // Check if queues have pending messages
     for (i, (h, t)) in queue_heads.iter().zip(queue_tails.iter()).enumerate() {
         if h != t && !is_pri_fault(*h) && !is_pri_fault(*t) {
-            notes.push(format!("PMU queue {i} has pending data: head={h:#x} tail={t:#x}"));
+            notes.push(format!(
+                "PMU queue {i} has pending data: head={h:#x} tail={t:#x}"
+            ));
         }
     }
 
-    notes.push(format!("PMU IRQSTAT={irqstat:#010x} IRQMASK={irqmask:#010x} OS={os_reg:#010x}"));
-    notes.push(format!("PMU FBIF_CTL={fbif_ctl:#010x} FBIF_TRANSCFG={fbif_transcfg:#010x}"));
+    notes.push(format!(
+        "PMU IRQSTAT={irqstat:#010x} IRQMASK={irqmask:#010x} OS={os_reg:#010x}"
+    ));
+    notes.push(format!(
+        "PMU FBIF_CTL={fbif_ctl:#010x} FBIF_TRANSCFG={fbif_transcfg:#010x}"
+    ));
 
     tracing::info!(
         cpuctl = format_args!("{:#010x}", snapshot.cpuctl),
@@ -265,8 +276,11 @@ pub fn investigate_pmu(bar0: &MappedBar) -> PmuInvestigationResult {
             succeeded: gpc_alive(gpc_post),
             detail: format!(
                 "CG: {} changes, {} faulted. PRI: {} alive, {} faulted, recovered={}",
-                cg_result.changes, cg_result.faulted,
-                pri_result.alive, pri_result.faulted, pri_result.recovered,
+                cg_result.changes,
+                cg_result.faulted,
+                pri_result.alive,
+                pri_result.faulted,
+                pri_result.recovered,
             ),
         });
 
@@ -486,9 +500,7 @@ pub fn investigate_pmu(bar0: &MappedBar) -> PmuInvestigationResult {
                 ce_before: ce_pre2,
                 ce_after: ce_post2,
                 succeeded: gpc_alive(gpc_post2),
-                detail: format!(
-                    "MBOX0→{mbox0_2:#010x}, MBOX1→{mbox1_2:#010x}"
-                ),
+                detail: format!("MBOX0→{mbox0_2:#010x}, MBOX1→{mbox1_2:#010x}"),
             });
 
             tracing::info!(

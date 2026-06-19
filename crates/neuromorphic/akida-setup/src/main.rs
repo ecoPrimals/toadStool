@@ -17,11 +17,11 @@ mod permissions;
 mod verification;
 
 use error::{Result, SetupError};
-use toadstool_common::interned_strings::socket_env;
 use pcie::{discover_akida_devices, enable_pcie_device, is_module_loaded, load_kernel_module};
 use permissions::{
     list_device_nodes, setup_device_permissions, setup_pcie_permissions, setup_udev_rules,
 };
+use toadstool_common::interned_strings::socket_env;
 use verification::verify_setup;
 
 #[derive(Debug)]

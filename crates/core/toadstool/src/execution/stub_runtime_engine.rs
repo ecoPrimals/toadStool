@@ -80,27 +80,25 @@ fn no_engine_err_response(reason: impl Into<String>) -> ToadStoolResult<Executio
 fn probe_wgpu() -> BackendProbe {
     #[cfg(feature = "wgpu")]
     {
-        match wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
-        }) {
-            Ok(_instance) => BackendProbe {
+        });
+        let has_adapters = !instance
+            .enumerate_adapters(wgpu::Backends::all())
+            .is_empty();
+        if has_adapters {
+            BackendProbe {
                 name: "WGPU",
                 available: true,
-                detail: "wgpu instance created (feature enabled)",
-            },
-            Err(e) => BackendProbe {
+                detail: "wgpu instance created with available adapters",
+            }
+        } else {
+            BackendProbe {
                 name: "WGPU",
                 available: false,
-                detail: match e {
-                    wgpu::InstanceError::BackendNotFound => {
-                        "wgpu feature enabled but no GPU backend found"
-                    }
-                    wgpu::InstanceError::InvalidConfiguration => {
-                        "wgpu feature enabled but instance config invalid"
-                    }
-                },
-            },
+                detail: "wgpu feature enabled but no GPU adapters found",
+            }
         }
     }
     #[cfg(not(feature = "wgpu"))]

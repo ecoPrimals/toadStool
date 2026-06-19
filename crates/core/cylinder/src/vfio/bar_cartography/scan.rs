@@ -6,9 +6,7 @@ use std::collections::BTreeMap;
 use crate::vfio::device::MappedBar;
 
 use super::helpers::{group_into_regions, is_dangerous_offset};
-use super::types::{
-    BarMap, DomainHint, RegisterAccess, RegisterPattern, RegisterProbe,
-};
+use super::types::{BarMap, DomainHint, RegisterAccess, RegisterPattern, RegisterProbe};
 
 /// Scan BAR0 register space and classify every 4-byte offset.
 ///

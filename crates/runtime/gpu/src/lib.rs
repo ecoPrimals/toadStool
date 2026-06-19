@@ -37,9 +37,9 @@
 // Module declarations
 pub mod aggregation;
 pub mod compiler;
+pub mod compute_dispatch;
 pub mod config;
 pub mod coordinator;
-pub mod compute_dispatch;
 pub mod cpu_resource;
 pub mod distributed; // Refactored from distributed_scheduler
 pub mod engine;
@@ -63,6 +63,7 @@ pub mod backends;
 
 // Re-export main types and traits for convenience
 pub use compiler::UniversalKernelCompiler;
+pub use compute_dispatch::{ComputeContextDispatch, UniversalComputeResourceDispatch};
 pub use config::{
     AllocationStrategy, AsyncExecutionConfig, CachingConfig, CompilationConfig,
     DeviceSelectionStrategy, ExecutionConfig, FaultToleranceConfig, GpuDiscoveryConfig,
@@ -71,7 +72,6 @@ pub use config::{
     UniversalIrConfig, UniversalIrFormat,
 };
 pub use coordinator::ComputeResourceCoordinator;
-pub use compute_dispatch::{ComputeContextDispatch, UniversalComputeResourceDispatch};
 pub use cpu_resource::CpuComputeResource;
 pub use engine::UniversalGpuEngine;
 pub use frameworks::{FallbackFramework, WebGPUAdapter, WebGpuFramework};

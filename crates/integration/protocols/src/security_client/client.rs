@@ -270,7 +270,8 @@ impl SecurityServiceIntegration {
 
         let audit_integration = Arc::clone(&self);
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(AUDIT_FLUSH_INTERVAL_SECS));
+            let mut interval =
+                tokio::time::interval(Duration::from_secs(AUDIT_FLUSH_INTERVAL_SECS));
 
             loop {
                 interval.tick().await;

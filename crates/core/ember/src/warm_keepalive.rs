@@ -169,9 +169,7 @@ impl DmaSpec {
     #[must_use]
     pub fn as_iommufd(&self) -> Option<(Arc<std::os::fd::OwnedFd>, u32)> {
         match &self.0 {
-            AnchorBackendRef::Iommufd { iommufd, ioas_id } => {
-                Some((Arc::clone(iommufd), *ioas_id))
-            }
+            AnchorBackendRef::Iommufd { iommufd, ioas_id } => Some((Arc::clone(iommufd), *ioas_id)),
             AnchorBackendRef::LegacyGroup { .. } => None,
         }
     }
@@ -278,12 +276,8 @@ mod tests {
 
     #[test]
     fn keepalive_from_anchor_preserves_bdf() {
-        let anchor = VfioAnchor::from_iommufd(
-            "0000:02:00.0".into(),
-            test_fd(),
-            Arc::new(test_fd()),
-            42,
-        );
+        let anchor =
+            VfioAnchor::from_iommufd("0000:02:00.0".into(), test_fd(), Arc::new(test_fd()), 42);
         let keepalive = WarmKeepalive::from_anchor(anchor);
         assert_eq!(keepalive.bdf(), "0000:02:00.0");
         assert_eq!(keepalive.ioas_id(), Some(42));
@@ -291,12 +285,8 @@ mod tests {
 
     #[test]
     fn keepalive_claim_iommufd() {
-        let keepalive = WarmKeepalive::claim_iommufd(
-            "0000:49:00.0".into(),
-            test_fd(),
-            Arc::new(test_fd()),
-            7,
-        );
+        let keepalive =
+            WarmKeepalive::claim_iommufd("0000:49:00.0".into(), test_fd(), Arc::new(test_fd()), 7);
         assert_eq!(keepalive.bdf(), "0000:49:00.0");
     }
 
@@ -305,18 +295,10 @@ mod tests {
         let mut store = KeepaliveStore::new();
         assert!(store.is_empty());
 
-        let k1 = WarmKeepalive::claim_iommufd(
-            "0000:02:00.0".into(),
-            test_fd(),
-            Arc::new(test_fd()),
-            1,
-        );
-        let k2 = WarmKeepalive::claim_iommufd(
-            "0000:49:00.0".into(),
-            test_fd(),
-            Arc::new(test_fd()),
-            2,
-        );
+        let k1 =
+            WarmKeepalive::claim_iommufd("0000:02:00.0".into(), test_fd(), Arc::new(test_fd()), 1);
+        let k2 =
+            WarmKeepalive::claim_iommufd("0000:49:00.0".into(), test_fd(), Arc::new(test_fd()), 2);
         store.insert(k1);
         store.insert(k2);
 
@@ -339,12 +321,8 @@ mod tests {
 
     #[test]
     fn keepalive_into_anchor() {
-        let k = WarmKeepalive::claim_iommufd(
-            "0000:02:00.0".into(),
-            test_fd(),
-            Arc::new(test_fd()),
-            1,
-        );
+        let k =
+            WarmKeepalive::claim_iommufd("0000:02:00.0".into(), test_fd(), Arc::new(test_fd()), 1);
         let anchor = k.into_anchor();
         assert_eq!(anchor.bdf(), "0000:02:00.0");
     }

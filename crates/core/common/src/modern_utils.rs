@@ -98,7 +98,9 @@ where
             Err(e) if attempt >= max_attempts => return Err(e),
             Err(_) => {
                 tokio::time::sleep(delay).await;
-                delay = delay.saturating_mul(2).min(Duration::from_secs(MAX_BACKOFF_SECS));
+                delay = delay
+                    .saturating_mul(2)
+                    .min(Duration::from_secs(MAX_BACKOFF_SECS));
             }
         }
     }

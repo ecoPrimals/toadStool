@@ -150,7 +150,11 @@ impl WorkloadHandler {
             warnings.push("no GPU device available for dispatch".into());
         }
 
-        let precision_tier = if caps.metadata.get("precision_tiers").is_some_and(|v| v.contains("DF64")) {
+        let precision_tier = if caps
+            .metadata
+            .get("precision_tiers")
+            .is_some_and(|v| v.contains("DF64"))
+        {
             "DF64"
         } else if gpu_available {
             "FP32"
@@ -176,8 +180,8 @@ impl WorkloadHandler {
 mod tests {
     use std::sync::Arc;
 
-    use base64::{Engine as _, engine::general_purpose::STANDARD};
     use crate::tarpc_server::{TestWorkloadDouble, WorkloadExecutorDispatch};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
 
     use super::WorkloadHandler;
     use crate::pure_jsonrpc::types::JsonRpcError;
@@ -300,10 +304,12 @@ mod tests {
             .await
             .expect("validate");
         assert_eq!(result["valid"], false);
-        assert!(result["warnings"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|w| w.as_str().unwrap().contains("not found")));
+        assert!(
+            result["warnings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|w| w.as_str().unwrap().contains("not found"))
+        );
     }
 }

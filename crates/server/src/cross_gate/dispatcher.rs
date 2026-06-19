@@ -121,8 +121,7 @@ fn enrich_params_with_gate_provenance(
     });
     match params {
         serde_json::Value::Object(mut map) => {
-            map.entry("_dispatch_trust".to_string())
-                .or_insert(trust);
+            map.entry("_dispatch_trust".to_string()).or_insert(trust);
             serde_json::Value::Object(map)
         }
         other => serde_json::json!({

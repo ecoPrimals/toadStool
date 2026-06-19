@@ -19,8 +19,8 @@
 //! handoff pipeline causes an unrecoverable hang, the watchdog detects it and
 //! kills the process to save the system.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::time::Duration;
 
 use toadstool_cylinder::nv::registers::pmc::InterruptProfile;
@@ -87,7 +87,10 @@ fn epoch_ms() -> u64 {
 /// Emergency quench — full nuclear shutdown including Bus Master disable.
 /// Only called on heartbeat timeout (pipeline is hung, RM is unresponsive).
 fn emergency_quench(bdf: &str, profile: &InterruptProfile) {
-    warn!(bdf, "WATCHDOG: performing EMERGENCY interrupt quench (full nuclear)");
+    warn!(
+        bdf,
+        "WATCHDOG: performing EMERGENCY interrupt quench (full nuclear)"
+    );
     toadstool_cylinder::nv::registers::pmc::quench_interrupts(bdf, profile, "watchdog-emergency");
     toadstool_cylinder::nv::registers::pmc::disable_pci_msi(bdf, "watchdog-emergency");
     toadstool_cylinder::nv::registers::pmc::disable_bus_master(bdf, "watchdog-emergency");
@@ -111,7 +114,9 @@ impl CatalystWatchdogGuard {
         reason = "guard-scoped API; free heartbeat() used today"
     )]
     pub fn heartbeat(&self) {
-        WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
+        WATCHDOG
+            .last_heartbeat_ms
+            .store(epoch_ms(), Ordering::Release);
     }
 }
 
@@ -126,7 +131,9 @@ impl Drop for CatalystWatchdogGuard {
 /// The pipeline calls this at each major step to reset the watchdog timer.
 pub fn heartbeat() {
     if WATCHDOG.active.load(Ordering::Acquire) {
-        WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
+        WATCHDOG
+            .last_heartbeat_ms
+            .store(epoch_ms(), Ordering::Release);
     }
 }
 
@@ -135,18 +142,32 @@ pub fn heartbeat() {
 /// the module death transition in real-time.
 pub fn enter_module_cleanup(module_name: &str) {
     {
-        let mut locked = WATCHDOG.module_name.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut locked = WATCHDOG
+            .module_name
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked = module_name.to_string();
     }
-    WATCHDOG.phase.store(PHASE_MODULE_CLEANUP, Ordering::Release);
-    WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
-    info!(module = module_name, "watchdog: entering module_cleanup phase — high-frequency monitoring");
+    WATCHDOG
+        .phase
+        .store(PHASE_MODULE_CLEANUP, Ordering::Release);
+    WATCHDOG
+        .last_heartbeat_ms
+        .store(epoch_ms(), Ordering::Release);
+    info!(
+        module = module_name,
+        "watchdog: entering module_cleanup phase — high-frequency monitoring"
+    );
 }
 
 /// Signal that module cleanup is complete (success or failure).
 pub fn exit_module_cleanup() {
-    WATCHDOG.phase.store(PHASE_PIPELINE_ACTIVE, Ordering::Release);
-    WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
+    WATCHDOG
+        .phase
+        .store(PHASE_PIPELINE_ACTIVE, Ordering::Release);
+    WATCHDOG
+        .last_heartbeat_ms
+        .store(epoch_ms(), Ordering::Release);
 }
 
 /// Activate the catalyst watchdog for a handoff on the given BDF.
@@ -167,7 +188,10 @@ pub fn activate(
     module_name: &str,
 ) -> CatalystWatchdogGuard {
     {
-        let mut locked_bdf = WATCHDOG.bdf.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut locked_bdf = WATCHDOG
+            .bdf
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked_bdf = bdf.to_string();
     }
     {
@@ -178,17 +202,30 @@ pub fn activate(
         *locked_profile = profile;
     }
     {
-        let mut locked_module = WATCHDOG.module_name.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut locked_module = WATCHDOG
+            .module_name
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *locked_module = module_name.to_string();
     }
     let timeout = timeout.unwrap_or(DEFAULT_WATCHDOG_TIMEOUT);
-    WATCHDOG.timeout_ms.store(timeout.as_millis() as u64, Ordering::Release);
-    WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
-    WATCHDOG.phase.store(PHASE_PIPELINE_ACTIVE, Ordering::Release);
+    WATCHDOG
+        .timeout_ms
+        .store(timeout.as_millis() as u64, Ordering::Release);
+    WATCHDOG
+        .last_heartbeat_ms
+        .store(epoch_ms(), Ordering::Release);
+    WATCHDOG
+        .phase
+        .store(PHASE_PIPELINE_ACTIVE, Ordering::Release);
     WATCHDOG.active.store(true, Ordering::Release);
 
-    info!(bdf, timeout_ms = timeout.as_millis() as u64, module_name,
-          "catalyst watchdog: activated for handoff");
+    info!(
+        bdf,
+        timeout_ms = timeout.as_millis() as u64,
+        module_name,
+        "catalyst watchdog: activated for handoff"
+    );
 
     CatalystWatchdogGuard { _private: () }
 }
@@ -275,8 +312,15 @@ pub fn watchdog_status() -> serde_json::Value {
 /// Force an emergency interrupt quench from an external caller (e.g. kernel
 /// sentinel). Uses the currently registered BDF and interrupt profile.
 pub fn force_emergency_quench() {
-    let bdf = WATCHDOG.bdf.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
-    let profile = *WATCHDOG.interrupt_profile.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let bdf = WATCHDOG
+        .bdf
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
+    let profile = *WATCHDOG
+        .interrupt_profile
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     if !bdf.is_empty() {
         emergency_quench(&bdf, &profile);
     }

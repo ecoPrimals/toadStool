@@ -69,8 +69,8 @@ impl ServiceDomainsConfig {
     pub fn from_env() -> Self {
         use toadstool_common::interned_strings::socket_env;
 
-        let base_domain =
-            std::env::var(socket_env::TOADSTOOL_BASE_DOMAIN).unwrap_or_else(|_| "primal.local".to_string());
+        let base_domain = std::env::var(socket_env::TOADSTOOL_BASE_DOMAIN)
+            .unwrap_or_else(|_| "primal.local".to_string());
 
         #[expect(deprecated, reason = "legacy domain env-vars kept for migration")]
         Self {

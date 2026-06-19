@@ -3,9 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::paths::{autoconf_path, kernel_release};
-use super::RepairStrategy;
 use super::KernelHealthError;
+use super::RepairStrategy;
+use super::paths::{autoconf_path, kernel_release};
 
 /// Attempt to repair the kernel headers by restoring the original `autoconf.h`.
 ///
@@ -27,9 +27,7 @@ fn repair_from_deb_cache(krel: &str, target: &Path) -> Result<PathBuf, KernelHea
     let entries: Vec<_> = std::fs::read_dir(&cache_dir)?
         .filter_map(|e| e.ok())
         .filter(|e| {
-            e.file_name()
-                .to_string_lossy()
-                .starts_with(&pattern)
+            e.file_name().to_string_lossy().starts_with(&pattern)
                 && e.file_name().to_string_lossy().ends_with(".deb")
         })
         .collect();
@@ -37,7 +35,10 @@ fn repair_from_deb_cache(krel: &str, target: &Path) -> Result<PathBuf, KernelHea
     if entries.is_empty() {
         return Err(KernelHealthError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("no cached .deb matching {pattern}*.deb in {}", cache_dir.display()),
+            format!(
+                "no cached .deb matching {pattern}*.deb in {}",
+                cache_dir.display()
+            ),
         )));
     }
 
@@ -100,9 +101,9 @@ fn repair_via_reinstall(krel: &str, target: &Path) -> Result<PathBuf, KernelHeal
         .map_err(KernelHealthError::Io)?;
 
     if !status.success() {
-        return Err(KernelHealthError::Io(std::io::Error::other(
-            format!("apt-get install --reinstall {pkg} failed"),
-        )));
+        return Err(KernelHealthError::Io(std::io::Error::other(format!(
+            "apt-get install --reinstall {pkg} failed"
+        ))));
     }
 
     Ok(target.to_path_buf())

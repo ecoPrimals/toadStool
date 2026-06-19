@@ -16,8 +16,8 @@ use crate::vfio::dma::DmaBuffer;
 
 use super::registers::{self, pccsr, pfb};
 use super::{
-    page_tables, pfifo, FAULT_BUF_IOVA, INSTANCE_IOVA, PD0_IOVA, PD1_IOVA, PD2_IOVA, PD3_IOVA,
-    PT0_IOVA, RUNLIST_IOVA, TARGET_SYS_MEM_COHERENT, VfioChannel,
+    FAULT_BUF_IOVA, INSTANCE_IOVA, PD0_IOVA, PD1_IOVA, PD2_IOVA, PD3_IOVA, PT0_IOVA, RUNLIST_IOVA,
+    TARGET_SYS_MEM_COHERENT, VfioChannel, page_tables, pfifo,
 };
 
 impl VfioChannel {
@@ -294,8 +294,7 @@ fn invalidate_tlb_kepler(bar0: &MappedBar, pd_iova: u64) -> DriverResult<()> {
 
 /// Submit runlist using GK104 global registers.
 fn submit_runlist_kepler(chan: &VfioChannel, bar0: &MappedBar) -> DriverResult<()> {
-    let rl_base =
-        registers::pfifo::gk104_runlist_base_value(RUNLIST_IOVA, TARGET_SYS_MEM_COHERENT);
+    let rl_base = registers::pfifo::gk104_runlist_base_value(RUNLIST_IOVA, TARGET_SYS_MEM_COHERENT);
     let rl_submit = registers::pfifo::gk104_runlist_submit_value(chan.runlist_id, 1);
 
     tracing::info!(

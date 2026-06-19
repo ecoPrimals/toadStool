@@ -49,15 +49,10 @@ pub(crate) async fn sovereign_init_ember(
         (engaged.bar0(), Some(engaged.dma_backend_clone()))
     } else {
         tracing::warn!(bdf, "no clutch available — sysfs BAR0 fallback");
-        let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(
-            bdf,
-            16 * 1024 * 1024,
-        )
-        .map_err(|e| {
-            JsonRpcError::internal_error(format!(
-                "sysfs BAR0 open failed for {bdf}: {e}"
-            ))
-        })?;
+        let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("sysfs BAR0 open failed for {bdf}: {e}"))
+            })?;
         let dma = {
             let cache = handler.cached_devices.lock().await;
             cache.get(bdf).and_then(|d| d.dma_backend().cloned())
@@ -88,7 +83,10 @@ pub(crate) async fn sovereign_init_ember(
                     Ok(seq) => {
                         let engine = seq.chip.engine_label();
                         tracing::info!(
-                            bdf, path, writes = seq.len(), engine = engine.as_str(),
+                            bdf,
+                            path,
+                            writes = seq.len(),
+                            engine = engine.as_str(),
                             "sovereign.init(ember): loaded engine init sequence"
                         );
                         opts.engine_init_sequences.push((engine, seq, None));
@@ -138,9 +136,8 @@ pub(crate) async fn sovereign_init_ember(
     };
 
     let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
-    let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
-        profile, bridge, sm,
-    );
+    let strategy =
+        toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(profile, bridge, sm);
 
     let pre_channel_stages = strategy.pre_channel_init(bar0_ref);
     if !pre_channel_stages.is_empty() {
@@ -162,9 +159,8 @@ pub(crate) async fn sovereign_init_ember(
 
     tracing::info!(bdf, halt_before = ?opts.halt_before, "sovereign.init(ember): starting pipeline");
 
-    let result = toadstool_cylinder::vfio::sovereign_init::sovereign_init(
-        bar0_ref, bdf, &opts, &*strategy,
-    );
+    let result =
+        toadstool_cylinder::vfio::sovereign_init::sovereign_init(bar0_ref, bdf, &opts, &*strategy);
 
     // Confirm anchor is live in store for fd persistence across restarts
     let anchor_held = {

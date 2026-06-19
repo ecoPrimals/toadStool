@@ -17,8 +17,8 @@
 //! - [`catalyst_watchdog`] — Exp 229 lockup sentinel: monitors handoff liveness, emergency quench + kill
 //! - [`kernel_sentinel`] — Exp 232 kernel oops sentinel: monitors /dev/kmsg for crash signatures, saves triage reports
 
-pub(crate) mod catalyst_watchdog;
 mod capability;
+pub(crate) mod catalyst_watchdog;
 mod cleanup;
 mod health;
 pub(crate) mod ipc_watch;

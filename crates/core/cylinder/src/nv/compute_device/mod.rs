@@ -52,8 +52,8 @@ mod pbdma;
 #[cfg(target_os = "linux")]
 mod warm_probe;
 
-use crate::error::DriverResult;
 use crate::HardwareCapabilities;
+use crate::error::DriverResult;
 
 use super::iova;
 

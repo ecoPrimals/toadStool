@@ -9,9 +9,8 @@ use toadstool_cylinder::vfio::kernel_health;
 use crate::Result;
 
 pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
-    let report = kernel_health::full_kernel_health_check().map_err(|e| {
-        crate::CliError::Other(format!("kernel health check failed: {e}"))
-    })?;
+    let report = kernel_health::full_kernel_health_check()
+        .map_err(|e| crate::CliError::Other(format!("kernel health check failed: {e}")))?;
 
     if format == "json" {
         let mut output = serde_json::to_value(&report).unwrap_or_default();
@@ -34,7 +33,10 @@ pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
             }
         }
 
-        println!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&output).unwrap_or_default()
+        );
         return Ok(());
     }
 
@@ -43,7 +45,11 @@ pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
     println!("=====================================\n");
 
     // Layer 1
-    let freshness_icon = if report.autoconf_fresh { "PASS" } else { "WARN" };
+    let freshness_icon = if report.autoconf_fresh {
+        "PASS"
+    } else {
+        "WARN"
+    };
     println!("Layer 1 — autoconf.h Freshness: {freshness_icon}");
     if report.autoconf_age_delta_secs <= 0 {
         println!(
@@ -59,7 +65,10 @@ pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
 
     // Layer 2
     println!();
-    if let (Some(init), Some(exit)) = (report.struct_module_init_offset, report.struct_module_exit_offset) {
+    if let (Some(init), Some(exit)) = (
+        report.struct_module_init_offset,
+        report.struct_module_exit_offset,
+    ) {
         println!("Layer 2 — Struct Module Probe:");
         println!("  init offset: 0x{init:x}");
         println!("  exit offset: 0x{exit:x}");
@@ -81,7 +90,11 @@ pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
 
     // Verdict
     println!();
-    let verdict = if report.layout_matches { "HEALTHY" } else { "UNHEALTHY" };
+    let verdict = if report.layout_matches {
+        "HEALTHY"
+    } else {
+        "UNHEALTHY"
+    };
     println!("Verdict: {verdict}");
     println!("  {}", report.diagnosis);
 

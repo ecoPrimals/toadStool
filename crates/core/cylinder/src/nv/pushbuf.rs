@@ -175,7 +175,13 @@ impl PushBuf {
         slm_base_addr: u64,
         slm_per_tpc_bytes: u64,
     ) -> Self {
-        Self::compute_init_inner(compute_class, _local_mem_window, slm_base_addr, slm_per_tpc_bytes, false)
+        Self::compute_init_inner(
+            compute_class,
+            _local_mem_window,
+            slm_base_addr,
+            slm_per_tpc_bytes,
+            false,
+        )
     }
 
     /// Like [`compute_init`](Self::compute_init) but skips the push buffer
@@ -200,13 +206,29 @@ impl PushBuf {
         subchannel: u32,
     ) -> Self {
         let mut pb = Self::compute_init_on_subchannel(
-            compute_class, local_mem_window, slm_base_addr, slm_per_tpc_bytes, false, subchannel,
+            compute_class,
+            local_mem_window,
+            slm_base_addr,
+            slm_per_tpc_bytes,
+            false,
+            subchannel,
         );
         if shared_mem_window != 0 {
-            #[expect(clippy::cast_possible_truncation, reason = "deliberate split into 32-bit halves")]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "deliberate split into 32-bit halves"
+            )]
             {
-                pb.push_1(subchannel, method::SET_SHADER_SHARED_MEMORY_WINDOW_A, (shared_mem_window >> 32) as u32);
-                pb.push_1(subchannel, method::SET_SHADER_SHARED_MEMORY_WINDOW_B, shared_mem_window as u32);
+                pb.push_1(
+                    subchannel,
+                    method::SET_SHADER_SHARED_MEMORY_WINDOW_A,
+                    (shared_mem_window >> 32) as u32,
+                );
+                pb.push_1(
+                    subchannel,
+                    method::SET_SHADER_SHARED_MEMORY_WINDOW_B,
+                    shared_mem_window as u32,
+                );
             }
         }
         pb
@@ -219,7 +241,14 @@ impl PushBuf {
         slm_per_tpc_bytes: u64,
         skip_set_object: bool,
     ) -> Self {
-        Self::compute_init_on_subchannel(compute_class, _local_mem_window, slm_base_addr, slm_per_tpc_bytes, skip_set_object, 0)
+        Self::compute_init_on_subchannel(
+            compute_class,
+            _local_mem_window,
+            slm_base_addr,
+            slm_per_tpc_bytes,
+            skip_set_object,
+            0,
+        )
     }
 
     fn compute_init_on_subchannel(
@@ -363,19 +392,26 @@ impl PushBuf {
     /// - `PAYLOAD` = value to write on completion
     /// - `CTRL` = release mode (0x5 = ACQUIRE_TERNARY + RELEASE_TRUE)
     #[must_use]
-    pub fn semaphore_release(
-        sem_iova: u64,
-        payload: u32,
-        subchannel: u32,
-    ) -> Self {
+    pub fn semaphore_release(sem_iova: u64, payload: u32, subchannel: u32) -> Self {
         let mut pb = Self::new();
-        #[expect(clippy::cast_possible_truncation, reason = "deliberate split into 32-bit halves")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "deliberate split into 32-bit halves"
+        )]
         {
-            pb.push_1(subchannel, method::SEMAPHORE_ADDR_UPPER, (sem_iova >> 32) as u32);
+            pb.push_1(
+                subchannel,
+                method::SEMAPHORE_ADDR_UPPER,
+                (sem_iova >> 32) as u32,
+            );
             pb.push_1(subchannel, method::SEMAPHORE_ADDR_LOWER, sem_iova as u32);
         }
         pb.push_1(subchannel, method::SEMAPHORE_PAYLOAD, payload);
-        pb.push_1(subchannel, method::SEMAPHORE_CTRL, method::SEMAPHORE_CTRL_RELEASE);
+        pb.push_1(
+            subchannel,
+            method::SEMAPHORE_CTRL,
+            method::SEMAPHORE_CTRL_RELEASE,
+        );
         pb
     }
 
@@ -436,7 +472,11 @@ impl PushBuf {
         pb.push_1(sc, ce::method::PITCH_OUT, byte_count);
         pb.push_1(sc, ce::method::LINE_LENGTH_IN, byte_count);
         pb.push_1(sc, ce::method::LINE_COUNT, 1);
-        pb.push_1(sc, ce::method::LAUNCH_DMA, ce::method::LAUNCH_PIPELINED_PITCH);
+        pb.push_1(
+            sc,
+            ce::method::LAUNCH_DMA,
+            ce::method::LAUNCH_PIPELINED_PITCH,
+        );
         pb
     }
 

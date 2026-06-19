@@ -89,8 +89,7 @@ pub trait SwapExecutor: Send + Sync + fmt::Debug {
 /// but before releasing the handle. This is the ExitBootServices slot
 /// from the UEFI model — the firmware is still running, and this is the
 /// last chance to capture what it initialized.
-pub type ExitBootServicesFn =
-    Box<dyn Fn(&DeviceId) -> Option<BootServiceEvidence> + Send + Sync>;
+pub type ExitBootServicesFn = Box<dyn Fn(&DeviceId) -> Option<BootServiceEvidence> + Send + Sync>;
 
 /// Orchestrates the full swap lifecycle.
 ///
@@ -268,10 +267,7 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         if obs.to == target {
             format!("verified personality={} matches target", obs.to)
         } else {
-            format!(
-                "personality mismatch: got {} expected {}",
-                obs.to, target
-            )
+            format!("personality mismatch: got {} expected {}", obs.to, target)
         }
     }
 
@@ -378,7 +374,10 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
             Ok(obs) => {
                 steps.push(BootStep::ok(
                     "delegate_swap",
-                    Some(format!("to={target} duration_ms={}", obs.duration.as_millis())),
+                    Some(format!(
+                        "to={target} duration_ms={}",
+                        obs.duration.as_millis()
+                    )),
                     step_start.elapsed().as_millis() as u64,
                 ));
                 obs
@@ -472,7 +471,9 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
             "beginning sovereign boot"
         );
 
-        let result = self.orchestrate_swap(device, from, target_personality).await;
+        let result = self
+            .orchestrate_swap(device, from, target_personality)
+            .await;
 
         if result.success {
             tracing::info!(

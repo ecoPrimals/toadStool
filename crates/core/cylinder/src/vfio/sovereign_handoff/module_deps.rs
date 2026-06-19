@@ -40,6 +40,10 @@ pub(crate) fn load_module_dependencies(module_name: &str) -> Result<(), HandoffE
         }
     }
 
-    tracing::info!(module = module_name, deps_loaded = loaded, "module dependencies loaded");
+    tracing::info!(
+        module = module_name,
+        deps_loaded = loaded,
+        "module dependencies loaded"
+    );
     Ok(())
 }

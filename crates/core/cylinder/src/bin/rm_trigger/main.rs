@@ -17,11 +17,16 @@
 // SAFETY: Raw NVIDIA RM ioctls require unsafe ioctl() calls.
 #![allow(unsafe_code)]
 #![allow(
-    clippy::borrow_as_ptr, clippy::needless_pass_by_value,
-    clippy::field_reassign_with_default, clippy::similar_names,
-    clippy::if_not_else, clippy::cast_ptr_alignment,
-    clippy::map_unwrap_or, clippy::items_after_statements,
-    clippy::ref_as_ptr, unused_assignments,
+    clippy::borrow_as_ptr,
+    clippy::needless_pass_by_value,
+    clippy::field_reassign_with_default,
+    clippy::similar_names,
+    clippy::if_not_else,
+    clippy::cast_ptr_alignment,
+    clippy::map_unwrap_or,
+    clippy::items_after_statements,
+    clippy::ref_as_ptr,
+    unused_assignments
 )]
 
 mod rm_ioctl;
@@ -34,12 +39,12 @@ use rustix::ioctl::Opcode;
 
 use toadstool_cylinder::nv::rm_abi::NvChannelAllocParams;
 
-use rm_ioctl::{iowr, Nvos21Parameters, RmRawIoctl, NV_IOCTL_MAGIC, RM_ALLOC_OP, RM_CTRL_OP};
+use rm_ioctl::{NV_IOCTL_MAGIC, Nvos21Parameters, RM_ALLOC_OP, RM_CTRL_OP, RmRawIoctl, iowr};
 use rm_object_tree::{
-    alloc_compute_channel, alloc_core_tree, alloc_root_client,
-    diag_gpu_fd_root_alloc, gpu_attach_ids_ctrl, post_attach_diagnostics,
-    pre_attach_diagnostics, RootClientResult, H_CHANNEL, H_COMPUTE, H_CTX_SHARE, H_DEVICE,
-    H_MEM_ERR_NOTIFIER, H_MEM_GPFIFO, H_MEM_USERD, H_ROOT, H_SUBDEVICE, H_TSG, H_VASPACE,
+    H_CHANNEL, H_COMPUTE, H_CTX_SHARE, H_DEVICE, H_MEM_ERR_NOTIFIER, H_MEM_GPFIFO, H_MEM_USERD,
+    H_ROOT, H_SUBDEVICE, H_TSG, H_VASPACE, RootClientResult, alloc_compute_channel,
+    alloc_core_tree, alloc_root_client, diag_gpu_fd_root_alloc, gpu_attach_ids_ctrl,
+    post_attach_diagnostics, pre_attach_diagnostics,
 };
 
 fn step_json(name: &str, ok: bool, detail: serde_json::Value) -> serde_json::Value {
@@ -53,7 +58,10 @@ fn ne_bytes<const N: usize>(slice: &[u8], field: &str) -> Result<[u8; N], String
 }
 
 fn print_result(result: &serde_json::Value) {
-    println!("{}", serde_json::to_string_pretty(result).unwrap_or_default());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(result).unwrap_or_default()
+    );
 }
 
 fn cleanup(ctl_path: &str, gpu_path: &str) {
@@ -64,9 +72,7 @@ fn cleanup(ctl_path: &str, gpu_path: &str) {
 /// Read PMC_ENABLE (offset 0x200) from BAR0 via sysfs resource0 mmap
 fn read_pmc_enable(bdf: &str) -> Option<u32> {
     let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
-    let f = std::fs::OpenOptions::new()
-        .read(true)
-        .open(&path).ok()?;
+    let f = std::fs::OpenOptions::new().read(true).open(&path).ok()?;
     // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC registers;
     // MAP_SHARED is required for MMIO coherency.
     let map = unsafe {
@@ -78,11 +84,14 @@ fn read_pmc_enable(bdf: &str) -> Option<u32> {
             &f,
             0,
         )
-    }.ok()?;
+    }
+    .ok()?;
     // SAFETY: offset 0x200 is PMC_ENABLE within the mapped BAR0 page.
     let val = unsafe { std::ptr::read_volatile(map.cast::<u8>().add(0x200).cast::<u32>()) };
     // SAFETY: map and size match the successful mmap above.
-    unsafe { let _ = rustix::mm::munmap(map, 0x1000); }
+    unsafe {
+        let _ = rustix::mm::munmap(map, 0x1000);
+    }
     Some(val)
 }
 
@@ -119,9 +128,8 @@ fn quench_gpu_interrupts(bdf: &str) {
         if let Ok(map) = map_result {
             let base = map.cast::<u8>();
             // SAFETY: all offsets are within the 0x1000 mapped page.
-            let old_en = unsafe {
-                std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>())
-            };
+            let old_en =
+                unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>()) };
 
             unsafe {
                 std::ptr::write_volatile(
@@ -130,21 +138,22 @@ fn quench_gpu_interrupts(bdf: &str) {
                 );
             }
 
-            let new_en = unsafe {
-                std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>())
-            };
+            let new_en =
+                unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>()) };
 
-            let pending = unsafe {
-                std::ptr::read_volatile(base.add(NV_PMC_INTR_0).cast::<u32>())
-            };
+            let pending = unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_0).cast::<u32>()) };
 
             // SAFETY: map and size match the successful mmap above.
-            unsafe { let _ = rustix::mm::munmap(map, 0x1000); }
+            unsafe {
+                let _ = rustix::mm::munmap(map, 0x1000);
+            }
             eprintln!(
                 "[QUENCH] INTR_EN: 0x{old_en:08x} → 0x{new_en:08x} (wrote 0xFFFFFFFF to CLEAR@0x180) pending=0x{pending:08x}"
             );
             if new_en != 0 {
-                eprintln!("[QUENCH] WARNING: INTR_EN not zero after CLEAR — GPU may still generate interrupts!");
+                eprintln!(
+                    "[QUENCH] WARNING: INTR_EN not zero after CLEAR — GPU may still generate interrupts!"
+                );
             }
         } else {
             eprintln!("[QUENCH] BAR0 mmap failed — cannot disable GPU interrupts at source!");
@@ -158,7 +167,11 @@ fn quench_gpu_interrupts(bdf: &str) {
 fn disable_pci_msi_config(bdf: &str) {
     use std::io::{Read, Seek, Write};
     let cfg_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
-    let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+    let mut f = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&cfg_path)
+    {
         Ok(f) => f,
         Err(e) => {
             eprintln!("[MSI] Cannot open config for {bdf}: {e}");
@@ -201,7 +214,9 @@ fn disable_pci_msi_config(bdf: &str) {
                 if f.seek(std::io::SeekFrom::Start(ctrl_offset)).is_ok() {
                     let _ = f.write_all(&new_ctrl.to_le_bytes());
                 }
-                eprintln!("[MSI] MSI disabled: ctrl 0x{msg_ctrl:04x} → 0x{new_ctrl:04x} at cap offset 0x{cap_offset:02x}");
+                eprintln!(
+                    "[MSI] MSI disabled: ctrl 0x{msg_ctrl:04x} → 0x{new_ctrl:04x} at cap offset 0x{cap_offset:02x}"
+                );
             } else {
                 eprintln!("[MSI] MSI already disabled at cap offset 0x{cap_offset:02x}");
             }
@@ -214,7 +229,9 @@ fn disable_pci_msi_config(bdf: &str) {
                     let _ = f.write_all(&new_ctrl.to_le_bytes());
                 }
             }
-            eprintln!("[MSI] MSI-X disabled+masked: ctrl 0x{msg_ctrl:04x} → 0x{new_ctrl:04x} at cap offset 0x{cap_offset:02x}");
+            eprintln!(
+                "[MSI] MSI-X disabled+masked: ctrl 0x{msg_ctrl:04x} → 0x{new_ctrl:04x} at cap offset 0x{cap_offset:02x}"
+            );
         }
 
         cap_ptr = next_ptr;
@@ -236,7 +253,9 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
     const CARD_INFO_OP: Opcode = iowr(NV_IOCTL_MAGIC, 0xC8, CARD_INFO_ENTRY * MAX_CARDS);
     let mut ci_buf = vec![0u8; CARD_INFO_ENTRY * MAX_CARDS];
     // SAFETY: ci_buf is correctly sized for nv_ioctl_card_info; fd is valid.
-    let ioctl = RmRawIoctl::<{ CARD_INFO_OP }> { ptr: ci_buf.as_mut_ptr() };
+    let ioctl = RmRawIoctl::<{ CARD_INFO_OP }> {
+        ptr: ci_buf.as_mut_ptr(),
+    };
     let (rc, errno) = match unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
         Ok(v) => (v, 0),
         Err(e) => (-1, e.raw_os_error()),
@@ -245,11 +264,13 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
     for i in 0..MAX_CARDS {
         let off = i * CARD_INFO_ENTRY;
         let valid = ci_buf[off];
-        if valid == 0 { continue; }
+        if valid == 0 {
+            continue;
+        }
         let domain = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 4..off + 8], "domain")?);
-        let bus = ci_buf[off+8];
-        let slot = ci_buf[off+9];
-        let func = ci_buf[off+10];
+        let bus = ci_buf[off + 8];
+        let slot = ci_buf[off + 9];
+        let func = ci_buf[off + 10];
         let vendor = u16::from_ne_bytes(ne_bytes(&ci_buf[off + 12..off + 14], "vendor")?);
         let devid = u16::from_ne_bytes(ne_bytes(&ci_buf[off + 14..off + 16], "devid")?);
         let gpu_id = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 16..off + 20], "gpu_id")?);
@@ -259,18 +280,22 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
         let fb_addr = u64::from_ne_bytes(ne_bytes(&ci_buf[off + 40..off + 48], "fb_addr")?);
         let fb_size = u64::from_ne_bytes(ne_bytes(&ci_buf[off + 48..off + 56], "fb_size")?);
         let minor = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 56..off + 60], "minor")?);
-        eprintln!("  card[{i}]: valid={valid} {domain:04x}:{bus:02x}:{slot:02x}.{func} vendor=0x{vendor:04x} dev=0x{devid:04x} gpu_id=0x{gpu_id:x} irq={irq} minor={minor}");
+        eprintln!(
+            "  card[{i}]: valid={valid} {domain:04x}:{bus:02x}:{slot:02x}.{func} vendor=0x{vendor:04x} dev=0x{devid:04x} gpu_id=0x{gpu_id:x} irq={irq} minor={minor}"
+        );
         eprintln!("    regs=0x{reg_addr:x}+0x{reg_size:x} fb=0x{fb_addr:x}+0x{fb_size:x}");
     }
 
     for i in 0..MAX_CARDS {
         let off = i * CARD_INFO_ENTRY;
         let valid = ci_buf[off];
-        if valid == 0 { continue; }
+        if valid == 0 {
+            continue;
+        }
         let domain = u32::from_ne_bytes(ne_bytes(&ci_buf[off + 4..off + 8], "domain")?);
-        let bus = ci_buf[off+8];
-        let slot = ci_buf[off+9];
-        let func = ci_buf[off+10];
+        let bus = ci_buf[off + 8];
+        let slot = ci_buf[off + 9];
+        let func = ci_buf[off + 10];
         let bdf = format!("{domain:04x}:{bus:02x}:{slot:02x}.{func}");
         let cfg_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "config");
         match std::fs::read(&cfg_path) {
@@ -279,12 +304,19 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
                 let io_en = cmd & 1;
                 let mem_en = (cmd >> 1) & 1;
                 let bus_master = (cmd >> 2) & 1;
-                eprintln!("[Diag] PCI CMD({bdf}): 0x{cmd:04x} IO={io_en} MEM={mem_en} BusMaster={bus_master}");
+                eprintln!(
+                    "[Diag] PCI CMD({bdf}): 0x{cmd:04x} IO={io_en} MEM={mem_en} BusMaster={bus_master}"
+                );
                 if bus_master == 0 {
                     eprintln!("  WARNING: BusMaster DISABLED — enabling via sysfs...");
-                    let enable_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "enable");
+                    let enable_path =
+                        toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "enable");
                     let _ = std::fs::write(&enable_path, "1");
-                    if let Ok(mut f) = std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+                    if let Ok(mut f) = std::fs::OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .open(&cfg_path)
+                    {
                         use std::io::{Read, Seek, Write};
                         let mut cmd_bytes = [0u8; 2];
                         let _ = f.seek(std::io::SeekFrom::Start(4));
@@ -314,23 +346,32 @@ fn run_attach_gpus_to_fd(fd: &impl AsFd, gpu_id: u32) -> serde_json::Value {
     let mut attach_buf = [gpu_id];
     const ATTACH_OP: Opcode = iowr(NV_IOCTL_MAGIC, 0xD4, size_of::<[u32; 1]>());
     // SAFETY: attach_buf is [u32; 1] matching kernel ABI; fd is valid.
-    let ioctl = RmRawIoctl::<{ ATTACH_OP }> { ptr: attach_buf.as_mut_ptr().cast() };
+    let ioctl = RmRawIoctl::<{ ATTACH_OP }> {
+        ptr: attach_buf.as_mut_ptr().cast(),
+    };
     let (rc, errno) = match unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
         Ok(v) => (v, 0),
         Err(e) => (-1, e.raw_os_error()),
     };
     eprintln!("  ATTACH_GPUS_TO_FD: rc={rc} errno={errno}");
-    step_json("attach_gpus_to_fd", rc == 0, serde_json::json!({
-        "gpu_id": format!("0x{gpu_id:x}"),
-        "rc": rc,
-        "errno": errno,
-    }))
+    step_json(
+        "attach_gpus_to_fd",
+        rc == 0,
+        serde_json::json!({
+            "gpu_id": format!("0x{gpu_id:x}"),
+            "rc": rc,
+            "errno": errno,
+        }),
+    )
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: {} <chardev_major> [--channel] [--bdf 0000:XX:YY.Z]", args[0]);
+        eprintln!(
+            "Usage: {} <chardev_major> [--channel] [--bdf 0000:XX:YY.Z]",
+            args[0]
+        );
         return ExitCode::from(1);
     }
 
@@ -344,7 +385,8 @@ fn main() -> ExitCode {
 
     let channel_mode = args.iter().any(|a| a == "--channel");
 
-    let bdf = args.windows(2)
+    let bdf = args
+        .windows(2)
         .find(|w| w[0] == "--bdf")
         .map(|w| w[1].as_str())
         .unwrap_or_else(|| {
@@ -353,8 +395,14 @@ fn main() -> ExitCode {
         });
 
     eprintln!("rm_trigger: major={major}, channel_mode={channel_mode}, bdf={bdf}");
-    eprintln!("sizeof(Nvos21Parameters) = {}", size_of::<Nvos21Parameters>());
-    eprintln!("sizeof(NvChannelAllocParams) = {}", size_of::<NvChannelAllocParams>());
+    eprintln!(
+        "sizeof(Nvos21Parameters) = {}",
+        size_of::<Nvos21Parameters>()
+    );
+    eprintln!(
+        "sizeof(NvChannelAllocParams) = {}",
+        size_of::<NvChannelAllocParams>()
+    );
     eprintln!("RM_ALLOC_OP = 0x{RM_ALLOC_OP:x}");
     eprintln!("RM_CTRL_OP  = 0x{RM_CTRL_OP:x}");
 
@@ -368,7 +416,10 @@ fn main() -> ExitCode {
     let char_type = rustix::fs::FileType::CharacterDevice;
 
     if let Err(e) = rustix::fs::mknodat(
-        rustix::fs::CWD, ctl_path, char_type, mode,
+        rustix::fs::CWD,
+        ctl_path,
+        char_type,
+        mode,
         rustix::fs::makedev(major, 255),
     ) {
         eprintln!("mknod ctl: {e}");
@@ -376,7 +427,10 @@ fn main() -> ExitCode {
     }
 
     if let Err(e) = rustix::fs::mknodat(
-        rustix::fs::CWD, gpu_path, char_type, mode,
+        rustix::fs::CWD,
+        gpu_path,
+        char_type,
+        mode,
         rustix::fs::makedev(major, 0),
     ) {
         eprintln!("mknod gpu: {e}");
@@ -390,17 +444,28 @@ fn main() -> ExitCode {
     let mut work_submit_token: Option<u32> = None;
 
     let pmc_pre = read_pmc_enable(bdf);
-    eprintln!("[Diag] PMC_ENABLE before opens: {:?}", pmc_pre.map(|v| format!("0x{v:08x}")));
+    eprintln!(
+        "[Diag] PMC_ENABLE before opens: {:?}",
+        pmc_pre.map(|v| format!("0x{v:08x}"))
+    );
 
     eprintln!("\nOpening nvidiactl (minor 255) [CTL-first]...");
-    let ctl_file = match std::fs::OpenOptions::new().read(true).write(true).open(ctl_path) {
+    let ctl_file = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(ctl_path)
+    {
         Ok(f) => {
             eprintln!("  ctl open ok (fd={})", f.as_raw_fd());
             f
         }
         Err(e) => {
             eprintln!("  ctl open failed: {e}");
-            steps.push(step_json("open_ctl", false, serde_json::json!({"error": e.to_string()})));
+            steps.push(step_json(
+                "open_ctl",
+                false,
+                serde_json::json!({"error": e.to_string()}),
+            ));
             cleanup(ctl_path, gpu_path);
             print_result(&serde_json::json!({"success": false, "major": major, "steps": steps}));
             return ExitCode::from(1);
@@ -409,20 +474,33 @@ fn main() -> ExitCode {
     let fd = &ctl_file;
 
     let pmc_post_ctl = read_pmc_enable(bdf);
-    eprintln!("[Diag] PMC_ENABLE after CTL open: {:?}", pmc_post_ctl.map(|v| format!("0x{v:08x}")));
+    eprintln!(
+        "[Diag] PMC_ENABLE after CTL open: {:?}",
+        pmc_post_ctl.map(|v| format!("0x{v:08x}"))
+    );
 
     eprintln!("\nOpening GPU device (minor 0) — triggers rm_init_adapter...");
-    let gpu_fd = std::fs::OpenOptions::new().read(true).write(true).open(gpu_path);
+    let gpu_fd = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(gpu_path);
     match &gpu_fd {
         Ok(f) => eprintln!("  GPU open ok (fd={})", f.as_raw_fd()),
         Err(e) => {
             eprintln!("  GPU open FAILED: {e}");
-            steps.push(step_json("gpu_open", false, serde_json::json!({"error": e.to_string()})));
+            steps.push(step_json(
+                "gpu_open",
+                false,
+                serde_json::json!({"error": e.to_string()}),
+            ));
         }
     }
 
     let pmc_post_gpu = read_pmc_enable(bdf);
-    eprintln!("[Diag] PMC_ENABLE after GPU open: {:?}", pmc_post_gpu.map(|v| format!("0x{v:08x}")));
+    eprintln!(
+        "[Diag] PMC_ENABLE after GPU open: {:?}",
+        pmc_post_gpu.map(|v| format!("0x{v:08x}"))
+    );
     if pmc_pre == pmc_post_gpu {
         eprintln!("  ⚠ PMC_ENABLE UNCHANGED — rm_init_adapter likely did NOT run DEVINIT");
     } else {
@@ -447,15 +525,27 @@ fn main() -> ExitCode {
     }
 
     let root_result = alloc_root_client(fd);
-    let RootClientResult { root_test, rm_root, gpu_id, step, .. } = root_result;
+    let RootClientResult {
+        root_test,
+        rm_root,
+        gpu_id,
+        step,
+        ..
+    } = root_result;
     steps.push(step);
 
     let pmc_post_root = read_pmc_enable(bdf);
-    eprintln!("[Diag] PMC_ENABLE after root alloc: {:?}", pmc_post_root.map(|v| format!("0x{v:08x}")));
+    eprintln!(
+        "[Diag] PMC_ENABLE after root alloc: {:?}",
+        pmc_post_root.map(|v| format!("0x{v:08x}"))
+    );
 
     pre_attach_diagnostics(fd, rm_root);
     let pmc_now = read_pmc_enable(bdf);
-    eprintln!("[Diag] PMC_ENABLE after probed_ids query: {:?}", pmc_now.map(|v| format!("0x{v:08x}")));
+    eprintln!(
+        "[Diag] PMC_ENABLE after probed_ids query: {:?}",
+        pmc_now.map(|v| format!("0x{v:08x}"))
+    );
 
     if gpu_id != 0 {
         steps.push(gpu_attach_ids_ctrl(fd, rm_root, gpu_id));
@@ -472,21 +562,31 @@ fn main() -> ExitCode {
         steps.push(attach_step);
     } else {
         eprintln!("\n[Phase 0b] No GPU IDs from GET_ATTACHED_IDS — cannot attach");
-        steps.push(step_json("attach_gpus_to_fd", false, serde_json::json!({
-            "error": "no gpu_ids available"
-        })));
+        steps.push(step_json(
+            "attach_gpus_to_fd",
+            false,
+            serde_json::json!({
+                "error": "no gpu_ids available"
+            }),
+        ));
         success = false;
     }
 
     let root_ok = root_test.rc == 0 && root_test.status == 0;
-    if !root_ok { success = false; }
+    if !root_ok {
+        success = false;
+    }
 
     let (core_handles, core_steps) = alloc_core_tree(fd, rm_root, gpu_id, root_ok, &mut success);
     steps.extend(core_steps);
 
     if root_ok && channel_mode {
         let (channel_result, channel_steps) = alloc_compute_channel(
-            fd, rm_root, core_handles.rm_device, core_handles.rm_subdevice, &mut success,
+            fd,
+            rm_root,
+            core_handles.rm_device,
+            core_handles.rm_subdevice,
+            &mut success,
         );
         channel_id = channel_result.channel_id;
         work_submit_token = channel_result.work_submit_token;

@@ -21,7 +21,8 @@ pub struct DiscoveryConfig {
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         const DEFAULT_CAPABILITY_DISCOVERY_TIMEOUT_SECS: u64 = 5;
-        let is_production = std::env::var(socket_env::TOADSTOOL_ENV).is_ok_and(|e| e == "production");
+        let is_production =
+            std::env::var(socket_env::TOADSTOOL_ENV).is_ok_and(|e| e == "production");
 
         Self {
             timeout: Duration::from_secs(DEFAULT_CAPABILITY_DISCOVERY_TIMEOUT_SECS),

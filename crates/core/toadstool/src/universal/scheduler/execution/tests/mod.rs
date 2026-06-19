@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for `universal::scheduler::execution` — split by execution backend.
 
-mod native;
-mod wasm;
-mod primal;
 mod biome_os;
+mod native;
+mod primal;
+mod wasm;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -103,10 +103,18 @@ struct NativePrimalTemplate {
 }
 
 impl UniversalPrimalProvider for NativePrimalTemplate {
-    fn primal_id(&self) -> &str { &self.instance_id }
-    fn instance_id(&self) -> &str { &self.instance_id }
-    fn context(&self) -> &PrimalContext { &self.context }
-    fn primal_type(&self) -> PrimalType { PrimalType::Compute }
+    fn primal_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn context(&self) -> &PrimalContext {
+        &self.context
+    }
+    fn primal_type(&self) -> PrimalType {
+        PrimalType::Compute
+    }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {
         vec![PrimalCapability::NativeExecution {
@@ -122,7 +130,10 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
         PrimalEndpoints {
             primary: "http://localhost".to_string(),
             health: "http://localhost/health".to_string(),
-            metrics: None, admin: None, events_endpoint: None, custom: HashMap::new(),
+            metrics: None,
+            admin: None,
+            events_endpoint: None,
+            custom: HashMap::new(),
         }
     }
 
@@ -136,15 +147,26 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
         async move {
             Ok(PrimalResponse {
                 request_id: request.id,
-                status, payload, metadata,
+                status,
+                payload,
+                metadata,
                 timestamp: std::time::SystemTime::now(),
             })
         }
     }
 
-    fn initialize(&mut self, _config: serde_json::Value) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn can_serve_context(&self, _context: &PrimalContext) -> bool { true }
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn can_serve_context(&self, _context: &PrimalContext) -> bool {
+        true
+    }
 }
 
 /// Returns `Err` from `handle_primal_request` (native path uses `?`).
@@ -154,10 +176,18 @@ struct FailingNativePrimal {
 }
 
 impl UniversalPrimalProvider for FailingNativePrimal {
-    fn primal_id(&self) -> &str { &self.instance_id }
-    fn instance_id(&self) -> &str { &self.instance_id }
-    fn context(&self) -> &PrimalContext { &self.context }
-    fn primal_type(&self) -> PrimalType { PrimalType::Compute }
+    fn primal_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn context(&self) -> &PrimalContext {
+        &self.context
+    }
+    fn primal_type(&self) -> PrimalType {
+        PrimalType::Compute
+    }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {
         vec![PrimalCapability::NativeExecution {
@@ -173,17 +203,32 @@ impl UniversalPrimalProvider for FailingNativePrimal {
         PrimalEndpoints {
             primary: "http://localhost".to_string(),
             health: "http://localhost/health".to_string(),
-            metrics: None, admin: None, events_endpoint: None, custom: HashMap::new(),
+            metrics: None,
+            admin: None,
+            events_endpoint: None,
+            custom: HashMap::new(),
         }
     }
 
-    fn handle_primal_request(&self, _request: PrimalRequest) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
+    fn handle_primal_request(
+        &self,
+        _request: PrimalRequest,
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
         async { Err(ToadStoolError::execution("mock native primal failure")) }
     }
 
-    fn initialize(&mut self, _config: serde_json::Value) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn can_serve_context(&self, _context: &PrimalContext) -> bool { true }
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn can_serve_context(&self, _context: &PrimalContext) -> bool {
+        true
+    }
 }
 
 /// Primal with fixed type for `execute_primal` routing.
@@ -196,13 +241,23 @@ struct TypedRoutePrimal {
 }
 
 impl UniversalPrimalProvider for TypedRoutePrimal {
-    fn primal_id(&self) -> &str { &self.instance_id }
-    fn instance_id(&self) -> &str { &self.instance_id }
-    fn context(&self) -> &PrimalContext { &self.context }
-    fn primal_type(&self) -> PrimalType { self.primal_type.clone() }
+    fn primal_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn context(&self) -> &PrimalContext {
+        &self.context
+    }
+    fn primal_type(&self) -> PrimalType {
+        self.primal_type.clone()
+    }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {
-        vec![PrimalCapability::ServerlessExecution { languages: vec!["rust".to_string()] }]
+        vec![PrimalCapability::ServerlessExecution {
+            languages: vec!["rust".to_string()],
+        }]
     }
 
     fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
@@ -213,11 +268,17 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
         PrimalEndpoints {
             primary: "http://localhost".to_string(),
             health: "http://localhost/health".to_string(),
-            metrics: None, admin: None, events_endpoint: None, custom: HashMap::new(),
+            metrics: None,
+            admin: None,
+            events_endpoint: None,
+            custom: HashMap::new(),
         }
     }
 
-    fn handle_primal_request(&self, request: PrimalRequest) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
+    fn handle_primal_request(
+        &self,
+        request: PrimalRequest,
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
         let fail_route = self.fail_route;
         let status = self.status.clone();
         async move {
@@ -225,7 +286,8 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
                 return Err(ToadStoolError::execution("route handler failure"));
             }
             Ok(PrimalResponse {
-                request_id: request.id, status,
+                request_id: request.id,
+                status,
                 payload: serde_json::json!({"ok": true}),
                 metadata: HashMap::new(),
                 timestamp: std::time::SystemTime::now(),
@@ -233,9 +295,18 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
         }
     }
 
-    fn initialize(&mut self, _config: serde_json::Value) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn can_serve_context(&self, _context: &PrimalContext) -> bool { true }
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn can_serve_context(&self, _context: &PrimalContext) -> bool {
+        true
+    }
 }
 
 /// Provider without `NativeExecution` so `execute_native` falls through to local engine.
@@ -245,10 +316,18 @@ struct OnlyWasmPrimal {
 }
 
 impl UniversalPrimalProvider for OnlyWasmPrimal {
-    fn primal_id(&self) -> &str { &self.instance_id }
-    fn instance_id(&self) -> &str { &self.instance_id }
-    fn context(&self) -> &PrimalContext { &self.context }
-    fn primal_type(&self) -> PrimalType { PrimalType::Compute }
+    fn primal_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn instance_id(&self) -> &str {
+        &self.instance_id
+    }
+    fn context(&self) -> &PrimalContext {
+        &self.context
+    }
+    fn primal_type(&self) -> PrimalType {
+        PrimalType::Compute
+    }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {
         vec![PrimalCapability::WasmExecution { wasi_support: true }]
@@ -262,15 +341,34 @@ impl UniversalPrimalProvider for OnlyWasmPrimal {
         PrimalEndpoints {
             primary: "http://localhost".to_string(),
             health: "http://localhost/health".to_string(),
-            metrics: None, admin: None, events_endpoint: None, custom: HashMap::new(),
+            metrics: None,
+            admin: None,
+            events_endpoint: None,
+            custom: HashMap::new(),
         }
     }
 
-    fn handle_primal_request(&self, _request: PrimalRequest) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
-        async { unreachable!("no native capability — scheduler should not route here for execute_native") }
+    fn handle_primal_request(
+        &self,
+        _request: PrimalRequest,
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
+        async {
+            unreachable!(
+                "no native capability — scheduler should not route here for execute_native"
+            )
+        }
     }
 
-    fn initialize(&mut self, _config: serde_json::Value) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ { async { Ok(()) } }
-    fn can_serve_context(&self, _context: &PrimalContext) -> bool { true }
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+    fn can_serve_context(&self, _context: &PrimalContext) -> bool {
+        true
+    }
 }

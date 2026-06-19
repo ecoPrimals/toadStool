@@ -21,17 +21,14 @@ impl DispatchHandler {
         params: Option<&serde_json::Value>,
         ctx: &CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let params = params.ok_or_else(|| {
-            JsonRpcError::invalid_params("compute.fan_out requires params")
-        })?;
+        let params = params
+            .ok_or_else(|| JsonRpcError::invalid_params("compute.fan_out requires params"))?;
 
         let work_units: Vec<FanOutWorkUnit> = params
             .get("work_units")
             .and_then(|v| serde_json::from_value(v.clone()).ok())
             .ok_or_else(|| {
-                JsonRpcError::invalid_params(
-                    "compute.fan_out requires 'work_units' array",
-                )
+                JsonRpcError::invalid_params("compute.fan_out requires 'work_units' array")
             })?;
 
         if work_units.is_empty() {
@@ -72,10 +69,7 @@ impl DispatchHandler {
             }
         }
 
-        let dispatch_id = format!(
-            "fan-{}",
-            uuid::Uuid::new_v4().as_hyphenated()
-        );
+        let dispatch_id = format!("fan-{}", uuid::Uuid::new_v4().as_hyphenated());
 
         let has_gpu = self.local_device_factory.is_some();
 
@@ -98,11 +92,7 @@ impl DispatchHandler {
                 assigned.push(FanOutAssignment {
                     unit_id,
                     status: FanOutUnitStatus::Assigned,
-                    substrate: if has_gpu {
-                        "local_cylinder"
-                    } else {
-                        "cpu"
-                    },
+                    substrate: if has_gpu { "local_cylinder" } else { "cpu" },
                 });
             }
         }
@@ -132,20 +122,21 @@ impl DispatchHandler {
             "trust_level": ctx.trust_level,
         });
 
-        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
-            ctx,
-            method: "compute.fan_out",
-            dispatch_ms: 0,
-            readback_ms: 0,
-            dispatch_mode: if has_gpu { "local_cylinder" } else { "cpu" },
-            bdf: "auto",
-            binary_bytes: &[],
-            workgroup_size: [total_units as u32, 1, 1],
-            timeout_ms: 0,
-            success: true,
-        });
+        super::telemetry::emit_dispatch_completion_telemetry(
+            &super::telemetry::DispatchTelemetryEmit {
+                ctx,
+                method: "compute.fan_out",
+                dispatch_ms: 0,
+                readback_ms: 0,
+                dispatch_mode: if has_gpu { "local_cylinder" } else { "cpu" },
+                bdf: "auto",
+                binary_size: 0,
+                workgroup_size: [total_units as u32, 1, 1],
+                timeout_ms: 0,
+                success: true,
+            },
+        );
 
         Ok(result)
     }
 }
-

@@ -11,7 +11,7 @@ use crate::universal::registry::UniversalPrimalRegistry;
 use crate::universal::requests::ResponseStatus;
 
 use super::{
-    sample_context, FailingNativePrimal, MockRuntimeEngine, NativePrimalTemplate, OnlyWasmPrimal,
+    FailingNativePrimal, MockRuntimeEngine, NativePrimalTemplate, OnlyWasmPrimal, sample_context,
 };
 
 #[tokio::test]

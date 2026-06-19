@@ -44,12 +44,8 @@ impl PatchSet {
             (ChipFamily::Volta, "nvidia-470" | "470.256.02", "boot_services") => {
                 Some(Self::nvidia_boot_services())
             }
-            (ChipFamily::Volta, "nouveau", _) => {
-                Some(Self::volta_warm_handoff())
-            }
-            (ChipFamily::Kepler, "nouveau", _) => {
-                Some(Self::kepler_warm_handoff())
-            }
+            (ChipFamily::Volta, "nouveau", _) => Some(Self::volta_warm_handoff()),
+            (ChipFamily::Kepler, "nouveau", _) => Some(Self::kepler_warm_handoff()),
             _ => Self::by_name(strategy),
         }
     }
@@ -111,12 +107,13 @@ impl PatchSet {
                 .and_then(|v| v.as_str())
                 .ok_or(PatchError::RecipeInvalidPatch("patch missing 'strategy'"))?;
 
-            let strategy: super::types::PatchStrategy = strategy_str.parse().map_err(|e: String| {
-                PatchError::InvalidPatchStrategy {
-                    raw: strategy_str.to_string(),
-                    detail: e,
-                }
-            })?;
+            let strategy: super::types::PatchStrategy =
+                strategy_str
+                    .parse()
+                    .map_err(|e: String| PatchError::InvalidPatchStrategy {
+                        raw: strategy_str.to_string(),
+                        detail: e,
+                    })?;
 
             targets.push(super::types::PatchTarget { symbol, strategy });
         }

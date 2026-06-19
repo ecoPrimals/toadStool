@@ -20,8 +20,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use toadstool_glowplug::boot::BootResult;
 use toadstool_glowplug::device_id::DeviceId;
-use toadstool_glowplug::sysfs_executor::SysfsSwapExecutor;
 use toadstool_glowplug::swap::SwapOrchestrator;
+use toadstool_glowplug::sysfs_executor::SysfsSwapExecutor;
 use tracing::debug;
 
 pub use crate::glowplug_types::{
@@ -138,7 +138,8 @@ impl GlowPlugClient {
     /// determine if the GPU was previously initialized (e.g. by nouveau
     /// warm-handoff). Also probes FECS CPUCTL (0x409100) for falcon state.
     pub fn warm_detect(&self, bdf: &str) -> serde_json::Value {
-        let resource_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
+        let resource_path =
+            toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
         let resource0_exists = std::path::Path::new(&resource_path).exists();
 
         let (pmc_enable, fecs_cpuctl) = if resource0_exists {
@@ -173,7 +174,10 @@ impl GlowPlugClient {
 
     /// Start or stop an experiment session on a held device.
     pub fn experiment_lifecycle(&self, bdf: &str, action: &str) -> ExperimentLifecycleResult {
-        let mut experiments = self.experiments.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut experiments = self
+            .experiments
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         match action {
             "start" => {
                 let session = ExperimentSession {
@@ -230,8 +234,10 @@ impl GlowPlugClient {
 ///
 /// Priority: `TOADSTOOL_RUN_DIR` env → `/run/toadstool`.
 pub fn run_dir() -> std::path::PathBuf {
-    std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_RUN_DIR)
-        .map_or_else(|_| std::path::PathBuf::from("/run/toadstool"), std::path::PathBuf::from)
+    std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_RUN_DIR).map_or_else(
+        |_| std::path::PathBuf::from("/run/toadstool"),
+        std::path::PathBuf::from,
+    )
 }
 
 /// Shared glowPlug service wrapped in Arc for handler use.
@@ -404,7 +410,8 @@ fn pci_bdf_matches(device_link: &std::path::Path, bdf: &str) -> bool {
 
 /// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).
 pub fn discover_gpu_bdfs() -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
+    else {
         return Vec::new();
     };
 

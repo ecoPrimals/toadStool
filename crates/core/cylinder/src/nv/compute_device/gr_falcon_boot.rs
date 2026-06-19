@@ -14,10 +14,7 @@ use super::super::nv_gsp_bridge::NvGspBridge;
 /// 2. INIT_CTXSW — initialize FECS context switching tables
 /// 3. BIND_CHANNEL — register our instance block with FECS
 /// 4. COMMIT — tell FECS to copy golden context into our GR buffer
-pub(crate) fn fecs_setup_channel(
-    bar0: &MappedBar,
-    channel: &VfioChannel,
-) -> DriverResult<()> {
+pub(crate) fn fecs_setup_channel(bar0: &MappedBar, channel: &VfioChannel) -> DriverResult<()> {
     use crate::vfio::channel::fecs;
 
     let inst_iova = channel.instance_iova();
@@ -167,9 +164,13 @@ pub(crate) fn boot_gpccs_fecs_deferred(
 
         // Immediate check via both registers
         let ctl = bar0.read_u32(fecs_base + falcon::CPUCTL).unwrap_or(0xDEAD);
-        let ctl_alias = bar0.read_u32(fecs_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+        let ctl_alias = bar0
+            .read_u32(fecs_base + falcon::CPUCTL_ALIAS)
+            .unwrap_or(0xDEAD);
         let pc = bar0.read_u32(fecs_base + falcon::PC).unwrap_or(0xDEAD);
-        let mb0 = bar0.read_u32(fecs_base + falcon::MAILBOX0).unwrap_or(0xDEAD);
+        let mb0 = bar0
+            .read_u32(fecs_base + falcon::MAILBOX0)
+            .unwrap_or(0xDEAD);
         tracing::info!(
             bdf = %bdf,
             fecs_cpuctl = format_args!("{ctl:#010x}"),
@@ -182,16 +183,24 @@ pub(crate) fn boot_gpccs_fecs_deferred(
         // Wait 100ms and check stability
         std::thread::sleep(std::time::Duration::from_millis(100));
         let ctl2 = bar0.read_u32(fecs_base + falcon::CPUCTL).unwrap_or(0xDEAD);
-        let ctl2_alias = bar0.read_u32(fecs_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+        let ctl2_alias = bar0
+            .read_u32(fecs_base + falcon::CPUCTL_ALIAS)
+            .unwrap_or(0xDEAD);
         let pc2 = bar0.read_u32(fecs_base + falcon::PC).unwrap_or(0xDEAD);
-        let mb02 = bar0.read_u32(fecs_base + falcon::MAILBOX0).unwrap_or(0xDEAD);
-        let gpccs_ctl = bar0.read_u32(falcon::GPCCS_BASE + falcon::CPUCTL).unwrap_or(0xDEAD);
+        let mb02 = bar0
+            .read_u32(fecs_base + falcon::MAILBOX0)
+            .unwrap_or(0xDEAD);
+        let gpccs_ctl = bar0
+            .read_u32(falcon::GPCCS_BASE + falcon::CPUCTL)
+            .unwrap_or(0xDEAD);
         let gpccs_alias = bar0
             .read_u32(falcon::GPCCS_BASE + falcon::CPUCTL_ALIAS)
             .unwrap_or(0xDEAD);
-        let gpccs_pc = bar0.read_u32(falcon::GPCCS_BASE + falcon::PC).unwrap_or(0xDEAD);
-        let fecs_alive = ctl2_alias & falcon::CPUCTL_HRESET == 0
-            && ctl2_alias & falcon::CPUCTL_HALTED == 0;
+        let gpccs_pc = bar0
+            .read_u32(falcon::GPCCS_BASE + falcon::PC)
+            .unwrap_or(0xDEAD);
+        let fecs_alive =
+            ctl2_alias & falcon::CPUCTL_HRESET == 0 && ctl2_alias & falcon::CPUCTL_HALTED == 0;
         tracing::info!(
             bdf = %bdf,
             fecs_cpuctl = format_args!("{ctl2:#010x}"),

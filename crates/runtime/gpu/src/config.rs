@@ -311,9 +311,9 @@ impl Default for CachingConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            cache_size_mb: 1024,                   // 1GB
+            cache_size_mb: 1024, // 1GB
             cache_ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECS),
-            cache_path: None,                      // Use system temp directory
+            cache_path: None, // Use system temp directory
         }
     }
 }

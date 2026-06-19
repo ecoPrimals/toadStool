@@ -183,7 +183,10 @@ mod tests {
     #[test]
     fn error_platform_overflow() {
         let e = DriverError::platform_overflow("offset exceeds platform pointer width");
-        assert!(e.to_string().contains("offset exceeds platform pointer width"));
+        assert!(
+            e.to_string()
+                .contains("offset exceeds platform pointer width")
+        );
     }
 
     #[test]

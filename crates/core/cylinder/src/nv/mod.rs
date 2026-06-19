@@ -9,24 +9,24 @@
 //! remain in coralReef until Phase D or trait boundary.
 
 pub mod bar0;
-pub mod registers;
 pub mod compute_device;
 pub mod driver_probe;
 pub mod falcon_pio;
 pub mod generation;
 pub mod gr_init;
-pub mod pmu_init;
-pub mod pri;
-pub mod rm_abi;
 pub mod gsp_bridge;
 pub mod hardware_guard;
 pub mod identity;
 pub mod ioctl;
 pub mod iova;
 pub mod nv_gsp_bridge;
+pub mod pmu_init;
+pub mod pri;
 #[expect(missing_docs, reason = "NV pushbuf — docs tracked as D-DOC")]
 pub mod pushbuf;
 pub mod qmd;
+pub mod registers;
+pub mod rm_abi;
 
 /// Start of the kernel-managed VA region passed to `VM_INIT`.
 ///

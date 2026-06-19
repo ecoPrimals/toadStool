@@ -17,8 +17,7 @@ mod types;
 pub use display::diff_bar_maps;
 pub use scan::{diff_snapshots, scan_bar0, scan_ranges, snapshot_registers};
 pub use types::{
-    BarMap, BarMapDiff, DomainHint, RegisterAccess, RegisterPattern, RegisterProbe,
-    RegisterRegion,
+    BarMap, BarMapDiff, DomainHint, RegisterAccess, RegisterPattern, RegisterProbe, RegisterRegion,
 };
 
 #[cfg(test)]

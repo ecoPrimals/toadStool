@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Target PBDMA discovery for direct GP_PUT writes on warm-caught Volta+ GPUs.
 
-use crate::vfio::channel::registers::{pbdma, pfifo};
 use crate::vfio::channel::VfioChannel;
+use crate::vfio::channel::registers::{pbdma, pfifo};
 use crate::vfio::device::MappedBar;
 
 use super::DoorbellKind;

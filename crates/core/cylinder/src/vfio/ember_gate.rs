@@ -121,7 +121,9 @@ fn is_gate_disabled() -> bool {
     use toadstool_common::interned_strings::socket_env;
 
     let val = std::env::var(socket_env::TOADSTOOL_EMBER_GATE).ok();
-    val.is_some_and(|v| v.eq_ignore_ascii_case("off") || v == "0" || v.eq_ignore_ascii_case("false"))
+    val.is_some_and(|v| {
+        v.eq_ignore_ascii_case("off") || v == "0" || v.eq_ignore_ascii_case("false")
+    })
 }
 
 #[cfg(test)]
@@ -140,13 +142,9 @@ mod tests {
     fn is_gate_disabled_recognizes_off() {
         // Can't safely set env vars in parallel tests, so just test the
         // parsing logic directly.
-        assert!(
-            ["off", "OFF", "0", "false", "False"]
-                .iter()
-                .all(|v| v.eq_ignore_ascii_case("off")
-                    || *v == "0"
-                    || v.eq_ignore_ascii_case("false"))
-        );
+        assert!(["off", "OFF", "0", "false", "False"].iter().all(
+            |v| v.eq_ignore_ascii_case("off") || *v == "0" || v.eq_ignore_ascii_case("false")
+        ));
     }
 
     fn mock_ember_socket(
@@ -160,9 +158,7 @@ mod tests {
 
         let listener =
             std::os::unix::net::UnixListener::bind(&sock_path).expect("bind test socket");
-        listener
-            .set_nonblocking(false)
-            .expect("set blocking");
+        listener.set_nonblocking(false).expect("set blocking");
 
         let handle = std::thread::spawn(move || {
             if let Ok((stream, _)) = listener.accept() {
@@ -238,6 +234,9 @@ mod tests {
         };
         let msg = err.to_string();
         assert!(msg.contains("held by ember"), "unexpected: {msg}");
-        assert!(msg.contains("EmberSession"), "should suggest EmberSession: {msg}");
+        assert!(
+            msg.contains("EmberSession"),
+            "should suggest EmberSession: {msg}"
+        );
     }
 }

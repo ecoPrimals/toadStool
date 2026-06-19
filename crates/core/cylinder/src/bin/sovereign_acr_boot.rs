@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! sovereign_acr_boot — Sovereign ACR boot for GV100 (Titan V).
 //!
 //! Stages signed firmware to VRAM via PRAMIN window, writes ACR descriptor
@@ -9,22 +9,27 @@
 
 #![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
 #![allow(
-    unused_variables, unused_assignments,
-    clippy::unreadable_literal, clippy::borrow_as_ptr,
-    clippy::manual_div_ceil, clippy::map_unwrap_or,
-    clippy::needless_pass_by_value, clippy::cast_lossless,
-    clippy::explicit_iter_loop, clippy::unnecessary_unwrap,
-    clippy::collapsible_if,
+    unused_variables,
+    unused_assignments,
+    clippy::unreadable_literal,
+    clippy::borrow_as_ptr,
+    clippy::manual_div_ceil,
+    clippy::map_unwrap_or,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::explicit_iter_loop,
+    clippy::unnecessary_unwrap,
+    clippy::collapsible_if
 )]
 
-use toadstool_cylinder::nv::registers::{falcon, pgraph, pbus, pfb, pmc, pramin};
 use std::io;
 use std::os::fd::AsFd;
 use std::path::Path;
 use std::process::ExitCode;
-use std::sync::atomic::{fence, Ordering};
+use std::sync::atomic::{Ordering, fence};
 use std::thread;
 use std::time::Duration;
+use toadstool_cylinder::nv::registers::{falcon, pbus, pfb, pgraph, pmc, pramin};
 
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
 
@@ -209,7 +214,10 @@ fn main() -> ExitCode {
             cpuctl_state(pmu_cpuctl)
         );
         println!("  PMU MB0:     0x{pmu_mb0:08X}");
-        println!("  PMU SCTL:    0x{pmu_sctl:08X} (HS mode {})", pmu_sctl & 0xF);
+        println!(
+            "  PMU SCTL:    0x{pmu_sctl:08X} (HS mode {})",
+            pmu_sctl & 0xF
+        );
         println!(
             "  FECS CPUCTL: 0x{fecs_cpuctl:08X} ({})",
             cpuctl_state(fecs_cpuctl)
@@ -275,21 +283,33 @@ fn main() -> ExitCode {
         let gpccs_inst_size = gpccs_inst.as_ref().map_or(0, Vec::len);
         println!(
             "  gr/gpccs_inst.bin:  {} ({gpccs_inst_size} bytes)",
-            if gpccs_inst.is_some() { "OK" } else { "MISSING" }
+            if gpccs_inst.is_some() {
+                "OK"
+            } else {
+                "MISSING"
+            }
         );
 
         let gpccs_data = load_file(&fw_dir.join("gr/gpccs_data.bin"));
         let gpccs_data_size = gpccs_data.as_ref().map_or(0, Vec::len);
         println!(
             "  gr/gpccs_data.bin:  {} ({gpccs_data_size} bytes)",
-            if gpccs_data.is_some() { "OK" } else { "MISSING" }
+            if gpccs_data.is_some() {
+                "OK"
+            } else {
+                "MISSING"
+            }
         );
 
         let sec2_image = load_file(&fw_dir.join("sec2/image.bin"));
         let sec2_image_size = sec2_image.as_ref().map_or(0, Vec::len);
         println!(
             "  sec2/image.bin:     {} ({sec2_image_size} bytes)",
-            if sec2_image.is_some() { "OK" } else { "MISSING" }
+            if sec2_image.is_some() {
+                "OK"
+            } else {
+                "MISSING"
+            }
         );
 
         let sec2_desc = load_file(&fw_dir.join("sec2/desc.bin"));
@@ -314,12 +334,7 @@ fn main() -> ExitCode {
             Some(gpccs_inst),
             Some(gpccs_data),
         ) = (
-            fecs_bl,
-            fecs_inst,
-            fecs_data,
-            gpccs_bl,
-            gpccs_inst,
-            gpccs_data,
+            fecs_bl, fecs_inst, fecs_data, gpccs_bl, gpccs_inst, gpccs_data,
         ) {
             println!("  [OK] All critical blobs loaded.\n");
 
@@ -330,14 +345,12 @@ fn main() -> ExitCode {
             fecs_total = fecs_bl_padded + fecs_inst_size + fecs_data_size;
             let mut fecs_buf = vec![0u8; fecs_total + 0x100];
             fecs_buf[..fecs_bl_size].copy_from_slice(&fecs_bl);
-            fecs_buf[fecs_bl_padded..fecs_bl_padded + fecs_inst_size]
-                .copy_from_slice(&fecs_inst);
-            fecs_buf[fecs_bl_padded + fecs_inst_size..fecs_bl_padded + fecs_inst_size + fecs_data_size]
+            fecs_buf[fecs_bl_padded..fecs_bl_padded + fecs_inst_size].copy_from_slice(&fecs_inst);
+            fecs_buf
+                [fecs_bl_padded + fecs_inst_size..fecs_bl_padded + fecs_inst_size + fecs_data_size]
                 .copy_from_slice(&fecs_data);
 
-            println!(
-                "  FECS blob: {fecs_total} bytes → VRAM 0x{fecs_vram_addr:08X}"
-            );
+            println!("  FECS blob: {fecs_total} bytes → VRAM 0x{fecs_vram_addr:08X}");
             println!(
                 "    bl: {fecs_bl_size} bytes at +0, inst: {fecs_inst_size} at +0x{fecs_bl_padded:X}, data: {fecs_data_size} at +0x{:X}",
                 fecs_bl_padded + fecs_inst_size
@@ -362,9 +375,7 @@ fn main() -> ExitCode {
                     ..gpccs_bl_padded + gpccs_inst_size + gpccs_data_size]
                     .copy_from_slice(&gpccs_data);
 
-                println!(
-                    "  GPCCS blob: {gpccs_total} bytes → VRAM 0x{gpccs_vram_addr:08X}"
-                );
+                println!("  GPCCS blob: {gpccs_total} bytes → VRAM 0x{gpccs_vram_addr:08X}");
 
                 if stage_to_vram(&bar0, &gpccs_buf[..gpccs_total], gpccs_vram_addr, dry_run)
                     .is_err()
@@ -384,12 +395,14 @@ fn main() -> ExitCode {
                         bar0.w32(pbus::BAR0_WINDOW, (fecs_vram_addr >> 16) as u32);
                         fence(Ordering::SeqCst);
                         let first_word = bar0.r32(pramin::BASE);
-                        let expected = u32::from_le_bytes([
-                            blob[0], blob[1], blob[2], blob[3],
-                        ]);
+                        let expected = u32::from_le_bytes([blob[0], blob[1], blob[2], blob[3]]);
                         println!(
                             "    First word: wrote 0x{expected:08X}, read 0x{first_word:08X} — {}",
-                            if first_word == expected { "MATCH" } else { "MISMATCH" }
+                            if first_word == expected {
+                                "MATCH"
+                            } else {
+                                "MISMATCH"
+                            }
                         );
                     }
                 }
@@ -452,20 +465,11 @@ fn main() -> ExitCode {
 
                 /* Phase 4: Trigger ACR via PMU mailbox */
                 println!("=== Phase 4: Trigger ACR Execution ===");
-                println!(
-                    "  Current PMU MB0: 0x{:08X}",
-                    bar0.r32(PMU_FALCON_MAILBOX0)
-                );
-                println!(
-                    "  Current PMU MB1: 0x{:08X}",
-                    bar0.r32(PMU_FALCON_MAILBOX1)
-                );
+                println!("  Current PMU MB0: 0x{:08X}", bar0.r32(PMU_FALCON_MAILBOX0));
+                println!("  Current PMU MB1: 0x{:08X}", bar0.r32(PMU_FALCON_MAILBOX1));
 
                 if !dry_run {
-                    bar0.w32(
-                        PMU_FALCON_MAILBOX1,
-                        (FW_STAGING_VRAM_BASE >> 8) as u32,
-                    );
+                    bar0.w32(PMU_FALCON_MAILBOX1, (FW_STAGING_VRAM_BASE >> 8) as u32);
                     fence(Ordering::SeqCst);
 
                     bar0.w32(PMU_FALCON_MAILBOX0, 0x00000001);
@@ -520,9 +524,7 @@ fn main() -> ExitCode {
                 );
                 println!("  GPCCS: CPUCTL=0x{gpccs_cpuctl:08X} MB0=0x{gpccs_mb0:08X}");
                 println!("  GR_STATUS: 0x{gr_status:08X}");
-                println!(
-                    "  WPR2: LO=0x{wpr2_lo:08X} HI=0x{wpr2_hi:08X} CTRL=0x{wpr2_ctrl:08X}"
-                );
+                println!("  WPR2: LO=0x{wpr2_lo:08X} HI=0x{wpr2_hi:08X} CTRL=0x{wpr2_ctrl:08X}");
 
                 fecs_running = fecs_cpuctl & 0x20 != 0;
                 if fecs_running {
@@ -552,7 +554,10 @@ fn main() -> ExitCode {
                         "ctrl": format!("0x{wpr2_ctrl:08X}"),
                     },
                 });
-                println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&result).unwrap_or_default()
+                );
             }
         } else {
             println!("  [FATAL] Missing critical firmware blobs.");

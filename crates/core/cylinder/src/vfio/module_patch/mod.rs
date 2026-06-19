@@ -40,13 +40,11 @@ use std::path::{Path, PathBuf};
 
 pub use apply::reapply_nops;
 pub use elf::{
-    normalize_relocations, nullify_relocations_at, strip_ksymtab, strip_ksymtab_sections,
-    NmResolver, SymbolResolver,
+    NmResolver, SymbolResolver, normalize_relocations, nullify_relocations_at, strip_ksymtab,
+    strip_ksymtab_sections,
 };
 pub use identity::rename_module_identity;
-pub use types::{
-    ModulePatchResult, PatchError, PatchResult, PatchSet, PatchStrategy, PatchTarget,
-};
+pub use types::{ModulePatchResult, PatchError, PatchResult, PatchSet, PatchStrategy, PatchTarget};
 
 use apply::apply_single_patch;
 use elf::resolve_symbol_file_offsets;
@@ -85,10 +83,7 @@ pub(crate) fn patch_module_with_rename(
         0
     });
     if reloc_normalized > 0 {
-        tracing::info!(
-            reloc_normalized,
-            "normalized proprietary blob relocations"
-        );
+        tracing::info!(reloc_normalized, "normalized proprietary blob relocations");
     }
 
     let symbols = resolve_symbol_file_offsets(&module_bytes);
@@ -150,7 +145,9 @@ pub(crate) fn patch_module_with_rename(
     if let Some((old_name, new_name)) = rename {
         let rename_count = rename_module_identity(&mut module_bytes, old_name, new_name)?;
         tracing::info!(
-            old_name, new_name, rename_count,
+            old_name,
+            new_name,
+            rename_count,
             "module identity renamed for dual-load injection"
         );
         patches.push(PatchResult {
@@ -204,9 +201,7 @@ pub(crate) fn patch_module_with_rename(
         nullify_relocations_at(&mut module_bytes, &patch_ranges);
     }
 
-    let output_name = rename
-        .map(|(_, new)| new)
-        .unwrap_or(&patch_set.module_name);
+    let output_name = rename.map(|(_, new)| new).unwrap_or(&patch_set.module_name);
     let patched_path = std::env::temp_dir()
         .join(format!("toadstool-patched-{output_name}.ko"))
         .display()

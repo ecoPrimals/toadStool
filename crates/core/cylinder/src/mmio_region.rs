@@ -24,10 +24,7 @@ enum Backing {
     /// Region mapped via [`DeviceMmap`]; unmapped on drop by hw-safe.
     Device(DeviceMmap),
     /// Adopted `mmap` result; this struct calls `munmap` on drop.
-    Adopted {
-        ptr: NonNull<u8>,
-        len: usize,
-    },
+    Adopted { ptr: NonNull<u8>, len: usize },
     /// Test-only: do not `munmap`.
     #[cfg(test)]
     Heap(Box<[u8]>),
@@ -113,12 +110,9 @@ impl MmioRegion {
             MmioError::OutOfBounds { offset, .. } => DriverError::MmapFailed(Cow::Owned(format!(
                 "MMIO read: offset {offset:#x} + 4 out of range"
             ))),
-            MmioError::Misaligned {
-                address,
-                alignment,
-            } => DriverError::MmapFailed(Cow::Owned(format!(
-                "MMIO access at {address:#x} is not {alignment}-byte aligned"
-            ))),
+            MmioError::Misaligned { address, alignment } => DriverError::MmapFailed(Cow::Owned(
+                format!("MMIO access at {address:#x} is not {alignment}-byte aligned"),
+            )),
         }
     }
 
@@ -129,9 +123,7 @@ impl MmioRegion {
     /// Returns [`DriverError::MmapFailed`] if `offset + 4` exceeds the region
     /// or the offset is misaligned.
     pub(crate) fn read_u32(&self, offset: usize) -> Result<u32, DriverError> {
-        self.volatile()
-            .read_u32(offset)
-            .map_err(Self::map_hw_err)
+        self.volatile().read_u32(offset).map_err(Self::map_hw_err)
     }
 
     /// Volatile 32-bit write at `offset` bytes from the region base.

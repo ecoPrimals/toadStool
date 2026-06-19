@@ -41,7 +41,10 @@ pub async fn query_local_capabilities() -> Vec<Arc<str>> {
 
 /// Headless query: returns baseline capabilities only (CPU, memory, orchestration).
 /// Skips all GPU/NPU hardware probing for port-free VPS deployment.
-#[expect(clippy::unused_async, reason = "async to match query_local_capabilities signature")]
+#[expect(
+    clippy::unused_async,
+    reason = "async to match query_local_capabilities signature"
+)]
 pub async fn query_baseline_only() -> Vec<Arc<str>> {
     tracing::info!("Headless mode: returning CPU-only baseline capabilities (no GPU/NPU probes)");
     query_baseline_capabilities()
@@ -97,17 +100,16 @@ async fn discover_all_capabilities() -> Vec<Arc<str>> {
 
                 match info.backend {
                     wgpu::Backend::Vulkan
-                        if !capabilities.iter().any(|c| c.as_ref() == "vulkan") => {
-                            capabilities.push(Arc::from("vulkan"));
-                        }
-                    wgpu::Backend::Metal
-                        if !capabilities.iter().any(|c| c.as_ref() == "metal") => {
-                            capabilities.push(Arc::from("metal"));
-                        }
-                    wgpu::Backend::Dx12
-                        if !capabilities.iter().any(|c| c.as_ref() == "dx12") => {
-                            capabilities.push(Arc::from("dx12"));
-                        }
+                        if !capabilities.iter().any(|c| c.as_ref() == "vulkan") =>
+                    {
+                        capabilities.push(Arc::from("vulkan"));
+                    }
+                    wgpu::Backend::Metal if !capabilities.iter().any(|c| c.as_ref() == "metal") => {
+                        capabilities.push(Arc::from("metal"));
+                    }
+                    wgpu::Backend::Dx12 if !capabilities.iter().any(|c| c.as_ref() == "dx12") => {
+                        capabilities.push(Arc::from("dx12"));
+                    }
                     _ => {}
                 }
 

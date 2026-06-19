@@ -557,7 +557,10 @@ fn test_find_timed_out_execution_ids_boundary_not_expired() {
     active.insert(id, sample_active_execution(id, started_at, timeout));
 
     let timed_out = find_timed_out_execution_ids(&active, now);
-    assert!(timed_out.is_empty(), "elapsed == timeout must not trigger cleanup");
+    assert!(
+        timed_out.is_empty(),
+        "elapsed == timeout must not trigger cleanup"
+    );
 }
 
 #[test]

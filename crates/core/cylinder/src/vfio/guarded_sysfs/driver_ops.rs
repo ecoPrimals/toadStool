@@ -41,13 +41,13 @@ fn fork_sysfs_child(
             reason: format!("fork failed: {e}"),
         }),
         Ok(rustix::runtime::Fork::Child(_)) => {
-            use rustix::fs::{open, Mode, OFlags};
+            use rustix::fs::{Mode, OFlags, open};
             let fd = match open(path_c.as_c_str(), OFlags::WRONLY, Mode::empty()) {
                 Ok(fd) => fd,
                 Err(e) => {
                     let code = e.raw_os_error();
                     rustix::runtime::exit_group(code.min(255) as u8 as i32)
-                },
+                }
             };
             let _ = rustix::io::write(&fd, value);
             drop(fd);
@@ -73,7 +73,8 @@ fn wait_for_child(
             Ok(Some((_pid, status))) => {
                 if status.exited() && status.exit_status() == Some(0) {
                     tracing::debug!(
-                        path, elapsed_ms = start.elapsed().as_millis() as u64,
+                        path,
+                        elapsed_ms = start.elapsed().as_millis() as u64,
                         "guarded sysfs write completed"
                     );
                     return Ok(());
@@ -87,7 +88,8 @@ fn wait_for_child(
             Ok(None) => {
                 if start.elapsed() >= timeout {
                     tracing::warn!(
-                        path, timeout_ms = timeout.as_millis() as u64,
+                        path,
+                        timeout_ms = timeout.as_millis() as u64,
                         "guarded sysfs write timed out — killing child"
                     );
                     let _ = rustix::process::kill_process(child_pid, Signal::KILL);
@@ -147,7 +149,12 @@ pub fn sysfs_write_guarded(
     value: &str,
     timeout: Duration,
 ) -> Result<(), GuardedSysfsError> {
-    tracing::debug!(path, value, timeout_ms = timeout.as_millis() as u64, "guarded sysfs write");
+    tracing::debug!(
+        path,
+        value,
+        timeout_ms = timeout.as_millis() as u64,
+        "guarded sysfs write"
+    );
 
     let path_c = CString::new(path).map_err(|_| GuardedSysfsError::WriteFailed {
         path: path.into(),
@@ -177,14 +184,17 @@ pub(crate) fn sysfs_unbind_fire_and_poll(
 ) -> Result<Duration, GuardedSysfsError> {
     let unbind_path = crate::linux_paths::sysfs_pci_driver_unbind(driver);
     tracing::info!(
-        bdf, driver, deadline_s = deadline.as_secs(),
+        bdf,
+        driver,
+        deadline_s = deadline.as_secs(),
         "fire-and-poll unbind: initiating driver teardown"
     );
 
-    let path_c = CString::new(unbind_path.as_str()).map_err(|_| GuardedSysfsError::WriteFailed {
-        path: unbind_path.clone(),
-        reason: "path contains NUL byte".into(),
-    })?;
+    let path_c =
+        CString::new(unbind_path.as_str()).map_err(|_| GuardedSysfsError::WriteFailed {
+            path: unbind_path.clone(),
+            reason: "path contains NUL byte".into(),
+        })?;
 
     let child_pid = fork_sysfs_child(&path_c, bdf.as_bytes())?;
 
@@ -195,7 +205,8 @@ pub(crate) fn sysfs_unbind_fire_and_poll(
         if read_current_driver(bdf).is_none() {
             let symlink_elapsed = start.elapsed();
             tracing::info!(
-                bdf, elapsed_s = symlink_elapsed.as_secs(),
+                bdf,
+                elapsed_s = symlink_elapsed.as_secs(),
                 "fire-and-poll unbind: driver symlink cleared"
             );
 
@@ -214,7 +225,8 @@ pub(crate) fn sysfs_unbind_fire_and_poll(
                     Ok(Some(_status)) => {
                         let total = start.elapsed();
                         tracing::info!(
-                            bdf, elapsed_s = total.as_secs(),
+                            bdf,
+                            elapsed_s = total.as_secs(),
                             remove_ms = (total - symlink_elapsed).as_millis() as u64,
                             "fire-and-poll unbind: child exited (device_lock released)"
                         );
@@ -240,7 +252,8 @@ pub(crate) fn sysfs_unbind_fire_and_poll(
 
         if start.elapsed() >= deadline {
             tracing::error!(
-                bdf, deadline_s = deadline.as_secs(),
+                bdf,
+                deadline_s = deadline.as_secs(),
                 "fire-and-poll unbind: deadline exceeded — device still bound"
             );
             return Err(GuardedSysfsError::Timeout {
@@ -350,9 +363,14 @@ pub(crate) fn restore_flr(bdf: &str) {
 /// protect the newly-warm state during the warm swap (Exp 229).
 pub fn prepare_anchor_release(bdf: &str, suppress_sbr: bool) {
     tracing::info!(
-        bdf, suppress_sbr,
+        bdf,
+        suppress_sbr,
         "preparing anchor release: pinning bridges + disabling FLR{}",
-        if suppress_sbr { " + suppressing SBR" } else { " (SBR allowed for cold DEVINIT)" }
+        if suppress_sbr {
+            " + suppressing SBR"
+        } else {
+            " (SBR allowed for cold DEVINIT)"
+        }
     );
     pin_bridge_hierarchy(bdf);
     disable_flr(bdf);
@@ -397,8 +415,11 @@ pub(crate) fn unbind_iommu_siblings(bdf: &str) -> Vec<(String, Option<String>)> 
         if let Some(ref drv) = prev {
             let unbind = crate::linux_paths::sysfs_pci_driver_unbind(drv);
             match sysfs_write_guarded(&unbind, sibling, UNBIND_TIMEOUT) {
-                Ok(()) => tracing::debug!(bdf = sibling.as_str(), driver = drv.as_str(),
-                                          "IOMMU sibling unbound (guarded)"),
+                Ok(()) => tracing::debug!(
+                    bdf = sibling.as_str(),
+                    driver = drv.as_str(),
+                    "IOMMU sibling unbound (guarded)"
+                ),
                 Err(e) => tracing::warn!(bdf = sibling.as_str(), driver = drv.as_str(),
                                          error = %e, "IOMMU sibling unbind failed (guarded)"),
             }
@@ -444,19 +465,27 @@ pub(crate) fn handoff_rollback(
     device_poisoned: bool,
 ) {
     if device_poisoned {
-        tracing::error!(bdf,
+        tracing::error!(
+            bdf,
             "handoff rollback: device POISONED (D-state) — skipping all \
-             sysfs ops on target to protect ember. Device is lost until reboot.");
+             sysfs ops on target to protect ember. Device is lost until reboot."
+        );
 
         if let Some(name) = module_name {
-            tracing::warn!(bdf, module = name,
-                "rollback: skipping rmmod (device poisoned, module likely stuck)");
+            tracing::warn!(
+                bdf,
+                module = name,
+                "rollback: skipping rmmod (device poisoned, module likely stuck)"
+            );
         }
 
         if !siblings.is_empty() {
             rebind_siblings_to_vfio(siblings);
-            tracing::info!(bdf, count = siblings.len(),
-                "rollback: siblings rebound (device itself abandoned)");
+            tracing::info!(
+                bdf,
+                count = siblings.len(),
+                "rollback: siblings rebound (device itself abandoned)"
+            );
         }
         return;
     }

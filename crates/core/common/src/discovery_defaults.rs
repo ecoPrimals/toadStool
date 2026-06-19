@@ -65,9 +65,9 @@ pub struct DiscoveryConfig {
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
-        let is_production =
-            env::var(socket_env::TOADSTOOL_ENV).unwrap_or_else(|_| "development".to_string())
-                == "production";
+        let is_production = env::var(socket_env::TOADSTOOL_ENV)
+            .unwrap_or_else(|_| "development".to_string())
+            == "production";
 
         Self {
             // Only enable fallback in non-production
@@ -132,7 +132,8 @@ pub struct LocalhostFallbacks {
 impl Default for LocalhostFallbacks {
     fn default() -> Self {
         Self {
-            enabled: env::var(socket_env::TOADSTOOL_ENV).unwrap_or_else(|_| "development".to_string())
+            enabled: env::var(socket_env::TOADSTOOL_ENV)
+                .unwrap_or_else(|_| "development".to_string())
                 != "production",
         }
     }
@@ -183,9 +184,9 @@ pub enum DiscoveryErrorStrategy {
 
 impl Default for DiscoveryErrorStrategy {
     fn default() -> Self {
-        let is_production =
-            env::var(socket_env::TOADSTOOL_ENV).unwrap_or_else(|_| "development".to_string())
-                == "production";
+        let is_production = env::var(socket_env::TOADSTOOL_ENV)
+            .unwrap_or_else(|_| "development".to_string())
+            == "production";
 
         if is_production {
             Self::FailFast

@@ -555,10 +555,7 @@ async fn test_start_biome_internal_unsupported_git_workload_fails() {
 #[tokio::test]
 async fn test_start_biome_internal_wasm_missing_file_fails() {
     let executor = BiomeExecutor::new().await.expect("executor should create");
-    let manifest = make_wasm_manifest(
-        "/nonexistent/toadstool-test-module.wasm",
-        "deadbeef",
-    );
+    let manifest = make_wasm_manifest("/nonexistent/toadstool-test-module.wasm", "deadbeef");
 
     let result = executor
         .start_biome_internal(

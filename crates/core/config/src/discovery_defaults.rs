@@ -176,14 +176,15 @@ impl FallbackEndpoints {
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::ports::DISCOVERY_LOCALHOST_FALLBACK_BASE);
-        let enable_localhost_fallback = std::env::var(socket_env::TOADSTOOL_DISCOVERY_FALLBACK_ENABLED)
-            .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "true" | "1" | "yes" | "on" => Some(true),
-                "false" | "0" | "no" | "off" => Some(false),
-                _ => None,
-            })
-            .unwrap_or(true);
+        let enable_localhost_fallback =
+            std::env::var(socket_env::TOADSTOOL_DISCOVERY_FALLBACK_ENABLED)
+                .ok()
+                .and_then(|v| match v.to_lowercase().as_str() {
+                    "true" | "1" | "yes" | "on" => Some(true),
+                    "false" | "0" | "no" | "off" => Some(false),
+                    _ => None,
+                })
+                .unwrap_or(true);
         Self {
             enable_localhost_fallback,
             localhost_base_port,

@@ -169,9 +169,7 @@ async fn dispatch_submit_no_binary_or_binary_b64_returns_error() {
         .await
         .expect_err("missing both binary fields should fail");
     assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-    assert!(
-        err.message.contains("binary") || err.message.contains("binary_b64")
-    );
+    assert!(err.message.contains("binary") || err.message.contains("binary_b64"));
 }
 
 // ── Phase A+B: ember device lifecycle integration ──
@@ -260,10 +258,11 @@ async fn capabilities_includes_glowplug_info() {
         glowplug["personalities"].as_array().is_some(),
         "glowplug.personalities should be an array"
     );
-    let personalities = glowplug["personalities"]
-        .as_array()
-        .unwrap();
-    assert!(personalities.len() >= 10, "should have at least 10 personalities");
+    let personalities = glowplug["personalities"].as_array().unwrap();
+    assert!(
+        personalities.len() >= 10,
+        "should have at least 10 personalities"
+    );
     assert!(personalities.iter().any(|p| p == "vfio"));
     assert!(personalities.iter().any(|p| p == "akida"));
 }
@@ -328,8 +327,14 @@ fn resolve_shader_info_native_name_preferred_over_alias() {
         "shared_memory": 16384,
     });
     let info = resolve_shader_info(&si, [256, 1, 1]);
-    assert_eq!(info.gpr_count, 32, "native gpr_count should win over gprs alias");
-    assert_eq!(info.shared_mem_bytes, 8192, "native shared_mem_bytes should win");
+    assert_eq!(
+        info.gpr_count, 32,
+        "native gpr_count should win over gprs alias"
+    );
+    assert_eq!(
+        info.shared_mem_bytes, 8192,
+        "native shared_mem_bytes should win"
+    );
 }
 
 #[test]

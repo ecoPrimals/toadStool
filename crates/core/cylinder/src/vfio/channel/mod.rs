@@ -15,12 +15,12 @@
 //! 5. Bind instance block to channel via PCCSR registers
 //! 6. Enable channel and submit runlist to PFIFO
 
+mod bar2_init;
 pub mod devinit;
+mod devinit_ops;
 pub mod fecs;
 pub mod glowplug;
 pub mod hbm2_training;
-mod bar2_init;
-mod devinit_ops;
 mod kepler_channel;
 mod mmu;
 #[expect(
@@ -69,7 +69,10 @@ pub struct VfioChannel {
     pub(super) pt0: DmaBuffer,
     #[expect(dead_code, reason = "kept alive for DMA buffer lifecycle")]
     pub(super) fault_buf: DmaBuffer,
-    #[expect(dead_code, reason = "IOMMU guard pages — prevent stale PBDMA IO_PAGE_FAULTs")]
+    #[expect(
+        dead_code,
+        reason = "IOMMU guard pages — prevent stale PBDMA IO_PAGE_FAULTs"
+    )]
     pub(super) guard_pages: Vec<DmaBuffer>,
     pub(super) channel_id: u32,
     pub(super) runlist_id: u32,
@@ -106,10 +109,9 @@ impl VfioChannel {
 
         match profile.page_table_format {
             PageTableFormat::V1TwoLevel => {
-                let guard = crate::nv::hardware_guard::GuardedBar::new(bar0, 16)
-                    .map_err(|e| DriverError::Unsupported(Cow::Owned(
-                        format!("Kepler BAR0 guard init: {e}")
-                    )))?;
+                let guard = crate::nv::hardware_guard::GuardedBar::new(bar0, 16).map_err(|e| {
+                    DriverError::Unsupported(Cow::Owned(format!("Kepler BAR0 guard init: {e}")))
+                })?;
                 Self::create_kepler(
                     container,
                     &guard,

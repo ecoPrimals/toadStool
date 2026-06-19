@@ -171,11 +171,16 @@ use toadstool_distributed::crypto_integration::{
 
 impl DispatchHandler {
     /// Lazily fetch and cache the `compute` purpose key from BearDog secrets.
-    async fn get_purpose_key(&self) -> Result<toadstool::encryption::EncryptionKey, JsonRpcError> {
+    ///
+    /// Returns `Arc<EncryptionKey>` — cache hits cost a pointer bump, not a
+    /// full key-material clone.
+    async fn get_purpose_key(
+        &self,
+    ) -> Result<std::sync::Arc<toadstool::encryption::EncryptionKey>, JsonRpcError> {
         {
             let guard = self.cached_purpose_key.read().await;
             if let Some(ref key) = *guard {
-                return Ok(key.clone());
+                return Ok(std::sync::Arc::clone(key));
             }
         }
 
@@ -190,8 +195,9 @@ impl DispatchHandler {
                 JsonRpcError::internal_error(format!("purpose key retrieval failed: {e}"))
             })?;
 
+        let key = std::sync::Arc::new(key);
         let mut guard = self.cached_purpose_key.write().await;
-        *guard = Some(key.clone());
+        *guard = Some(std::sync::Arc::clone(&key));
         Ok(key)
     }
 
@@ -219,17 +225,10 @@ impl DispatchHandler {
             .await
             .map_err(|e| JsonRpcError::internal_error(format!("crypto.encrypt failed: {e}")))?;
 
-        let nonce_b64 = response
-            .metadata
-            .get("nonce")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
         let envelope = serde_json::json!({
             "v": 1,
             "ct": base64::engine::general_purpose::STANDARD.encode(&response.data),
-            "n": nonce_b64,
+            "n": response.metadata.get("nonce").and_then(|v| v.as_str()).unwrap_or(""),
             "alg": response.algorithm,
         });
 
@@ -343,26 +342,28 @@ impl DispatchHandler {
                 toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
             );
 
-        let workgroup_total =
-            u64::from(workgroup_size[0]) * u64::from(workgroup_size[1]) * u64::from(workgroup_size[2]);
+        let workgroup_total = u64::from(workgroup_size[0])
+            * u64::from(workgroup_size[1])
+            * u64::from(workgroup_size[2]);
         enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
         self.acquire_device_handle(&bdf).await;
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let submit_instant = std::time::Instant::now();
+        let binary_size = binary_bytes.len();
         let job = DispatchJob {
             id: job_id.clone(),
             bdf: bdf.clone(),
             status: DispatchStatus::Submitted,
             submitted_at: submit_instant,
-            binary_size: binary_bytes.len(),
+            binary_size,
             result: None,
         };
 
         {
             let mut jobs = self.jobs.write().await;
-            jobs.insert(job_id.clone(), job);
+            jobs.insert(job.id.clone(), job);
         }
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);
@@ -379,7 +380,13 @@ impl DispatchHandler {
         // Phase D: try local dispatch via cylinder before coral_client IPC.
         if needs_coral
             && let Some(local_result) = self
-                .try_local_dispatch(&bdf, &binary_bytes, workgroup_size, shader_info.as_ref(), &buffer_descs)
+                .try_local_dispatch(
+                    &bdf,
+                    &binary_bytes,
+                    workgroup_size,
+                    shader_info.as_ref(),
+                    &buffer_descs,
+                )
                 .await
         {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
@@ -389,22 +396,30 @@ impl DispatchHandler {
                         .get("readback_ms")
                         .and_then(serde_json::Value::as_u64)
                         .unwrap_or(0);
-                    super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                    super::telemetry::emit_dispatch_completion_telemetry(
+                        &super::telemetry::DispatchTelemetryEmit {
                             ctx,
                             method: "compute.dispatch.submit",
                             dispatch_ms,
                             readback_ms,
                             dispatch_mode: "local_cylinder",
                             bdf: &bdf,
-                            binary_bytes: &binary_bytes,
+                            binary_size,
                             workgroup_size,
                             timeout_ms,
                             success: true,
-                        });
-                    let mut jobs = self.jobs.write().await;
-                    if let Some(job) = jobs.get_mut(&job_id) {
-                        job.status = DispatchStatus::Completed;
-                        job.result = Some(local_output.clone());
+                        },
+                    );
+                    let readback_ms_out = local_output
+                        .get("readback_ms")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    {
+                        let mut jobs = self.jobs.write().await;
+                        if let Some(job) = jobs.get_mut(&job_id) {
+                            job.status = DispatchStatus::Completed;
+                            job.result = Some(local_output.clone());
+                        }
                     }
                     return Ok(serde_json::json!({
                         "domain": "compute.dispatch",
@@ -415,12 +430,12 @@ impl DispatchHandler {
                         "error": null,
                         "timing": {
                             "dispatch_ms": dispatch_ms,
-                            "readback_ms": local_output.get("readback_ms").and_then(serde_json::Value::as_u64).unwrap_or(0),
+                            "readback_ms": readback_ms_out,
                         },
                         "metadata": {
                             "bdf": bdf,
                             "dispatch_mode": "local_cylinder",
-                            "binary_size": binary_bytes.len(),
+                            "binary_size": binary_size,
                             "thermal_checked": thermal.is_some(),
                             "workgroup_size": workgroup_size,
                         },
@@ -434,18 +449,20 @@ impl DispatchHandler {
 
         if needs_coral && !self.coral_client.is_available().await {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
-            super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+            super::telemetry::emit_dispatch_completion_telemetry(
+                &super::telemetry::DispatchTelemetryEmit {
                     ctx,
                     method: "compute.dispatch.submit",
                     dispatch_ms,
                     readback_ms: 0,
                     dispatch_mode: &dispatch_mode,
                     bdf: &bdf,
-                    binary_bytes: &binary_bytes,
+                    binary_size,
                     workgroup_size,
                     timeout_ms,
                     success: false,
-                });
+                },
+            );
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
@@ -463,7 +480,7 @@ impl DispatchHandler {
                 "metadata": {
                     "bdf": bdf,
                     "dispatch_mode": dispatch_mode,
-                    "binary_size": binary_bytes.len(),
+                    "binary_size": binary_size,
                     "note": "Start a visualization capability provider — ToadStool discovers providers at runtime via capability registry",
                 },
             }));
@@ -474,7 +491,7 @@ impl DispatchHandler {
             let dispatch_binary = if encrypted {
                 self.encrypt_payload(&binary_bytes).await?
             } else {
-                binary_bytes.clone()
+                binary_bytes
             };
 
             let mut dispatch_params = serde_json::json!({
@@ -504,22 +521,26 @@ impl DispatchHandler {
                         let readback_start = std::time::Instant::now();
                         let decrypted = self.decrypt_result(&result).await?;
                         let readback_ms = readback_start.elapsed().as_millis() as u64;
-                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                        super::telemetry::emit_dispatch_completion_telemetry(
+                            &super::telemetry::DispatchTelemetryEmit {
                                 ctx,
                                 method: "compute.dispatch.submit",
                                 dispatch_ms,
                                 readback_ms,
                                 dispatch_mode: &dispatch_mode,
                                 bdf: &bdf,
-                                binary_bytes: &binary_bytes,
+                                binary_size,
                                 workgroup_size,
                                 timeout_ms,
                                 success: true,
-                            });
-                        let mut jobs = self.jobs.write().await;
-                        if let Some(job) = jobs.get_mut(&job_id) {
-                            job.status = DispatchStatus::Completed;
-                            job.result = Some(decrypted.clone());
+                            },
+                        );
+                        {
+                            let mut jobs = self.jobs.write().await;
+                            if let Some(job) = jobs.get_mut(&job_id) {
+                                job.status = DispatchStatus::Completed;
+                                job.result = Some(decrypted.clone());
+                            }
                         }
                         return Ok(serde_json::json!({
                             "domain": "compute.dispatch",
@@ -532,7 +553,7 @@ impl DispatchHandler {
                             "metadata": {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
-                                "binary_size": binary_bytes.len(),
+                                "binary_size": binary_size,
                                 "thermal_checked": thermal.is_some(),
                                 "workgroup_size": workgroup_size,
                                 "encrypted": encrypted,
@@ -542,21 +563,26 @@ impl DispatchHandler {
                     }
                     Err(e) => {
                         let dispatch_ms = pre_dispatch.elapsed().as_millis() as u64;
-                        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
+                        let err_msg = e.to_string();
+                        super::telemetry::emit_dispatch_completion_telemetry(
+                            &super::telemetry::DispatchTelemetryEmit {
                                 ctx,
                                 method: "compute.dispatch.submit",
                                 dispatch_ms,
                                 readback_ms: 0,
                                 dispatch_mode: &dispatch_mode,
                                 bdf: &bdf,
-                                binary_bytes: &binary_bytes,
+                                binary_size,
                                 workgroup_size,
                                 timeout_ms,
                                 success: false,
-                            });
-                        let mut jobs = self.jobs.write().await;
-                        if let Some(job) = jobs.get_mut(&job_id) {
-                            job.status = DispatchStatus::Failed(e.to_string());
+                            },
+                        );
+                        {
+                            let mut jobs = self.jobs.write().await;
+                            if let Some(job) = jobs.get_mut(&job_id) {
+                                job.status = DispatchStatus::Failed(err_msg.clone());
+                            }
                         }
                         return Ok(serde_json::json!({
                             "domain": "compute.dispatch",
@@ -564,12 +590,12 @@ impl DispatchHandler {
                             "job_id": job_id,
                             "status": "failed",
                             "output": null,
-                            "error": e.to_string(),
+                            "error": err_msg,
                             "timing": { "dispatch_ms": dispatch_ms, "readback_ms": 0 },
                             "metadata": {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
-                                "binary_size": binary_bytes.len(),
+                                "binary_size": binary_size,
                                 "thermal_checked": thermal.is_some(),
                                 "workgroup_size": workgroup_size,
                             },
@@ -580,18 +606,20 @@ impl DispatchHandler {
         }
 
         let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
-        super::telemetry::emit_dispatch_completion_telemetry(&super::telemetry::DispatchTelemetryEmit {
-            ctx,
-            method: "compute.dispatch.submit",
-            dispatch_ms,
-            readback_ms: 0,
-            dispatch_mode: &dispatch_mode,
-            bdf: &bdf,
-            binary_bytes: &binary_bytes,
-            workgroup_size,
-            timeout_ms,
-            success: false,
-        });
+        super::telemetry::emit_dispatch_completion_telemetry(
+            &super::telemetry::DispatchTelemetryEmit {
+                ctx,
+                method: "compute.dispatch.submit",
+                dispatch_ms,
+                readback_ms: 0,
+                dispatch_mode: &dispatch_mode,
+                bdf: &bdf,
+                binary_size,
+                workgroup_size,
+                timeout_ms,
+                success: false,
+            },
+        );
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "submit",
@@ -603,7 +631,7 @@ impl DispatchHandler {
             "metadata": {
                 "bdf": bdf,
                 "dispatch_mode": dispatch_mode,
-                "binary_size": binary_bytes.len(),
+                "binary_size": binary_size,
                 "thermal_checked": thermal.is_some(),
                 "workgroup_size": workgroup_size,
                 "shader_info": shader_info,

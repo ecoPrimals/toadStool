@@ -5,8 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info};
 
-use toadstool_common::interned_strings::socket_env;
 use toadstool::error::ToadStoolResult;
+use toadstool_common::interned_strings::socket_env;
 
 use crate::platforms::*;
 

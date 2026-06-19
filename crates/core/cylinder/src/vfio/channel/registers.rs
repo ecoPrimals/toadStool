@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code, reason = "hardware register constants — comprehensive coverage for evolving absorption")]
+#![allow(
+    dead_code,
+    reason = "hardware register constants — comprehensive coverage for evolving absorption"
+)]
 //! BAR0 register offsets and IOVA constants for Volta+ PFIFO channels.
 //!
 //! Register sources:
@@ -494,10 +497,16 @@ pub(super) const FAULT_BUF_IOVA: u64 = 0xA000;
 // to keep the IOVA layout stable across generations.
 
 /// Kepler PD IOVA — alias for PD3_IOVA.
-#[expect(dead_code, reason = "Kepler page table constants — used when Kepler VFIO dispatch wired")]
+#[expect(
+    dead_code,
+    reason = "Kepler page table constants — used when Kepler VFIO dispatch wired"
+)]
 pub(super) const KEPLER_PD_IOVA: u64 = PD3_IOVA;
 /// Kepler PT IOVA — alias for PT0_IOVA.
-#[expect(dead_code, reason = "Kepler page table constants — used when Kepler VFIO dispatch wired")]
+#[expect(
+    dead_code,
+    reason = "Kepler page table constants — used when Kepler VFIO dispatch wired"
+)]
 pub(super) const KEPLER_PT_IOVA: u64 = PT0_IOVA;
 /// NOP push buffer IOVA — dedicated buffer with valid NOP GPU methods.
 pub(super) const NOP_PB_IOVA: u64 = 0xB000;

@@ -27,8 +27,8 @@ mod inner {
 
     use crate::platforms::*;
 
-    use super::SerialPortDiscovery;
     use super::DiscoveryMethod;
+    use super::SerialPortDiscovery;
 
     impl DiscoveryMethod for SerialPortDiscovery {
         fn get_name(&self) -> &str {
@@ -108,8 +108,8 @@ mod feature_disabled {
 
     use crate::serial_transport::SERIAL_TRANSPORT_UNAVAILABLE;
 
-    use super::SerialPortDiscovery;
     use super::DiscoveryMethod;
+    use super::SerialPortDiscovery;
 
     impl DiscoveryMethod for SerialPortDiscovery {
         fn get_name(&self) -> &str {
@@ -118,7 +118,9 @@ mod feature_disabled {
 
         fn discover(&self) -> super::super::DiscoveryFuture<'_> {
             Box::pin(async move {
-                Err(ToadStoolError::runtime(SERIAL_TRANSPORT_UNAVAILABLE.to_string()))
+                Err(ToadStoolError::runtime(
+                    SERIAL_TRANSPORT_UNAVAILABLE.to_string(),
+                ))
             })
         }
 

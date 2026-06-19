@@ -263,14 +263,11 @@ impl InputManager {
     /// Updates the shared focus state visible to all device event tasks so
     /// that subsequent events are tagged with the new target window.
     pub fn set_focus(&mut self, window: Option<WindowId>) {
-        let previous = self
-            .shared_focus
-            .write()
-            .map_or(None, |mut g| {
-                let old = *g;
-                *g = window;
-                old
-            });
+        let previous = self.shared_focus.write().map_or(None, |mut g| {
+            let old = *g;
+            *g = window;
+            old
+        });
 
         if previous != window {
             tracing::debug!("Input focus changed: {:?} → {:?}", previous, window);

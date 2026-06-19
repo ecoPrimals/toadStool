@@ -1,6 +1,4 @@
-use crate::{
-    BufferHandle, ComputeDevice, DispatchDims, MemoryDomain, ShaderInfo,
-};
+use crate::{BufferHandle, ComputeDevice, DispatchDims, MemoryDomain, ShaderInfo};
 
 use super::NvVfioComputeDevice;
 
@@ -83,12 +81,7 @@ fn dispatch_rejects_empty_shader() {
     let mut dev = NvVfioComputeDevice::new("0000:01:00.0");
     dev.set_fecs_ready(true);
     let err = dev
-        .dispatch(
-            &[],
-            &[],
-            DispatchDims::new(1, 1, 1),
-            &ShaderInfo::default(),
-        )
+        .dispatch(&[], &[], DispatchDims::new(1, 1, 1), &ShaderInfo::default())
         .unwrap_err();
     let msg = err.to_string();
     assert!(

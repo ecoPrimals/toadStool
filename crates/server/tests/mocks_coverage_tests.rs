@@ -5,80 +5,41 @@
     clippy::unreadable_literal,
     clippy::no_effect_underscore_binding
 )]
-//! Coverage tests for server/src/mocks.rs
+//! Coverage tests for toadstool-testing mock infrastructure.
 //!
-//! Target: Get mocks.rs from 0% → 100% coverage
+//! Validates that the canonical `MockResourceMonitor` from `toadstool-testing`
+//! works correctly in server test contexts.
 
 use toadstool::ResourceMonitor;
-
-// Import mocks module directly from source since it's not exported in lib.rs
-#[path = "../src/mocks.rs"]
-mod mocks;
-
-use mocks::*;
-
-// ============================================================================
-// MockResourceMonitor Tests
-// ============================================================================
+use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
 
 #[test]
-fn test_mock_resource_monitor_new() {
-    let monitor = MockResourceMonitor::new();
-    // Should not panic
-    assert_eq!(
-        std::mem::size_of_val(&monitor),
-        std::mem::size_of::<MockResourceMonitor>()
-    );
-}
-
-#[test]
-fn test_mock_resource_monitor_default() {
-    let monitor = MockResourceMonitor;
-    // Should not panic
-    assert_eq!(
-        std::mem::size_of_val(&monitor),
-        std::mem::size_of::<MockResourceMonitor>()
-    );
-}
-
-#[test]
-fn test_mock_resource_monitor_start_monitoring() {
-    let monitor = MockResourceMonitor::new();
-    let result = monitor.start_monitoring("test-workload");
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_mock_resource_monitor_stop_monitoring() {
-    let monitor = MockResourceMonitor::new();
-    let result = monitor.stop_monitoring("test-workload");
-    assert!(result.is_ok());
+fn test_mock_resource_monitor_successful() {
+    let monitor = MockResourceMonitor::new_successful();
+    assert!(monitor.start_monitoring("test-workload").is_ok());
+    assert!(monitor.stop_monitoring("test-workload").is_ok());
 }
 
 #[tokio::test]
 async fn test_mock_resource_monitor_get_metrics() {
-    let monitor = MockResourceMonitor::new();
+    let monitor = MockResourceMonitor::new_successful();
     let result = monitor.get_metrics("test-workload").await;
     assert!(result.is_ok());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mock_resource_monitor_get_system_resources() {
-    let monitor = MockResourceMonitor::new();
+    let monitor = MockResourceMonitor::new_successful();
     let result = monitor.get_system_resources().await;
 
     assert!(result.is_ok());
     let resources = result.unwrap();
-    assert_eq!(resources.available_cpu_cores, 4.0);
-    assert_eq!(resources.available_memory_bytes, 8_000_000_000);
-    assert_eq!(resources.available_storage_bytes, 100_000_000_000);
-    assert_eq!(resources.available_network_bandwidth, Some(1_000_000_000));
-    assert_eq!(resources.available_gpu_units, 1);
+    assert!(resources.available_cpu_cores > 0.0);
 }
 
 #[tokio::test]
 async fn test_mock_resource_monitor_multiple_workloads() {
-    let monitor = MockResourceMonitor::new();
+    let monitor = MockResourceMonitor::new_successful();
 
     monitor.start_monitoring("workload1").unwrap();
     monitor.start_monitoring("workload2").unwrap();
@@ -97,96 +58,43 @@ async fn test_mock_resource_monitor_multiple_workloads() {
     monitor.stop_monitoring("workload3").unwrap();
 }
 
-// ============================================================================
-// MockSystemResourcesWithUsage Tests
-// ============================================================================
+#[tokio::test]
+async fn test_mock_resource_monitor_limit_violations() {
+    let monitor = MockResourceMonitor::new_limit_violations();
 
-#[test]
-fn test_mock_system_resources_with_usage_default() {
-    let resources = MockSystemResourcesWithUsage::default();
+    assert!(monitor.start_monitoring("test-workload").is_ok());
+    let metrics = monitor.get_metrics("test-workload").await.unwrap();
+    assert!(metrics.cpu.usage_percent > 90.0);
 
-    assert_eq!(resources.cpu_usage_percent, 45.2);
-    assert_eq!(resources.memory_usage_percent, 62.8);
-    assert_eq!(resources.available_memory_bytes, 4_000_000_000);
-    assert_eq!(resources.total_memory_bytes, 8_000_000_000);
-    assert_eq!(resources.disk_usage_percent, 25.0);
-    assert_eq!(resources.network_bytes_sent, 1_000_000);
-    assert_eq!(resources.network_bytes_received, 2_000_000);
-    assert_eq!(resources.load_average, [0.5, 0.7, 0.9]);
-    assert_eq!(resources.uptime_seconds, 86400);
+    let system_resources = monitor.get_system_resources().await.unwrap();
+    assert!(system_resources.available_cpu_cores < 4.0);
+    assert!(monitor.stop_monitoring("test-workload").is_ok());
 }
 
-#[test]
-fn test_mock_system_resources_with_usage_memory_calculations() {
-    let resources = MockSystemResourcesWithUsage::default();
-
-    // Verify memory values are sensible
-    assert!(resources.available_memory_bytes < resources.total_memory_bytes);
-    assert!(resources.memory_usage_percent > 0.0);
-    assert!(resources.memory_usage_percent < 100.0);
-
-    let used_memory = resources.total_memory_bytes - resources.available_memory_bytes;
-    assert_eq!(used_memory, 4_000_000_000); // 4GB used
+#[tokio::test]
+async fn test_mock_resource_monitor_failure_mode() {
+    let monitor = MockResourceMonitor::new_monitoring_failure();
+    assert!(monitor.start_monitoring("test-workload").is_err());
+    assert!(monitor.get_metrics("test-workload").await.is_err());
+    assert!(monitor.stop_monitoring("test-workload").is_err());
+    assert!(monitor.get_system_resources().await.is_err());
 }
-
-#[test]
-fn test_mock_system_resources_with_usage_load_average() {
-    let resources = MockSystemResourcesWithUsage::default();
-
-    assert_eq!(resources.load_average.len(), 3);
-    assert!(resources.load_average[0] < resources.load_average[1]);
-    assert!(resources.load_average[1] < resources.load_average[2]);
-}
-
-#[test]
-fn test_mock_system_resources_with_usage_custom() {
-    let resources = MockSystemResourcesWithUsage {
-        cpu_usage_percent: 80.0,
-        memory_usage_percent: 90.0,
-        available_memory_bytes: 1_000_000_000,
-        total_memory_bytes: 16_000_000_000,
-        disk_usage_percent: 50.0,
-        network_bytes_sent: 5_000_000,
-        network_bytes_received: 10_000_000,
-        load_average: [1.0, 2.0, 3.0],
-        uptime_seconds: 172800,
-    };
-
-    assert_eq!(resources.cpu_usage_percent, 80.0);
-    assert_eq!(resources.uptime_seconds, 172800);
-}
-
-#[test]
-fn test_mock_system_resources_with_usage_network_totals() {
-    let resources = MockSystemResourcesWithUsage::default();
-
-    let total_network = resources.network_bytes_sent + resources.network_bytes_received;
-    assert_eq!(total_network, 3_000_000);
-}
-
-// ============================================================================
-// Integration Tests
-// ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mock_integration_workflow() {
-    let monitor = MockResourceMonitor::new();
+    let monitor = MockResourceMonitor::new_successful();
 
-    // Start monitoring
     monitor.start_monitoring("integration-test").unwrap();
 
-    // Get system resources
     let sys_resources = monitor.get_system_resources().await.unwrap();
     assert!(sys_resources.available_cpu_cores > 0.0);
 
-    // Get metrics (now async)
     let metrics = monitor.get_metrics("integration-test").await.unwrap();
     assert_eq!(
         std::mem::size_of_val(&metrics),
         std::mem::size_of::<toadstool::RuntimeMetrics>()
     );
 
-    // Stop monitoring
     monitor.stop_monitoring("integration-test").unwrap();
 }
 

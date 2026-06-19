@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use toadstool_common::interned_strings::socket_env;
 use toadstool::error::ToadStoolResult;
+use toadstool_common::interned_strings::socket_env;
 use tracing::debug;
 
 use crate::ResourceRequirements;
@@ -176,9 +176,7 @@ mod tests {
     #[tokio::test]
     async fn test_load_balancer_new() -> ToadStoolResult<()> {
         let lb = setup_load_balancer().await?;
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
 
         assert!(!advice.recommended_nodes.is_empty());
         assert!(advice.reasoning.contains("localhost") || advice.reasoning.contains("No capacity"));
@@ -188,9 +186,7 @@ mod tests {
     #[tokio::test]
     async fn test_request_advice_empty_capacity() -> ToadStoolResult<()> {
         let lb = setup_load_balancer().await?;
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
 
         assert_eq!(
             advice.recommended_nodes[0],
@@ -208,9 +204,7 @@ mod tests {
         lb.update_node_load(&"node1".to_string(), 0.3).await?;
         lb.update_node_load(&"node2".to_string(), 0.7).await?;
 
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
 
         assert_eq!(advice.recommended_nodes, vec!["node1".to_string()]);
         assert!(advice.reasoning.contains("node1"));
@@ -225,9 +219,7 @@ mod tests {
 
         lb.update_node_load(&"solo-node".to_string(), 0.5).await?;
 
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
 
         assert_eq!(advice.recommended_nodes, vec!["solo-node".to_string()]);
         assert_eq!(advice.load_distribution.get("solo-node"), Some(&0.5));
@@ -240,9 +232,7 @@ mod tests {
 
         lb.update_node_load(&"n1".to_string(), 0.85).await?;
 
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
         assert_eq!(advice.load_distribution.get("n1"), Some(&0.85));
         Ok(())
     }
@@ -253,9 +243,7 @@ mod tests {
 
         lb.update_node_load(&"overload".to_string(), 1.5).await?;
 
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
         assert_eq!(advice.load_distribution.get("overload"), Some(&1.0));
         Ok(())
     }
@@ -299,9 +287,7 @@ mod tests {
         lb.update_node_load(&"a".to_string(), 0.1).await?;
         lb.update_node_load(&"b".to_string(), 0.9).await?;
 
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
         assert_eq!(advice.recommended_nodes, vec!["a".to_string()]);
         assert!(advice.reasoning.contains("10%") || advice.reasoning.contains("10"));
         Ok(())
@@ -311,16 +297,10 @@ mod tests {
     async fn test_performance_metrics_recorded() -> ToadStoolResult<()> {
         let lb = setup_load_balancer().await?;
 
-        let _ = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
-        let _ = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let _ = lb.request_advice(&ResourceRequirements::default()).await?;
+        let _ = lb.request_advice(&ResourceRequirements::default()).await?;
 
-        let advice = lb
-            .request_advice(&ResourceRequirements::default())
-            .await?;
+        let advice = lb.request_advice(&ResourceRequirements::default()).await?;
         assert!(!advice.reasoning.is_empty());
         Ok(())
     }

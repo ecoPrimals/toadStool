@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
-use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
+use toadstool_common::interned_strings::socket_env;
 
 use crate::types::{CompressionType, EncryptionType, StorageTier};
 
@@ -49,7 +49,10 @@ impl Default for StorageConfig {
             .ok()
             .and_then(|p| p.parse().ok())
             .or_else(|| {
-                #[expect(deprecated, reason = "reads legacy TOADSTOOL_SONGBIRD_PORT as backward-compat fallback")]
+                #[expect(
+                    deprecated,
+                    reason = "reads legacy TOADSTOOL_SONGBIRD_PORT as backward-compat fallback"
+                )]
                 std::env::var(socket_env::TOADSTOOL_SONGBIRD_PORT)
                     .ok()
                     .and_then(|p| p.parse().ok())

@@ -1,20 +1,22 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! capture_pmu_falcon — Capture GV100 PMU falcon state and IMEM/DMEM via PIO read.
 //!
 //! Usage: capture_pmu_falcon <resource0_path> [output_dir] [rw]
 
 #![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
 #![allow(
-    clippy::unreadable_literal, clippy::borrow_as_ptr,
-    clippy::cast_lossless, clippy::explicit_iter_loop,
-    clippy::collapsible_if,
+    clippy::unreadable_literal,
+    clippy::borrow_as_ptr,
+    clippy::cast_lossless,
+    clippy::explicit_iter_loop,
+    clippy::collapsible_if
 )]
 
-use toadstool_cylinder::nv::registers::{falcon, gpc, pgraph, pmc, pmu};
 use std::os::fd::AsFd;
 use std::path::Path;
 use std::process::ExitCode;
-use std::sync::atomic::{fence, Ordering};
+use std::sync::atomic::{Ordering, fence};
+use toadstool_cylinder::nv::registers::{falcon, gpc, pgraph, pmc, pmu};
 
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
 
@@ -87,10 +89,7 @@ fn main() -> ExitCode {
     println!("\n--- PMU Falcon ---");
     let cpuctl = bar0.r32(pmu::BASE + falcon::CPUCTL);
     let hwcfg = bar0.r32(pmu::BASE + falcon::HWCFG);
-    println!(
-        "CPUCTL:  0x{cpuctl:08x} ({})",
-        cpuctl_state(cpuctl)
-    );
+    println!("CPUCTL:  0x{cpuctl:08x} ({})", cpuctl_state(cpuctl));
     println!("HWCFG:   0x{hwcfg:08x}");
     println!("PC:      0x{:08x}", bar0.r32(pmu::BASE + falcon::PC));
     println!("SCTL:    0x{:08x}", bar0.r32(pmu::BASE + falcon::SCTL));
@@ -114,15 +113,33 @@ fn main() -> ExitCode {
     );
 
     println!("\n--- FECS Falcon ---");
-    println!("CPUCTL: 0x{:08x}", bar0.r32(falcon::FECS_BASE + falcon::CPUCTL));
-    println!("HWCFG:  0x{:08x}", bar0.r32(falcon::FECS_BASE + falcon::HWCFG));
+    println!(
+        "CPUCTL: 0x{:08x}",
+        bar0.r32(falcon::FECS_BASE + falcon::CPUCTL)
+    );
+    println!(
+        "HWCFG:  0x{:08x}",
+        bar0.r32(falcon::FECS_BASE + falcon::HWCFG)
+    );
     println!("PC:     0x{:08x}", bar0.r32(falcon::FECS_BASE + falcon::PC));
-    println!("SCTL:   0x{:08x}", bar0.r32(falcon::FECS_BASE + falcon::SCTL));
+    println!(
+        "SCTL:   0x{:08x}",
+        bar0.r32(falcon::FECS_BASE + falcon::SCTL)
+    );
 
     println!("\n--- GPCCS Falcon ---");
-    println!("CPUCTL: 0x{:08x}", bar0.r32(falcon::GPCCS_BASE + falcon::CPUCTL));
-    println!("HWCFG:  0x{:08x}", bar0.r32(falcon::GPCCS_BASE + falcon::HWCFG));
-    println!("PC:     0x{:08x}", bar0.r32(falcon::GPCCS_BASE + falcon::PC));
+    println!(
+        "CPUCTL: 0x{:08x}",
+        bar0.r32(falcon::GPCCS_BASE + falcon::CPUCTL)
+    );
+    println!(
+        "HWCFG:  0x{:08x}",
+        bar0.r32(falcon::GPCCS_BASE + falcon::HWCFG)
+    );
+    println!(
+        "PC:     0x{:08x}",
+        bar0.r32(falcon::GPCCS_BASE + falcon::PC)
+    );
 
     println!("\n--- SEC2 Falcon ---");
     println!(
@@ -165,7 +182,10 @@ fn main() -> ExitCode {
     });
 
     if rw {
-        println!("\n--- PMU IMEM Capture (PIO read, {} KB) ---", imem_bytes / 1024);
+        println!(
+            "\n--- PMU IMEM Capture (PIO read, {} KB) ---",
+            imem_bytes / 1024
+        );
         let mut buf = vec![0u32; (imem_bytes / 4) as usize];
         bar0.w32(pmu::BASE + falcon::IMEMC, 0x02000000);
         for word in buf.iter_mut() {
@@ -186,12 +206,12 @@ fn main() -> ExitCode {
             eprintln!("write {}: {e}", imem_path.display());
             return ExitCode::from(1);
         }
-        println!(
-            "Written: {} ({imem_bytes} bytes)",
-            imem_path.display()
-        );
+        println!("Written: {} ({imem_bytes} bytes)", imem_path.display());
 
-        println!("\n--- PMU DMEM Capture (PIO read, {} KB) ---", dmem_bytes / 1024);
+        println!(
+            "\n--- PMU DMEM Capture (PIO read, {} KB) ---",
+            dmem_bytes / 1024
+        );
         let mut buf = vec![0u32; (dmem_bytes / 4) as usize];
         bar0.w32(pmu::BASE + falcon::DMEMC, 0x02000000);
         for word in buf.iter_mut() {
@@ -212,10 +232,7 @@ fn main() -> ExitCode {
             eprintln!("write {}: {e}", dmem_path.display());
             return ExitCode::from(1);
         }
-        println!(
-            "Written: {} ({dmem_bytes} bytes)",
-            dmem_path.display()
-        );
+        println!("Written: {} ({dmem_bytes} bytes)", dmem_path.display());
 
         capture["imem_nonzero_words"] = serde_json::json!(imem_nonzero);
         capture["dmem_nonzero_words"] = serde_json::json!(dmem_nonzero);

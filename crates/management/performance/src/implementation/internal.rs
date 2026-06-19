@@ -14,7 +14,13 @@ use crate::types::{PerformanceMetrics, ResourcePrediction};
     clippy::struct_field_names,
     reason = "baseline fields reserved for future ML model tuning"
 )]
-#[cfg_attr(not(test), expect(dead_code, reason = "baseline fields consumed only in test model assertions"))]
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "baseline fields consumed only in test model assertions"
+    )
+)]
 #[derive(Clone)]
 pub(super) struct BaselineMetrics {
     pub(super) avg_execution_time: Duration,

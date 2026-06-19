@@ -23,9 +23,7 @@ fn resolve_binary_param_missing_binary_returns_invalid_params() {
     let params = serde_json::json!({ "bdf": "0000:03:00.0" });
     let err = resolve_binary_param(&params).unwrap_err();
     assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-    assert!(
-        err.message.contains("binary") || err.message.contains("binary_b64")
-    );
+    assert!(err.message.contains("binary") || err.message.contains("binary_b64"));
 }
 
 #[test]
@@ -52,7 +50,10 @@ fn resolve_workgroup_size_prefers_dispatch_dims() {
 
 #[test]
 fn resolve_buffers_returns_empty_array_when_absent() {
-    assert_eq!(resolve_buffers(&serde_json::json!({})), serde_json::json!([]));
+    assert_eq!(
+        resolve_buffers(&serde_json::json!({})),
+        serde_json::json!([])
+    );
 }
 
 #[test]

@@ -37,9 +37,7 @@ impl NvGspBridge {
         let code_iova = ACR_UCODE_IOVA;
 
         let code_pages = (ucode.len() + 4095) & !4095;
-        let mut code_buf = crate::vfio::dma::DmaBuffer::new(
-            dma.clone(), code_pages, code_iova,
-        )?;
+        let mut code_buf = crate::vfio::dma::DmaBuffer::new(dma.clone(), code_pages, code_iova)?;
         code_buf.as_mut_slice()[..ucode.len()].copy_from_slice(&ucode);
 
         // Hold PMU in HRESET
@@ -51,14 +49,33 @@ impl NvGspBridge {
 
         // Configure PMU FBIF (at base + 0xE00, not 0x600)
         let fbif_base = base + 0xE00;
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE, falcon::FBIF_TARGET_PHYS_SYS_COH);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_VIRT, falcon::FBIF_TARGET_VIRT);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_VID, falcon::FBIF_TARGET_PHYS_VID);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH, falcon::FBIF_TARGET_PHYS_SYS_COH);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_NCOH, falcon::FBIF_TARGET_PHYS_SYS_NCOH);
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE,
+            falcon::FBIF_TARGET_PHYS_SYS_COH,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_VIRT,
+            falcon::FBIF_TARGET_VIRT,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_VID,
+            falcon::FBIF_TARGET_PHYS_VID,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH,
+            falcon::FBIF_TARGET_PHYS_SYS_COH,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_NCOH,
+            falcon::FBIF_TARGET_PHYS_SYS_NCOH,
+        );
 
-        let fbif0 = bar0.read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE).unwrap_or(0xDEAD);
-        let fbif3 = bar0.read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH).unwrap_or(0xDEAD);
+        let fbif0 = bar0
+            .read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE)
+            .unwrap_or(0xDEAD);
+        let fbif3 = bar0
+            .read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH)
+            .unwrap_or(0xDEAD);
         tracing::info!(
             fbif0 = format!("{fbif0:#06x}"),
             fbif3 = format!("{fbif3:#06x}"),
@@ -210,11 +227,7 @@ impl NvGspBridge {
                 return Ok((ctl, 0));
             }
             if start.elapsed() > timeout {
-                tracing::error!(
-                    name,
-                    cpuctl = format!("{ctl:#010x}"),
-                    "PIO boot: timeout"
-                );
+                tracing::error!(name, cpuctl = format!("{ctl:#010x}"), "PIO boot: timeout");
                 return Err(DriverError::Unsupported(
                     format!("{name} PIO boot timed out (cpuctl={ctl:#010x})").into(),
                 ));
@@ -236,10 +249,27 @@ impl NvGspBridge {
         code_iova: u64,
         data_iova: u64,
     ) -> DriverResult<(u32, u32)> {
-        let bl = self.load_gr_blob(if name == "FECS" { "fecs_bl.bin" } else { "gpccs_bl.bin" })?;
-        let inst = self.load_gr_blob(if name == "FECS" { "fecs_inst.bin" } else { "gpccs_inst.bin" })?;
-        let data = self.load_gr_blob(if name == "FECS" { "fecs_data.bin" } else { "gpccs_data.bin" })?;
-        let sig = self.load_gr_blob(if name == "FECS" { "fecs_sig.bin" } else { "gpccs_sig.bin" })
+        let bl = self.load_gr_blob(if name == "FECS" {
+            "fecs_bl.bin"
+        } else {
+            "gpccs_bl.bin"
+        })?;
+        let inst = self.load_gr_blob(if name == "FECS" {
+            "fecs_inst.bin"
+        } else {
+            "gpccs_inst.bin"
+        })?;
+        let data = self.load_gr_blob(if name == "FECS" {
+            "fecs_data.bin"
+        } else {
+            "gpccs_data.bin"
+        })?;
+        let sig = self
+            .load_gr_blob(if name == "FECS" {
+                "fecs_sig.bin"
+            } else {
+                "gpccs_sig.bin"
+            })
             .unwrap_or_else(|_| vec![0u8; 16]);
 
         tracing::info!(
@@ -254,14 +284,10 @@ impl NvGspBridge {
         let code_pages = (inst.len() + 4095) & !4095;
         let data_pages = (data.len() + 4095) & !4095;
 
-        let mut code_buf = crate::vfio::dma::DmaBuffer::new(
-            dma.clone(), code_pages, code_iova,
-        )?;
+        let mut code_buf = crate::vfio::dma::DmaBuffer::new(dma.clone(), code_pages, code_iova)?;
         code_buf.as_mut_slice()[..inst.len()].copy_from_slice(&inst);
 
-        let mut data_buf = crate::vfio::dma::DmaBuffer::new(
-            dma.clone(), data_pages, data_iova,
-        )?;
+        let mut data_buf = crate::vfio::dma::DmaBuffer::new(dma.clone(), data_pages, data_iova)?;
         data_buf.as_mut_slice()[..data.len()].copy_from_slice(&data);
 
         // Hold falcon in HRESET
@@ -277,16 +303,37 @@ impl NvGspBridge {
         //   stride = 4 bytes (one u32 per DMA index)
         //   values: 0x0=VIRT, 0x4=PHYS_VID, 0x5=PHYS_SYS_COH, 0x6=PHYS_SYS_NCOH
         let fbif_base = base + falcon::FBIF_GR;
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE, falcon::FBIF_TARGET_PHYS_VID);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_VIRT, falcon::FBIF_TARGET_VIRT);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_VID, falcon::FBIF_TARGET_PHYS_VID);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH, falcon::FBIF_TARGET_PHYS_SYS_COH);
-        let _ = bar0.write_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_NCOH, falcon::FBIF_TARGET_PHYS_SYS_NCOH);
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE,
+            falcon::FBIF_TARGET_PHYS_VID,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_VIRT,
+            falcon::FBIF_TARGET_VIRT,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_VID,
+            falcon::FBIF_TARGET_PHYS_VID,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH,
+            falcon::FBIF_TARGET_PHYS_SYS_COH,
+        );
+        let _ = bar0.write_u32(
+            fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_NCOH,
+            falcon::FBIF_TARGET_PHYS_SYS_NCOH,
+        );
 
         // Read back FBIF to verify
-        let fbif0 = bar0.read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE).unwrap_or(0xDEAD);
-        let fbif3 = bar0.read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH).unwrap_or(0xDEAD);
-        let fbif4 = bar0.read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_NCOH).unwrap_or(0xDEAD);
+        let fbif0 = bar0
+            .read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_UCODE)
+            .unwrap_or(0xDEAD);
+        let fbif3 = bar0
+            .read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_COH)
+            .unwrap_or(0xDEAD);
+        let fbif4 = bar0
+            .read_u32(fbif_base + 4 * falcon::FBIF_DMAIDX_PHYS_SYS_NCOH)
+            .unwrap_or(0xDEAD);
         tracing::info!(
             name,
             fbif0 = format!("{fbif0:#06x}"),

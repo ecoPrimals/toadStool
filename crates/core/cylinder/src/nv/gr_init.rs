@@ -453,8 +453,18 @@ mod tests {
         let a = GrInitSequence {
             chip: ChipFamily::Kepler,
             writes: vec![
-                RegWrite { offset: 0x200, value: 0xAAAA, domain: "PMC".into(), mask: None },
-                RegWrite { offset: 0x300, value: 0xBBBB, domain: "PMC".into(), mask: None },
+                RegWrite {
+                    offset: 0x200,
+                    value: 0xAAAA,
+                    domain: "PMC".into(),
+                    mask: None,
+                },
+                RegWrite {
+                    offset: 0x300,
+                    value: 0xBBBB,
+                    domain: "PMC".into(),
+                    mask: None,
+                },
             ],
             source: InitSource::Manual { experiment: 1 },
             description: "seq A".into(),
@@ -462,8 +472,18 @@ mod tests {
         let b = GrInitSequence {
             chip: ChipFamily::Kepler,
             writes: vec![
-                RegWrite { offset: 0x200, value: 0xCCCC, domain: "PMC".into(), mask: None },
-                RegWrite { offset: 0x400, value: 0xDDDD, domain: "PMC".into(), mask: None },
+                RegWrite {
+                    offset: 0x200,
+                    value: 0xCCCC,
+                    domain: "PMC".into(),
+                    mask: None,
+                },
+                RegWrite {
+                    offset: 0x400,
+                    value: 0xDDDD,
+                    domain: "PMC".into(),
+                    mask: None,
+                },
             ],
             source: InitSource::Manual { experiment: 2 },
             description: "seq B".into(),
@@ -484,7 +504,9 @@ mod tests {
                 domain: "PMC".into(),
                 mask: None,
             }],
-            source: InitSource::NouveauDiff { version: "1.4.0".into() },
+            source: InitSource::NouveauDiff {
+                version: "1.4.0".into(),
+            },
             description: "test".into(),
         };
         let json = seq.to_json().unwrap();
@@ -499,8 +521,18 @@ mod tests {
         let seq = GrInitSequence {
             chip: ChipFamily::Kepler,
             writes: vec![
-                RegWrite { offset: 0x200, value: 1, domain: "PMC".into(), mask: None },
-                RegWrite { offset: 0x2200, value: 1, domain: "PFIFO".into(), mask: None },
+                RegWrite {
+                    offset: 0x200,
+                    value: 1,
+                    domain: "PMC".into(),
+                    mask: None,
+                },
+                RegWrite {
+                    offset: 0x2200,
+                    value: 1,
+                    domain: "PFIFO".into(),
+                    mask: None,
+                },
             ],
             source: InitSource::Manual { experiment: 1 },
             description: "test".into(),
@@ -554,7 +586,11 @@ mod tests {
         let back = GrInitSequence::from_json(&json).unwrap();
         assert_eq!(back.writes.len(), 1);
         assert_eq!(back.writes[0].offset, 0x504000);
-        if let InitSource::Catalyst { driver_version, bdf } = &back.source {
+        if let InitSource::Catalyst {
+            driver_version,
+            bdf,
+        } = &back.source
+        {
             assert_eq!(driver_version, "470.256.02");
             assert_eq!(bdf, "0000:49:00.0");
         } else {

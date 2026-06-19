@@ -255,10 +255,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
 /// # Errors
 ///
 /// Returns error if the Neural API socket is unreachable or JSON-RPC framing fails.
-pub async fn self_announce_to_biomeos(
-    methods: &[&str],
-    socket_path: &str,
-) -> ToadStoolResult<()> {
+pub async fn self_announce_to_biomeos(methods: &[&str], socket_path: &str) -> ToadStoolResult<()> {
     let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
     let neural_sock = biomeos_dir.join("neural-api-ecoPrimal.sock");
     let neural_path = neural_sock.to_string_lossy().to_string();

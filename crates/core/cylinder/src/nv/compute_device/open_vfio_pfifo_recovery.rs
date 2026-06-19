@@ -11,7 +11,10 @@ use super::pbdma::find_target_pbdma;
 use super::{GPFIFO_ENTRIES, GPFIFO_IOVA, USERD_IOVA};
 
 /// Check whether PFIFO is in a truly broken state (not merely SCHED_EN faulted on GV100).
-pub(super) fn pfifo_truly_broken(bar0: &MappedBar, channel: &crate::vfio::channel::VfioChannel) -> bool {
+pub(super) fn pfifo_truly_broken(
+    bar0: &MappedBar,
+    channel: &crate::vfio::channel::VfioChannel,
+) -> bool {
     use crate::vfio::channel::registers::pfifo;
 
     let rl_base = bar0
@@ -109,8 +112,12 @@ pub(super) fn recover_broken_pfifo(
             rm_after = format_args!("{rm_after:#010x}"),
             "PRI ring enumerate + ACK (recovery)"
         );
-        if rm_after == 0 { break; }
-        if rm_after & 0xBAD0_0000 == 0xBAD0_0000 && round >= 2 { break; }
+        if rm_after == 0 {
+            break;
+        }
+        if rm_after & 0xBAD0_0000 == 0xBAD0_0000 && round >= 2 {
+            break;
+        }
     }
     let _ = bar0.write_u32(0x12_2058, 0xFFFF_FFFF);
     let _ = bar0.write_u32(0x12_8058, 0xFFFF_FFFF);
@@ -232,12 +239,8 @@ pub(super) fn recover_broken_pfifo(
                 doorbell = ?init.doorbell,
                 "post-recovery: about to re-discover PBDMA"
             );
-            target_pbdma_base = find_target_pbdma(
-                bar0,
-                &init.channel,
-                init.doorbell,
-                " (post-recovery)",
-            );
+            target_pbdma_base =
+                find_target_pbdma(bar0, &init.channel, init.doorbell, " (post-recovery)");
 
             // On GV100 VFIO cold boot, no PBDMA serves runlist 0
             // (hardware maps PBDMAs to engine runlists only).

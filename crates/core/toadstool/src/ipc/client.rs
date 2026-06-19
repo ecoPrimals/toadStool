@@ -206,9 +206,9 @@ impl IpcClient {
         te: &toadstool_common::TransportEndpoint,
     ) -> ToadStoolResult<Self> {
         let endpoint = match te {
-            toadstool_common::TransportEndpoint::Uds { path } => Endpoint::Unix {
-                path: path.clone(),
-            },
+            toadstool_common::TransportEndpoint::Uds { path } => {
+                Endpoint::Unix { path: path.clone() }
+            }
             toadstool_common::TransportEndpoint::Tcp { host, port } => Endpoint::Tcp {
                 host: host.clone(),
                 port: *port,

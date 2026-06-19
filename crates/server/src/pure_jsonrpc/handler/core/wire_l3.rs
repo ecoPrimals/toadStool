@@ -68,7 +68,10 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         "science.substrate.discover",
         "science.substrate.probe",
     ] {
-        map.insert(m.into(), cost("variable", true, 100, "variable", "variable"));
+        map.insert(
+            m.into(),
+            cost("variable", true, 100, "variable", "variable"),
+        );
     }
 
     // Inference domain — model lifecycle
@@ -78,7 +81,10 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         "inference.load_model",
         "inference.unload_model",
     ] {
-        map.insert(m.into(), cost("variable", true, 200, "variable", "variable"));
+        map.insert(
+            m.into(),
+            cost("variable", true, 200, "variable", "variable"),
+        );
     }
 
     // toadstool-prefixed resource methods (aliases to resources.*)
@@ -328,18 +334,9 @@ pub(super) fn cost_estimates() -> serde_json::Value {
     );
 
     // MMIO — BAR0 register access
-    map.insert(
-        "mmio.read32".into(),
-        cost("low", false, 1, "low", "none"),
-    );
-    map.insert(
-        "mmio.write32".into(),
-        cost("low", false, 1, "low", "none"),
-    );
-    map.insert(
-        "mmio.batch".into(),
-        cost("medium", false, 5, "low", "none"),
-    );
+    map.insert("mmio.read32".into(), cost("low", false, 1, "low", "none"));
+    map.insert("mmio.write32".into(), cost("low", false, 1, "low", "none"));
+    map.insert("mmio.batch".into(), cost("medium", false, 5, "low", "none"));
     map.insert(
         "mmio.pramin.read32".into(),
         cost("low", false, 1, "low", "none"),

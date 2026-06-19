@@ -85,8 +85,8 @@ pub fn capture_vram_firmware(
 
     // Capture FECS from VRAM
     let fecs_path = output_dir.join("fecs_vram_capture.bin");
-    let fecs_result = read_vram_via_pramin(bar0, FECS_VRAM_ADDR_535, FECS_CODE_SIZE)
-        .and_then(|data| {
+    let fecs_result =
+        read_vram_via_pramin(bar0, FECS_VRAM_ADDR_535, FECS_CODE_SIZE).and_then(|data| {
             let nonzero = data.iter().filter(|&&b| b != 0).count();
             if nonzero < FECS_CODE_SIZE / 10 {
                 return Err(ReagentError::VramCaptureEmpty {
@@ -111,26 +111,25 @@ pub fn capture_vram_firmware(
     let gpccs_addr = FECS_VRAM_ADDR_535 + GPCCS_VRAM_OFFSET_HINT;
     let gpccs_size = 12643; // matches gpccs_inst.bin
     let gpccs_path = output_dir.join("gpccs_vram_capture.bin");
-    let gpccs_result = read_vram_via_pramin(bar0, gpccs_addr, gpccs_size)
-        .and_then(|data| {
-            let nonzero = data.iter().filter(|&&b| b != 0).count();
-            if nonzero < gpccs_size / 10 {
-                return Err(ReagentError::VramCaptureEmpty {
-                    name: "GPCCS",
-                    nonzero,
-                    total: gpccs_size,
-                    addr: gpccs_addr,
-                });
-            }
-            std::fs::write(&gpccs_path, &data).map_err(ReagentError::WriteRecipe)?;
-            tracing::info!(
-                path = %gpccs_path.display(),
-                size = data.len(),
-                nonzero = nonzero,
-                "GPCCS firmware captured from VRAM"
-            );
-            Ok(gpccs_path.clone())
-        });
+    let gpccs_result = read_vram_via_pramin(bar0, gpccs_addr, gpccs_size).and_then(|data| {
+        let nonzero = data.iter().filter(|&&b| b != 0).count();
+        if nonzero < gpccs_size / 10 {
+            return Err(ReagentError::VramCaptureEmpty {
+                name: "GPCCS",
+                nonzero,
+                total: gpccs_size,
+                addr: gpccs_addr,
+            });
+        }
+        std::fs::write(&gpccs_path, &data).map_err(ReagentError::WriteRecipe)?;
+        tracing::info!(
+            path = %gpccs_path.display(),
+            size = data.len(),
+            nonzero = nonzero,
+            "GPCCS firmware captured from VRAM"
+        );
+        Ok(gpccs_path.clone())
+    });
     results.push(("gpccs_vram".to_owned(), gpccs_result));
 
     results

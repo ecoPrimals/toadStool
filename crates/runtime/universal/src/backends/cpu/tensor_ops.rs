@@ -48,7 +48,8 @@ pub(super) fn execute_matmul(workload: Workload) -> Result<WorkloadData, Compute
                             for kk in k_tile..k_end {
                                 let a_val = a_data[i * k + kk];
                                 for j in j_tile..j_end {
-                                    c_data[i * n + j] += a_val * b_data[kk * n + j];
+                                    c_data[i * n + j] =
+                                        a_val.mul_add(b_data[kk * n + j], c_data[i * n + j]);
                                 }
                             }
                         }
@@ -128,7 +129,7 @@ pub(super) fn execute_conv(workload: Workload) -> Result<WorkloadData, ComputeEr
                                                 + kh * kernel_w
                                                 + kw;
 
-                                            sum += input[input_idx] * kernel[kernel_idx];
+                                            sum = input[input_idx].mul_add(kernel[kernel_idx], sum);
                                         }
                                     }
                                 }

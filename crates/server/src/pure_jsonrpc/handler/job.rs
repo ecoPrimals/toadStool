@@ -223,11 +223,8 @@ impl JobHandler {
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid gate info: {e}")))?;
         let gate_id = std::sync::Arc::clone(&gate_info.gate_id);
         if gate_info.is_owner {
-            self.gate_ownership
-                .note_gate_update(&gate_id, true)
-                .await;
-        } else if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id.as_ref()
-        {
+            self.gate_ownership.note_gate_update(&gate_id, true).await;
+        } else if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id.as_ref() {
             self.gate_ownership.revert_to_local_owner().await;
         }
         self.router.write().await.update_gate(gate_info);

@@ -216,13 +216,23 @@ mod tests {
     #[test]
     fn channel_regions_page_aligned() {
         for &iova in &[
-            channel::INSTANCE_IOVA, channel::RUNLIST_IOVA,
-            channel::PD3_IOVA, channel::PD2_IOVA, channel::PD1_IOVA,
-            channel::PD0_IOVA, channel::PT0_IOVA, channel::FAULT_BUF_IOVA,
-            channel::NOP_PB_IOVA, dispatch::GPFIFO_IOVA, dispatch::USERD_IOVA,
-            dispatch::GR_CTX_IOVA, dispatch::USER_BUFFER_BASE_IOVA,
-            firmware::FECS_CODE_IOVA, firmware::FECS_DATA_IOVA,
-            firmware::GPCCS_CODE_IOVA, firmware::GPCCS_DATA_IOVA,
+            channel::INSTANCE_IOVA,
+            channel::RUNLIST_IOVA,
+            channel::PD3_IOVA,
+            channel::PD2_IOVA,
+            channel::PD1_IOVA,
+            channel::PD0_IOVA,
+            channel::PT0_IOVA,
+            channel::FAULT_BUF_IOVA,
+            channel::NOP_PB_IOVA,
+            dispatch::GPFIFO_IOVA,
+            dispatch::USERD_IOVA,
+            dispatch::GR_CTX_IOVA,
+            dispatch::USER_BUFFER_BASE_IOVA,
+            firmware::FECS_CODE_IOVA,
+            firmware::FECS_DATA_IOVA,
+            firmware::GPCCS_CODE_IOVA,
+            firmware::GPCCS_DATA_IOVA,
             firmware::ACR_UCODE_IOVA,
         ] {
             assert_eq!(iova % PAGE_SIZE, 0, "IOVA {iova:#x} is not page-aligned");

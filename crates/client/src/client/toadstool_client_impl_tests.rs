@@ -168,7 +168,10 @@ mod client_method_tests {
 }
 
 /// JSON-RPC mock server on a temp Unix socket; clients use [`config_for_socket`] (no env mutation).
-#[allow(clippy::await_holding_lock, reason = "test mock server holds lock across await intentionally for deterministic sequencing")]
+#[allow(
+    clippy::await_holding_lock,
+    reason = "test mock server holds lock across await intentionally for deterministic sequencing"
+)]
 mod jsonrpc_unix_mock {
 
     use super::{ClientConfig, ExecutionStatus, ToadStoolClient};

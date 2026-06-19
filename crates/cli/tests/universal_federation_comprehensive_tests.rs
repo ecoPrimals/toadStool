@@ -329,7 +329,6 @@ async fn test_federation_full_lifecycle() -> Result<()> {
         .setup_https_federation(&https_endpoint, "client")
         .await;
 
-
     // Start peer monitoring
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
     let _ = manager.start_peer_monitoring(&addr).await;
@@ -385,4 +384,3 @@ async fn test_federation_different_modes() -> Result<()> {
 
     Ok(())
 }
-

@@ -399,7 +399,15 @@ async fn shader_dispatch_failed_response_has_consistent_shape() {
         .shader_dispatch(Some(&params))
         .await
         .expect("failed dispatch still returns envelope");
-    for key in ["domain", "operation", "job_id", "status", "output", "error", "metadata"] {
+    for key in [
+        "domain",
+        "operation",
+        "job_id",
+        "status",
+        "output",
+        "error",
+        "metadata",
+    ] {
         assert!(result.get(key).is_some(), "missing key: {key}");
     }
     assert_eq!(result["status"], "failed");

@@ -114,7 +114,6 @@ impl AgentDeploymentManager {
         })
     }
 
-
     /// Create a new manager with in-memory test backend
     #[must_use]
     #[cfg(any(test, feature = "test-mocks"))]

@@ -31,9 +31,6 @@ rppal = { version = "0.17", optional = true }
 esp-idf-sys = { version = "0.34", optional = true }
 # Use the `cross` *binary* (`cargo install cross`) for toolchains — not the crates.io `cross` crate
 # (that crate pulls clap 3 + extra deps and is unrelated to this runtime's `Command`-based toolchains).
-# C build dependencies - only needed for native bindings
-cc = { version = "1.0", optional = true }
-bindgen = { version = "0.69", optional = true }
 
 # Network and communication
 # mdns removed: MDNSDiscovery is a stub with no mDNS usage; use mdns-sd for consistency
@@ -56,10 +53,10 @@ default = []
 serial-transport = ["serialport"]
 # Platform-specific features (enable as needed)
 raspberry-pi = ["rppal"]
-# ESP32 support requires esp-idf-sys (C dependency) - not in default
+# ESP32 support requires esp-idf-sys (C dependency) - not in default.
+# Only available on xtensa/riscv32 targets; gated with cfg to avoid build
+# failures on x86_64/aarch64 when using `--all-features`.
 esp32 = ["esp-idf-sys"]
-all-platforms = ["raspberry-pi", "esp32"]
+all-platforms = ["raspberry-pi"]
 # Enable HTTP downloads for ESP32 (e.g. OTA firmware URLs)
 http-downloads = ["reqwest"]
-# Enable C build dependencies for native bindings (only if needed)
-native-bindings = ["cc", "bindgen"]

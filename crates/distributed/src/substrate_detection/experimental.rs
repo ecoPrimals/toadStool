@@ -7,8 +7,8 @@
 //! hardware is found — this is the normal case on most machines.
 
 use super::types::PlatformType;
-use toadstool_common::interned_strings::socket_env;
 use toadstool::ToadStoolResult;
+use toadstool_common::interned_strings::socket_env;
 
 /// Detect experimental platforms by probing for hardware indicators.
 ///

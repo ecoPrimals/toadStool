@@ -218,7 +218,6 @@ pub struct GenerationProfile {
     // ── Sovereign tier classification offsets ────────────────────────
     // These drive `classify_tier_for_profile()` so that tier classification
     // is data-driven rather than hardcoded per generation.
-
     /// BAR0 offset for FECS program counter (used for FECS liveness check).
     /// Kepler: 0x409624, Volta+: 0x409624 (same register, same falcon base).
     pub fecs_pc_offset: u32,
@@ -239,7 +238,6 @@ pub struct GenerationProfile {
     // ── PFIFO / PTOP discovery offsets ──────────────────────────────
     // Drive `discover_ce_runlist()` / `find_pbdma_for_runlist()` instead of
     // hardcoded GV100 BAR0 addresses.
-
     /// BAR0 base for PTOP engine topology table (DEVICE_INFO walk).
     pub ptop_device_info_base: u32,
     /// BAR0 base for RUNLIST_PBDMA_MAP (indexed by runlist ID).
@@ -507,12 +505,21 @@ mod tests {
         for sm in sms {
             let p = profile_for_sm(sm);
             assert_eq!(p.fecs_pc_offset, 0x0040_9624, "SM {sm}: FECS PC offset");
-            assert_eq!(p.gpc_broadcast_offset, 0x0041_A004, "SM {sm}: GPC broadcast offset");
+            assert_eq!(
+                p.gpc_broadcast_offset, 0x0041_A004,
+                "SM {sm}: GPC broadcast offset"
+            );
             assert_eq!(p.ce0_base_offset, 0x0010_4000, "SM {sm}: CE0 base offset");
-            assert_eq!(p.pgraph_status_offset, 0x0040_0700, "SM {sm}: PGRAPH status offset");
+            assert_eq!(
+                p.pgraph_status_offset, 0x0040_0700,
+                "SM {sm}: PGRAPH status offset"
+            );
             assert!(p.ce_class != 0, "SM {sm}: CE class should be non-zero");
             assert_eq!(p.ptop_device_info_base, 0x0002_2700, "SM {sm}: PTOP base");
-            assert_eq!(p.runlist_pbdma_map_base, 0x0000_2390, "SM {sm}: PBDMA map base");
+            assert_eq!(
+                p.runlist_pbdma_map_base, 0x0000_2390,
+                "SM {sm}: PBDMA map base"
+            );
         }
     }
 

@@ -60,7 +60,10 @@ pub struct UnibinExecutionConfig {
 impl UnibinExecutionConfig {
     /// Load UniBin execution settings from the process environment (call once at startup).
     #[must_use]
-    #[expect(deprecated, reason = "reads legacy SONGBIRD_AUTH_TOKEN as backward-compat fallback")]
+    #[expect(
+        deprecated,
+        reason = "reads legacy SONGBIRD_AUTH_TOKEN as backward-compat fallback"
+    )]
     pub fn from_env() -> Self {
         let bind_host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
             .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.into());
@@ -216,13 +219,23 @@ pub async fn start_servers_with_fallback(
         info!("🔌 TRANSPORT_ENDPOINT injected: {te}");
         return match te {
             TransportEndpoint::Uds { path } => {
-                try_unix_servers(&server, &jsonrpc_handler, &socket_path, path, jsonrpc_listener).await
+                try_unix_servers(
+                    &server,
+                    &jsonrpc_handler,
+                    &socket_path,
+                    path,
+                    jsonrpc_listener,
+                )
+                .await
             }
             TransportEndpoint::Tcp { host, port } => {
                 info!("   Launcher-injected TCP: {host}:{port}");
                 start_tcp_jsonrpc_on_port(Arc::clone(&jsonrpc_handler), *port, host.clone()).await
             }
-            TransportEndpoint::MeshRelay { peer_id, capability } => {
+            TransportEndpoint::MeshRelay {
+                peer_id,
+                capability,
+            } => {
                 info!("   Mesh relay transport not yet wired (peer={peer_id}, cap={capability})");
                 Err(ServerError::Network(
                     "mesh_relay transport not yet supported".into(),
@@ -244,7 +257,15 @@ pub async fn start_servers_with_fallback(
 
     info!("   Trying Unix socket IPC (optimal)...");
 
-    match try_unix_servers(&server, &jsonrpc_handler, &socket_path, &jsonrpc_socket, jsonrpc_listener).await {
+    match try_unix_servers(
+        &server,
+        &jsonrpc_handler,
+        &socket_path,
+        &jsonrpc_socket,
+        jsonrpc_listener,
+    )
+    .await
+    {
         Ok(()) => Ok(()),
         Err(e) => {
             let error_str = e.to_string();

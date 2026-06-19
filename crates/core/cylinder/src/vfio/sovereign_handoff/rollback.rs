@@ -14,7 +14,10 @@ use super::types::{HandoffResult, HandoffStep};
 /// - `sibling_state` is non-empty (siblings were unbound)
 /// - `needs_device_rollback` is true (device was unbound from its original
 ///   driver and needs to be restored to vfio-pci)
-#[expect(clippy::too_many_arguments, reason = "rollback step requires full handoff state")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "rollback step requires full handoff state"
+)]
 pub(crate) fn halt_result(
     bdf: &str,
     halted_at: &str,
@@ -27,12 +30,25 @@ pub(crate) fn halt_result(
     module_name: &str,
     needs_device_rollback: bool,
 ) -> HandoffResult {
-    halt_result_inner(bdf, halted_at, steps, patch_result, module_loaded,
-                      module_unloaded, start, sibling_state, module_name,
-                      needs_device_rollback, false)
+    halt_result_inner(
+        bdf,
+        halted_at,
+        steps,
+        patch_result,
+        module_loaded,
+        module_unloaded,
+        start,
+        sibling_state,
+        module_name,
+        needs_device_rollback,
+        false,
+    )
 }
 
-#[expect(clippy::too_many_arguments, reason = "rollback step requires full handoff state")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "rollback step requires full handoff state"
+)]
 pub(crate) fn halt_result_poisoned(
     bdf: &str,
     halted_at: &str,
@@ -45,9 +61,19 @@ pub(crate) fn halt_result_poisoned(
     module_name: &str,
     needs_device_rollback: bool,
 ) -> HandoffResult {
-    halt_result_inner(bdf, halted_at, steps, patch_result, module_loaded,
-                      module_unloaded, start, sibling_state, module_name,
-                      needs_device_rollback, true)
+    halt_result_inner(
+        bdf,
+        halted_at,
+        steps,
+        patch_result,
+        module_loaded,
+        module_unloaded,
+        start,
+        sibling_state,
+        module_name,
+        needs_device_rollback,
+        true,
+    )
 }
 
 #[expect(
@@ -71,13 +97,27 @@ pub(crate) fn halt_result_inner(
     let needs_rollback = module_loaded || !sibling_state.is_empty() || needs_device_rollback;
     if needs_rollback {
         let t = Instant::now();
-        let mod_name = if module_loaded { Some(module_name) } else { None };
+        let mod_name = if module_loaded {
+            Some(module_name)
+        } else {
+            None
+        };
         guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state, device_poisoned);
-        let kind = if device_poisoned { "poisoned-abandon" } else { "best-effort recovery" };
+        let kind = if device_poisoned {
+            "poisoned-abandon"
+        } else {
+            "best-effort recovery"
+        };
         steps.push(HandoffStep {
-            name: "rollback".into(), ok: !device_poisoned,
-            detail: Some(format!("{kind} (module={}, siblings={}, device={}, poisoned={})",
-                module_loaded, sibling_state.len(), needs_device_rollback, device_poisoned)),
+            name: "rollback".into(),
+            ok: !device_poisoned,
+            detail: Some(format!(
+                "{kind} (module={}, siblings={}, device={}, poisoned={})",
+                module_loaded,
+                sibling_state.len(),
+                needs_device_rollback,
+                device_poisoned
+            )),
             duration_ms: t.elapsed().as_millis() as u64,
         });
     }
@@ -111,17 +151,27 @@ pub(crate) fn deadline_exceeded(
     sibling_state: &[(String, Option<String>)],
     start: Instant,
 ) -> HandoffResult {
-    tracing::error!(bdf, elapsed_ms = start.elapsed().as_millis() as u64,
-                    "handoff deadline exceeded — running rollback");
+    tracing::error!(
+        bdf,
+        elapsed_ms = start.elapsed().as_millis() as u64,
+        "handoff deadline exceeded — running rollback"
+    );
     steps.push(HandoffStep {
-        name: "deadline".into(), ok: false,
-        detail: Some(format!("{}ms deadline exceeded at {}ms",
+        name: "deadline".into(),
+        ok: false,
+        detail: Some(format!(
+            "{}ms deadline exceeded at {}ms",
             guarded_sysfs::HANDOFF_DEADLINE.as_millis(),
-            start.elapsed().as_millis())),
+            start.elapsed().as_millis()
+        )),
         duration_ms: 0,
     });
 
-    let mod_name = if module_loaded { Some(module_name) } else { None };
+    let mod_name = if module_loaded {
+        Some(module_name)
+    } else {
+        None
+    };
     guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state, false);
 
     HandoffResult {

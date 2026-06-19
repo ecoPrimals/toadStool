@@ -22,9 +22,7 @@ pub fn detect_gpu_metal(vendor: GpuVendor, boot0: u32) -> Option<Box<dyn GpuMeta
             }
         }
         #[cfg(feature = "amd")]
-        GpuVendor::Amd => {
-            Some(Box::new(super::super::amd_metal::AmdVegaMetal::new(boot0)))
-        }
+        GpuVendor::Amd => Some(Box::new(super::super::amd_metal::AmdVegaMetal::new(boot0))),
         #[cfg(not(feature = "amd"))]
         GpuVendor::Amd => None,
         _ => None,

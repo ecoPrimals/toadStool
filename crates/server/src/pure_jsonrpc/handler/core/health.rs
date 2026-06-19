@@ -97,10 +97,7 @@ pub(crate) async fn health(
 /// Sets the draining flag so new dispatches are rejected, then waits for
 /// in-flight work to complete (up to a configurable timeout). Returns
 /// the drain status so the caller can confirm readiness for shutdown.
-pub(crate) async fn health_drain(
-    draining: &AtomicBool,
-    ready: &AtomicBool,
-) -> JsonRpcResult {
+pub(crate) async fn health_drain(draining: &AtomicBool, ready: &AtomicBool) -> JsonRpcResult {
     draining.store(true, Ordering::SeqCst);
     ready.store(false, Ordering::SeqCst);
 

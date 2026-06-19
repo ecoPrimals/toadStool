@@ -305,11 +305,7 @@ pub struct DeviceBootResult {
 
 impl DeviceTopology {
     /// Create a single-function device.
-    pub fn single(
-        name: impl Into<String>,
-        bdf: impl Into<String>,
-        vendor: Vendor,
-    ) -> Self {
+    pub fn single(name: impl Into<String>, bdf: impl Into<String>, vendor: Vendor) -> Self {
         Self {
             name: name.into(),
             functions: vec![DeviceFunction {
@@ -429,12 +425,8 @@ mod tests {
 
     #[test]
     fn device_topology_dual() {
-        let topo = DeviceTopology::dual(
-            "Tesla K80",
-            "0000:4b:00.0",
-            "0000:4c:00.0",
-            Vendor::Nvidia,
-        );
+        let topo =
+            DeviceTopology::dual("Tesla K80", "0000:4b:00.0", "0000:4c:00.0", Vendor::Nvidia);
         assert_eq!(topo.function_count(), 2);
         assert_eq!(topo.functions[0].bdf, "0000:4b:00.0");
         assert_eq!(topo.functions[1].bdf, "0000:4c:00.0");

@@ -25,8 +25,7 @@ pub fn get_worker_threads() -> u32 {
     )]
     loader.get_u32(
         "WORKER_THREADS",
-        std::thread::available_parallelism()
-            .map_or(4, |n| n.get() as u32),
+        std::thread::available_parallelism().map_or(4, |n| n.get() as u32),
     )
 }
 
@@ -41,7 +40,10 @@ pub fn get_max_concurrent_executions() -> u32 {
 #[must_use]
 pub fn get_execution_timeout() -> Duration {
     let loader = EnvConfigLoader::new();
-    loader.get_duration("EXECUTION_TIMEOUT_SECS", Duration::from_secs(DEFAULT_EXECUTION_TIMEOUT_SECS))
+    loader.get_duration(
+        "EXECUTION_TIMEOUT_SECS",
+        Duration::from_secs(DEFAULT_EXECUTION_TIMEOUT_SECS),
+    )
 }
 
 /// Get max CPU usage from environment or default
@@ -69,14 +71,20 @@ pub fn get_max_storage_usage() -> u64 {
 #[must_use]
 pub fn get_metrics_interval() -> Duration {
     let loader = EnvConfigLoader::new();
-    loader.get_duration("METRICS_INTERVAL_SECS", Duration::from_secs(DEFAULT_METRICS_INTERVAL_SECS))
+    loader.get_duration(
+        "METRICS_INTERVAL_SECS",
+        Duration::from_secs(DEFAULT_METRICS_INTERVAL_SECS),
+    )
 }
 
 /// Get health check interval from environment or default
 #[must_use]
 pub fn get_health_check_interval() -> Duration {
     let loader = EnvConfigLoader::new();
-    loader.get_duration("HEALTH_CHECK_INTERVAL_SECS", Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS))
+    loader.get_duration(
+        "HEALTH_CHECK_INTERVAL_SECS",
+        Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS),
+    )
 }
 
 /// Get log level from environment or default

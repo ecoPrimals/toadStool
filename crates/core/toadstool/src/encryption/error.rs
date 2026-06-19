@@ -14,7 +14,9 @@ pub enum CryptoError {
 impl From<CryptoError> for ToadStoolError {
     fn from(err: CryptoError) -> Self {
         match err {
-            CryptoError::NoProviderRegistered(reason) => ConfigError::ValidationError { reason }.into(),
+            CryptoError::NoProviderRegistered(reason) => {
+                ConfigError::ValidationError { reason }.into()
+            }
         }
     }
 }

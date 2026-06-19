@@ -4,10 +4,10 @@
 //! Handles platform constraints (`SELinux`, Unix socket support) and
 //! capability-based discovery (socket paths, TCP fallback discovery files).
 
-use toadstool_common::interned_strings::socket_env;
 use crate::DisplayError;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use toadstool_common::interned_strings::socket_env;
 
 /// Discover socket path from environment
 ///
@@ -15,8 +15,8 @@ use std::path::PathBuf;
 /// under the `ecoPrimals/<PRIMAL_NAME>/` layout.
 #[must_use]
 pub fn discover_socket_path() -> PathBuf {
-    let base =
-        std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(|_| std::env::temp_dir(), PathBuf::from);
+    let base = std::env::var(socket_env::XDG_RUNTIME_DIR)
+        .map_or_else(|_| std::env::temp_dir(), PathBuf::from);
 
     let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     base.join("ecoPrimals")

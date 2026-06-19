@@ -111,8 +111,8 @@ mod tests {
         ToadStoolCoordinationIntegration,
     };
     use crate::universal::{UniversalScheduler, UniversalSchedulerConfig};
-    use toadstool_common::constants::network::LOCALHOST_IPV4;
     use toadstool_common::constants::PRIMAL_NAME;
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
 
     fn connection_with_protocol(protocol: CoordinationTransport) -> CoordinationConnection {
         let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, 50051_u16);

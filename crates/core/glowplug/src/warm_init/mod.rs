@@ -146,16 +146,21 @@ impl WarmInitPlan {
     pub fn from_handoff_config(config: &HandoffConfig) -> Self {
         let module_source = match &config.module_source {
             ModuleSourceConfig::System => ModuleSource::System,
-            ModuleSourceConfig::Patched { stock_module, patch_set } => ModuleSource::Patched {
+            ModuleSourceConfig::Patched {
+                stock_module,
+                patch_set,
+            } => ModuleSource::Patched {
                 stock_module: stock_module.clone(),
                 patch_set: patch_set.clone(),
             },
-            ModuleSourceConfig::DkmsPatched { dkms_module, patch_set, .. } => {
-                ModuleSource::Patched {
-                    stock_module: dkms_module.clone(),
-                    patch_set: patch_set.clone(),
-                }
-            }
+            ModuleSourceConfig::DkmsPatched {
+                dkms_module,
+                patch_set,
+                ..
+            } => ModuleSource::Patched {
+                stock_module: dkms_module.clone(),
+                patch_set: patch_set.clone(),
+            },
         };
 
         Self {
@@ -240,9 +245,7 @@ impl WarmInitPlan {
             }
             SeederContainment::Contained { reagent_template } => {
                 steps.push(format!("bind {} → vfio-pci (host side)", self.bdf));
-                steps.push(format!(
-                    "agentReagents: launch VM from {reagent_template}"
-                ));
+                steps.push(format!("agentReagents: launch VM from {reagent_template}"));
                 steps.push(format!("passthrough {} to VM", self.bdf));
                 steps.push(format!(
                     "VM: {} initializes GPU ({}ms settle)",

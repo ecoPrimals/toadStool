@@ -75,7 +75,9 @@ pub fn modinfo_path(name: &str) -> Option<PathBuf> {
     if let Ok(depfile) = std::fs::read_to_string(&dep_path) {
         let needle = format!("/{name}.ko");
         for line in depfile.lines() {
-            let Some((module_rel, _)) = line.split_once(':') else { continue };
+            let Some((module_rel, _)) = line.split_once(':') else {
+                continue;
+            };
             if module_rel.ends_with(&needle)
                 || module_rel.ends_with(&format!("{needle}.zst"))
                 || module_rel.ends_with(&format!("{needle}.xz"))
@@ -107,11 +109,9 @@ pub fn find_stock_module(name: &str) -> Result<PathBuf, KmodError> {
 /// This is used when we need a specific driver version (e.g., nvidia-470) that
 /// differs from the system-installed version.
 pub fn find_dkms_module(name: &str, version: &str) -> Result<PathBuf, KmodError> {
-    let kernel = crate::linux_paths::kernel_release().ok_or_else(|| {
-        KmodError::ModinfoFailed {
-            name: name.into(),
-            detail: "could not read kernel release from /proc".into(),
-        }
+    let kernel = crate::linux_paths::kernel_release().ok_or_else(|| KmodError::ModinfoFailed {
+        name: name.into(),
+        detail: "could not read kernel release from /proc".into(),
     })?;
 
     let path = PathBuf::from(format!(
@@ -219,20 +219,24 @@ fn decompress_ko_zst(path: &Path) -> Result<PathBuf, KmodError> {
         detail: format!("failed to read compressed module: {e}"),
     })?;
 
-    let mut decoder = ruzstd::decoding::StreamingDecoder::new(compressed.as_slice())
-        .map_err(|e| KmodError::LoadFailed {
-            path: path.display().to_string(),
-            detail: format!("zstd decoder init failed: {e}"),
+    let mut decoder =
+        ruzstd::decoding::StreamingDecoder::new(compressed.as_slice()).map_err(|e| {
+            KmodError::LoadFailed {
+                path: path.display().to_string(),
+                detail: format!("zstd decoder init failed: {e}"),
+            }
         })?;
 
     let mut decompressed = Vec::new();
-    std::io::Read::read_to_end(&mut decoder, &mut decompressed)
-        .map_err(|e| KmodError::LoadFailed {
+    std::io::Read::read_to_end(&mut decoder, &mut decompressed).map_err(|e| {
+        KmodError::LoadFailed {
             path: path.display().to_string(),
             detail: format!("zstd decompression failed: {e}"),
-        })?;
+        }
+    })?;
 
-    let stem = path.file_stem()
+    let stem = path
+        .file_stem()
         .and_then(|s| std::path::Path::new(s).file_stem())
         .unwrap_or_default()
         .to_string_lossy();
@@ -426,11 +430,9 @@ pub fn nm_text_symbols(ko_path: &Path) -> Result<Vec<(String, u64)>, KmodError> 
     use object::{Endianness, Object, ObjectSymbol, SymbolKind, SymbolSection};
 
     let data = std::fs::read(ko_path)?;
-    let elf = ElfFile64::<Endianness>::parse(&*data).map_err(|e| {
-        KmodError::ModinfoFailed {
-            name: ko_path.display().to_string(),
-            detail: format!("ELF parse failed: {e}"),
-        }
+    let elf = ElfFile64::<Endianness>::parse(&*data).map_err(|e| KmodError::ModinfoFailed {
+        name: ko_path.display().to_string(),
+        detail: format!("ELF parse failed: {e}"),
     })?;
 
     let mut symbols: Vec<(String, u64)> = elf
@@ -441,7 +443,9 @@ pub fn nm_text_symbols(ko_path: &Path) -> Result<Vec<(String, u64)>, KmodError> 
                 && sym.address() > 0
         })
         .filter_map(|sym| {
-            sym.name().ok().map(|name| (name.to_string(), sym.address()))
+            sym.name()
+                .ok()
+                .map(|name| (name.to_string(), sym.address()))
         })
         .collect();
 

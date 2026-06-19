@@ -18,7 +18,8 @@ use tracing::{debug, info, warn};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(10);
 const POLL_INTERVAL_NO_DISCOVERY: Duration = Duration::from_secs(30);
-const SHADER_CAPABILITY: &str = toadstool_common::constants::primal_identity::capability::SHADER_COMPILER;
+const SHADER_CAPABILITY: &str =
+    toadstool_common::constants::primal_identity::capability::SHADER_COMPILER;
 
 /// Run the `ipc.watch` background poller.
 ///
@@ -67,7 +68,8 @@ pub async fn run(shader_client: SharedVisualizationClient) {
                     discovery_available = true;
                 }
 
-                if let Some(new_rev) = response.get("revision").and_then(serde_json::Value::as_u64) {
+                if let Some(new_rev) = response.get("revision").and_then(serde_json::Value::as_u64)
+                {
                     revision = new_rev;
                 }
 

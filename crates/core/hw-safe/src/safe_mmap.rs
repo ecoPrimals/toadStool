@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(
-    unsafe_code,
-    reason = "mmap/munmap require unsafe — containment zone"
-)]
+#![allow(unsafe_code, reason = "mmap/munmap require unsafe — containment zone")]
 
 //! RAII memory-mapped file region.
 //!

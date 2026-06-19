@@ -146,10 +146,7 @@ impl BridgeGuardian {
     /// Number of active keepalive tasks.
     #[must_use]
     pub fn active_count(&self) -> usize {
-        self.handles
-            .values()
-            .filter(|h| h.is_running())
-            .count()
+        self.handles.values().filter(|h| h.is_running()).count()
     }
 
     /// Get the keepalive handle for a specific device.

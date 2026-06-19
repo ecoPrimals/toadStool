@@ -337,8 +337,7 @@ mod ram_restrict_tests {
         rom[e0 + 2..e0 + 4].copy_from_slice(&0x10u16.to_le_bytes());
         rom[e0 + 4..e0 + 6].copy_from_slice(&(m_data_off as u16).to_le_bytes());
         // M data[0:2] = pointer to rammap table
-        rom[m_data_off..m_data_off + 2]
-            .copy_from_slice(&(tbl_off as u16).to_le_bytes());
+        rom[m_data_off..m_data_off + 2].copy_from_slice(&(tbl_off as u16).to_le_bytes());
         // Rammap table header: snr (ram restrict groups) at offset +4
         rom[tbl_off + 4] = count;
         rom

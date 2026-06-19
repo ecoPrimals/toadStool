@@ -30,7 +30,7 @@ use toadstool_common::interned_strings::socket_env;
 use tracing::{debug, error, info};
 
 pub use method_gate::{
-    CallerContext, ConnectionTrustHints, ConnectionTransport, DispatchTrustLevel,
+    CallerContext, ConnectionTransport, ConnectionTrustHints, DispatchTrustLevel,
 };
 
 use super::types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
@@ -119,10 +119,7 @@ impl JsonRpcHandler {
             });
         }
 
-        let mut dispatch = DispatchHandler::new(
-            coral_client,
-            Self::try_connect_crypto_client(),
-        );
+        let mut dispatch = DispatchHandler::new(coral_client, Self::try_connect_crypto_client());
         #[cfg(target_os = "linux")]
         {
             tracing::info!("Phase D: local cylinder device factory registered");
@@ -136,11 +133,12 @@ impl JsonRpcHandler {
         // Build resource orchestrator for multi-tenant GPU scheduling.
         // Deployment model from TOADSTOOL_DEPLOYMENT_MODEL env:
         //   "multi" → LocalMulti, "rental" → CloudRental, else LocalDirect (no enforcement)
-        let deployment_model = match std::env::var(socket_env::TOADSTOOL_DEPLOYMENT_MODEL).as_deref() {
-            Ok("multi") => toadstool_runtime_orchestration::DeploymentModel::LocalMulti,
-            Ok("rental") => toadstool_runtime_orchestration::DeploymentModel::CloudRental,
-            _ => toadstool_runtime_orchestration::DeploymentModel::LocalDirect,
-        };
+        let deployment_model =
+            match std::env::var(socket_env::TOADSTOOL_DEPLOYMENT_MODEL).as_deref() {
+                Ok("multi") => toadstool_runtime_orchestration::DeploymentModel::LocalMulti,
+                Ok("rental") => toadstool_runtime_orchestration::DeploymentModel::CloudRental,
+                _ => toadstool_runtime_orchestration::DeploymentModel::LocalDirect,
+            };
 
         if deployment_model != toadstool_runtime_orchestration::DeploymentModel::LocalDirect {
             let gpus = toadstool_sysmon::discover_gpus();
@@ -197,8 +195,8 @@ impl JsonRpcHandler {
 
     /// Attempt to connect to the Tower crypto client (BearDog) for crypto
     /// delegation. Returns `None` in standalone mode (no crypto capability socket).
-    fn try_connect_crypto_client(
-    ) -> Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>> {
+    fn try_connect_crypto_client()
+    -> Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>> {
         let socket = toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
         if socket.exists() {
             match toadstool_distributed::crypto_integration::CryptoServiceClient::from_local_socket(
@@ -280,7 +278,6 @@ impl JsonRpcHandler {
             }
         }
     }
-
 }
 
 /// Extract caller provenance from connection-level trust hints.

@@ -334,8 +334,7 @@ impl PrimalCapabilities {
 /// Deep debt principle: Self-knowledge only!
 #[must_use]
 pub fn query_system_resources() -> SystemResources {
-    let cpu_cores = std::thread::available_parallelism()
-        .map_or(4, std::num::NonZero::get);
+    let cpu_cores = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
 
     let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
         total: 0,

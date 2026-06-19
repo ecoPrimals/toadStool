@@ -27,7 +27,10 @@ impl FallbackSource {
     /// If environment variable is not set, no fallback is provided.
     /// This ensures production deployments use proper capability discovery.
     #[must_use]
-    #[expect(deprecated, reason = "reads legacy env vars as backward-compat fallbacks")]
+    #[expect(
+        deprecated,
+        reason = "reads legacy env vars as backward-compat fallbacks"
+    )]
     pub fn new() -> Self {
         let mut fallbacks = HashMap::new();
 

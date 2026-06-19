@@ -27,9 +27,29 @@ pub(super) struct BiomeProcess {
 
 #[derive(Debug, Clone)]
 pub(super) enum ProcessType {
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "variant constructed when biome executor spawns primals"
+        )
+    )]
     Primal(String),
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "variant constructed when biome executor spawns services"
+        )
+    )]
     Service(String),
-    #[cfg_attr(not(test), expect(dead_code, reason = "reserved for health-check wiring via process executor"))]
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "reserved for health-check wiring via process executor"
+        )
+    )]
     HealthCheck(String),
 }
 

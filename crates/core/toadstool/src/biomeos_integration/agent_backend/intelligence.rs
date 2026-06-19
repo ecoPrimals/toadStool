@@ -64,7 +64,6 @@ impl IntelligenceBackend {
             _mcp_enabled: mcp_enabled,
         })
     }
-
 }
 
 impl AgentBackend for IntelligenceBackend {

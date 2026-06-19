@@ -155,7 +155,10 @@ impl FirmwareInterface for NoFirmwareInterface {
     }
 
     fn exit_boot_services(&self) -> Result<BootServiceEvidence, Self::Error> {
-        Ok(BootServiceEvidence::new("none", "no firmware — boot services trivially complete"))
+        Ok(BootServiceEvidence::new(
+            "none",
+            "no firmware — boot services trivially complete",
+        ))
     }
 }
 

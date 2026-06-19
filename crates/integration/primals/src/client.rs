@@ -67,7 +67,10 @@ impl PrimalClient {
         // Parse result into PrimalResponse if it's an object with success/data/error
         let response = if let Some(obj) = result.as_object() {
             PrimalResponse {
-                success: obj.get("success").and_then(serde_json::Value::as_bool).unwrap_or(true),
+                success: obj
+                    .get("success")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(true),
                 data: obj.get("data").cloned().unwrap_or(serde_json::Value::Null),
                 error: obj
                     .get("error")

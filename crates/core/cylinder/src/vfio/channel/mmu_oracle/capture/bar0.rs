@@ -20,19 +20,13 @@ enum Bar0Backing {
         region: MmioRegion,
     },
     /// Borrowed VFIO [`MappedBar`](crate::vfio::device::MappedBar); not unmapped on drop.
-    Borrowed {
-        ptr: NonNull<u8>,
-        len: usize,
-    },
+    Borrowed { ptr: NonNull<u8>, len: usize },
 }
 
 fn mmio_err_read(offset: usize, map_size: usize, e: MmioError) -> ChannelError {
     match e {
         MmioError::OutOfBounds { .. } => ChannelError::Bar0ReadOutOfBounds { offset, map_size },
-        MmioError::Misaligned {
-            address,
-            alignment,
-        } => ChannelError::resource_io(
+        MmioError::Misaligned { address, alignment } => ChannelError::resource_io(
             "read_u32",
             format!("BAR0+{offset:#x} misaligned at {address:#x} (need {alignment})"),
             std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()),
@@ -43,10 +37,7 @@ fn mmio_err_read(offset: usize, map_size: usize, e: MmioError) -> ChannelError {
 fn mmio_err_write(offset: usize, map_size: usize, e: MmioError) -> ChannelError {
     match e {
         MmioError::OutOfBounds { .. } => ChannelError::Bar0WriteOutOfBounds { offset, map_size },
-        MmioError::Misaligned {
-            address,
-            alignment,
-        } => ChannelError::resource_io(
+        MmioError::Misaligned { address, alignment } => ChannelError::resource_io(
             "write_u32",
             format!("BAR0+{offset:#x} misaligned at {address:#x} (need {alignment})"),
             std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()),

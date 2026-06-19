@@ -84,18 +84,17 @@ impl ToadStoolConfigTrait for SubstrateConfig {
     fn from_env() -> Result<Self> {
         use std::env;
 
-        let preferred =
-            env::var(socket_env::TOADSTOOL_SUBSTRATE_PREFERRED)
-                .ok()
-                .map_or(SubstratePreference::Auto, |s| {
-                    match s.to_lowercase().as_str() {
-                        "cpu" => SubstratePreference::Specific(SubstrateType::Cpu),
-                        "gpu" => SubstratePreference::Specific(SubstrateType::Gpu),
-                        "npu" => SubstratePreference::Specific(SubstrateType::Npu),
-                        "tpu" => SubstratePreference::Specific(SubstrateType::Tpu),
-                        _ => SubstratePreference::Auto,
-                    }
-                });
+        let preferred = env::var(socket_env::TOADSTOOL_SUBSTRATE_PREFERRED)
+            .ok()
+            .map_or(SubstratePreference::Auto, |s| {
+                match s.to_lowercase().as_str() {
+                    "cpu" => SubstratePreference::Specific(SubstrateType::Cpu),
+                    "gpu" => SubstratePreference::Specific(SubstrateType::Gpu),
+                    "npu" => SubstratePreference::Specific(SubstrateType::Npu),
+                    "tpu" => SubstratePreference::Specific(SubstrateType::Tpu),
+                    _ => SubstratePreference::Auto,
+                }
+            });
 
         Ok(Self {
             preferred,
@@ -103,15 +102,16 @@ impl ToadStoolConfigTrait for SubstrateConfig {
             power_budget_watts: env::var(socket_env::TOADSTOOL_POWER_BUDGET)
                 .ok()
                 .and_then(|s| s.parse().ok()),
-            performance_target: env::var(socket_env::TOADSTOOL_PERFORMANCE_TARGET).ok().map_or(
-                PerformanceTarget::Balanced,
-                |s| match s.to_lowercase().as_str() {
-                    "latency" => PerformanceTarget::Latency,
-                    "throughput" => PerformanceTarget::Throughput,
-                    "energy" => PerformanceTarget::Energy,
-                    _ => PerformanceTarget::Balanced,
-                },
-            ),
+            performance_target: env::var(socket_env::TOADSTOOL_PERFORMANCE_TARGET)
+                .ok()
+                .map_or(PerformanceTarget::Balanced, |s| {
+                    match s.to_lowercase().as_str() {
+                        "latency" => PerformanceTarget::Latency,
+                        "throughput" => PerformanceTarget::Throughput,
+                        "energy" => PerformanceTarget::Energy,
+                        _ => PerformanceTarget::Balanced,
+                    }
+                }),
             auto_discover: env::var(socket_env::TOADSTOOL_AUTO_DISCOVER)
                 .map_or(true, |s| s != "false" && s != "0"),
         })

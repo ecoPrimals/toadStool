@@ -43,10 +43,7 @@ impl DispatchHandler {
     /// When set, dispatch attempts local execution before falling back to
     /// coral_client IPC. The factory receives a BDF and returns a `ComputeDevice`
     /// if the device can be opened locally.
-    pub fn set_local_device_factory(
-        &mut self,
-        factory: super::LocalDeviceFactory,
-    ) {
+    pub fn set_local_device_factory(&mut self, factory: super::LocalDeviceFactory) {
         self.local_device_factory = Some(factory);
     }
 
@@ -82,7 +79,13 @@ impl DispatchHandler {
 
         let caller_gate_id = resolve_caller_gate_id(ctx, params);
         let hardware_owner_gate_id = if let Some(ownership) = self.gate_ownership.as_ref() {
-            Some(ownership.hardware_owner_gate_id().await.as_ref().to_string())
+            Some(
+                ownership
+                    .hardware_owner_gate_id()
+                    .await
+                    .as_ref()
+                    .to_string(),
+            )
         } else {
             None
         };
@@ -105,12 +108,9 @@ impl DispatchHandler {
                     msg,
                 ))
             }
-            Err(toadstool_runtime_orchestration::OrchestrationError::QuotaExceeded(msg)) => {
-                Err(JsonRpcError::server_error(
-                    error_codes::RESOURCE_EXHAUSTED,
-                    msg,
-                ))
-            }
+            Err(toadstool_runtime_orchestration::OrchestrationError::QuotaExceeded(msg)) => Err(
+                JsonRpcError::server_error(error_codes::RESOURCE_EXHAUSTED, msg),
+            ),
             Err(err) => Err(JsonRpcError::internal_error(err.to_string())),
         }
     }

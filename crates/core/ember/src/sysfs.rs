@@ -84,7 +84,10 @@ pub fn pin_power(bdf: &str) {
 
 /// Pin power via injectable [`SysfsPort`].
 pub fn pin_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
-    let _ = sysfs.write(&pci_device_path(bdf, "power/control").display().to_string(), "on");
+    let _ = sysfs.write(
+        &pci_device_path(bdf, "power/control").display().to_string(),
+        "on",
+    );
     let _ = sysfs.write(
         &pci_device_path(bdf, "d3cold_allowed").display().to_string(),
         "0",

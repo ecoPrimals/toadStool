@@ -36,8 +36,7 @@ fn compute_dispatch_with_buffer_vas() {
         workgroup: [64, 1, 1],
     };
     let buf_vas = [0x1_0000_0000_u64, 0x2_0000_0000_u64];
-    let pm4 =
-        build_compute_dispatch(0x3_0000_0000, DispatchDims::linear(64), &info, &buf_vas, 10);
+    let pm4 = build_compute_dispatch(0x3_0000_0000, DispatchDims::linear(64), &info, &buf_vas, 10);
     assert!(!pm4.is_empty());
     assert!(pm4.len() > 14, "PM4 should contain user data packets");
 }

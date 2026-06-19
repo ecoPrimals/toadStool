@@ -52,19 +52,31 @@ pub const TOADSTOOL_INTELLIGENCE_SOCKET: &str = "TOADSTOOL_INTELLIGENCE_SOCKET";
 
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_CRYPTO_SOCKET` or capability discovery
 /// (`interned_strings::capabilities::CRYPTO`).
-#[deprecated(since = "0.4.0", note = "use BIOMEOS_CRYPTO_SOCKET or capability discovery")]
+#[deprecated(
+    since = "0.4.0",
+    note = "use BIOMEOS_CRYPTO_SOCKET or capability discovery"
+)]
 pub const LEGACY_BEARDOG_SOCKET_ENV: &str = "BEARDOG_SOCKET";
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_COORDINATION_SOCKET` or
 /// `interned_strings::capabilities::COORDINATION`.
-#[deprecated(since = "0.4.0", note = "use BIOMEOS_COORDINATION_SOCKET or capability discovery")]
+#[deprecated(
+    since = "0.4.0",
+    note = "use BIOMEOS_COORDINATION_SOCKET or capability discovery"
+)]
 pub const LEGACY_SONGBIRD_SOCKET_ENV: &str = "SONGBIRD_SOCKET";
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_STORAGE_SOCKET` or
 /// `interned_strings::capabilities::STORAGE`.
-#[deprecated(since = "0.4.0", note = "use BIOMEOS_STORAGE_SOCKET or capability discovery")]
+#[deprecated(
+    since = "0.4.0",
+    note = "use BIOMEOS_STORAGE_SOCKET or capability discovery"
+)]
 pub const LEGACY_NESTGATE_SOCKET_ENV: &str = "NESTGATE_SOCKET";
 /// **Deprecated** (identity-based). Prefer `BIOMEOS_ROUTING_SOCKET` or
 /// `interned_strings::capabilities::ROUTING`.
-#[deprecated(since = "0.4.0", note = "use BIOMEOS_ROUTING_SOCKET or capability discovery")]
+#[deprecated(
+    since = "0.4.0",
+    note = "use BIOMEOS_ROUTING_SOCKET or capability discovery"
+)]
 pub const LEGACY_SQUIRREL_SOCKET_ENV: &str = "SQUIRREL_SOCKET";
 
 pub const TOADSTOOL_SOCKET: &str = "TOADSTOOL_SOCKET";

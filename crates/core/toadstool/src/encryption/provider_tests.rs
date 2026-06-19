@@ -21,7 +21,11 @@ async fn noop_crypto_provider_returns_no_provider_registered() {
     );
 
     let decrypt = provider
-        .decrypt(&EncryptedPayload::default(), &key, &EncryptionMetadata::default())
+        .decrypt(
+            &EncryptedPayload::default(),
+            &key,
+            &EncryptionMetadata::default(),
+        )
         .await;
     assert!(decrypt.is_err());
 

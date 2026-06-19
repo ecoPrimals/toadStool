@@ -42,11 +42,11 @@ pub mod lend_reclaim;
 pub mod metadata;
 pub mod observation;
 pub mod plx_keepalive;
+pub mod pri_ring_anchor;
 pub mod resource_handle;
 pub mod ring_meta;
 pub mod sysfs;
 pub mod vendor_lifecycle;
-pub mod pri_ring_anchor;
 pub mod vfio_anchor;
 pub mod vfio_handle;
 pub mod warm_keepalive;
@@ -57,17 +57,17 @@ pub use journal::{JournalEntry, SwapJournal};
 pub use lend_reclaim::{LendReceipt, LendState};
 pub use metadata::MetadataStore;
 pub use observation::{HealthResult, ResetObservation, SwapObservation, SwapTiming, epoch_ms};
+pub use plx_keepalive::{
+    ActivityTracker, KeepaliveHandle, PLX_VENDOR_ID, PcieBridgeKeepalive, PlxKeepalive,
+    detect_pcie_bridges, detect_plx_bridge, is_pci_bdf,
+};
+pub use pri_ring_anchor::{
+    BootServiceEvidence as EmberBootServiceEvidence, PriRingAnchor, PriRingHealth,
+};
 pub use resource_handle::ResourceHandle;
 pub use ring_meta::{MailboxMeta, RingMeta, RingMetaEntry};
 pub use vendor_lifecycle::{
     RebindStrategy, ResetMethod, VendorLifecycle, detect_lifecycle, detect_lifecycle_for_target,
-};
-pub use plx_keepalive::{
-    ActivityTracker, KeepaliveHandle, PcieBridgeKeepalive, PlxKeepalive,
-    detect_pcie_bridges, detect_plx_bridge, is_pci_bdf, PLX_VENDOR_ID,
-};
-pub use pri_ring_anchor::{
-    BootServiceEvidence as EmberBootServiceEvidence, PriRingAnchor, PriRingHealth,
 };
 pub use vfio_anchor::{AnchorBackendRef, VfioAnchor};
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};

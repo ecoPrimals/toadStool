@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use super::apply::{apply_single_patch, RET_OPCODE};
+use super::apply::{RET_OPCODE, apply_single_patch};
 use super::identity::rename_module_identity;
 use super::types::{PatchError, PatchSet, PatchStrategy, PatchTarget};
 
@@ -74,7 +74,11 @@ fn nvidia_catalyst_minimal_nop_patch_set_structure() {
     assert!(names.contains(&"nv_cap_create_dir_entry"));
     assert!(names.contains(&"nv_cap_create_file_entry"));
 
-    let cap_init = ps.targets.iter().find(|t| t.symbol == "nv_cap_init").unwrap();
+    let cap_init = ps
+        .targets
+        .iter()
+        .find(|t| t.symbol == "nv_cap_init")
+        .unwrap();
     assert_eq!(cap_init.strategy, PatchStrategy::Ret1AtEntry);
 
     // Host conflict NOPs with Ret0AtEntry (explicit success return)
@@ -82,9 +86,17 @@ fn nvidia_catalyst_minimal_nop_patch_set_structure() {
     assert!(names.contains(&"nv_cap_procfs_init"));
     assert!(names.contains(&"nv_acpi_init"));
 
-    let procfs = ps.targets.iter().find(|t| t.symbol == "nv_procfs_init").unwrap();
+    let procfs = ps
+        .targets
+        .iter()
+        .find(|t| t.symbol == "nv_procfs_init")
+        .unwrap();
     assert_eq!(procfs.strategy, PatchStrategy::Ret0AtEntry);
-    let cap_procfs = ps.targets.iter().find(|t| t.symbol == "nv_cap_procfs_init").unwrap();
+    let cap_procfs = ps
+        .targets
+        .iter()
+        .find(|t| t.symbol == "nv_cap_procfs_init")
+        .unwrap();
     assert_eq!(cap_procfs.strategy, PatchStrategy::Ret0AtEntry);
 
     // Teardown NOPs: nv_close_device and nv_pci_remove both NOT NOP'd.
@@ -99,7 +111,11 @@ fn nvidia_catalyst_minimal_nop_patch_set_structure() {
 
     // kthread stop NOP'd to prevent module exit hang
     assert!(names.contains(&"nv_kthread_q_stop"));
-    let kthread = ps.targets.iter().find(|t| t.symbol == "nv_kthread_q_stop").unwrap();
+    let kthread = ps
+        .targets
+        .iter()
+        .find(|t| t.symbol == "nv_kthread_q_stop")
+        .unwrap();
     assert_eq!(kthread.strategy, PatchStrategy::RetAtEntry);
 
     // Access control bypass still present
@@ -137,15 +153,8 @@ fn apply_single_patch_patches_ret_after_ftrace() {
         strategy: PatchStrategy::RetAfterFtrace,
     };
 
-    let result = apply_single_patch(
-        &mut bytes,
-        len,
-        &symbols,
-        &target,
-        Path::new("test.ko"),
-        0,
-    )
-    .unwrap();
+    let result =
+        apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0).unwrap();
 
     assert!(result.applied);
     assert_eq!(result.offset, Some(5));
@@ -163,14 +172,7 @@ fn apply_single_patch_rejects_missing_ftrace() {
         strategy: PatchStrategy::RetAfterFtrace,
     };
 
-    let result = apply_single_patch(
-        &mut bytes,
-        len,
-        &symbols,
-        &target,
-        Path::new("test.ko"),
-        0,
-    );
+    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0);
 
     assert!(matches!(result, Err(PatchError::NoFtraceCallSite { .. })));
 }
@@ -186,14 +188,7 @@ fn apply_single_patch_rejects_missing_symbol() {
         strategy: PatchStrategy::RetAfterFtrace,
     };
 
-    let result = apply_single_patch(
-        &mut bytes,
-        len,
-        &symbols,
-        &target,
-        Path::new("test.ko"),
-        0,
-    );
+    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0);
 
     assert!(matches!(result, Err(PatchError::SymbolNotFound { .. })));
 }
@@ -209,8 +204,8 @@ fn apply_single_patch_accepts_nop_sled() {
         strategy: PatchStrategy::RetAfterFtrace,
     };
 
-    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
-        .unwrap();
+    let result =
+        apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0).unwrap();
 
     assert!(result.applied);
     assert_eq!(result.offset, Some(5));
@@ -229,8 +224,8 @@ fn apply_single_patch_accepts_zero_pad() {
         strategy: PatchStrategy::RetAfterFtrace,
     };
 
-    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
-        .unwrap();
+    let result =
+        apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0).unwrap();
 
     assert!(result.applied);
     assert_eq!(result.offset, Some(5));
@@ -249,8 +244,8 @@ fn apply_single_patch_accepts_multibyte_nop() {
         strategy: PatchStrategy::RetAfterFtrace,
     };
 
-    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
-        .unwrap();
+    let result =
+        apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0).unwrap();
 
     assert!(result.applied);
     assert_eq!(result.offset, Some(5));
@@ -269,13 +264,13 @@ fn apply_single_patch_ret0_at_entry() {
         strategy: PatchStrategy::Ret0AtEntry,
     };
 
-    let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
-        .unwrap();
+    let result =
+        apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0).unwrap();
 
     assert!(result.applied);
     assert_eq!(result.offset, Some(5));
-    assert_eq!(bytes[5], 0x31);     // xor
-    assert_eq!(bytes[6], 0xc0);     // eax, eax
+    assert_eq!(bytes[5], 0x31); // xor
+    assert_eq!(bytes[6], 0xc0); // eax, eax
     assert_eq!(bytes[7], RET_OPCODE);
     assert!(result.detail.contains("ret0"));
 }
@@ -292,7 +287,10 @@ fn apply_single_patch_rejects_mid_instruction() {
     };
 
     let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0);
-    assert!(matches!(result, Err(PatchError::NoFtraceCallSite { found: 0xe5, .. })));
+    assert!(matches!(
+        result,
+        Err(PatchError::NoFtraceCallSite { found: 0xe5, .. })
+    ));
 }
 
 #[test]

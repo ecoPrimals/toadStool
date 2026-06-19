@@ -113,7 +113,10 @@ impl NetworkConfig {
             ),
             service_port: env_var_or(socket_env::TOADSTOOL_SERVICE_PORT, ports::toadstool::SERVER),
             api_port: env_var_or(socket_env::TOADSTOOL_API_PORT, ports::toadstool::SERVER),
-            metrics_port: env_var_or(socket_env::TOADSTOOL_METRICS_PORT, ports::toadstool::METRICS),
+            metrics_port: env_var_or(
+                socket_env::TOADSTOOL_METRICS_PORT,
+                ports::toadstool::METRICS,
+            ),
             health_port: env_var_or(socket_env::TOADSTOOL_HEALTH_PORT, ports::toadstool::HEALTH),
             // Deep Debt: Only use discovery endpoints from environment
             // No hardcoded fallbacks - rely on mDNS or explicit configuration

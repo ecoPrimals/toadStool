@@ -233,7 +233,6 @@ impl SecurityBackend {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         })
     }
-
 }
 
 impl AuthBackend for SecurityBackend {

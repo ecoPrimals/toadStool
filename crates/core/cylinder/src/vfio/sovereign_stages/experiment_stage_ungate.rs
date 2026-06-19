@@ -15,7 +15,11 @@ use super::power::{cg_sweep, pri_bus_recover};
 /// Only proceeds if GPCs showed life in stage 2-3. Writes GPC MMU init
 /// registers and replays sw_nonctx.bin firmware blob. Higher risk — large
 /// write sequence.
-pub(crate) fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
+pub(crate) fn experiment_stage_4_with_chip(
+    bar0: &MappedBar,
+    chip: &str,
+    sm: u32,
+) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
@@ -25,10 +29,11 @@ pub(crate) fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32
     use crate::nv::registers::gpc;
 
     // Pre-check: is GPC domain alive?
-    let gpc0 = bar0.read_u32(gpc::gpc_base(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let gpc0 = bar0
+        .read_u32(gpc::gpc_base(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
     let gpc_bcast = bar0.read_u32(gpc::BCAST_ENABLES as usize).unwrap_or(0);
-    let gpc_alive = !is_pri_fault(gpc0)
-        || (!is_pri_fault(gpc_bcast) && gpc_bcast != 0);
+    let gpc_alive = !is_pri_fault(gpc0) || (!is_pri_fault(gpc_bcast) && gpc_bcast != 0);
 
     if !gpc_alive {
         notes.push(format!(
@@ -72,9 +77,15 @@ pub(crate) fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32
     }
 
     // Probe TPC registers after sw_nonctx broadcast writes
-    let tpc0_post = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xDEAD_DEAD);
-    let tpc0_sm_post = bar0.read_u32(gpc::gpc_tpc0_sm(0) as usize).unwrap_or(0xDEAD_DEAD);
-    let bcast_tpc_post = bar0.read_u32(gpc::BCAST_TPC_CTRL as usize).unwrap_or(0xDEAD_DEAD);
+    let tpc0_post = bar0
+        .read_u32(gpc::gpc_tpc0(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
+    let tpc0_sm_post = bar0
+        .read_u32(gpc::gpc_tpc0_sm(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
+    let bcast_tpc_post = bar0
+        .read_u32(gpc::BCAST_TPC_CTRL as usize)
+        .unwrap_or(0xDEAD_DEAD);
     notes.push(format!(
         "Post-sw_nonctx TPC probe: tpc0_ctrl={tpc0_post:#010x}, \
          tpc0_sm={tpc0_sm_post:#010x}, bcast_tpc={bcast_tpc_post:#010x}"
@@ -118,10 +129,11 @@ pub(crate) fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
     let mut notes = Vec::new();
 
     // Pre-check: GPCs alive?
-    let gpc0 = bar0.read_u32(gpc::gpc_base(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let gpc0 = bar0
+        .read_u32(gpc::gpc_base(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
     let gpc_bcast = bar0.read_u32(gpc::BCAST_ENABLES as usize).unwrap_or(0);
-    let gpc_alive = !is_pri_fault(gpc0)
-        || (!is_pri_fault(gpc_bcast) && gpc_bcast != 0);
+    let gpc_alive = !is_pri_fault(gpc0) || (!is_pri_fault(gpc_bcast) && gpc_bcast != 0);
 
     if !gpc_alive {
         notes.push(format!(
@@ -244,7 +256,11 @@ pub(crate) fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
 /// Higher risk than stages 1-5 — includes PGRAPH engine reset which
 /// may change FECS state. Use after stages 1-3 confirm GPC fabric is
 /// alive but TPCs remain PRI-faulted.
-pub(crate) fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
+pub(crate) fn experiment_stage_6_with_chip(
+    bar0: &MappedBar,
+    chip: &str,
+    sm: u32,
+) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
@@ -298,8 +314,14 @@ pub(crate) fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32
     }
 
     // Extra GPC MMU writes from nouveau gm200_gr_init_gpc_mmu
-    let a4 = bar0.read_u32(gpc::BCAST_MMU_DEBUG_CTRL as usize).unwrap_or(0);
-    writes.push(ExperimentWrite::new(bar0, gpc::BCAST_MMU_DEBUG_CTRL as usize, a4 | 0x0300_0000));
+    let a4 = bar0
+        .read_u32(gpc::BCAST_MMU_DEBUG_CTRL as usize)
+        .unwrap_or(0);
+    writes.push(ExperimentWrite::new(
+        bar0,
+        gpc::BCAST_MMU_DEBUG_CTRL as usize,
+        a4 | 0x0300_0000,
+    ));
     notes.push("Phase 3: GPC MMU init + extended MMU writes".into());
 
     // Phase 4: sw_nonctx.bin replay
@@ -319,16 +341,30 @@ pub(crate) fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32
     use crate::vfio::channel::registers::falcon;
 
     // Probe TPC + CE state post-ungating
-    let tpc0 = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xDEAD_DEAD);
-    let tpc0_sm = bar0.read_u32(gpc::gpc_tpc0_sm(0) as usize).unwrap_or(0xDEAD_DEAD);
-    let ce0 = bar0.read_u32(ce::ce_base(0) as usize).unwrap_or(0xDEAD_DEAD);
-    let ce4 = bar0.read_u32(ce::ce_base(4) as usize).unwrap_or(0xDEAD_DEAD);
+    let tpc0 = bar0
+        .read_u32(gpc::gpc_tpc0(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
+    let tpc0_sm = bar0
+        .read_u32(gpc::gpc_tpc0_sm(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
+    let ce0 = bar0
+        .read_u32(ce::ce_base(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
+    let ce4 = bar0
+        .read_u32(ce::ce_base(4) as usize)
+        .unwrap_or(0xDEAD_DEAD);
     let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0);
-    let gpc0 = bar0.read_u32(gpc::gpc_base(0) as usize).unwrap_or(0xDEAD_DEAD);
+    let gpc0 = bar0
+        .read_u32(gpc::gpc_base(0) as usize)
+        .unwrap_or(0xDEAD_DEAD);
 
-    notes.push(format!("Final TPC probe: tpc0_ctrl={tpc0:#010x}, tpc0_sm={tpc0_sm:#010x}"));
+    notes.push(format!(
+        "Final TPC probe: tpc0_ctrl={tpc0:#010x}, tpc0_sm={tpc0_sm:#010x}"
+    ));
     notes.push(format!("Final CE probe: ce0={ce0:#010x}, ce4={ce4:#010x}"));
-    notes.push(format!("Final state: gpc0={gpc0:#010x}, fecs_pc={fecs_pc:#010x}"));
+    notes.push(format!(
+        "Final state: gpc0={gpc0:#010x}, fecs_pc={fecs_pc:#010x}"
+    ));
 
     let tpc_alive = !is_pri_fault(tpc0);
     notes.push(format!("TPC PRI station alive = {tpc_alive}"));
@@ -362,7 +398,9 @@ pub(crate) fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32
             pri3.alive, pri3.faulted
         ));
 
-        let tpc0_final = bar0.read_u32(gpc::gpc_tpc0(0) as usize).unwrap_or(0xDEAD_DEAD);
+        let tpc0_final = bar0
+            .read_u32(gpc::gpc_tpc0(0) as usize)
+            .unwrap_or(0xDEAD_DEAD);
         let tpc_alive_final = !is_pri_fault(tpc0_final);
         notes.push(format!(
             "Post-reset TPC: tpc0={tpc0_final:#010x}, alive={tpc_alive_final}"

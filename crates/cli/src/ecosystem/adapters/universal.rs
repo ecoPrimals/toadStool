@@ -137,9 +137,7 @@ impl UniversalServiceAdapter {
         match protocol.as_str() {
             "jsonrpc" | "unix" => self.invoke_jsonrpc(provider, request).await,
             "http" | "https" => {
-                tracing::error!(
-                    "HTTP protocol deprecated. Migrate to JSON-RPC over Unix socket."
-                );
+                tracing::error!("HTTP protocol deprecated. Migrate to JSON-RPC over Unix socket.");
                 Err(crate::CliError::Other(
                     "HTTP adapter removed (S317). Use Unix socket RPC for primal-to-primal communication. \
                      For external HTTP, route through the coordination service (Concentrated Gap architecture)."

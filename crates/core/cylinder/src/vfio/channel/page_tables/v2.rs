@@ -312,7 +312,10 @@ pub(in crate::vfio::channel) fn populate_runlist(
 }
 
 /// Populate runlist in a pre-allocated buffer (static version for matrix).
-#[expect(clippy::cast_possible_truncation, reason = "IOVA addresses and channel IDs fit in u32 for GPU register encoding")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "IOVA addresses and channel IDs fit in u32 for GPU register encoding"
+)]
 pub(in crate::vfio::channel) fn populate_runlist_static(
     rl: &mut [u8],
     userd_iova: u64,

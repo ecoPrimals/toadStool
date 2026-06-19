@@ -49,7 +49,10 @@
 mod types;
 
 #[cfg(test)]
-#[expect(deprecated, reason = "tests reference legacy BEARDOG_* env constants to clear them")]
+#[expect(
+    deprecated,
+    reason = "tests reference legacy BEARDOG_* env constants to clear them"
+)]
 mod tests;
 
 pub use types::{DiscoveryConfig, DiscoveryError, DiscoveryMethod};

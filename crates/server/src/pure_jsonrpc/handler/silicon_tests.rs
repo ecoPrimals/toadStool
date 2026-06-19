@@ -204,10 +204,12 @@ async fn query_partial_match_tolerance_too_tight() {
     });
     let result = handler.query(Some(&query)).await.unwrap();
     assert!(result["recommendation"].is_null());
-    assert!(result["message"]
-        .as_str()
-        .unwrap()
-        .contains("no measurements"));
+    assert!(
+        result["message"]
+            .as_str()
+            .unwrap()
+            .contains("no measurements")
+    );
 }
 
 #[tokio::test]

@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use crate::error::{DriverError, DriverResult};
 use crate::vfio::device::MappedBar;
 
-use super::super::registers::{pbdma, pmc, pfifo, pri, RUNLIST_IOVA};
+use super::super::registers::{RUNLIST_IOVA, pbdma, pfifo, pmc, pri};
 use super::PfifoInitConfig;
 
 /// Configurable PFIFO engine initialization.

@@ -8,8 +8,8 @@ pub use definitions::{
     Commands, DeviceCommand, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands,
 };
 
-pub mod dispatch;
 mod device;
+pub mod dispatch;
 pub mod doctor;
 mod kernel_health;
 mod mode;

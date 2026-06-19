@@ -245,7 +245,10 @@ async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpo
     };
 
     let discovered = mdns
-        .discover_by_capability(capability_category, Duration::from_secs(DISCOVERY_SCAN_TIMEOUT_SECS))
+        .discover_by_capability(
+            capability_category,
+            Duration::from_secs(DISCOVERY_SCAN_TIMEOUT_SECS),
+        )
         .await
         .unwrap_or_default();
 

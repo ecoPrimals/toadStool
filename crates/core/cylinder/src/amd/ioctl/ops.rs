@@ -233,7 +233,14 @@ pub fn submit_command(
     ib_gpu_addr: u64,
     ib_size_bytes: u32,
 ) -> DriverResult<u64> {
-    submit_command_ip(fd, ctx_id, bo_list, ib_gpu_addr, ib_size_bytes, AMDGPU_HW_IP_GFX)
+    submit_command_ip(
+        fd,
+        ctx_id,
+        bo_list,
+        ib_gpu_addr,
+        ib_size_bytes,
+        AMDGPU_HW_IP_GFX,
+    )
 }
 
 /// Submit a command buffer to a specific IP type.

@@ -135,10 +135,7 @@ fn test_server_command_headless_with_socket() {
     } = cli.command
     {
         assert!(headless);
-        assert_eq!(
-            socket,
-            Some(PathBuf::from("/run/membrane/toadstool.sock"))
-        );
+        assert_eq!(socket, Some(PathBuf::from("/run/membrane/toadstool.sock")));
     } else {
         panic!("Expected Server command");
     }

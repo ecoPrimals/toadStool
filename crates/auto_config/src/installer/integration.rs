@@ -64,7 +64,8 @@ pub async fn add_to_path(
 pub fn has_gui(platform: Platform) -> bool {
     match platform {
         Platform::Linux => {
-            std::env::var(socket_env::DISPLAY).is_ok() || std::env::var(socket_env::WAYLAND_DISPLAY).is_ok()
+            std::env::var(socket_env::DISPLAY).is_ok()
+                || std::env::var(socket_env::WAYLAND_DISPLAY).is_ok()
         }
         Platform::MacOS | Platform::Windows => true,
         Platform::Android | Platform::Wasm | Platform::Unknown => false,
@@ -80,7 +81,10 @@ pub async fn create_desktop_shortcuts(
 
     match platform {
         Platform::Linux => {
-            let desktop_dir = format!("{}/Desktop", std::env::var(socket_env::HOME).unwrap_or_default());
+            let desktop_dir = format!(
+                "{}/Desktop",
+                std::env::var(socket_env::HOME).unwrap_or_default()
+            );
             if Path::new(&desktop_dir).exists() {
                 let desktop_file = format!(
                     r"[Desktop Entry]

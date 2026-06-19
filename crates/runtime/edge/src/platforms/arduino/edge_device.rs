@@ -91,7 +91,10 @@ impl EdgeDevice for ArduinoDevice {
             dev.upload_code(&compiled_code).await?;
 
             const SERIAL_READ_TIMEOUT_SECS: u64 = 2;
-            let output = match dev.read_serial_output(Duration::from_secs(SERIAL_READ_TIMEOUT_SECS)).await {
+            let output = match dev
+                .read_serial_output(Duration::from_secs(SERIAL_READ_TIMEOUT_SECS))
+                .await
+            {
                 Ok(serial_out) if !serial_out.is_empty() => serial_out,
                 Ok(_) => "Deployed — no serial output within timeout".to_string(),
                 Err(_) => "Deployed — serial monitor unavailable".to_string(),

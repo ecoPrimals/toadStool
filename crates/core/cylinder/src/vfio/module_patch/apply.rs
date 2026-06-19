@@ -32,12 +32,12 @@ pub(crate) fn apply_single_patch(
     source_path: &Path,
     text_section_offset: usize,
 ) -> Result<PatchResult, PatchError> {
-    let &sym_offset = symbols.get(&target.symbol).ok_or_else(|| {
-        PatchError::SymbolNotFound {
+    let &sym_offset = symbols
+        .get(&target.symbol)
+        .ok_or_else(|| PatchError::SymbolNotFound {
             symbol: target.symbol.clone(),
             module: source_path.display().to_string(),
-        }
-    })?;
+        })?;
 
     let offset = sym_offset as usize + text_section_offset;
 
@@ -77,7 +77,11 @@ pub(crate) fn apply_single_patch(
             let original_byte = module_bytes[patch_offset];
             module_bytes[patch_offset] = RET_OPCODE;
 
-            let site_type = if is_ftrace_call { "e8-call" } else { "nop-padded" };
+            let site_type = if is_ftrace_call {
+                "e8-call"
+            } else {
+                "nop-padded"
+            };
             tracing::debug!(
                 symbol = target.symbol.as_str(),
                 nm_offset = format_args!("{offset:#x}"),
@@ -111,9 +115,7 @@ pub(crate) fn apply_single_patch(
                     symbol: target.symbol.clone(),
                     applied: true,
                     offset: Some(patch_off),
-                    detail: format!(
-                        "ret@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
-                    ),
+                    detail: format!("ret@{patch_off:#x} (was {original_byte:#04x}, entry+5)"),
                 })
             } else if offset < module_bytes.len() {
                 let original_byte = module_bytes[offset];
@@ -123,9 +125,7 @@ pub(crate) fn apply_single_patch(
                     symbol: target.symbol.clone(),
                     applied: true,
                     offset: Some(offset),
-                    detail: format!(
-                        "ret@{offset:#x} (was {original_byte:#04x}, entry+0)"
-                    ),
+                    detail: format!("ret@{offset:#x} (was {original_byte:#04x}, entry+0)"),
                 })
             } else {
                 Ok(PatchResult {
@@ -145,17 +145,15 @@ pub(crate) fn apply_single_patch(
             if has_ftrace && offset + FTRACE_CALL_SIZE + 3 <= module_bytes.len() {
                 let patch_off = offset + FTRACE_CALL_SIZE;
                 let original_byte = module_bytes[patch_off];
-                module_bytes[patch_off] = 0x31;         // xor
-                module_bytes[patch_off + 1] = 0xc0;     // eax, eax
+                module_bytes[patch_off] = 0x31; // xor
+                module_bytes[patch_off + 1] = 0xc0; // eax, eax
                 module_bytes[patch_off + 2] = RET_OPCODE;
 
                 Ok(PatchResult {
                     symbol: target.symbol.clone(),
                     applied: true,
                     offset: Some(patch_off),
-                    detail: format!(
-                        "ret0@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
-                    ),
+                    detail: format!("ret0@{patch_off:#x} (was {original_byte:#04x}, entry+5)"),
                 })
             } else if offset + 3 <= module_bytes.len() {
                 let original_byte = module_bytes[offset];
@@ -167,18 +165,14 @@ pub(crate) fn apply_single_patch(
                     symbol: target.symbol.clone(),
                     applied: true,
                     offset: Some(offset),
-                    detail: format!(
-                        "ret0@{offset:#x} (was {original_byte:#04x}, entry+0, 3B)"
-                    ),
+                    detail: format!("ret0@{offset:#x} (was {original_byte:#04x}, entry+0, 3B)"),
                 })
             } else {
                 Ok(PatchResult {
                     symbol: target.symbol.clone(),
                     applied: false,
                     offset: None,
-                    detail: format!(
-                        "insufficient space for ret0 at {offset:#x}"
-                    ),
+                    detail: format!("insufficient space for ret0 at {offset:#x}"),
                 })
             }
         }
@@ -193,26 +187,24 @@ pub(crate) fn apply_single_patch(
                 // `xor eax,eax; inc eax; ret` (5 bytes).
                 let patch_off = offset + FTRACE_CALL_SIZE;
                 let original_byte = module_bytes[patch_off];
-                module_bytes[patch_off] = 0x31;         // xor
-                module_bytes[patch_off + 1] = 0xc0;     // eax, eax
-                module_bytes[patch_off + 2] = 0xff;     // inc
-                module_bytes[patch_off + 3] = 0xc0;     // eax
+                module_bytes[patch_off] = 0x31; // xor
+                module_bytes[patch_off + 1] = 0xc0; // eax, eax
+                module_bytes[patch_off + 2] = 0xff; // inc
+                module_bytes[patch_off + 3] = 0xc0; // eax
                 module_bytes[patch_off + 4] = RET_OPCODE;
 
                 Ok(PatchResult {
                     symbol: target.symbol.clone(),
                     applied: true,
                     offset: Some(patch_off),
-                    detail: format!(
-                        "ret1@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
-                    ),
+                    detail: format!("ret1@{patch_off:#x} (was {original_byte:#04x}, entry+5)"),
                 })
             } else if offset + 6 <= module_bytes.len() {
                 // No ftrace preamble (proprietary blob function): patch
                 // at entry+0 with `mov eax, 1; ret` (6 bytes).
                 let original_byte = module_bytes[offset];
-                module_bytes[offset] = 0xb8;         // mov eax,
-                module_bytes[offset + 1] = 0x01;     // 1
+                module_bytes[offset] = 0xb8; // mov eax,
+                module_bytes[offset + 1] = 0x01; // 1
                 module_bytes[offset + 2] = 0x00;
                 module_bytes[offset + 3] = 0x00;
                 module_bytes[offset + 4] = 0x00;
@@ -222,18 +214,14 @@ pub(crate) fn apply_single_patch(
                     symbol: target.symbol.clone(),
                     applied: true,
                     offset: Some(offset),
-                    detail: format!(
-                        "ret1@{offset:#x} (was {original_byte:#04x}, entry+0, 6B)"
-                    ),
+                    detail: format!("ret1@{offset:#x} (was {original_byte:#04x}, entry+0, 6B)"),
                 })
             } else {
                 Ok(PatchResult {
                     symbol: target.symbol.clone(),
                     applied: false,
                     offset: None,
-                    detail: format!(
-                        "insufficient space for ret1 at {offset:#x}"
-                    ),
+                    detail: format!("insufficient space for ret1 at {offset:#x}"),
                 })
             }
         }
@@ -267,7 +255,11 @@ pub(crate) fn apply_single_patch(
                 ),
             })
         }
-        PatchStrategy::PatchByteAt { fn_offset, expected, replacement } => {
+        PatchStrategy::PatchByteAt {
+            fn_offset,
+            expected,
+            replacement,
+        } => {
             let patch_off = offset + fn_offset;
             if patch_off >= module_bytes.len() {
                 return Ok(PatchResult {
@@ -359,6 +351,9 @@ pub fn reapply_nops(module_bytes: &mut [u8], result: &ModulePatchResult) {
         }
     }
     if restored > 0 {
-        tracing::info!(restored, "re-applied NOP patches after post-objcopy normalization");
+        tracing::info!(
+            restored,
+            "re-applied NOP patches after post-objcopy normalization"
+        );
     }
 }

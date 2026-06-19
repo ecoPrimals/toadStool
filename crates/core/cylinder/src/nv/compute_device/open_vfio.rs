@@ -6,10 +6,12 @@ use crate::vfio::VfioDevice;
 
 use super::super::generation::PageTableFormat;
 use super::super::nv_gsp_bridge::NvGspBridge;
-use super::channel_init::{self, alloc_semaphore_buffer, build_dispatch_state, init_channel_buffers};
+use super::NvVfioComputeDevice;
+use super::channel_init::{
+    self, alloc_semaphore_buffer, build_dispatch_state, init_channel_buffers,
+};
 use super::gr_falcon_boot::boot_gpccs_fecs_deferred;
 use super::pbdma::find_target_pbdma;
-use super::NvVfioComputeDevice;
 
 use super::open_vfio_catalyst::handle_catalyst_path;
 use super::open_vfio_fecs_probe::probe_fecs_for_deferred_boot;
@@ -35,10 +37,7 @@ impl NvVfioComputeDevice {
     /// or channel creation fails.
     pub fn open_vfio(&mut self) -> DriverResult<()> {
         let profile = super::super::generation::profile_for_sm(self.sm);
-        let is_kepler = matches!(
-            profile.page_table_format,
-            PageTableFormat::V1TwoLevel
-        );
+        let is_kepler = matches!(profile.page_table_format, PageTableFormat::V1TwoLevel);
 
         let device = VfioDevice::open(&self.bdf)?;
         let bar0 = device.map_bar(0)?;
@@ -104,8 +103,7 @@ impl NvVfioComputeDevice {
             "VFIO PBDMA dispatch state initialized"
         );
 
-        let mut target_pbdma_base =
-            find_target_pbdma(&bar0, &init.channel, init.doorbell, "");
+        let mut target_pbdma_base = find_target_pbdma(&bar0, &init.channel, init.doorbell, "");
 
         // Deferred GR falcon boot: now that PFIFO + channel infrastructure
         // exists, boot GPCCS first, then FECS, then send INIT_CTXSW.
@@ -154,19 +152,15 @@ impl NvVfioComputeDevice {
         // Catalyst path: RM firmware booted FECS/TPCs but RM's FECS idle loop
         // doesn't process our context-switch protocol.
         if catalyst_mode && !is_kepler && init.gr_ctx.is_some() {
-            handle_catalyst_path(
-                &bar0,
-                &dma_backend,
-                &init.channel,
-                profile,
-                &self.bdf,
-            );
+            handle_catalyst_path(&bar0, &dma_backend, &init.channel, profile, &self.bdf);
 
             // Exp 229 Phase A: If sovereign channel is still PENDING after
             // catalyst path, try adopting the RM channel directly.
-            let pccsr_val = bar0.read_u32(
-                crate::vfio::channel::registers::pccsr::channel(init.channel.id())
-            ).unwrap_or(0);
+            let pccsr_val = bar0
+                .read_u32(crate::vfio::channel::registers::pccsr::channel(
+                    init.channel.id(),
+                ))
+                .unwrap_or(0);
             let status = crate::vfio::channel::registers::pccsr::status(pccsr_val);
             if status < 5 {
                 tracing::info!(
@@ -177,7 +171,10 @@ impl NvVfioComputeDevice {
                     "Phase B: sovereign channel still PENDING — attempting Phase A (RM channel adoption)"
                 );
                 match channel_init::adopt_rm_channel(
-                    &dma_backend, &bar0, profile, &self.bdf,
+                    &dma_backend,
+                    &bar0,
+                    profile,
+                    &self.bdf,
                     self.rm_channel_id,
                 ) {
                     Ok(Some(adopted_init)) => {

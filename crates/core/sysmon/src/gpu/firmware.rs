@@ -183,10 +183,7 @@ fn nvidia_chip_name(device_id: u32) -> String {
 
 fn check_firmware_component(base: &Path, chip: &str, component: &str) -> FwStatus {
     let dir = base.join(chip).join(component);
-    if dir.exists()
-        && std::fs::read_dir(&dir)
-            .is_ok_and(|mut d| d.next().is_some())
-    {
+    if dir.exists() && std::fs::read_dir(&dir).is_ok_and(|mut d| d.next().is_some()) {
         return FwStatus::Present;
     }
     let flat = base.join(format!("{chip}_{component}.bin"));

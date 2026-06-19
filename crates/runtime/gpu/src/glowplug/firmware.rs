@@ -41,7 +41,10 @@ mod regs {
     /// BOOTVEC register offset within a Falcon block.
     pub const FALCON_BOOTVEC: u64 = 0x104;
     /// Falcon STATUS register (execution state flags).
-    #[expect(dead_code, reason = "architectural register offset — consumed when falcon status polling lands")]
+    #[expect(
+        dead_code,
+        reason = "architectural register offset — consumed when falcon status polling lands"
+    )]
     pub const FALCON_STATUS: u64 = 0x108;
     /// Falcon hardware PC (trace PC on Volta+).
     pub const FALCON_PC: u64 = 0x11c;
@@ -137,7 +140,11 @@ impl GpuFirmwareAccess {
         let effective_pc = if pc != 0 { pc } else { bootvec };
         let halted = cpuctl & regs::CPUCTL_HALTED != 0;
 
-        Ok(FalconState { cpuctl, pc: effective_pc, halted })
+        Ok(FalconState {
+            cpuctl,
+            pc: effective_pc,
+            halted,
+        })
     }
 }
 
@@ -204,12 +211,11 @@ impl FirmwareInterface for GpuFirmwareAccess {
         // executing (cpuctl has the HRESET bit set, indicating firmware
         // was loaded via ACR, and PC is at a valid address — not a PRI
         // fault like 0xBADF5040).
-        let fecs_ok = status.fecs.as_ref().is_some_and(|f| {
-            f.cpuctl & 0x10 != 0 && f.pc & 0xBADF_0000 != 0xBADF_0000
-        });
-        let gpccs_ok = status.gpccs.as_ref().is_some_and(|g| {
-            g.cpuctl & 0x10 != 0
-        });
+        let fecs_ok = status
+            .fecs
+            .as_ref()
+            .is_some_and(|f| f.cpuctl & 0x10 != 0 && f.pc & 0xBADF_0000 != 0xBADF_0000);
+        let gpccs_ok = status.gpccs.as_ref().is_some_and(|g| g.cpuctl & 0x10 != 0);
         fecs_ok && gpccs_ok
     }
 
@@ -227,7 +233,8 @@ impl FirmwareInterface for GpuFirmwareAccess {
         let gpccs = Self::read_falcon(&bar0, regs::GPCCS_BASE)?;
         let pmu = Self::read_falcon(&bar0, regs::PMU_BASE).ok();
 
-        let pmc_enable = bar0.read_u32(0x200)
+        let pmc_enable = bar0
+            .read_u32(0x200)
             .map_err(|e| GpuFirmwareError::RegisterReadFailed(e.to_string()))?;
 
         let mut evidence = BootServiceEvidence::new(
@@ -245,10 +252,14 @@ impl FirmwareInterface for GpuFirmwareAccess {
         }
 
         // PGRAPH status and PRI ring state
-        evidence.record("pgraph_status",
-            format!("{:#010x}", bar0.read_u32(0x400700).unwrap_or(0xDEAD)));
-        evidence.record("pri_ring_master_status",
-            format!("{:#010x}", bar0.read_u32(0x120050).unwrap_or(0xDEAD)));
+        evidence.record(
+            "pgraph_status",
+            format!("{:#010x}", bar0.read_u32(0x400700).unwrap_or(0xDEAD)),
+        );
+        evidence.record(
+            "pri_ring_master_status",
+            format!("{:#010x}", bar0.read_u32(0x120050).unwrap_or(0xDEAD)),
+        );
 
         // Probe TPC status across GPCs
         for gpc in 0..6u32 {
@@ -257,7 +268,11 @@ impl FirmwareInterface for GpuFirmwareAccess {
                 let is_fault = tpc_val & 0xBADF_0000 == 0xBADF_0000;
                 evidence.record(
                     format!("gpc{gpc}_tpc0"),
-                    format!("{:#010x}{}", tpc_val, if is_fault { " FAULT" } else { " ALIVE" }),
+                    format!(
+                        "{:#010x}{}",
+                        tpc_val,
+                        if is_fault { " FAULT" } else { " ALIVE" }
+                    ),
                 );
             }
         }

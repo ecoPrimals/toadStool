@@ -19,7 +19,11 @@ pub(crate) fn experiment_stage_1(bar0: &MappedBar) -> ExperimentResult {
     let mut notes = Vec::new();
 
     // Write PFIFO_ENABLE = 1
-    writes.push(ExperimentWrite::new(bar0, crate::nv::registers::pgraph::PFIFO_ENABLE as usize, 0x1));
+    writes.push(ExperimentWrite::new(
+        bar0,
+        crate::nv::registers::pgraph::PFIFO_ENABLE as usize,
+        0x1,
+    ));
     notes.push(format!("PFIFO_ENABLE: was {:#010x}", before.pfifo_enable));
 
     // CG sweep to disable clock gating
@@ -53,7 +57,11 @@ pub(crate) fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
     use crate::nv::registers::{gpc, pgraph, pmc as pmc_reg};
 
     // Step 1: PMC clock gate disable
-    writes.push(ExperimentWrite::new(bar0, pmc_reg::CLKGATE_DISABLE as usize, 0x1));
+    writes.push(ExperimentWrite::new(
+        bar0,
+        pmc_reg::CLKGATE_DISABLE as usize,
+        0x1,
+    ));
     notes.push("PMC_CLKGATE_DISABLE = 1".into());
 
     // Step 2: Ensure GR engine enabled in PMC_ENABLE (bit 12)
@@ -66,7 +74,11 @@ pub(crate) fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
     }
 
     // Step 3: GPC broadcast PGOB control = 0x110
-    writes.push(ExperimentWrite::new(bar0, gpc::BCAST_CONTROL as usize, 0x0000_0110));
+    writes.push(ExperimentWrite::new(
+        bar0,
+        gpc::BCAST_CONTROL as usize,
+        0x0000_0110,
+    ));
     notes.push("GPC_BCAST_PGOB_CONTROL = 0x110".into());
 
     // Step 4: Per-GPC PGOB disable (broadcast offset + 0x1028)
@@ -77,7 +89,9 @@ pub(crate) fn experiment_stage_2(bar0: &MappedBar) -> ExperimentResult {
     let deadline = Instant::now() + Duration::from_millis(100);
     let mut last_status = 0xDEAD_DEAD_u32;
     while Instant::now() < deadline {
-        last_status = bar0.read_u32(pgraph::STATUS as usize).unwrap_or(0xDEAD_DEAD);
+        last_status = bar0
+            .read_u32(pgraph::STATUS as usize)
+            .unwrap_or(0xDEAD_DEAD);
         if last_status >> 16 != 0xBADF {
             break;
         }
@@ -111,16 +125,26 @@ pub(crate) fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
     use crate::nv::registers::{gpc, pri};
 
     // Clear PRI ringmaster interrupt status
-    let rm_intr = bar0.read_u32(pri::RINGMASTER_INTR_STATUS as usize).unwrap_or(0);
+    let rm_intr = bar0
+        .read_u32(pri::RINGMASTER_INTR_STATUS as usize)
+        .unwrap_or(0);
     if rm_intr != 0 {
-        writes.push(ExperimentWrite::new(bar0, pri::RINGMASTER_INTR_STATUS as usize, rm_intr));
+        writes.push(ExperimentWrite::new(
+            bar0,
+            pri::RINGMASTER_INTR_STATUS as usize,
+            rm_intr,
+        ));
         notes.push(format!("PRI_RM_INTR: cleared {rm_intr:#010x}"));
     } else {
         notes.push("PRI_RM_INTR: already clear".into());
     }
 
     // Re-enumerate ring stations
-    writes.push(ExperimentWrite::new(bar0, pri::RINGMASTER_COMMAND as usize, 0x4));
+    writes.push(ExperimentWrite::new(
+        bar0,
+        pri::RINGMASTER_COMMAND as usize,
+        0x4,
+    ));
     notes.push("PRI_RINGMASTER_CMD: ENUMERATE".into());
     std::thread::sleep(Duration::from_millis(20));
 
@@ -136,8 +160,12 @@ pub(crate) fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
 
     // Probe individual GPC registers for liveness
     for g in 0..6u32 {
-        let unit = bar0.read_u32(gpc::gpc_base(g) as usize).unwrap_or(0xDEAD_DEAD);
-        let tpc0 = bar0.read_u32(gpc::gpc_tpc0(g) as usize).unwrap_or(0xDEAD_DEAD);
+        let unit = bar0
+            .read_u32(gpc::gpc_base(g) as usize)
+            .unwrap_or(0xDEAD_DEAD);
+        let tpc0 = bar0
+            .read_u32(gpc::gpc_tpc0(g) as usize)
+            .unwrap_or(0xDEAD_DEAD);
         if !is_pri_fault(unit) {
             notes.push(format!(
                 "GPC{g}: unit={unit:#010x} tpc0={tpc0:#010x} (alive)"

@@ -43,12 +43,7 @@ pub struct Bar0Snapshot {
 
 impl Bar0Snapshot {
     /// Capture a snapshot of specific BAR0 offsets.
-    pub fn capture(
-        bar0: &MappedBar,
-        bdf: &str,
-        label: &str,
-        offsets: &[usize],
-    ) -> Self {
+    pub fn capture(bar0: &MappedBar, bdf: &str, label: &str, offsets: &[usize]) -> Self {
         let registers = snapshot_registers(bar0, offsets);
         Self {
             bdf: bdf.to_string(),
@@ -269,13 +264,8 @@ impl WarmStateCapture {
         domains: &[(&str, usize, usize)],
     ) -> Self {
         let diff = Bar0Diff::from_snapshots(&cold, &warm);
-        let gr_init = GrInitSequence::from_bar0_diff(
-            chip,
-            &cold.registers,
-            &warm.registers,
-            domains,
-            source,
-        );
+        let gr_init =
+            GrInitSequence::from_bar0_diff(chip, &cold.registers, &warm.registers, domains, source);
 
         Self {
             bdf: cold.bdf.clone(),
@@ -404,11 +394,11 @@ mod tests {
             bdf: "0000:41:00.0".into(),
             label: "test".into(),
             registers: vec![
-                (0x000, 0x1234_5678),   // alive
-                (0x004, 0x0000_0000),   // zero → not alive
-                (0x008, 0xFFFF_FFFF),   // error → not alive
-                (0x00C, 0xBADF_5040),   // error → not alive
-                (0x010, 0x0000_0001),   // alive
+                (0x000, 0x1234_5678), // alive
+                (0x004, 0x0000_0000), // zero → not alive
+                (0x008, 0xFFFF_FFFF), // error → not alive
+                (0x00C, 0xBADF_5040), // error → not alive
+                (0x010, 0x0000_0001), // alive
             ],
             timestamp_ms: 0,
         };
@@ -531,18 +521,14 @@ mod tests {
             bdf: "0000:49:00.0".into(),
             label: "catalyst-warm".into(),
             registers: vec![
-                (0x200, 0x5fec_dff1),   // alive — included
-                (0x204, 0x0000_0000),   // zero — excluded
-                (0x2200, 0xBADF_5040),  // PRI fault — excluded
+                (0x200, 0x5fec_dff1),    // alive — included
+                (0x204, 0x0000_0000),    // zero — excluded
+                (0x2200, 0xBADF_5040),   // PRI fault — excluded
                 (0x400700, 0x0000_0042), // alive — included
             ],
             timestamp_ms: 0,
         };
-        let replay = snap.to_catalyst_replay(
-            ChipFamily::Volta,
-            "470.256.02",
-            &sample_domains(),
-        );
+        let replay = snap.to_catalyst_replay(ChipFamily::Volta, "470.256.02", &sample_domains());
         assert_eq!(replay.len(), 2);
         assert_eq!(replay.writes[0].offset, 0x200);
         assert_eq!(replay.writes[1].offset, 0x400700);
@@ -566,9 +552,9 @@ mod tests {
             bdf: "0000:49:00.0".into(),
             label: "catalyst".into(),
             registers: vec![
-                (0x200, 0x5fec_dff1),    // changed, alive
-                (0x204, 0x1111_1111),    // unchanged
-                (0x2200, 0xBADF_5040),   // changed but PRI fault — excluded
+                (0x200, 0x5fec_dff1),  // changed, alive
+                (0x204, 0x1111_1111),  // unchanged
+                (0x2200, 0xBADF_5040), // changed but PRI fault — excluded
             ],
             timestamp_ms: 0,
         };

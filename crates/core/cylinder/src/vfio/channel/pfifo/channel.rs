@@ -4,10 +4,11 @@
 use std::borrow::Cow;
 
 use crate::error::{DriverError, DriverResult};
+use crate::vfio::device::DmaBackend;
 use crate::vfio::device::MappedBar;
 use crate::vfio::dma::DmaBuffer;
-use crate::vfio::device::DmaBackend;
 
+use super::super::VfioChannel;
 use super::super::mmu;
 use super::super::page_tables;
 use super::super::registers::{self, falcon, pbdma, pccsr, ramfc};
@@ -15,7 +16,6 @@ use super::super::registers::{
     FAULT_BUF_IOVA, INSTANCE_IOVA, PBDMA_TARGET_SYS_MEM_COHERENT, PD0_IOVA, PD1_IOVA, PD2_IOVA,
     PD3_IOVA, PT0_IOVA, RUNLIST_IOVA, TARGET_SYS_MEM_COHERENT,
 };
-use super::super::VfioChannel;
 use super::diag::log_pfifo_diagnostics;
 use super::init::PfifoInitConfig;
 use super::volta::init_pfifo_engine_with;
@@ -75,9 +75,15 @@ impl VfioChannel {
         };
 
         let fecs_probe = |bar0: &MappedBar, label: &str| {
-            let ctl = bar0.read_u32(registers::falcon::FECS_BASE + registers::falcon::CPUCTL).unwrap_or(0xDEAD);
-            let ctl_alias = bar0.read_u32(registers::falcon::FECS_BASE + registers::falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
-            let pc = bar0.read_u32(registers::falcon::FECS_BASE + registers::falcon::PC).unwrap_or(0xDEAD);
+            let ctl = bar0
+                .read_u32(registers::falcon::FECS_BASE + registers::falcon::CPUCTL)
+                .unwrap_or(0xDEAD);
+            let ctl_alias = bar0
+                .read_u32(registers::falcon::FECS_BASE + registers::falcon::CPUCTL_ALIAS)
+                .unwrap_or(0xDEAD);
+            let pc = bar0
+                .read_u32(registers::falcon::FECS_BASE + registers::falcon::PC)
+                .unwrap_or(0xDEAD);
             tracing::info!(
                 cpuctl = format_args!("{ctl:#010x}"),
                 cpuctl_alias = format_args!("{ctl_alias:#010x}"),
@@ -205,7 +211,9 @@ impl VfioChannel {
         // and always reads HRESET=1 regardless of actual falcon state.
         {
             let fecs_base = falcon::FECS_BASE;
-            let cpuctl_alias = bar0.read_u32(fecs_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+            let cpuctl_alias = bar0
+                .read_u32(fecs_base + falcon::CPUCTL_ALIAS)
+                .unwrap_or(0xDEAD);
             let pc = bar0.read_u32(fecs_base + falcon::PC).unwrap_or(0xDEAD);
             let mb0 = bar0.read_u32(fecs_base + falcon::MAILBOX0).unwrap_or(0);
             let in_hreset = cpuctl_alias & falcon::CPUCTL_HRESET != 0;
@@ -406,19 +414,13 @@ impl VfioChannel {
                 std::thread::sleep(std::time::Duration::from_millis(2));
 
                 // Re-enable the channel after fault clear
-                let _ = bar0.write_u32(
-                    pccsr::channel(channel_id),
-                    pccsr::CHANNEL_ENABLE_SET,
-                );
+                let _ = bar0.write_u32(pccsr::channel(channel_id), pccsr::CHANNEL_ENABLE_SET);
 
                 chan.submit_runlist(bar0)?;
                 std::thread::sleep(std::time::Duration::from_millis(10));
 
                 // Ring doorbell to wake the PBDMA.
-                let _ = bar0.write_u32(
-                    registers::usermode::NOTIFY_CHANNEL_PENDING,
-                    channel_id,
-                );
+                let _ = bar0.write_u32(registers::usermode::NOTIFY_CHANNEL_PENDING, channel_id);
                 std::thread::sleep(std::time::Duration::from_millis(50));
 
                 let intr_0 = bar0.read_u32(pb + 0x100).unwrap_or(0);
@@ -451,16 +453,10 @@ impl VfioChannel {
                         pccsr::channel(channel_id),
                         pccsr::PBDMA_FAULTED_RESET | pccsr::ENG_FAULTED_RESET,
                     );
-                    let _ = bar0.write_u32(
-                        pccsr::channel(channel_id),
-                        pccsr::CHANNEL_ENABLE_SET,
-                    );
+                    let _ = bar0.write_u32(pccsr::channel(channel_id), pccsr::CHANNEL_ENABLE_SET);
                     chan.submit_runlist(bar0)?;
                     std::thread::sleep(std::time::Duration::from_millis(10));
-                    let _ = bar0.write_u32(
-                        registers::usermode::NOTIFY_CHANNEL_PENDING,
-                        channel_id,
-                    );
+                    let _ = bar0.write_u32(registers::usermode::NOTIFY_CHANNEL_PENDING, channel_id);
                     std::thread::sleep(std::time::Duration::from_millis(50));
 
                     let intr_retry = bar0.read_u32(pb + 0x100).unwrap_or(0);
@@ -563,7 +559,11 @@ impl VfioChannel {
         Ok(chan)
     }
 
-    pub(in crate::vfio::channel) fn clear_stale_pccsr(bar0: &MappedBar, channel_id: u32, stale: u32) -> DriverResult<()> {
+    pub(in crate::vfio::channel) fn clear_stale_pccsr(
+        bar0: &MappedBar,
+        channel_id: u32,
+        stale: u32,
+    ) -> DriverResult<()> {
         if stale & 1 != 0 {
             bar0.write_u32(pccsr::channel(channel_id), pccsr::CHANNEL_ENABLE_CLR)
                 .map_err(|e| {
@@ -601,7 +601,10 @@ impl VfioChannel {
     }
 
     /// Clear stale `PBDMA_FAULTED` / `ENG_FAULTED` flags.
-    pub(in crate::vfio::channel) fn clear_channel_faults(&self, bar0: &MappedBar) -> DriverResult<()> {
+    pub(in crate::vfio::channel) fn clear_channel_faults(
+        &self,
+        bar0: &MappedBar,
+    ) -> DriverResult<()> {
         let ch = pccsr::channel(self.channel_id);
         let pre = bar0.read_u32(ch).unwrap_or(0);
         if pre & (pccsr::PBDMA_FAULTED_RESET | pccsr::ENG_FAULTED_RESET) != 0 {

@@ -178,7 +178,8 @@ fn read_config_u32(bdf: &str, offset: u64) -> Option<u32> {
 
 fn discover_plx_bridges() -> Vec<String> {
     let mut bridges = Vec::new();
-    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
+    else {
         return bridges;
     };
 
@@ -208,7 +209,8 @@ fn discover_plx_bridges() -> Vec<String> {
 /// returning 0xFFFF during early boot).
 fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
     let mut bridges = Vec::new();
-    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
+    else {
         return bridges;
     };
 
@@ -225,14 +227,18 @@ fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
             if class != 0xFFFF_FFFF {
                 continue;
             }
-            let override_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "driver_override");
+            let override_path =
+                toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "driver_override");
             let Ok(drv) = std::fs::read_to_string(&override_path) else {
                 continue;
             };
             if drv.trim() != "vfio-pci" {
                 continue;
             }
-            info!(bdf, "found vfio-pci device with dead config space — checking ancestry for PLX");
+            info!(
+                bdf,
+                "found vfio-pci device with dead config space — checking ancestry for PLX"
+            );
         }
 
         let link = toadstool_cylinder::linux_paths::sysfs_pci_device_path(&bdf);
@@ -288,7 +294,8 @@ fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
 
 fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
     let mut gpus = Vec::new();
-    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
+    else {
         return gpus;
     };
 
@@ -321,7 +328,8 @@ fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
 
 fn discover_gpu_bridges() -> Vec<String> {
     let mut bridges = Vec::new();
-    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices()) else {
+    let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
+    else {
         return bridges;
     };
 
@@ -345,7 +353,11 @@ fn pin_hierarchy_for_gpus(gpu_bdfs: &[String]) -> usize {
         let pinned = toadstool_ember::sysfs::pin_bridge_hierarchy(bdf);
         toadstool_ember::sysfs::pin_power(bdf);
         if pinned > 0 {
-            info!(bdf, bridges_pinned = pinned, "pinned GPU bridge hierarchy at startup");
+            info!(
+                bdf,
+                bridges_pinned = pinned,
+                "pinned GPU bridge hierarchy at startup"
+            );
         }
         total_pinned += pinned;
     }
@@ -357,7 +369,8 @@ fn pin_hierarchy_for_gpus(gpu_bdfs: &[String]) -> usize {
 /// discoverable PLX switch.
 fn discover_vfio_gpus() -> Vec<String> {
     let mut gpus = Vec::new();
-    let driver_dir = toadstool_cylinder::linux_paths::sysfs_join(&["bus", "pci", "drivers", "vfio-pci"]);
+    let driver_dir =
+        toadstool_cylinder::linux_paths::sysfs_join(&["bus", "pci", "drivers", "vfio-pci"]);
     let Ok(entries) = std::fs::read_dir(&driver_dir) else {
         return gpus;
     };
@@ -395,14 +408,22 @@ pub(crate) async fn run() {
                 plx_bridges = discover_plx_bridges_via_gpu_ancestry();
             }
             if !plx_bridges.is_empty() {
-                info!(attempt, count = plx_bridges.len(), "PLX bridge found on retry");
+                info!(
+                    attempt,
+                    count = plx_bridges.len(),
+                    "PLX bridge found on retry"
+                );
                 break;
             }
         }
     }
 
     let all_bridges = discover_gpu_bridges();
-    let bridges = if plx_bridges.is_empty() { &all_bridges } else { &plx_bridges };
+    let bridges = if plx_bridges.is_empty() {
+        &all_bridges
+    } else {
+        &plx_bridges
+    };
 
     let mut downstream = discover_downstream_gpus(bridges);
 
@@ -411,7 +432,10 @@ pub(crate) async fn run() {
     let vfio_gpus = discover_vfio_gpus();
     for bdf in &vfio_gpus {
         if !downstream.contains(bdf) {
-            info!(bdf, "VFIO GPU not behind any bridge — adding to keepalive targets");
+            info!(
+                bdf,
+                "VFIO GPU not behind any bridge — adding to keepalive targets"
+            );
             downstream.push(bdf.clone());
         }
     }
@@ -430,11 +454,15 @@ pub(crate) async fn run() {
     // and destroying warm state. The module is compiled once and cached in
     // /var/lib/toadstool/kmod-cache/ for instant reload across reboots.
     // FLR is already disabled by ExecStartPre in the systemd unit.
-    let vga_gpus: Vec<String> = vfio_gpus.iter().filter(|bdf| {
-        read_config_u32(bdf, 0x08)
-            .is_some_and(|c| pci_base_subclass(c) == PCI_CLASS_VGA
-                            || pci_base_subclass(c) == PCI_CLASS_3D)
-    }).cloned().collect();
+    let vga_gpus: Vec<String> = vfio_gpus
+        .iter()
+        .filter(|bdf| {
+            read_config_u32(bdf, 0x08).is_some_and(|c| {
+                pci_base_subclass(c) == PCI_CLASS_VGA || pci_base_subclass(c) == PCI_CLASS_3D
+            })
+        })
+        .cloned()
+        .collect();
     if !vga_gpus.is_empty() {
         let all_bdfs = vga_gpus.join(",");
         match toadstool_cylinder::vfio::guarded_sysfs::suppress_all_resets(&all_bdfs) {
@@ -455,11 +483,7 @@ pub(crate) async fn run() {
         "PCIe bridge keepalive started (hierarchies pinned)"
     );
 
-    let all_targets: Vec<String> = bridges
-        .iter()
-        .chain(downstream.iter())
-        .cloned()
-        .collect();
+    let all_targets: Vec<String> = bridges.iter().chain(downstream.iter()).cloned().collect();
 
     let mut consecutive_failures = 0u32;
 

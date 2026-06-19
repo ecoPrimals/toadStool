@@ -40,8 +40,8 @@ mod lock;
 mod module_deps;
 mod pipeline;
 mod pri_recovery;
-mod rollback;
 mod rm_trigger;
+mod rollback;
 mod runtime_probe;
 mod steps;
 #[cfg(test)]
@@ -49,9 +49,11 @@ mod tests;
 mod types;
 
 pub use errors::HandoffError;
-pub use types::{HandoffCapabilityProfile, HandoffConfig, HandoffResult, HandoffStep, ModuleSourceConfig, RmChannelEvidence};
 pub use pipeline::{
-    PipelineSignal, execute_handoff, execute_handoff_with_heartbeat,
-    execute_handoff_with_signals,
+    PipelineSignal, execute_handoff, execute_handoff_with_heartbeat, execute_handoff_with_signals,
 };
 pub use runtime_probe::{RuntimeServicesProbe, probe_runtime_services};
+pub use types::{
+    HandoffCapabilityProfile, HandoffConfig, HandoffResult, HandoffStep, ModuleSourceConfig,
+    RmChannelEvidence,
+};

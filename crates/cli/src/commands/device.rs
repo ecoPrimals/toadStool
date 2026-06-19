@@ -53,11 +53,14 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
                 .await;
 
             if format == "json" {
-                let json = serde_json::to_string_pretty(&result)
-                    .unwrap_or_else(|_| "{}".to_string());
+                let json =
+                    serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string());
                 println!("{json}");
             } else {
-                println!("  Result:  {}", if result.success { "OK" } else { "FAILED" });
+                println!(
+                    "  Result:  {}",
+                    if result.success { "OK" } else { "FAILED" }
+                );
                 println!("  Summary: {}", result.summary);
                 for step in &result.steps {
                     let icon = match step.status {
@@ -95,11 +98,17 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
                         })
                     })
                     .collect();
-                println!("{}", serde_json::to_string_pretty(&entries).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&entries).unwrap_or_default()
+                );
             } else if devices.is_empty() {
                 println!("No GPU/NPU devices found.");
             } else {
-                println!("{:<16} {:>6} {:>6} {:>10} CLASS", "BDF", "VEN", "DEV", "DRIVER");
+                println!(
+                    "{:<16} {:>6} {:>6} {:>10} CLASS",
+                    "BDF", "VEN", "DEV", "DRIVER"
+                );
                 for d in &devices {
                     println!(
                         "{:<16} 0x{:04x} 0x{:04x} {:>10} 0x{:06x}",
@@ -117,10 +126,10 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
             let bdf = if let Some(bdf) = bdf {
                 bdf
             } else {
-                let filter = PciFilter::vendor(
-                    toadstool_common::pci_discovery::vendors::NVIDIA,
-                )
-                .with_class(|c| (c & 0x00FF_FF00) == 0x0003_0000 || (c & 0x00FF_FF00) == 0x0003_0200);
+                let filter = PciFilter::vendor(toadstool_common::pci_discovery::vendors::NVIDIA)
+                    .with_class(|c| {
+                        (c & 0x00FF_FF00) == 0x0003_0000 || (c & 0x00FF_FF00) == 0x0003_0200
+                    });
                 let devices = discover_pci_devices(&filter);
                 devices
                     .first()
@@ -141,7 +150,10 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
                     "vendor_id": format!("0x{vendor_id:04x}"),
                     "device_id": format!("0x{device_id:04x}"),
                 });
-                println!("{}", serde_json::to_string_pretty(&status).unwrap_or_default());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&status).unwrap_or_default()
+                );
             } else {
                 println!("Device {bdf}:");
                 println!("  Vendor:      0x{vendor_id:04x}");
@@ -152,7 +164,8 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
         }
 
         DeviceCommand::Warm { bdf } => {
-            let config_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "config");
+            let config_path =
+                toadstool_cylinder::linux_paths::sysfs_pci_device_file(&bdf, "config");
             let pmc_enable = std::fs::File::open(&config_path)
                 .and_then(|f| {
                     use std::io::{Read, Seek, SeekFrom};

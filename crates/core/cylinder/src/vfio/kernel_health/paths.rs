@@ -5,10 +5,9 @@ use std::path::PathBuf;
 use super::KernelHealthError;
 
 pub(crate) fn kernel_release() -> Result<&'static str, KernelHealthError> {
-    crate::linux_paths::kernel_release()
-        .ok_or_else(|| KernelHealthError::KernelRelease(
-            "could not read /proc/sys/kernel/osrelease".into(),
-        ))
+    crate::linux_paths::kernel_release().ok_or_else(|| {
+        KernelHealthError::KernelRelease("could not read /proc/sys/kernel/osrelease".into())
+    })
 }
 
 pub(crate) fn headers_dir(krel: &str) -> PathBuf {

@@ -27,7 +27,10 @@ impl NvVfioComputeDevice {
 
         enum Bar0Source {
             Sysfs(crate::vfio::sysfs_bar0::SysfsBar0),
-            #[expect(dead_code, reason = "VfioDevice must outlive MappedBar to keep the fd alive")]
+            #[expect(
+                dead_code,
+                reason = "VfioDevice must outlive MappedBar to keep the fd alive"
+            )]
             Vfio(crate::vfio::device::MappedBar, crate::vfio::VfioDevice),
         }
 
@@ -84,7 +87,8 @@ impl NvVfioComputeDevice {
             return false;
         }
 
-        let fecs_cpuctl_alias = bar0.read((nv_falcon::FECS_BASE + nv_falcon::CPUCTL_ALIAS) as usize);
+        let fecs_cpuctl_alias =
+            bar0.read((nv_falcon::FECS_BASE + nv_falcon::CPUCTL_ALIAS) as usize);
         let fecs_cpuctl_raw = bar0.read((nv_falcon::FECS_BASE + nv_falcon::CPUCTL) as usize);
         let fecs_mb0 = bar0.read((nv_falcon::FECS_BASE + nv_falcon::MAILBOX0) as usize);
         let fecs_pc = bar0.read((nv_falcon::FECS_BASE + nv_falcon::PC) as usize);

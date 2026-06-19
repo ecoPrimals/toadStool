@@ -10,8 +10,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tracing::info;
 
-use crate::primal_identity::ServiceEndpoint;
 use crate::interned_strings::socket_env;
+use crate::primal_identity::ServiceEndpoint;
 
 use super::config::{ConfigFile, capability_from_str};
 use super::discovery_config::discover_from_config;

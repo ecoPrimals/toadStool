@@ -4,9 +4,7 @@
 mod falcon_io;
 mod types;
 
-pub use falcon_io::{
-    pmu_exec, pmu_falcon_reset, pmu_read_args, pmu_upload_code, pmu_upload_data,
-};
+pub use falcon_io::{pmu_exec, pmu_falcon_reset, pmu_read_args, pmu_upload_code, pmu_upload_data};
 pub use types::{DevinitStatus, FalconDiagnostic, pmu_reg};
 
 use crate::error::DevinitError;
@@ -94,9 +92,7 @@ pub fn execute_devinit(bar0: &MappedBar, rom: &[u8]) -> Result<bool, DevinitErro
             tracing::info!("devinit already complete + VRAM alive — skipping PMU upload");
             return Ok(false);
         }
-        tracing::warn!(
-            "devinit_reg says complete but VRAM is dead — clearing stale register"
-        );
+        tracing::warn!("devinit_reg says complete but VRAM is dead — clearing stale register");
         let _ = bar0.write_u32(pmu_reg::DEVINIT_STATUS, 0);
     }
 

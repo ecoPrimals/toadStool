@@ -171,7 +171,11 @@ pub(crate) fn falcon_boot(
                 "warm-preserved: FECS cpuctl={cpuctl:#010x} mb0={mailbox0:#010x}"
             ));
         }
-        FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 } => {
+        FalconWarmState::WarmRunning {
+            cpuctl,
+            pc,
+            mailbox0,
+        } => {
             tracing::info!(
                 fecs_pc = format!("{pc:#010x}"),
                 "FECS warm-running (active firmware, PC advancing) — skipping boot"

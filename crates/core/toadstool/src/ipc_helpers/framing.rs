@@ -21,9 +21,10 @@ const RIBOCIPHER_CLEAR_NDJSON: [u8; 2] = [0xEC, 0x01];
 pub async fn write_ribocipher_signal(stream: &mut UnixStream) -> ToadStoolResult<()> {
     use tokio::io::AsyncWriteExt;
 
-    stream.write_all(&RIBOCIPHER_CLEAR_NDJSON).await.map_err(|e| {
-        ToadStoolError::integration(format!("Failed to write riboCipher signal: {e}"))
-    })
+    stream
+        .write_all(&RIBOCIPHER_CLEAR_NDJSON)
+        .await
+        .map_err(|e| ToadStoolError::integration(format!("Failed to write riboCipher signal: {e}")))
 }
 
 /// Write JSON-RPC message to stream

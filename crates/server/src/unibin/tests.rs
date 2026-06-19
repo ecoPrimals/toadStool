@@ -425,28 +425,22 @@ fn insecure_guard_allows_dev_mode_via_api() {
 
 #[test]
 fn unibin_config_defaults_to_localhost_not_all_interfaces() {
-    temp_env::with_vars(
-        [("TOADSTOOL_BIND_ADDRESS", None::<&str>)],
-        || {
-            let cfg = UnibinExecutionConfig::from_env();
-            assert_eq!(
-                cfg.bind_host, "127.0.0.1",
-                "default bind should be loopback, not 0.0.0.0 (PG-55)"
-            );
-        },
-    );
+    temp_env::with_vars([("TOADSTOOL_BIND_ADDRESS", None::<&str>)], || {
+        let cfg = UnibinExecutionConfig::from_env();
+        assert_eq!(
+            cfg.bind_host, "127.0.0.1",
+            "default bind should be loopback, not 0.0.0.0 (PG-55)"
+        );
+    });
 }
 
 #[test]
 fn unibin_config_respects_env_override() {
-    temp_env::with_vars(
-        [("TOADSTOOL_BIND_ADDRESS", Some("0.0.0.0"))],
-        || {
-            let cfg = UnibinExecutionConfig::from_env();
-            assert_eq!(
-                cfg.bind_host, "0.0.0.0",
-                "env override should allow all-interfaces when explicitly set"
-            );
-        },
-    );
+    temp_env::with_vars([("TOADSTOOL_BIND_ADDRESS", Some("0.0.0.0"))], || {
+        let cfg = UnibinExecutionConfig::from_env();
+        assert_eq!(
+            cfg.bind_host, "0.0.0.0",
+            "env override should allow all-interfaces when explicitly set"
+        );
+    });
 }

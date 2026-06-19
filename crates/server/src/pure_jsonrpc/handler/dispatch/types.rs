@@ -2,10 +2,6 @@
 
 #[derive(Debug, Clone)]
 pub(super) struct DispatchJob {
-    #[expect(
-        dead_code,
-        reason = "stored for logging/diagnostics in dispatch pipeline"
-    )]
     pub(super) id: String,
     pub(super) bdf: String,
     pub(super) status: DispatchStatus,

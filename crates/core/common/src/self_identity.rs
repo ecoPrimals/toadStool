@@ -303,7 +303,7 @@ impl CapabilityMatcher {
                 reason = "precision loss acceptable for this conversion"
             )]
             let optional_ratio = optional_matches as f64 / self.optional.len() as f64;
-            score += optional_ratio * 0.3;
+            score = optional_ratio.mul_add(0.3, score);
         }
 
         score

@@ -348,7 +348,11 @@ impl Drop for DmaBuffer {
 
         // SAFETY: `size` and `PAGE_SIZE` are identical to those used in new().
         let Ok(layout) = std::alloc::Layout::from_size_align(size, PAGE_SIZE) else {
-            tracing::error!(size, PAGE_SIZE, "DMA dealloc layout invalid — leaking buffer to avoid UB");
+            tracing::error!(
+                size,
+                PAGE_SIZE,
+                "DMA dealloc layout invalid — leaking buffer to avoid UB"
+            );
             return;
         };
         // SAFETY: dealloc matches alloc_zeroed from new(); layout identical.

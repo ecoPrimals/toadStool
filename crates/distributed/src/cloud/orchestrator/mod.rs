@@ -272,7 +272,8 @@ impl<P: CloudProviderInterface> UniversalCloudOrchestrator<P> {
         } else {
             let synthesized = format!(
                 "https://federation.{}:{}",
-                std::env::var(socket_env::TOADSTOOL_DOMAIN).unwrap_or_else(|_| "toadstool.local".to_string()),
+                std::env::var(socket_env::TOADSTOOL_DOMAIN)
+                    .unwrap_or_else(|_| "toadstool.local".to_string()),
                 toadstool_config::defaults::network::FEDERATION_PORT
             );
             warn!(

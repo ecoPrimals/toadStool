@@ -194,8 +194,7 @@ pub fn extract_boot_script_writes(rom: &[u8]) -> Result<Vec<ScriptRegWrite>, Dev
         // Short form: init_tables_base at i_off+0x00 points to the
         // script table. Walk it to find the first script offset and
         // scan to ROM end.
-        let init_tables_base =
-            u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
+        let init_tables_base = u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
         if init_tables_base == 0 || init_tables_base + 2 > rom.len() {
             return Err(DevinitError::InterpreterInitTablesInvalid);
         }

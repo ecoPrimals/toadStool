@@ -6,9 +6,9 @@ use std::borrow::Cow;
 use crate::error::{DriverError, DriverResult};
 use crate::vfio::device::MappedBar;
 
-use super::page_tables;
-use super::registers::{self, pfb, PT_ENTRIES, INSTANCE_IOVA, FAULT_BUF_IOVA};
 use super::VfioChannel;
+use super::page_tables;
+use super::registers::{self, FAULT_BUF_IOVA, INSTANCE_IOVA, PT_ENTRIES, pfb};
 
 /// Configure non-replayable and replayable MMU fault buffers.
 pub(super) fn configure_fault_buffers(bar0: &MappedBar) -> DriverResult<()> {
@@ -16,36 +16,26 @@ pub(super) fn configure_fault_buffers(bar0: &MappedBar) -> DriverResult<()> {
 
     let fb_lo = (FAULT_BUF_IOVA >> 12) as u32;
     let fb_entries: u32 = 64;
-    bar0.write_u32(mmu::FAULT_BUF0_LO, fb_lo).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_LO: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF0_HI, 0).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_HI: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF0_SIZE, fb_entries).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_SIZE: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF0_GET, 0).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_GET: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF0_PUT, 0x8000_0000).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_PUT: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF1_LO, fb_lo).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_LO: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF1_HI, 0).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_HI: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF1_SIZE, fb_entries).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_SIZE: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF1_GET, 0).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_GET: {e}")))
-    })?;
-    bar0.write_u32(mmu::FAULT_BUF1_PUT, 0x8000_0000).map_err(|e| {
-        DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_PUT: {e}")))
-    })?;
+    bar0.write_u32(mmu::FAULT_BUF0_LO, fb_lo)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_LO: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF0_HI, 0)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_HI: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF0_SIZE, fb_entries)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_SIZE: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF0_GET, 0)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_GET: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF0_PUT, 0x8000_0000)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF0_PUT: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF1_LO, fb_lo)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_LO: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF1_HI, 0)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_HI: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF1_SIZE, fb_entries)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_SIZE: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF1_GET, 0)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_GET: {e}"))))?;
+    bar0.write_u32(mmu::FAULT_BUF1_PUT, 0x8000_0000)
+        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("FAULT_BUF1_PUT: {e}"))))?;
     tracing::info!(
         fault_buf_iova = format_args!("{FAULT_BUF_IOVA:#x}"),
         entries = fb_entries,

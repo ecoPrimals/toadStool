@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! GR engine ungating — CG sweep, PRI recovery, PGOB, GPC MMU, sw_nonctx.bin replay.
 
-use crate::nv::registers::{gpc, pfb, pmc, pri as nv_pri};
 use crate::nv::gsp_bridge::GspBridge;
+use crate::nv::registers::{gpc, pfb, pmc, pri as nv_pri};
 use crate::vfio::channel::registers::pri;
 use crate::vfio::device::MappedBar;
 
@@ -13,7 +13,10 @@ use super::super::nv_gsp_bridge::NvGspBridge;
 pub(crate) struct UngatingResult {
     pub cg_changes: u32,
     pub pri_alive: usize,
-    #[expect(dead_code, reason = "diagnostic field — populated for tracing, not consumed yet")]
+    #[expect(
+        dead_code,
+        reason = "diagnostic field — populated for tracing, not consumed yet"
+    )]
     pub pri_faulted: usize,
 }
 
@@ -83,12 +86,7 @@ pub(crate) fn ungate_gr_engine(
 }
 
 /// Force PRI ring enumerate unconditionally.
-pub(crate) fn force_pri_enumerate(
-    bar0: &MappedBar,
-    ack_pmc_intr: bool,
-    prefix: &str,
-    log: bool,
-) {
+pub(crate) fn force_pri_enumerate(bar0: &MappedBar, ack_pmc_intr: bool, prefix: &str, log: bool) {
     let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
     let _ = bar0.write_u32(
         pri::PRI_RINGMASTER_COMMAND,
@@ -121,7 +119,9 @@ pub(crate) fn init_gpc_mmu(bar0: &MappedBar, verbose: bool, prefix: &str) {
     let _ = bar0.write_u32((shadow_base + 0x34) as usize, cc8);
     let _ = bar0.write_u32((shadow_base + 0x38) as usize, ccc);
     // GV100 specific: enable additional MMU modes
-    let a4 = bar0.read_u32(gpc::BCAST_MMU_DEBUG_CTRL as usize).unwrap_or(0);
+    let a4 = bar0
+        .read_u32(gpc::BCAST_MMU_DEBUG_CTRL as usize)
+        .unwrap_or(0);
     let _ = bar0.write_u32(gpc::BCAST_MMU_DEBUG_CTRL as usize, a4 | 0x0300_0000);
     if verbose {
         tracing::info!(

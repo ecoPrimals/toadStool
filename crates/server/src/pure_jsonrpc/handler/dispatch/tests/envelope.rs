@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! JH-2 resource envelope enforcement tests — mem, cpu, timeout, and integrated dispatch paths.
 
+use super::super::submit::enforce_envelope;
 use super::{submit_params, test_handler};
 use crate::pure_jsonrpc::handler::method_gate::{CallerContext, ResourceEnvelope};
-use super::super::submit::enforce_envelope;
 
 fn envelope(
     mem_mb: Option<u64>,

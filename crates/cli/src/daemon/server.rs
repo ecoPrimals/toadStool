@@ -97,12 +97,12 @@ impl DaemonServer {
         info!("🚀 ToadStool daemon running");
 
         // Transport injection: check TRANSPORT_ENDPOINT first (sourDough standard)
-        let injected_transport =
-            toadstool_common::transport_endpoint::TransportEndpoint::from_env()
-                .unwrap_or_else(|e| {
-                    warn!("invalid TRANSPORT_ENDPOINT: {e}");
-                    None
-                });
+        let injected_transport = toadstool_common::transport_endpoint::TransportEndpoint::from_env(
+        )
+        .unwrap_or_else(|e| {
+            warn!("invalid TRANSPORT_ENDPOINT: {e}");
+            None
+        });
 
         if let Some(ref te) = injected_transport {
             use toadstool_common::transport_endpoint::TransportEndpoint;
@@ -122,9 +122,7 @@ impl DaemonServer {
                     let manager = Arc::clone(&self.workload_manager);
                     let p = *port;
                     tokio::spawn(async move {
-                        if let Err(e) =
-                            jsonrpc_server::start_tcp_jsonrpc_server(p, manager).await
-                        {
+                        if let Err(e) = jsonrpc_server::start_tcp_jsonrpc_server(p, manager).await {
                             warn!("⚠️  TCP JSON-RPC on port {p} failed: {e}");
                         }
                     });
@@ -185,7 +183,10 @@ impl DaemonServer {
         if self.socket_path.exists() {
             match tokio::fs::remove_file(&self.socket_path).await {
                 Ok(()) => info!("Removed socket: {}", self.socket_path.display()),
-                Err(e) => warn!("Failed to remove socket {}: {e}", self.socket_path.display()),
+                Err(e) => warn!(
+                    "Failed to remove socket {}: {e}",
+                    self.socket_path.display()
+                ),
             }
         }
 

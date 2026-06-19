@@ -33,7 +33,10 @@ fn vfio_err(op: &str, e: &std::io::Error) -> AkidaError {
     AkidaError::capability_query_failed(format!("VFIO {op}: {e}"))
 }
 
-#[expect(clippy::needless_pass_by_value, reason = "used as map_err closure target")]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "used as map_err closure target"
+)]
 fn mmio_err(e: MmioAccessError) -> AkidaError {
     AkidaError::hardware_error(format!("MMIO access: {e}"))
 }

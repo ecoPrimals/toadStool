@@ -8,10 +8,10 @@ use crate::{
     BufferHandle, ComputeDevice, DispatchDims, HardwareCapabilities, MemoryDomain, ShaderInfo,
 };
 
+use super::NvVfioComputeDevice;
 #[cfg(target_os = "linux")]
 use super::channel_init::clear_inflight;
 use super::{IOVA_LIMIT, PAGE_SIZE};
-use super::NvVfioComputeDevice;
 
 impl ComputeDevice for NvVfioComputeDevice {
     fn alloc(&mut self, size: u64, _domain: MemoryDomain) -> DriverResult<BufferHandle> {
@@ -24,9 +24,7 @@ impl ComputeDevice for NvVfioComputeDevice {
         #[cfg(target_os = "linux")]
         {
             let state = self.vfio_state.as_mut().ok_or_else(|| {
-                DriverError::Unsupported(
-                    "VFIO not opened — call open_vfio() before alloc".into(),
-                )
+                DriverError::Unsupported("VFIO not opened — call open_vfio() before alloc".into())
             })?;
 
             let aligned_size = (size as usize).div_ceil(PAGE_SIZE as usize) * PAGE_SIZE as usize;
@@ -37,11 +35,8 @@ impl ComputeDevice for NvVfioComputeDevice {
                 )));
             }
 
-            let buf = crate::vfio::dma::DmaBuffer::new(
-                state.dma_backend.clone(),
-                aligned_size,
-                iova,
-            )?;
+            let buf =
+                crate::vfio::dma::DmaBuffer::new(state.dma_backend.clone(), aligned_size, iova)?;
 
             let handle_id = state.next_handle;
             state.next_handle += 1;
@@ -67,9 +62,10 @@ impl ComputeDevice for NvVfioComputeDevice {
     fn free(&mut self, handle: BufferHandle) -> DriverResult<()> {
         #[cfg(target_os = "linux")]
         {
-            let state = self.vfio_state.as_mut().ok_or_else(|| {
-                DriverError::Unsupported("VFIO not opened".into())
-            })?;
+            let state = self
+                .vfio_state
+                .as_mut()
+                .ok_or_else(|| DriverError::Unsupported("VFIO not opened".into()))?;
             state
                 .buffers
                 .remove(&handle.0)
@@ -80,16 +76,19 @@ impl ComputeDevice for NvVfioComputeDevice {
         #[cfg(not(target_os = "linux"))]
         {
             let _ = handle;
-            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+            Err(DriverError::Unsupported(
+                "NVIDIA VFIO requires Linux".into(),
+            ))
         }
     }
 
     fn upload(&mut self, handle: BufferHandle, offset: u64, data: &[u8]) -> DriverResult<()> {
         #[cfg(target_os = "linux")]
         {
-            let state = self.vfio_state.as_mut().ok_or_else(|| {
-                DriverError::Unsupported("VFIO not opened".into())
-            })?;
+            let state = self
+                .vfio_state
+                .as_mut()
+                .ok_or_else(|| DriverError::Unsupported("VFIO not opened".into()))?;
             let buf = state
                 .buffers
                 .get_mut(&handle.0)
@@ -112,16 +111,19 @@ impl ComputeDevice for NvVfioComputeDevice {
         #[cfg(not(target_os = "linux"))]
         {
             let _ = (handle, offset, data);
-            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+            Err(DriverError::Unsupported(
+                "NVIDIA VFIO requires Linux".into(),
+            ))
         }
     }
 
     fn readback(&self, handle: BufferHandle, offset: u64, len: usize) -> DriverResult<Vec<u8>> {
         #[cfg(target_os = "linux")]
         {
-            let state = self.vfio_state.as_ref().ok_or_else(|| {
-                DriverError::Unsupported("VFIO not opened".into())
-            })?;
+            let state = self
+                .vfio_state
+                .as_ref()
+                .ok_or_else(|| DriverError::Unsupported("VFIO not opened".into()))?;
             let buf = state
                 .buffers
                 .get(&handle.0)
@@ -142,7 +144,9 @@ impl ComputeDevice for NvVfioComputeDevice {
         #[cfg(not(target_os = "linux"))]
         {
             let _ = (handle, offset, len);
-            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+            Err(DriverError::Unsupported(
+                "NVIDIA VFIO requires Linux".into(),
+            ))
         }
     }
 
@@ -245,10 +249,12 @@ impl ComputeDevice for NvVfioComputeDevice {
                 0,
                 0,
             );
-            init_pb.append(&super::super::pushbuf::PushBuf::compute_dispatch_with_launch(
-                profile.launch_method,
-                qmd_iova,
-            ));
+            init_pb.append(
+                &super::super::pushbuf::PushBuf::compute_dispatch_with_launch(
+                    profile.launch_method,
+                    qmd_iova,
+                ),
+            );
 
             if matches!(
                 state.completion,
@@ -286,15 +292,17 @@ impl ComputeDevice for NvVfioComputeDevice {
         #[cfg(not(target_os = "linux"))]
         {
             let _ = (shader, buffers, dims, info);
-            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+            Err(DriverError::Unsupported(
+                "NVIDIA VFIO requires Linux".into(),
+            ))
         }
     }
 
     fn sync(&mut self) -> DriverResult<()> {
         #[cfg(target_os = "linux")]
         {
-            use crate::vfio::channel::registers::{pbdma, ramuserd};
             use super::super::generation::CompletionStrategy;
+            use crate::vfio::channel::registers::{pbdma, ramuserd};
 
             if let Some(state) = self.vfio_state.as_mut() {
                 let target = state.gp_put;
@@ -330,7 +338,10 @@ impl ComputeDevice for NvVfioComputeDevice {
                         for i in 0..1000 {
                             let gp_get = state.userd.volatile_read_u32(ramuserd::GP_GET);
                             if gp_get == target {
-                                tracing::info!(iterations = i, "sync complete: GP_GET reached GP_PUT");
+                                tracing::info!(
+                                    iterations = i,
+                                    "sync complete: GP_GET reached GP_PUT"
+                                );
                                 break;
                             }
                             if gp_get != last_gp_get {

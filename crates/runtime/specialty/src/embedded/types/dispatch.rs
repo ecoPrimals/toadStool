@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 
 #[cfg(feature = "embedded-placeholder-impls")]
 use crate::embedded::emulators::{Emulator6502, EmulatorZ80};
+use crate::embedded::errors::{EmbeddedEmulatorError, EmbeddedProgrammerError};
 #[cfg(feature = "embedded-placeholder-impls")]
 use crate::embedded::programmers::{EPROMProgrammer, GenericProgrammer};
-use crate::embedded::errors::{EmbeddedEmulatorError, EmbeddedProgrammerError};
 use crate::embedded::toolchains::{
     Toolchain6502, Toolchain8051, Toolchain8080, Toolchain8086, Toolchain68000, ToolchainZ80,
 };
@@ -249,7 +249,10 @@ pub enum ProgrammerInterfaceDispatch {
 
 #[cfg_attr(
     not(feature = "embedded-placeholder-impls"),
-    allow(unused_variables, reason = "trait params unused when no adapter is registered")
+    allow(
+        unused_variables,
+        reason = "trait params unused when no adapter is registered"
+    )
 )]
 impl ProgrammerInterface for ProgrammerInterfaceDispatch {
     fn name(&self) -> &'static str {
@@ -418,7 +421,10 @@ pub enum EmbeddedEmulatorDispatch {
 
 #[cfg_attr(
     not(feature = "embedded-placeholder-impls"),
-    allow(unused_variables, reason = "trait params unused when no adapter is registered")
+    allow(
+        unused_variables,
+        reason = "trait params unused when no adapter is registered"
+    )
 )]
 impl EmbeddedEmulator for EmbeddedEmulatorDispatch {
     fn name(&self) -> &'static str {

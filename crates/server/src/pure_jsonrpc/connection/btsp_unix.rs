@@ -6,10 +6,10 @@
 //! `unix.rs` only contains core JSON-RPC / riboCipher / HTTP logic.
 
 use std::sync::Arc;
-use tokio::net::UnixStream;
-use tracing::error;
 #[cfg(feature = "btsp")]
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::net::UnixStream;
+use tracing::error;
 #[cfg(feature = "btsp")]
 use tracing::{info, warn};
 
@@ -20,9 +20,9 @@ use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 
 #[cfg(feature = "btsp")]
 use super::process_request;
-use super::unix::{is_plaintext_protocol_byte, try_ribocipher_dispatch};
 #[cfg(feature = "btsp")]
 use super::unix::handle_ndjson_unix;
+use super::unix::{is_plaintext_protocol_byte, try_ribocipher_dispatch};
 
 /// Handle an incoming connection on a BTSP-enabled socket (production mode).
 ///
@@ -144,7 +144,10 @@ pub(super) async fn handle_btsp_connection(
 /// `btsp.negotiate` (Phase 3 cipher upgrade). If the client negotiates ChaCha20-Poly1305,
 /// switch to encrypted length-prefixed framing. Otherwise continue with NDJSON.
 #[cfg(feature = "btsp")]
-#[expect(dead_code, reason = "will be used when BTSP-over-riboCipher routing is wired (0xEC 0x02/0x03)")]
+#[expect(
+    dead_code,
+    reason = "will be used when BTSP-over-riboCipher routing is wired (0xEC 0x02/0x03)"
+)]
 async fn handle_post_handshake_session(
     handler: Arc<JsonRpcHandler>,
     reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
@@ -196,12 +199,8 @@ async fn handle_encrypted_session(
     loop {
         match framing::read_encrypted_frame(reader, &keys).await {
             Ok(plaintext) => {
-                let response_body = process_request(
-                    &handler,
-                    &plaintext,
-                    ConnectionTrustHints::UNIX_BTSP,
-                )
-                .await?;
+                let response_body =
+                    process_request(&handler, &plaintext, ConnectionTrustHints::UNIX_BTSP).await?;
                 if let Err(e) = framing::write_encrypted_frame(writer, &keys, &response_body).await
                 {
                     warn!(target: "btsp", "Phase 3 encrypted write error: {e}");
@@ -223,7 +222,10 @@ async fn handle_encrypted_session(
 ///
 /// Reads from `FAMILY_SEED` env var, or falls back to reading
 /// `.family.seed` from the biomeOS config directory.
-#[expect(dead_code, reason = "will be used when BTSP-over-riboCipher routing is wired (0xEC 0x02/0x03)")]
+#[expect(
+    dead_code,
+    reason = "will be used when BTSP-over-riboCipher routing is wired (0xEC 0x02/0x03)"
+)]
 fn resolve_family_seed() -> ServerResult<Vec<u8>> {
     if let Ok(seed) = std::env::var(toadstool_common::interned_strings::socket_env::FAMILY_SEED) {
         return Ok(seed.into_bytes());

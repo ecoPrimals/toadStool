@@ -150,21 +150,20 @@ pub async fn run_server_main(
     // and start an early health responder so launchers get immediate health.liveness
     // responses while wgpu + mDNS + executor construction run in the background.
     let (early_stop_tx, early_stop_rx) = tokio::sync::watch::channel(false);
-    let jsonrpc_listener = match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path).await {
-        Ok(listener) => {
-            let listener = Arc::new(listener);
-            let _early_health = crate::pure_jsonrpc::spawn_early_health_responder(
-                &listener,
-                early_stop_rx,
-            );
-            info!("⚡ JSON-RPC socket pre-bound — early health responder active");
-            Some(listener)
-        }
-        Err(e) => {
-            warn!("Pre-bind failed (will bind later): {e}");
-            None
-        }
-    };
+    let jsonrpc_listener =
+        match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path).await {
+            Ok(listener) => {
+                let listener = Arc::new(listener);
+                let _early_health =
+                    crate::pure_jsonrpc::spawn_early_health_responder(&listener, early_stop_rx);
+                info!("⚡ JSON-RPC socket pre-bound — early health responder active");
+                Some(listener)
+            }
+            Err(e) => {
+                warn!("Pre-bind failed (will bind later): {e}");
+                None
+            }
+        };
 
     let mut unibin_config = execution::UnibinExecutionConfig::from_env();
 
@@ -222,7 +221,9 @@ pub async fn run_server_main(
     // Legacy symlink: toadstool.sock → compute.sock for callers still using
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
     let legacy_filename = format::legacy_socket_filename_for_family(&family_id);
-    let legacy_socket = tarpc_socket_path.parent().map(|dir| dir.join(legacy_filename));
+    let legacy_socket = tarpc_socket_path
+        .parent()
+        .map(|dir| dir.join(legacy_filename));
     if let Some(ref legacy) = legacy_socket
         && legacy != &tarpc_socket_path
     {
@@ -265,10 +266,16 @@ pub async fn run_server_main(
         let count = recovered.len();
         let mut store = anchor_store.lock().await;
         for (bdf, anchor) in recovered {
-            info!(bdf, "recovered VfioAnchor from systemd fd store — GPU warm state preserved");
+            info!(
+                bdf,
+                "recovered VfioAnchor from systemd fd store — GPU warm state preserved"
+            );
             store.insert(bdf, anchor);
         }
-        info!(count, "restored VfioAnchor(s) from previous daemon instance");
+        info!(
+            count,
+            "restored VfioAnchor(s) from previous daemon instance"
+        );
     }
 
     let tarpc_path_for_server = tarpc_socket_path.clone();
@@ -403,9 +410,7 @@ pub async fn run_server_main(
                     "stored VFIO fds in systemd fd store — GPUs will stay warm"
                 );
             } else {
-                warn!(
-                    "failed to store fds in systemd — falling back to anchor leak"
-                );
+                warn!("failed to store fds in systemd — falling back to anchor leak");
                 drop(anchors);
                 let mut anchors = anchor_store.lock().await;
                 for (_bdf, anchor) in anchors.drain() {

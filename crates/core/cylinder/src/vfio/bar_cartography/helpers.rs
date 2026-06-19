@@ -3,9 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use super::types::{
-    DomainHint, RegisterAccess, RegisterPattern, RegisterProbe, RegisterRegion,
-};
+use super::types::{DomainHint, RegisterAccess, RegisterPattern, RegisterProbe, RegisterRegion};
 
 pub(super) fn is_dangerous_offset(offset: usize) -> bool {
     matches!(

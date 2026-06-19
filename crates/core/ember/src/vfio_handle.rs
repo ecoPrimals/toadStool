@@ -12,8 +12,8 @@
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::ring_meta::RingMeta;
 use crate::resource_handle::ResourceHandle;
+use crate::ring_meta::RingMeta;
 
 /// Error type for VFIO handle operations.
 #[derive(Debug, thiserror::Error)]
@@ -182,11 +182,8 @@ mod tests {
     #[test]
     fn release_marks_dead_and_clears_fd() {
         let fd = test_owned_fd();
-        let mut handle = VfioResourceHandle::with_fd_and_meta(
-            "0000:03:00.0".into(),
-            fd,
-            RingMeta::default(),
-        );
+        let mut handle =
+            VfioResourceHandle::with_fd_and_meta("0000:03:00.0".into(), fd, RingMeta::default());
         handle.release().unwrap();
         assert!(!handle.is_alive());
         assert!(handle.vfio_fd().is_none());

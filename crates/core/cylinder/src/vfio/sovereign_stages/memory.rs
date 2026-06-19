@@ -172,15 +172,10 @@ pub(crate) fn dispatch_memory_training(
             // The PMU firmware in the VBIOS ROM includes HBM2 training
             // sequences that the host-side interpreter cannot replicate.
             tracing::info!("HBM2 cold: trying PMU FALCON devinit before controller path");
-            match crate::vfio::channel::devinit::execute_devinit_with_diagnostics(
-                bar0,
-                Some(bdf),
-            ) {
+            match crate::vfio::channel::devinit::execute_devinit_with_diagnostics(bar0, Some(bdf)) {
                 Ok(true) => {
                     tracing::info!("PMU FALCON devinit trained HBM2 — VRAM alive");
-                    return MemoryTrainingResult::Ok(
-                        "HBM2 trained via PMU FALCON devinit".into(),
-                    );
+                    return MemoryTrainingResult::Ok("HBM2 trained via PMU FALCON devinit".into());
                 }
                 Ok(false) => {
                     tracing::info!("PMU FALCON devinit: not needed or VRAM still dead");
@@ -208,9 +203,7 @@ pub(crate) fn dispatch_memory_training(
             }
         }
         MemoryTrainingStrategy::Unsupported(name) => {
-            MemoryTrainingResult::Skipped(format!(
-                "memory_type={name} (pmc=0x{pmc_before:08x})"
-            ))
+            MemoryTrainingResult::Skipped(format!("memory_type={name} (pmc=0x{pmc_before:08x})"))
         }
     }
 }

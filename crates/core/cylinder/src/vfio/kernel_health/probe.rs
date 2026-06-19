@@ -2,10 +2,10 @@
 
 use std::path::Path;
 
-use super::elf::{read_cstr, read_u32_le, read_u64_le, read_u16_le};
+use super::KernelHealthError;
+use super::elf::{read_cstr, read_u16_le, read_u32_le, read_u64_le};
 use super::paths::kernel_release;
 use super::reference::reference_module_offsets;
-use super::KernelHealthError;
 
 /// Minimal C source that stores `offsetof(struct module, init)` and
 /// `offsetof(struct module, exit)` in a `.note.module_offsets` ELF section.
@@ -73,7 +73,9 @@ pub(crate) fn find_note_section_offsets(elf_data: &[u8]) -> Result<(u64, u64), K
 
     let is_64 = elf_data[4] == 2;
     if !is_64 {
-        return Err(KernelHealthError::ElfParse("only 64-bit ELF supported".into()));
+        return Err(KernelHealthError::ElfParse(
+            "only 64-bit ELF supported".into(),
+        ));
     }
     let is_le = elf_data[5] == 1;
     if !is_le {

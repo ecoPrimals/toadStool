@@ -117,7 +117,9 @@ impl VisualizationClient {
     fn discover_blocking() -> Option<UnixJsonRpcClient> {
         let env = SocketPathEnv::from_env();
 
-        if let Ok(addr) = std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SHADER_COMPILER_ADDR) {
+        if let Ok(addr) = std::env::var(
+            toadstool_common::interned_strings::socket_env::TOADSTOOL_SHADER_COMPILER_ADDR,
+        ) {
             let path = PathBuf::from(&addr);
             if path.exists() {
                 debug!(path = %path.display(), "shader compiler discovered via TOADSTOOL_SHADER_COMPILER_ADDR");
@@ -131,7 +133,8 @@ impl VisualizationClient {
             return Some(UnixJsonRpcClient::new(capability_sock));
         }
 
-        let runtime_dir = std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR).ok()?;
+        let runtime_dir =
+            std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR).ok()?;
         let runtime = PathBuf::from(&runtime_dir);
         let biomeos = runtime.join("biomeos");
 

@@ -54,8 +54,8 @@ mod tests {
     use crate::UniversalJob;
     use crate::{ExecutionTarget, UniversalScheduler, UniversalSchedulerConfig};
     use std::time::{Duration, SystemTime};
-    use toadstool_common::constants::network::LOCALHOST_IPV4;
     use toadstool_common::constants::PRIMAL_NAME;
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
     use uuid::Uuid;
 
     fn test_connection() -> CoordinationConnection {

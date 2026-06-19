@@ -106,7 +106,12 @@ impl SovereignSnapshot {
         cmp!(therm_gate, "THERM_GATE");
         cmp!(pri_ringmaster_intr, "PRI_RM_INTR");
 
-        for (i, (b, a)) in before.gpc_per_unit.iter().zip(&after.gpc_per_unit).enumerate() {
+        for (i, (b, a)) in before
+            .gpc_per_unit
+            .iter()
+            .zip(&after.gpc_per_unit)
+            .enumerate()
+        {
             if b != a {
                 lines.push(format!("GPC{i}_UNIT: {b:#010x} -> {a:#010x}"));
             }
@@ -243,7 +248,10 @@ impl ExperimentWrite {
 /// given BAR0 mapping. Used by the `sovereign.snapshot` RPC.
 pub fn sovereign_snapshot_only(
     bar0: &MappedBar,
-) -> (SovereignSnapshot, crate::vfio::sovereign_tiers::TierEvidence) {
+) -> (
+    SovereignSnapshot,
+    crate::vfio::sovereign_tiers::TierEvidence,
+) {
     let snapshot = SovereignSnapshot::capture(bar0);
     let tier = classify_tier(bar0);
     (snapshot, tier)

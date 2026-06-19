@@ -45,10 +45,7 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
 /// ensures `connect()` succeeds as soon as the socket path exists,
 /// even before the full handler is ready.
 pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResult<UnixListener> {
-    info!(
-        "Pre-binding JSON-RPC Unix socket: {:?}",
-        socket_path
-    );
+    info!("Pre-binding JSON-RPC Unix socket: {:?}", socket_path);
 
     if let Some(parent) = socket_path.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| {
@@ -216,7 +213,7 @@ async fn handle_early_health(mut stream: UnixStream) {
 
     let response = match method.as_deref() {
         Some("health") => {
-            serde_json::json!({"jsonrpc":"2.0","result":{"status":"starting","primal":"toadstool","version":"0.2.0"},"id":id})
+            serde_json::json!({"jsonrpc":"2.0","result":{"status":"starting","primal":toadstool_common::constants::primal_identity::PRIMAL_NAME,"version":env!("CARGO_PKG_VERSION")},"id":id})
         }
         Some("health.liveness") => {
             serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":id})
@@ -368,7 +365,10 @@ pub(super) async fn try_ribocipher_dispatch(
             }
             info!(
                 protocol_type = format_args!("0x{:02X}", pt[0]),
-                hmac = format_args!("{:02x}{:02x}{:02x}{:02x}", hmac_tag[0], hmac_tag[1], hmac_tag[2], hmac_tag[3]),
+                hmac = format_args!(
+                    "{:02x}{:02x}{:02x}{:02x}",
+                    hmac_tag[0], hmac_tag[1], hmac_tag[2], hmac_tag[3]
+                ),
                 "riboCipher mito-beacon signal accepted"
             );
             Ok(Some(
@@ -403,7 +403,8 @@ async fn handle_ribocipher_clear_unix(
     match protocol_type {
         pt::PROBE => {
             let (_, mut writer) = stream.into_split();
-            let response = serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
+            let response =
+                serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
             let mut buf = serde_json::to_vec(&response).unwrap_or_default();
             buf.push(b'\n');
             let _ = writer.write_all(&buf).await;
@@ -497,9 +498,12 @@ pub(super) async fn handle_ndjson_unix(
     loop {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
-            let response_body =
-                process_request(&handler, trimmed.as_bytes(), ConnectionTrustHints::UNIX_LOCAL)
-                    .await?;
+            let response_body = process_request(
+                &handler,
+                trimmed.as_bytes(),
+                ConnectionTrustHints::UNIX_LOCAL,
+            )
+            .await?;
             writer
                 .write_all(&response_body)
                 .await

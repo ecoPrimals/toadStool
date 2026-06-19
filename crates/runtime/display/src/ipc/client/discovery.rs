@@ -4,8 +4,8 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::PRIMAL_NAME;
+use toadstool_common::interned_strings::socket_env;
 
 use super::IpcEndpoint;
 use crate::DisplayError;

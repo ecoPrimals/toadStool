@@ -4,12 +4,12 @@
 //! This module provides pure Rust implementations for setting up Akida NPU hardware,
 //! replacing shell scripts with compiled code that's portable across systems.
 
-use toadstool_common::interned_strings::socket_env;
 use crate::error::{AkidaError, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
+use toadstool_common::interned_strings::socket_env;
 use tracing::{debug, info, warn};
 
 /// Setup Akida NPU kernel driver

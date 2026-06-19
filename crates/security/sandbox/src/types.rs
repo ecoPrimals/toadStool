@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
-use toadstool_common::interned_strings::socket_env;
 use toadstool::security::{IsolationLevel, SecurityContext};
 use toadstool::workload::WorkloadSpec;
+use toadstool_common::interned_strings::socket_env;
 
 /// Sandbox configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

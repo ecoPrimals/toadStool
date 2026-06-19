@@ -50,9 +50,12 @@ pub(crate) fn trigger_rm_init(
 
     tracing::info!(module_name, major, "found catalyst chardev major");
 
-    let rm_trigger_bin = "/usr/local/bin/rm_trigger";
-    if std::path::Path::new(rm_trigger_bin).exists() {
-        super::forensics::breadcrumb(&format!("rm_trigger: spawning binary (major={major}, channel={create_channel}, bdf={bdf})"));
+    let rm_trigger_bin = std::env::var("TOADSTOOL_RM_TRIGGER_BIN")
+        .unwrap_or_else(|_| "/usr/local/bin/rm_trigger".to_string());
+    if std::path::Path::new(&rm_trigger_bin).exists() {
+        super::forensics::breadcrumb(&format!(
+            "rm_trigger: spawning binary (major={major}, channel={create_channel}, bdf={bdf})"
+        ));
         tracing::info!(major, create_channel, bdf, "spawning rm_trigger helper");
         let mut cmd = std::process::Command::new(rm_trigger_bin);
         cmd.arg(major.to_string());
@@ -106,7 +109,9 @@ pub(crate) fn trigger_rm_init(
                     output.status.code().unwrap_or(-1)
                 ));
                 crate::nv::registers::pmc::quench_interrupts(
-                    bdf, interrupt_profile, "post-exit (after nvidia_close)",
+                    bdf,
+                    interrupt_profile,
+                    "post-exit (after nvidia_close)",
                 );
                 // Exp 233 Run #4: disable MSI at PCI config level immediately
                 // after RM exit. The GPU firmware re-enables INTR_EN during the
@@ -131,7 +136,9 @@ pub(crate) fn trigger_rm_init(
             }
         }
     } else {
-        tracing::warn!("rm_trigger binary not found at {rm_trigger_bin} — using open-only fallback");
+        tracing::warn!(
+            "rm_trigger binary not found at {rm_trigger_bin} — using open-only fallback (set TOADSTOOL_RM_TRIGGER_BIN to override)"
+        );
     }
 
     // Fallback: just open the GPU device (minor 0) to trigger rm_init_adapter.
@@ -155,7 +162,11 @@ pub(crate) fn trigger_rm_init(
         }
     }
 
-    tracing::info!(dev_path, major, "opening catalyst chardev to trigger RM init (fallback)");
+    tracing::info!(
+        dev_path,
+        major,
+        "opening catalyst chardev to trigger RM init (fallback)"
+    );
     let fd = std::fs::OpenOptions::new()
         .read(true)
         .write(true)

@@ -396,4 +396,3 @@ async fn test_find_service_all_unhealthy_returns_first() {
     assert!(found.is_ok());
     assert_eq!(found.unwrap().name, "only-svc");
 }
-

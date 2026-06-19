@@ -103,10 +103,7 @@ pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, Han
         // Full FECS + GPCCS IMEM dump
         let fw_dir = crate::linux_paths::data_subdir("catalysts/firmware");
         let _ = std::fs::create_dir_all(&fw_dir);
-        for (name, eng_base) in [
-            ("fecs", falcon::FECS_BASE),
-            ("gpccs", falcon::GPCCS_BASE),
-        ] {
+        for (name, eng_base) in [("fecs", falcon::FECS_BASE), ("gpccs", falcon::GPCCS_BASE)] {
             let ic = eng_base + falcon::IMEMC;
             let id = eng_base + falcon::IMEMD;
             let imem_size = 32 * 1024usize;
@@ -116,14 +113,17 @@ pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, Han
             for _ in 0..(imem_size / 4) {
                 fw_words.push(bar0.read_u32(id as usize).unwrap_or(0));
             }
-            let fw_bytes: Vec<u8> = fw_words.iter()
-                .flat_map(|w| w.to_le_bytes()).collect();
+            let fw_bytes: Vec<u8> = fw_words.iter().flat_map(|w| w.to_le_bytes()).collect();
             let nz = fw_bytes.iter().filter(|&&b| b != 0).count();
             let fw_path = format!("{fw_dir}/{name}_imem_{chip_name}.bin");
             let _ = std::fs::write(&fw_path, &fw_bytes);
-            tracing::info!(engine = name, path = fw_path.as_str(),
-                size = fw_bytes.len(), nonzero = nz,
-                "{name} IMEM captured post-recovery");
+            tracing::info!(
+                engine = name,
+                path = fw_path.as_str(),
+                size = fw_bytes.len(),
+                nonzero = nz,
+                "{name} IMEM captured post-recovery"
+            );
         }
         format!(", IMEM={imem_nonzero}/8 words alive")
     } else {
@@ -133,11 +133,24 @@ pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, Han
     Ok(format!(
         "PMC {:#010x}→{:#010x}, PGRAPH={}, ring_status={:#x}, \
          FECS={} GPCCS={}{}",
-        pmc_before, pmc_after,
-        if pmc_after & (1 << 12) != 0 { "ON" } else { "OFF" },
+        pmc_before,
+        pmc_after,
+        if pmc_after & (1 << 12) != 0 {
+            "ON"
+        } else {
+            "OFF"
+        },
         status_start,
-        if fecs_accessible { "accessible" } else { "FAULT" },
-        if gpccs_accessible { "accessible" } else { "FAULT" },
+        if fecs_accessible {
+            "accessible"
+        } else {
+            "FAULT"
+        },
+        if gpccs_accessible {
+            "accessible"
+        } else {
+            "FAULT"
+        },
         imem_status,
     ))
 }

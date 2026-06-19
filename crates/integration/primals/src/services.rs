@@ -38,11 +38,7 @@ impl ServiceManager {
         }
     }
 
-    pub fn start_service(
-        &mut self,
-        service_id: String,
-        service_type: String,
-    ) -> PrimalResult<()> {
+    pub fn start_service(&mut self, service_id: String, service_type: String) -> PrimalResult<()> {
         // ✅ MODERN: Capability-based service discovery
         // Instead of hardcoding Coordination port, we discover coordination services by capability
         //

@@ -5,11 +5,11 @@ use crate::error::DriverResult;
 use crate::vfio::VfioDevice;
 
 use super::super::generation::PageTableFormat;
+use super::NvVfioComputeDevice;
 use super::channel_init::{alloc_semaphore_buffer, build_dispatch_state, init_channel_buffers};
 use super::gr_falcon_boot::{boot_gpccs_fecs_catalyst, fecs_setup_channel};
-use super::gr_ungating::{ungate_gr_engine, UngatingLog};
+use super::gr_ungating::{UngatingLog, ungate_gr_engine};
 use super::pbdma::find_target_pbdma;
-use super::NvVfioComputeDevice;
 
 impl NvVfioComputeDevice {
     /// Open VFIO dispatch state using pre-existing fds from an anchor/ember.
@@ -23,10 +23,7 @@ impl NvVfioComputeDevice {
         fds: crate::vfio::ReceivedVfioFds,
     ) -> DriverResult<()> {
         let profile = super::super::generation::profile_for_sm(self.sm);
-        let is_kepler = matches!(
-            profile.page_table_format,
-            PageTableFormat::V1TwoLevel
-        );
+        let is_kepler = matches!(profile.page_table_format, PageTableFormat::V1TwoLevel);
 
         let device = VfioDevice::from_received(&self.bdf, fds)?;
         let bar0 = device.map_bar(0)?;
@@ -67,13 +64,7 @@ impl NvVfioComputeDevice {
 
         // Full GPC ungating before FECS method protocol.
         if self.catalyst_warm && !is_kepler && init.gr_ctx.is_some() {
-            handle_anchor_catalyst_ungating(
-                &bar0,
-                &dma_backend,
-                &init.channel,
-                profile,
-                &self.bdf,
-            );
+            handle_anchor_catalyst_ungating(&bar0, &dma_backend, &init.channel, profile, &self.bdf);
         } else if fecs_running && !is_kepler {
             handle_anchor_fecs_running_ungating(&bar0, &init.channel, profile, &self.bdf)?;
         } else if fecs_running {
@@ -90,8 +81,7 @@ impl NvVfioComputeDevice {
             "VFIO PBDMA dispatch state initialized (from anchor fds)"
         );
 
-        let target_pbdma_base =
-            find_target_pbdma(&bar0, &init.channel, init.doorbell, " (anchor)");
+        let target_pbdma_base = find_target_pbdma(&bar0, &init.channel, init.doorbell, " (anchor)");
 
         let semaphore =
             alloc_semaphore_buffer(&dma_backend, profile.completion, &self.bdf, "anchor adopt")?;

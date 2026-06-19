@@ -131,11 +131,7 @@ pub trait InitPipeline: Send + Sync {
     ///
     /// For warm GPUs, this should return `Ok` with `DevinitMethod::WarmSkip`.
     /// For cold GPUs, this runs the appropriate training path.
-    fn devinit(
-        &self,
-        bar0: &MappedBar,
-        probe: &ProbeResult,
-    ) -> Result<DevinitResult, DriverError>;
+    fn devinit(&self, bar0: &MappedBar, probe: &ProbeResult) -> Result<DevinitResult, DriverError>;
 
     /// Phase 3: Engine initialization (falcon boot, GR setup).
     fn engine_init(

@@ -119,12 +119,11 @@ impl Bar0Access {
 
     /// Open BAR0 from an explicit resource file path.
     fn open_resource(path: &str) -> Result<Self, ApplyError> {
-        let mmap = SafeMmapRegion::map_shared_rw(Path::new(path)).map_err(|e| {
-            ApplyError::MmioFailed {
+        let mmap =
+            SafeMmapRegion::map_shared_rw(Path::new(path)).map_err(|e| ApplyError::MmioFailed {
                 offset: 0,
                 detail: format!("mmap {path}: {e}"),
-            }
-        })?;
+            })?;
 
         let size = mmap.size();
         tracing::info!(

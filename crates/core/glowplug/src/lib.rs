@@ -73,10 +73,10 @@ pub use discovery::DeviceDiscovery;
 pub use firmware::{BootServiceEvidence, FirmwareInterface};
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
-pub use swap::{ExitBootServicesFn, SwapExecutor, SwapObservation, SwapOrchestrator};
 pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
+pub use swap::{ExitBootServicesFn, SwapExecutor, SwapObservation, SwapOrchestrator};
 pub use sysfs_executor::SysfsSwapExecutor;
 pub use warm_init::{
-    DiffSummary, DriverLabExecutor, DriverLabPlan, DriverTrial, LabExecutionResult,
-    ModuleSource, NV_BAR0_DOMAINS, SeederContainment, TrialExecutionResult, WarmInitPlan,
+    DiffSummary, DriverLabExecutor, DriverLabPlan, DriverTrial, LabExecutionResult, ModuleSource,
+    NV_BAR0_DOMAINS, SeederContainment, TrialExecutionResult, WarmInitPlan,
 };

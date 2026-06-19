@@ -9,7 +9,10 @@ use crate::vfio::device::{DmaBackend, MappedBar};
 use crate::vfio::dma::DmaBuffer;
 
 use super::super::generation::{CompletionStrategy, GenerationProfile};
-use super::{DoorbellKind, GPFIFO_ENTRIES, GPFIFO_IOVA, GR_CTX_IOVA, GR_CTX_SIZE, PAGE_SIZE, USER_BUFFER_BASE_IOVA, USERD_IOVA, VfioDispatchState};
+use super::{
+    DoorbellKind, GPFIFO_ENTRIES, GPFIFO_IOVA, GR_CTX_IOVA, GR_CTX_SIZE, PAGE_SIZE,
+    USER_BUFFER_BASE_IOVA, USERD_IOVA, VfioDispatchState,
+};
 
 /// Result of PFIFO channel + DMA buffer initialization.
 pub(crate) struct ChannelInitResult {
@@ -90,7 +93,10 @@ pub(crate) fn init_channel_buffers(
 /// Like [`init_channel_buffers`] but allows overriding the PFIFO warm_handoff
 /// independently from `fecs_ready`. Use after a PMC PFIFO reset when FECS is
 /// still alive but PFIFO needs cold initialization.
-#[expect(clippy::too_many_arguments, reason = "hardware init requires explicit state flags")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "hardware init requires explicit state flags"
+)]
 pub(crate) fn init_channel_buffers_with_pfifo_config(
     dma_backend: &DmaBackend,
     bar0: &MappedBar,
@@ -188,11 +194,7 @@ pub(crate) fn build_dispatch_state(
     completion: CompletionStrategy,
     target_pbdma_base: Option<usize>,
 ) -> VfioDispatchState {
-    let sem_offset = if semaphore.is_some() {
-        PAGE_SIZE
-    } else {
-        0
-    };
+    let sem_offset = if semaphore.is_some() { PAGE_SIZE } else { 0 };
 
     VfioDispatchState {
         device,

@@ -62,7 +62,10 @@ mod tests {
 
     #[test]
     fn test_coordination_protocol_serialization_roundtrip() {
-        for protocol in [CoordinationTransport::HTTP, CoordinationTransport::MessageQueue] {
+        for protocol in [
+            CoordinationTransport::HTTP,
+            CoordinationTransport::MessageQueue,
+        ] {
             let json = serde_json::to_string(&protocol).unwrap();
             let parsed: CoordinationTransport = serde_json::from_str(&json).unwrap();
             assert!(std::mem::discriminant(&protocol) == std::mem::discriminant(&parsed));

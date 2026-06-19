@@ -135,7 +135,9 @@ pub fn get_socket_path(
         }
     }
 
-    let runtime_dir = if let Ok(xdg_runtime) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
+    let runtime_dir = if let Ok(xdg_runtime) = std::env::var(socket_env::XDG_RUNTIME_DIR)
+        && PathBuf::from(&xdg_runtime).exists()
+    {
         PathBuf::from(xdg_runtime)
     } else if let Ok(uid_str) = std::fs::read_to_string(procfs::PROC_SELF_LOGINUID) {
         if let Ok(uid) = uid_str.trim().parse::<u32>() {
@@ -345,11 +347,7 @@ mod tests {
     #[test]
     fn get_socket_path_temp_dir_fallback_no_xdg() {
         temp_env::with_vars_unset(
-            [
-                "TOADSTOOL_SOCKET",
-                "BIOMEOS_SOCKET_PATH",
-                "XDG_RUNTIME_DIR",
-            ],
+            ["TOADSTOOL_SOCKET", "BIOMEOS_SOCKET_PATH", "XDG_RUNTIME_DIR"],
             || {
                 let result = get_socket_path("default", "node1", None, None);
                 assert!(result.is_ok());

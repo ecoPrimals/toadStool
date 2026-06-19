@@ -40,7 +40,11 @@ pub(in crate::vfio::channel) fn encode_kepler_pte(phys_addr: u64) -> u64 {
 /// Kepler uses a single page directory (PD) whose entries point to page tables.
 /// Each PDE is 16 bytes (small PT + large PT). We only use the small PT half.
 /// The PT covers 512 × 4 KiB = 2 MiB of VA space per entry.
-pub(in crate::vfio::channel) fn populate_kepler_page_tables(pd: &mut [u8], pt0: &mut [u8], pt0_iova: u64) {
+pub(in crate::vfio::channel) fn populate_kepler_page_tables(
+    pd: &mut [u8],
+    pt0: &mut [u8],
+    pt0_iova: u64,
+) {
     let pde = encode_kepler_pde(pt0_iova);
     pd[0..8].copy_from_slice(&pde.to_le_bytes());
 
@@ -126,7 +130,11 @@ pub(in crate::vfio::channel) fn populate_kepler_instance_block(
 ///   `[31:12] INST_PTR, [9:8] INST_TARGET, [0] CHANNEL_ENABLE`
 ///
 /// Unlike GV100, there's no TSG header and each entry is 8 bytes (not 16).
-pub(in crate::vfio::channel) fn populate_kepler_runlist(rl: &mut [u8], _instance_iova: u64, channel_id: u32) {
+pub(in crate::vfio::channel) fn populate_kepler_runlist(
+    rl: &mut [u8],
+    _instance_iova: u64,
+    channel_id: u32,
+) {
     // GK104 runlist entry format (from Nouveau gk104_fifo_runlist_commit):
     //   DW0 = channel_id
     //   DW1 = 0x00000004 (entry type = channel)

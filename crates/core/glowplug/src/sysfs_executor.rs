@@ -64,10 +64,16 @@ impl SysfsSwapExecutor {
         })
     }
 
-    fn sysfs_write_guarded(path: &str, value: &str, timeout: std::time::Duration) -> Result<(), SysfsSwapError> {
-        guarded_sysfs::sysfs_write_guarded(path, value, timeout).map_err(|e| SysfsSwapError::SysfsWrite {
-            path: path.into(),
-            reason: e.to_string(),
+    fn sysfs_write_guarded(
+        path: &str,
+        value: &str,
+        timeout: std::time::Duration,
+    ) -> Result<(), SysfsSwapError> {
+        guarded_sysfs::sysfs_write_guarded(path, value, timeout).map_err(|e| {
+            SysfsSwapError::SysfsWrite {
+                path: path.into(),
+                reason: e.to_string(),
+            }
         })
     }
 
@@ -134,7 +140,9 @@ impl SysfsSwapExecutor {
         let prev_driver = guarded_sysfs::read_current_driver(bdf);
         if let Some(ref current) = prev_driver {
             let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
-            if let Err(e) = Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT) {
+            if let Err(e) =
+                Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT)
+            {
                 tracing::warn!(bdf, driver = current.as_str(), error = %e, "guarded unbind failed (continuing)");
             }
         }
@@ -148,7 +156,8 @@ impl SysfsSwapExecutor {
         // Step 2: Bind seeder driver
         let t = Instant::now();
         let seeder_module = Self::driver_name_for_target(&plan.seeder.name);
-        let override_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
+        let override_path =
+            toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
         if let Err(e) = Self::sysfs_write(&override_path, seeder_module) {
             steps.push(WarmInitStep {
                 name: "seeder_bind".into(),
@@ -159,7 +168,9 @@ impl SysfsSwapExecutor {
             return halt_result(bdf, &plan.seeder.name, "seeder_bind", steps, overall);
         }
         let drivers_probe_path = toadstool_cylinder::linux_paths::sysfs_pci_drivers_probe();
-        if let Err(e) = Self::sysfs_write_guarded(&drivers_probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT) {
+        if let Err(e) =
+            Self::sysfs_write_guarded(&drivers_probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT)
+        {
             steps.push(WarmInitStep {
                 name: "seeder_bind".into(),
                 ok: false,
@@ -218,7 +229,9 @@ impl SysfsSwapExecutor {
 
         if let Some(ref current) = guarded_sysfs::read_current_driver(bdf) {
             let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
-            if let Err(e) = Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT) {
+            if let Err(e) =
+                Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT)
+            {
                 steps.push(WarmInitStep {
                     name: "warm_swap".into(),
                     ok: false,
@@ -238,11 +251,15 @@ impl SysfsSwapExecutor {
             });
             return halt_result(bdf, &plan.seeder.name, "warm_swap", steps, overall);
         }
-        if let Err(e) = Self::sysfs_write_guarded(&drivers_probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT) {
+        if let Err(e) =
+            Self::sysfs_write_guarded(&drivers_probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT)
+        {
             steps.push(WarmInitStep {
                 name: "warm_swap".into(),
                 ok: false,
-                detail: Some(format!("guarded drivers_probe for {final_driver} failed: {e}")),
+                detail: Some(format!(
+                    "guarded drivers_probe for {final_driver} failed: {e}"
+                )),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
             return halt_result(bdf, &plan.seeder.name, "warm_swap", steps, overall);
@@ -302,8 +319,7 @@ impl SwapExecutor for SysfsSwapExecutor {
     ) -> Result<SwapObservation, Self::Error> {
         let bdf = Self::bdf_from_id(device)?;
         let start = Instant::now();
-        let from = guarded_sysfs::read_current_driver(bdf)
-            .unwrap_or_else(|| "unbound".to_string());
+        let from = guarded_sysfs::read_current_driver(bdf).unwrap_or_else(|| "unbound".to_string());
 
         let target_driver = Self::driver_name_for_target(target_personality);
         let warm_swap = Self::is_warm_preserving_swap(&from, target_driver);
@@ -312,17 +328,27 @@ impl SwapExecutor for SysfsSwapExecutor {
 
         if warm_swap {
             guarded_sysfs::disable_flr(bdf);
-            tracing::info!(bdf, from = from.as_str(), to = target_driver, "warm-preserving swap (FLR disabled)");
+            tracing::info!(
+                bdf,
+                from = from.as_str(),
+                to = target_driver,
+                "warm-preserving swap (FLR disabled)"
+            );
         }
 
         if let Some(ref current) = guarded_sysfs::read_current_driver(bdf) {
             let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
-            tracing::info!(bdf, driver = current.as_str(), "unbinding current driver (guarded)");
+            tracing::info!(
+                bdf,
+                driver = current.as_str(),
+                "unbinding current driver (guarded)"
+            );
             Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT)?;
         }
 
         if target_personality != "unbound" {
-            let override_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
+            let override_path =
+                toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
             Self::sysfs_write(&override_path, target_driver)?;
 
             let probe_path = toadstool_cylinder::linux_paths::sysfs_pci_drivers_probe();
@@ -359,7 +385,11 @@ impl SwapExecutor for SysfsSwapExecutor {
         if let Some(ref current) = guarded_sysfs::read_current_driver(bdf) {
             let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
             Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT)?;
-            tracing::info!(bdf, driver = current.as_str(), "device released (unbound, guarded)");
+            tracing::info!(
+                bdf,
+                driver = current.as_str(),
+                "device released (unbound, guarded)"
+            );
         }
         Ok(())
     }
@@ -383,14 +413,35 @@ mod tests {
 
     #[test]
     fn driver_name_mapping() {
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("vfio"), "vfio-pci");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("vfio-pci"), "vfio-pci");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nouveau"), "nouveau");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia-open"), "nvidia");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("amdgpu"), "amdgpu");
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("vfio"),
+            "vfio-pci"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("vfio-pci"),
+            "vfio-pci"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("nouveau"),
+            "nouveau"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("nvidia-open"),
+            "nvidia"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("amdgpu"),
+            "amdgpu"
+        );
         assert_eq!(SysfsSwapExecutor::driver_name_for_target("xe"), "xe");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("akida"), "akida-pcie");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("custom"), "custom");
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("akida"),
+            "akida-pcie"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("custom"),
+            "custom"
+        );
     }
 
     #[test]
@@ -413,16 +464,34 @@ mod tests {
 
     #[test]
     fn warm_preserving_swap_detection() {
-        assert!(SysfsSwapExecutor::is_warm_preserving_swap("nouveau", "vfio-pci"));
-        assert!(SysfsSwapExecutor::is_warm_preserving_swap("nvidia", "vfio-pci"));
-        assert!(SysfsSwapExecutor::is_warm_preserving_swap("nvsov", "vfio-pci"));
-        assert!(SysfsSwapExecutor::is_warm_preserving_swap("nvsov2", "vfio-pci"));
-        assert!(SysfsSwapExecutor::is_warm_preserving_swap("amdgpu", "vfio-pci"));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap(
+            "nouveau", "vfio-pci"
+        ));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap(
+            "nvidia", "vfio-pci"
+        ));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap(
+            "nvsov", "vfio-pci"
+        ));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap(
+            "nvsov2", "vfio-pci"
+        ));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap(
+            "amdgpu", "vfio-pci"
+        ));
         assert!(SysfsSwapExecutor::is_warm_preserving_swap("xe", "vfio-pci"));
-        assert!(!SysfsSwapExecutor::is_warm_preserving_swap("vfio-pci", "nouveau"));
-        assert!(!SysfsSwapExecutor::is_warm_preserving_swap("vfio-pci", "vfio-pci"));
-        assert!(!SysfsSwapExecutor::is_warm_preserving_swap("nouveau", "nvidia"));
-        assert!(!SysfsSwapExecutor::is_warm_preserving_swap("unbound", "vfio-pci"));
+        assert!(!SysfsSwapExecutor::is_warm_preserving_swap(
+            "vfio-pci", "nouveau"
+        ));
+        assert!(!SysfsSwapExecutor::is_warm_preserving_swap(
+            "vfio-pci", "vfio-pci"
+        ));
+        assert!(!SysfsSwapExecutor::is_warm_preserving_swap(
+            "nouveau", "nvidia"
+        ));
+        assert!(!SysfsSwapExecutor::is_warm_preserving_swap(
+            "unbound", "vfio-pci"
+        ));
     }
 
     #[tokio::test]
@@ -455,14 +524,12 @@ mod tests {
 
     #[test]
     fn halt_result_records_correct_step() {
-        let steps = vec![
-            crate::warm_init::WarmInitStep {
-                name: "seeder_bind".into(),
-                ok: false,
-                detail: Some("guarded drivers_probe failed: timeout".into()),
-                duration_ms: 30000,
-            },
-        ];
+        let steps = vec![crate::warm_init::WarmInitStep {
+            name: "seeder_bind".into(),
+            ok: false,
+            detail: Some("guarded drivers_probe failed: timeout".into()),
+            duration_ms: 30000,
+        }];
         let result = halt_result(
             "0000:02:00.0",
             "nouveau",
@@ -481,17 +548,47 @@ mod tests {
 
     #[test]
     fn driver_name_mapping_exhaustive() {
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("vfio"), "vfio-pci");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("vfio-pci"), "vfio-pci");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nouveau"), "nouveau");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia"), "nvidia");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia-open"), "nvidia");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia_open"), "nvidia");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("amdgpu"), "amdgpu");
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("vfio"),
+            "vfio-pci"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("vfio-pci"),
+            "vfio-pci"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("nouveau"),
+            "nouveau"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("nvidia"),
+            "nvidia"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("nvidia-open"),
+            "nvidia"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("nvidia_open"),
+            "nvidia"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("amdgpu"),
+            "amdgpu"
+        );
         assert_eq!(SysfsSwapExecutor::driver_name_for_target("xe"), "xe");
         assert_eq!(SysfsSwapExecutor::driver_name_for_target("i915"), "i915");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("akida"), "akida-pcie");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("akida-pcie"), "akida-pcie");
-        assert_eq!(SysfsSwapExecutor::driver_name_for_target("unknown_driver"), "unknown_driver");
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("akida"),
+            "akida-pcie"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("akida-pcie"),
+            "akida-pcie"
+        );
+        assert_eq!(
+            SysfsSwapExecutor::driver_name_for_target("unknown_driver"),
+            "unknown_driver"
+        );
     }
 }

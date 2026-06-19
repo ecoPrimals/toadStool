@@ -6,8 +6,8 @@ use std::borrow::Cow;
 use crate::error::{DriverError, DriverResult};
 use crate::vfio::device::MappedBar;
 
-use super::super::registers::{self, pccsr, pfifo, RUNLIST_IOVA};
 use super::super::VfioChannel;
+use super::super::registers::{self, RUNLIST_IOVA, pccsr, pfifo};
 
 impl VfioChannel {
     /// Re-submit the runlist after modifying the instance block (e.g., adding
@@ -33,10 +33,7 @@ impl VfioChannel {
         let _ = bar0.write_u32(pfifo::INTR, pfifo::INTR_RL_COMPLETE);
 
         // 4. Re-enable channel
-        let _ = bar0.write_u32(
-            pccsr::channel(self.channel_id),
-            pccsr::CHANNEL_ENABLE_SET,
-        );
+        let _ = bar0.write_u32(pccsr::channel(self.channel_id), pccsr::CHANNEL_ENABLE_SET);
 
         // 5. Submit runlist
         self.submit_runlist(bar0)?;
@@ -90,7 +87,10 @@ impl VfioChannel {
     ///   SUBMIT(rl) = 0x2274 + rl*0x10 → upper_32(iova >> 12) | (count << 16)
     /// Writing SUBMIT triggers the scheduler.
     /// Source: nouveau `gv100_runl_commit()`.
-    pub(in crate::vfio::channel::pfifo) fn submit_runlist(&self, bar0: &MappedBar) -> DriverResult<()> {
+    pub(in crate::vfio::channel::pfifo) fn submit_runlist(
+        &self,
+        bar0: &MappedBar,
+    ) -> DriverResult<()> {
         // GV100 runlist BASE register: plain (addr >> 12), NO target bits.
         // nouveau's gv100_runl_commit writes lower_32_bits(addr >> 12) directly.
         // Previously we OR'd in (TARGET_SYS_MEM_COHERENT << 28) which corrupted

@@ -73,7 +73,6 @@ fn test_trust_level_variants() {
     assert!(matches!(TrustLevel::Sovereign, TrustLevel::Sovereign));
 }
 
-
 #[test]
 #[expect(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 fn test_service_endpoint_creation() {

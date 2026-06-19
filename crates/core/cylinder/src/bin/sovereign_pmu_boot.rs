@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! sovereign_pmu_boot — Sovereign PMU boot via PRAMIN+DMATRF (bypasses HS mode).
 //!
 //! HS mode 3 blocks PIO IMEM writes. nvidia-470 uses DMA transfer (DMATRF)
@@ -9,18 +9,23 @@
 
 #![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
 #![allow(
-    unused_variables, unused_assignments,
-    clippy::unreadable_literal, clippy::borrow_as_ptr,
-    clippy::manual_div_ceil, clippy::map_unwrap_or,
-    clippy::needless_pass_by_value, clippy::cast_lossless,
-    clippy::explicit_iter_loop, clippy::unnecessary_unwrap,
+    unused_variables,
+    unused_assignments,
+    clippy::unreadable_literal,
+    clippy::borrow_as_ptr,
+    clippy::manual_div_ceil,
+    clippy::map_unwrap_or,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::explicit_iter_loop,
+    clippy::unnecessary_unwrap
 )]
 
-use toadstool_cylinder::nv::registers::{falcon, gpc, pgraph, pbus, pmc, pmu, pramin};
 use std::os::fd::AsFd;
 use std::process::ExitCode;
 use std::thread;
 use std::time::{Duration, Instant};
+use toadstool_cylinder::nv::registers::{falcon, gpc, pbus, pgraph, pmc, pmu, pramin};
 
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
 
@@ -54,9 +59,7 @@ fn print_falcon(bar0: &Bar0, name: &str, base: u32) {
     } else {
         "UNKNOWN"
     };
-    println!(
-        "  {name:<6}: cpuctl=0x{ctrl:08x} pc=0x{pc:08x} sctl=0x{sctl:08x} [{state}]"
-    );
+    println!("  {name:<6}: cpuctl=0x{ctrl:08x} pc=0x{pc:08x} sctl=0x{sctl:08x} [{state}]");
 }
 
 fn main() -> ExitCode {
@@ -190,7 +193,11 @@ fn main() -> ExitCode {
     let pramin_exp = le_word(&imem, 0);
     println!(
         "  PRAMIN[0]: got=0x{pramin_v0:08x} want=0x{pramin_exp:08x} {}",
-        if pramin_v0 == pramin_exp { "OK" } else { "FAIL" }
+        if pramin_v0 == pramin_exp {
+            "OK"
+        } else {
+            "FAIL"
+        }
     );
     println!("  Staged {upload} B to VRAM@0x{vram_page:08x}");
 
@@ -261,7 +268,11 @@ fn main() -> ExitCode {
     let dmem_exp = le_word(&dmem, 0);
     println!(
         "  DMEM[0]: got=0x{dmem_v0:08x} want=0x{dmem_exp:08x} {}",
-        if dmem_v0 == dmem_exp { "OK" } else { "MISMATCH" }
+        if dmem_v0 == dmem_exp {
+            "OK"
+        } else {
+            "MISMATCH"
+        }
     );
 
     /* Phase 5: Boot */
@@ -367,5 +378,8 @@ fn print_summary(booted: bool, dry_run: bool, dmatrf_ok: u32, dmatrf_total: u32)
         "dmatrf_blocks_total": dmatrf_total,
         "status": if booted { "SOVEREIGN PMU BOOT SUCCEEDED" } else { "INCOMPLETE" },
     });
-    println!("{}", serde_json::to_string_pretty(&result).unwrap_or_default());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&result).unwrap_or_default()
+    );
 }

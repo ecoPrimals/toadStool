@@ -58,10 +58,7 @@ pub struct PbdmaDiagnostics {
 ///
 /// Uses the CE DMA class from `profile` when provided, falling back to
 /// `VOLTA_DMA_COPY_A` (0xC3B5) for backward compatibility.
-pub fn validate_ce(
-    bar0: &MappedBar,
-    dma_backend: DmaBackend,
-) -> CeValidationResult {
+pub fn validate_ce(bar0: &MappedBar, dma_backend: DmaBackend) -> CeValidationResult {
     validate_ce_with_profile(bar0, dma_backend, None)
 }
 
@@ -157,7 +154,11 @@ pub fn validate_ce_with_profile(
         }
     };
     result.channel_created = true;
-    tracing::info!(channel_id = chan.id(), runlist = ce_rl, "CE channel created");
+    tracing::info!(
+        channel_id = chan.id(),
+        runlist = ce_rl,
+        "CE channel created"
+    );
 
     // Force-program the CE PBDMA with channel state.
     // The channel was created via the GR runlist PFIFO path (which programs
@@ -171,7 +172,10 @@ pub fn validate_ce_with_profile(
         let _ = bar0.write_u32(pb_base + 0x148, 0xFFFF_FFFF); // HCE_INTR W1C
 
         // Program GPFIFO base.
-        let _ = bar0.write_u32(pb_base + pbdma::GP_BASE_LO, (CE_GPFIFO_IOVA & 0xFFFF_FFFF) as u32);
+        let _ = bar0.write_u32(
+            pb_base + pbdma::GP_BASE_LO,
+            (CE_GPFIFO_IOVA & 0xFFFF_FFFF) as u32,
+        );
         let _ = bar0.write_u32(pb_base + pbdma::GP_BASE_HI, (CE_GPFIFO_IOVA >> 32) as u32);
         // GP_PUT = 0, GP_FETCH = 0 (fresh channel).
         let _ = bar0.write_u32(pb_base + pbdma::GP_PUT, 0);
@@ -229,7 +233,8 @@ pub fn validate_ce_with_profile(
     let pb_bytes = pb.as_bytes();
 
     // Allocate PB DMA buffer and copy the pushbuffer into it.
-    let mut pb_buf = match DmaBuffer::new(dma_backend.clone(), pb_bytes.len().max(4096), CE_PB_IOVA) {
+    let mut pb_buf = match DmaBuffer::new(dma_backend.clone(), pb_bytes.len().max(4096), CE_PB_IOVA)
+    {
         Ok(b) => b,
         Err(e) => {
             result.error = Some(format!("pb buf alloc: {e}"));
@@ -277,7 +282,11 @@ pub fn validate_ce_with_profile(
     if let Some(pid) = result.ce_pbdma {
         let pb_base = 0x0004_0000 + pid * 0x2000;
         let _ = bar0.write_u32(pb_base + pbdma::GP_PUT, 1);
-        tracing::info!(pbdma = pid, pb_base = format_args!("{pb_base:#x}"), "direct CE PBDMA GP_PUT=1");
+        tracing::info!(
+            pbdma = pid,
+            pb_base = format_args!("{pb_base:#x}"),
+            "direct CE PBDMA GP_PUT=1"
+        );
     }
 
     // Ring doorbell (Volta+ USERMODE).
@@ -299,7 +308,11 @@ pub fn validate_ce_with_profile(
         }
         if gp_get_val >= 1 {
             result.gp_get_advanced = true;
-            tracing::info!(gp_get = gp_get_val, elapsed_us = poll_start.elapsed().as_micros(), "GP_GET advanced — CE consumed pushbuffer");
+            tracing::info!(
+                gp_get = gp_get_val,
+                elapsed_us = poll_start.elapsed().as_micros(),
+                "GP_GET advanced — CE consumed pushbuffer"
+            );
             break;
         }
         std::thread::sleep(Duration::from_micros(100));
@@ -311,7 +324,9 @@ pub fn validate_ce_with_profile(
             let pb_base = 0x0004_0000 + pid * 0x2000;
             result.pbdma_diagnostics = Some(PbdmaDiagnostics {
                 intr_0: bar0.read_u32(pb_base + 0x100).unwrap_or(0xDEAD),
-                gp_get: bar0.read_u32(pb_base + pbdma::CTX_GP_FETCH).unwrap_or(0xDEAD),
+                gp_get: bar0
+                    .read_u32(pb_base + pbdma::CTX_GP_FETCH)
+                    .unwrap_or(0xDEAD),
                 gp_put: bar0.read_u32(pb_base + pbdma::GP_PUT).unwrap_or(0xDEAD),
                 pb_header: bar0.read_u32(pb_base + 0x084).unwrap_or(0xDEAD),
                 method0: bar0.read_u32(pb_base + 0x064).unwrap_or(0xDEAD),

@@ -114,7 +114,10 @@ pub(crate) fn zero_elf_sections_by_name(data: &mut [u8], names: &[&str]) -> Resu
         }
         data[sh + 32..sh + 40].copy_from_slice(&0u64.to_le_bytes());
 
-        tracing::debug!(section = name.as_str(), "zeroed ksymtab section ({sh_size} bytes)");
+        tracing::debug!(
+            section = name.as_str(),
+            "zeroed ksymtab section ({sh_size} bytes)"
+        );
     }
 
     Ok(())
@@ -141,18 +144,11 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
         });
     }
 
-    let e_shoff = u64::from_le_bytes(
-        module_bytes[40..48].try_into().unwrap_or([0; 8]),
-    ) as usize;
-    let e_shentsize = u16::from_le_bytes(
-        module_bytes[58..60].try_into().unwrap_or([0; 2]),
-    ) as usize;
-    let e_shnum = u16::from_le_bytes(
-        module_bytes[60..62].try_into().unwrap_or([0; 2]),
-    ) as usize;
-    let e_shstrndx = u16::from_le_bytes(
-        module_bytes[62..64].try_into().unwrap_or([0; 2]),
-    ) as usize;
+    let e_shoff = u64::from_le_bytes(module_bytes[40..48].try_into().unwrap_or([0; 8])) as usize;
+    let e_shentsize =
+        u16::from_le_bytes(module_bytes[58..60].try_into().unwrap_or([0; 2])) as usize;
+    let e_shnum = u16::from_le_bytes(module_bytes[60..62].try_into().unwrap_or([0; 2])) as usize;
+    let e_shstrndx = u16::from_le_bytes(module_bytes[62..64].try_into().unwrap_or([0; 2])) as usize;
 
     if e_shoff == 0 || e_shentsize < 64 || e_shnum == 0 || e_shstrndx >= e_shnum {
         return Err(PatchError::NmFailed {
@@ -164,11 +160,13 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
     let shstr_hdr_off = e_shoff + e_shstrndx * e_shentsize;
     let shstr_offset = u64::from_le_bytes(
         module_bytes[shstr_hdr_off + 24..shstr_hdr_off + 32]
-            .try_into().unwrap_or([0; 8]),
+            .try_into()
+            .unwrap_or([0; 8]),
     ) as usize;
     let _shstr_size = u64::from_le_bytes(
         module_bytes[shstr_hdr_off + 32..shstr_hdr_off + 40]
-            .try_into().unwrap_or([0; 8]),
+            .try_into()
+            .unwrap_or([0; 8]),
     ) as usize;
 
     let mut total_zeroed = 0usize;
@@ -181,7 +179,8 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
 
         let sh_name_idx = u32::from_le_bytes(
             module_bytes[sh_start..sh_start + 4]
-                .try_into().unwrap_or([0; 4]),
+                .try_into()
+                .unwrap_or([0; 4]),
         ) as usize;
 
         let name_off = shstr_offset + sh_name_idx;
@@ -193,9 +192,8 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
             .iter()
             .position(|&b| b == 0)
             .unwrap_or(0);
-        let name_str = std::str::from_utf8(
-            &module_bytes[name_off..name_off + name_end]
-        ).unwrap_or("");
+        let name_str =
+            std::str::from_utf8(&module_bytes[name_off..name_off + name_end]).unwrap_or("");
 
         let matched = name_str.contains("ksymtab") || name_str.contains("kcrctab");
         if !matched {
@@ -204,11 +202,13 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
 
         let sh_offset = u64::from_le_bytes(
             module_bytes[sh_start + 24..sh_start + 32]
-                .try_into().unwrap_or([0; 8]),
+                .try_into()
+                .unwrap_or([0; 8]),
         ) as usize;
         let sh_size = u64::from_le_bytes(
             module_bytes[sh_start + 32..sh_start + 40]
-                .try_into().unwrap_or([0; 8]),
+                .try_into()
+                .unwrap_or([0; 8]),
         ) as usize;
 
         if sh_offset + sh_size <= module_bytes.len() && sh_size > 0 {
@@ -224,7 +224,10 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
     }
 
     if total_zeroed > 0 {
-        tracing::info!(total_zeroed, "stripped kernel symbol exports for dual-load isolation");
+        tracing::info!(
+            total_zeroed,
+            "stripped kernel symbol exports for dual-load isolation"
+        );
     }
 
     Ok(total_zeroed)

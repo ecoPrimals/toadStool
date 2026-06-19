@@ -30,19 +30,31 @@ pub(crate) async fn sovereign_warm_handoff(
         ))
     })?;
 
-    if let Some(secs) = params.and_then(|p| p.get("settle_secs")).and_then(serde_json::Value::as_u64) {
+    if let Some(secs) = params
+        .and_then(|p| p.get("settle_secs"))
+        .and_then(serde_json::Value::as_u64)
+    {
         config.settle = std::time::Duration::from_secs(secs);
     }
 
-    if let Some(json) = params.and_then(|p| p.get("patch_set_json")).and_then(serde_json::Value::as_str) {
+    if let Some(json) = params
+        .and_then(|p| p.get("patch_set_json"))
+        .and_then(serde_json::Value::as_str)
+    {
         config.patch_set_override = Some(json.to_string());
     }
 
-    if let Some(skip) = params.and_then(|p| p.get("skip_preflight")).and_then(serde_json::Value::as_bool) {
+    if let Some(skip) = params
+        .and_then(|p| p.get("skip_preflight"))
+        .and_then(serde_json::Value::as_bool)
+    {
         config.skip_preflight = skip;
     }
 
-    if let Some(name) = params.and_then(|p| p.get("module_name")).and_then(serde_json::Value::as_str) {
+    if let Some(name) = params
+        .and_then(|p| p.get("module_name"))
+        .and_then(serde_json::Value::as_str)
+    {
         config.module_name = name.to_string();
         config.seeder_driver = name.to_string();
     }
@@ -62,7 +74,12 @@ pub(crate) async fn sovereign_warm_handoff(
         if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
             let pmc = bar.read_u32(0x200).unwrap_or(0);
             let popcount = pmc.count_ones();
-            tracing::info!(bdf, pmc = format_args!("0x{pmc:08x}"), popcount, "pre-release PMC_ENABLE");
+            tracing::info!(
+                bdf,
+                pmc = format_args!("0x{pmc:08x}"),
+                popcount,
+                "pre-release PMC_ENABLE"
+            );
             popcount >= 10
         } else {
             true
@@ -89,11 +106,13 @@ pub(crate) async fn sovereign_warm_handoff(
             let is_pri_faulted = pri_intr != 0 || (fecs_cpuctl & 0xBADF_0000 == 0xBADF_0000);
             if is_pri_faulted {
                 tracing::warn!(
-                    bdf, pri_intr = format_args!("0x{pri_intr:08x}"),
+                    bdf,
+                    pri_intr = format_args!("0x{pri_intr:08x}"),
                     fecs_cpuctl = format_args!("0x{fecs_cpuctl:08x}"),
                     "catalyst re-entry: GPU degraded from prior cycle, forcing SBR cleanup"
                 );
-                let reset_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "reset");
+                let reset_path =
+                    toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "reset");
                 if let Err(e) = std::fs::write(&reset_path, "1") {
                     tracing::error!(bdf, error = %e, "SBR cleanup failed — proceeding anyway");
                 } else {
@@ -105,7 +124,11 @@ pub(crate) async fn sovereign_warm_handoff(
     }
 
     let suppress_sbr = if is_catalyst_strategy {
-        tracing::info!(bdf, gpu_warm, "catalyst strategy: allowing SBR for clean RM probe");
+        tracing::info!(
+            bdf,
+            gpu_warm,
+            "catalyst strategy: allowing SBR for clean RM probe"
+        );
         false
     } else {
         gpu_warm
@@ -129,9 +152,8 @@ pub(crate) async fn sovereign_warm_handoff(
             excluded_bdfs.push(bridge_bdf.clone());
         }
     }
-    let _keepalive_exclusion = crate::background::pcie_keepalive::HandoffExclusionGuard::new(
-        excluded_bdfs,
-    );
+    let _keepalive_exclusion =
+        crate::background::pcie_keepalive::HandoffExclusionGuard::new(excluded_bdfs);
 
     toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf, suppress_sbr);
 
@@ -160,7 +182,11 @@ pub(crate) async fn sovereign_warm_handoff(
         let bdf_owned = bdf.to_string();
         let closed = toadstool_cylinder::vfio::guarded_sysfs::release_bar0_fds(&bdf_owned);
         if closed > 0 {
-            tracing::info!(bdf, closed, "released leaked BAR0 resource0 fds for warm handoff");
+            tracing::info!(
+                bdf,
+                closed,
+                "released leaked BAR0 resource0 fds for warm handoff"
+            );
         }
     }
 
@@ -217,13 +243,16 @@ pub(crate) async fn sovereign_warm_handoff(
     let result = match tokio::time::timeout(rpc_timeout, blocking_future).await {
         Ok(Ok(handoff_result)) => handoff_result,
         Ok(Err(e)) => {
-            return Err(JsonRpcError::internal_error(
-                format!("handoff task panicked: {e}"),
-            ));
+            return Err(JsonRpcError::internal_error(format!(
+                "handoff task panicked: {e}"
+            )));
         }
         Err(_elapsed) => {
-            tracing::error!(bdf, timeout_s = rpc_timeout.as_secs(),
-                "sovereign.warm_handoff RPC timeout — blocking thread abandoned");
+            tracing::error!(
+                bdf,
+                timeout_s = rpc_timeout.as_secs(),
+                "sovereign.warm_handoff RPC timeout — blocking thread abandoned"
+            );
             return Err(JsonRpcError::internal_error(format!(
                 "warm_handoff timed out after {}s (blocking thread abandoned, \
                  internal guarded operations will self-terminate)",

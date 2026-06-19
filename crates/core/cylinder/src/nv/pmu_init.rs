@@ -371,7 +371,11 @@ impl PmuBootstrap {
         let detail = if completed {
             format!(
                 "PMU booted in {duration_ms}ms, PFIFO {}",
-                if pfifo_unlocked { "unlocked" } else { "still locked" },
+                if pfifo_unlocked {
+                    "unlocked"
+                } else {
+                    "still locked"
+                },
             )
         } else {
             format!(
@@ -390,12 +394,7 @@ impl PmuBootstrap {
     }
 
     /// Full bootstrap: reset → upload IMEM → upload DMEM → start → wait.
-    pub fn full_boot(
-        &self,
-        bar0: &MappedBar,
-        imem: &[u8],
-        dmem: &[u8],
-    ) -> PmuBootResult {
+    pub fn full_boot(&self, bar0: &MappedBar, imem: &[u8], dmem: &[u8]) -> PmuBootResult {
         self.reset_falcon(bar0);
         self.upload_imem(bar0, 0, imem, false);
         if !dmem.is_empty() {
@@ -421,7 +420,11 @@ impl std::fmt::Display for PmuBootResult {
             f,
             "PmuBootResult(success={}, pfifo={}, {}ms)",
             self.success,
-            if self.pfifo_unlocked { "unlocked" } else { "locked" },
+            if self.pfifo_unlocked {
+                "unlocked"
+            } else {
+                "locked"
+            },
             self.duration_ms,
         )
     }

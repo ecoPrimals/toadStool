@@ -183,7 +183,7 @@ fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
         ));
     }
 
-    let mut l = Array2::zeros((n, n));
+    let mut l: Array2<f64> = Array2::zeros((n, n));
 
     for i in 0..n {
         for j in 0..=i {
@@ -192,7 +192,7 @@ fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
             if i == j {
                 // Diagonal element
                 for k in 0..j {
-                    sum += l[[j, k]] * l[[j, k]];
+                    sum = l[[j, k]].mul_add(l[[j, k]], sum);
                 }
                 let diag = a[[j, j]] - sum;
                 if diag <= 0.0 {
@@ -204,7 +204,7 @@ fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
             } else {
                 // Off-diagonal element
                 for k in 0..j {
-                    sum += l[[i, k]] * l[[j, k]];
+                    sum = l[[i, k]].mul_add(l[[j, k]], sum);
                 }
                 l[[i, j]] = (a[[i, j]] - sum) / l[[j, j]];
             }
@@ -217,12 +217,12 @@ fn cholesky_decompose(a: &Array2<f64>) -> Result<Array2<f64>> {
 /// Forward substitution: solve L x = b where L is lower triangular
 fn forward_substitute(l: &Array2<f64>, b: &Array1<f64>) -> Array1<f64> {
     let n = l.nrows();
-    let mut x = Array1::zeros(n);
+    let mut x: Array1<f64> = Array1::zeros(n);
 
     for i in 0..n {
         let mut sum = b[i];
         for j in 0..i {
-            sum -= l[[i, j]] * x[j];
+            sum = l[[i, j]].mul_add(-x[j], sum);
         }
         x[i] = sum / l[[i, i]];
     }
@@ -233,12 +233,12 @@ fn forward_substitute(l: &Array2<f64>, b: &Array1<f64>) -> Array1<f64> {
 /// Backward substitution: solve L^T x = b where L is lower triangular
 fn backward_substitute_transpose(l: &Array2<f64>, b: &Array1<f64>) -> Array1<f64> {
     let n = l.nrows();
-    let mut x = Array1::zeros(n);
+    let mut x: Array1<f64> = Array1::zeros(n);
 
     for i in (0..n).rev() {
         let mut sum = b[i];
         for j in (i + 1)..n {
-            sum -= l[[j, i]] * x[j]; // L^T[i,j] = L[j,i]
+            sum = l[[j, i]].mul_add(-x[j], sum); // L^T[i,j] = L[j,i]
         }
         x[i] = sum / l[[i, i]];
     }

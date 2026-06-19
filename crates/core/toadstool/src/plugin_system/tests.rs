@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-or-later
 
 #[cfg(test)]
 mod plugin_system_tests {
@@ -400,5 +399,4 @@ mod plugin_system_tests {
         assert!(m.dependencies.is_empty());
         assert!(m.provides.is_empty());
     }
-
 }

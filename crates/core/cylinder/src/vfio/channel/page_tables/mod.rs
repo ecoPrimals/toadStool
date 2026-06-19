@@ -24,9 +24,9 @@ pub(super) fn write_u32_le(buf: &mut [u8], offset: usize, value: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::v2::*;
     use super::kepler::*;
+    use super::v2::*;
+    use super::*;
     use crate::vfio::channel::registers::*;
 
     #[test]

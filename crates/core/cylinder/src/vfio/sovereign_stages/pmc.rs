@@ -92,7 +92,11 @@ pub(crate) fn pmc_enable(
         }
     }
 
-    Ok(PmcEnableResult { before, after, mask })
+    Ok(PmcEnableResult {
+        before,
+        after,
+        mask,
+    })
 }
 
 /// Result of a staged PMC_ENABLE write, kept for rollback.
@@ -167,9 +171,14 @@ pub(crate) fn pmc_enable_full(bar0: &MappedBar) -> Result<String, SovereignStage
     std::thread::sleep(Duration::from_millis(50));
 
     let after = bar0.read_u32(PMC_ENABLE).unwrap_or(0xDEAD_DEAD);
-    tracing::debug!(pmc_after = format!("0x{after:08x}"), "PMC_ENABLE full ungating done");
+    tracing::debug!(
+        pmc_after = format!("0x{after:08x}"),
+        "PMC_ENABLE full ungating done"
+    );
 
-    Ok(format!("post_devinit_enable before=0x{before:08x} after=0x{after:08x}"))
+    Ok(format!(
+        "post_devinit_enable before=0x{before:08x} after=0x{after:08x}"
+    ))
 }
 
 /// PGRAPH engine reset via PMC_ENABLE bit 12 toggle.

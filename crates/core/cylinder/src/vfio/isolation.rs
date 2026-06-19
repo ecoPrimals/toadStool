@@ -118,8 +118,7 @@ pub fn fork_isolated_raw(
                             // the parent too. Poll briefly, then abandon the
                             // zombie — it will be reaped when it eventually
                             // exits D-state (or on parent exit by init).
-                            let reap_deadline =
-                                std::time::Instant::now() + Duration::from_secs(2);
+                            let reap_deadline = std::time::Instant::now() + Duration::from_secs(2);
                             loop {
                                 match waitpid(Some(child_pid), WaitOptions::NOHANG) {
                                     Ok(Some(_)) => break,

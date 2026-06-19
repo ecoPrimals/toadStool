@@ -43,10 +43,14 @@ pub(crate) fn verify(bar0: &MappedBar) -> Result<String, SovereignStagesError> {
                 Err(SovereignStagesError::VerifyVramSentinelFailed { detail })
             }
         }
-        crate::vfio::isolation::IsolationResult::Timeout => Err(SovereignStagesError::VerifyTimeout),
+        crate::vfio::isolation::IsolationResult::Timeout => {
+            Err(SovereignStagesError::VerifyTimeout)
+        }
         crate::vfio::isolation::IsolationResult::ChildFailed { status } => {
             Err(SovereignStagesError::VerifyChildFailed { status })
         }
-        crate::vfio::isolation::IsolationResult::ForkError(e) => Err(SovereignStagesError::VerifyFork(e)),
+        crate::vfio::isolation::IsolationResult::ForkError(e) => {
+            Err(SovereignStagesError::VerifyFork(e))
+        }
     }
 }

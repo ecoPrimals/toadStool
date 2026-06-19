@@ -62,7 +62,11 @@ impl VendorLifecycle for NvidiaKeplerLifecycle {
     fn stabilize_after_bind(&self, bdf: &str, _target_driver: &str) {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "Kepler: re-pinned hierarchy post-bind");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "Kepler: re-pinned hierarchy post-bind"
+        );
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -106,7 +110,11 @@ impl VendorLifecycle for NvidiaLifecycle {
     fn prepare_for_unbind(&self, bdf: &str, _current_driver: &str) -> Result<(), SwapError> {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "Volta+: pinned bridge hierarchy");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "Volta+: pinned bridge hierarchy"
+        );
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -137,7 +145,11 @@ impl VendorLifecycle for NvidiaLifecycle {
     fn stabilize_after_bind(&self, bdf: &str, _target_driver: &str) {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "Volta+: re-pinned hierarchy post-bind");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "Volta+: re-pinned hierarchy post-bind"
+        );
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -225,7 +237,11 @@ impl VendorLifecycle for NvidiaOpenLifecycle {
     fn stabilize_after_bind(&self, bdf: &str, _target_driver: &str) {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "NVIDIA Open: re-pinned hierarchy post-bind");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "NVIDIA Open: re-pinned hierarchy post-bind"
+        );
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -271,7 +287,11 @@ impl VendorLifecycle for NvidiaOracleLifecycle {
     fn prepare_for_unbind(&self, bdf: &str, _current_driver: &str) -> Result<(), SwapError> {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "Oracle: pinned bridge hierarchy");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "Oracle: pinned bridge hierarchy"
+        );
         sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -295,7 +315,11 @@ impl VendorLifecycle for NvidiaOracleLifecycle {
     fn stabilize_after_bind(&self, bdf: &str, _target_driver: &str) {
         sysfs::pin_power(bdf);
         let pinned = sysfs::pin_bridge_hierarchy(bdf);
-        tracing::debug!(bdf, bridges_pinned = pinned, "Oracle: re-pinned hierarchy post-bind");
+        tracing::debug!(
+            bdf,
+            bridges_pinned = pinned,
+            "Oracle: re-pinned hierarchy post-bind"
+        );
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()

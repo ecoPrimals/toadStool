@@ -15,13 +15,13 @@ const NV_ESC_RM_CONTROL: u8 = 0x2A;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Nvos21Parameters {
-    h_root: u32,           // 0
-    h_object_parent: u32,  // 4
-    h_object_new: u32,     // 8
-    h_class: u32,          // 12
-    p_alloc_parms: u64,    // 16
-    status: u32,           // 24 — the REAL status field on 470.x
-    _pad: u32,             // 28 — alignment padding (never used by kernel)
+    h_root: u32,          // 0
+    h_object_parent: u32, // 4
+    h_object_new: u32,    // 8
+    h_class: u32,         // 12
+    p_alloc_parms: u64,   // 16
+    status: u32,          // 24 — the REAL status field on 470.x
+    _pad: u32,            // 28 — alignment padding (never used by kernel)
 }
 
 /// 470.x RM_CONTROL uses 32-byte NVOS54.
@@ -49,8 +49,16 @@ pub const fn iowr(magic: u8, nr: u8, size: usize) -> Opcode {
     (dir << 30) | ((size as u32 & 0x3FFF) << 16) | ((magic as u32) << 8) | nr as u32
 }
 
-pub const RM_ALLOC_OP: Opcode = iowr(NV_IOCTL_MAGIC, NV_ESC_RM_ALLOC, size_of::<Nvos21Parameters>());
-pub const RM_CTRL_OP: Opcode = iowr(NV_IOCTL_MAGIC, NV_ESC_RM_CONTROL, size_of::<Nvos54Parameters>());
+pub const RM_ALLOC_OP: Opcode = iowr(
+    NV_IOCTL_MAGIC,
+    NV_ESC_RM_ALLOC,
+    size_of::<Nvos21Parameters>(),
+);
+pub const RM_CTRL_OP: Opcode = iowr(
+    NV_IOCTL_MAGIC,
+    NV_ESC_RM_CONTROL,
+    size_of::<Nvos54Parameters>(),
+);
 
 /// Rustix ioctl adapter for raw-buffer NVIDIA RM commands.
 pub struct RmRawIoctl<const OP: Opcode> {
@@ -63,14 +71,19 @@ unsafe impl<const OP: Opcode> Ioctl for RmRawIoctl<OP> {
     type Output = i32;
     const IS_MUTATING: bool = true;
 
-    fn opcode(&self) -> Opcode { OP }
+    fn opcode(&self) -> Opcode {
+        OP
+    }
 
-    fn as_ptr(&mut self) -> *mut std::ffi::c_void { self.ptr.cast() }
+    fn as_ptr(&mut self) -> *mut std::ffi::c_void {
+        self.ptr.cast()
+    }
 
     /// # Safety
     /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
-        out: IoctlOutput, _: *mut std::ffi::c_void,
+        out: IoctlOutput,
+        _: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
         Ok(out)
     }
@@ -86,14 +99,19 @@ unsafe impl<const OP: Opcode, T> Ioctl for RmIoctl<OP, T> {
     type Output = i32;
     const IS_MUTATING: bool = true;
 
-    fn opcode(&self) -> Opcode { OP }
+    fn opcode(&self) -> Opcode {
+        OP
+    }
 
-    fn as_ptr(&mut self) -> *mut std::ffi::c_void { self.ptr.cast() }
+    fn as_ptr(&mut self) -> *mut std::ffi::c_void {
+        self.ptr.cast()
+    }
 
     /// # Safety
     /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
-        out: IoctlOutput, _: *mut std::ffi::c_void,
+        out: IoctlOutput,
+        _: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
         Ok(out)
     }
@@ -126,31 +144,49 @@ pub fn rm_alloc(
     buf[8..12].copy_from_slice(&handle.to_ne_bytes());
     buf[12..16].copy_from_slice(&class.to_ne_bytes());
     buf[16..24].copy_from_slice(&params_ptr.to_ne_bytes());
-    let sentinel_24: u32 = if params_size > 0 { params_size } else { 0xAAAA_AAAA };
+    let sentinel_24: u32 = if params_size > 0 {
+        params_size
+    } else {
+        0xAAAA_AAAA
+    };
     buf[24..28].copy_from_slice(&sentinel_24.to_ne_bytes());
     buf[28..32].copy_from_slice(&0xDEAD_BEEFu32.to_ne_bytes());
 
     // SAFETY: buf is 32 bytes matching NVOS21 kernel ABI; fd is valid.
-    let ioctl = RmRawIoctl::<{ RM_ALLOC_OP }> { ptr: buf.as_mut_ptr() };
+    let ioctl = RmRawIoctl::<{ RM_ALLOC_OP }> {
+        ptr: buf.as_mut_ptr(),
+    };
     let rc = match unsafe { rustix::ioctl::ioctl(&fd, ioctl) } {
         Ok(v) => v,
         Err(e) => {
             eprintln!("  RM_ALLOC(cls=0x{class:04x}, h=0x{handle:08x}): errno={e}");
-            return RmAllocResult { rc: -1, status: 0xFFFF_FFFF, h_object_new: handle };
+            return RmAllocResult {
+                rc: -1,
+                status: 0xFFFF_FFFF,
+                h_object_new: handle,
+            };
         }
     };
 
     let h_new_out = u32::from_ne_bytes([buf[8], buf[9], buf[10], buf[11]]);
     let val_24 = u32::from_ne_bytes([buf[24], buf[25], buf[26], buf[27]]);
     let val_28 = u32::from_ne_bytes([buf[28], buf[29], buf[30], buf[31]]);
-    let status = if val_28 != 0xDEAD_BEEF { val_28 } else { val_24 };
+    let status = if val_28 != 0xDEAD_BEEF {
+        val_28
+    } else {
+        val_24
+    };
 
     eprintln!(
         "  RM_ALLOC(cls=0x{:04x}, h=0x{:08x}→0x{:08x}): rc={} status=0x{:x}",
         class, handle, h_new_out, rc, status
     );
 
-    RmAllocResult { rc, status, h_object_new: h_new_out }
+    RmAllocResult {
+        rc,
+        status,
+        h_object_new: h_new_out,
+    }
 }
 
 /// Issue NV_ESC_RM_CONTROL. Returns (ioctl_rc, rm_status).

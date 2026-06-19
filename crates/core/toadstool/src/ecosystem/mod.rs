@@ -396,5 +396,4 @@ mod tests {
         let coordinator = EcosystemCoordinator::with_config(config).await;
         assert!(coordinator.is_ok());
     }
-
 }

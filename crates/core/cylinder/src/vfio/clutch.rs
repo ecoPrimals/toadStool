@@ -21,8 +21,8 @@ use std::sync::Arc;
 
 use crate::error::DriverError;
 use crate::mmio_region::MmioRegion;
-use crate::vfio::device::MappedBar;
 use crate::vfio::DmaBackend;
+use crate::vfio::device::MappedBar;
 use crate::vfio::ioctl;
 use crate::vfio::types::VfioRegionInfo;
 
@@ -111,10 +111,7 @@ impl Clutch {
     /// # Errors
     ///
     /// Returns error if sysfs BAR0 open or mmap fails.
-    pub fn engage_sysfs(
-        bdf: &str,
-        dma_backend: DmaBackend,
-    ) -> Result<ClutchEngaged, DriverError> {
+    pub fn engage_sysfs(bdf: &str, dma_backend: DmaBackend) -> Result<ClutchEngaged, DriverError> {
         let bar0 = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)?;
         tracing::info!(
             bdf,
@@ -134,8 +131,14 @@ impl Clutch {
     /// without requiring ember as a dependency — the server crate calls this with
     /// the raw components extracted from `AnchorBackendRef`.
     #[must_use]
-    pub fn dma_backend_from_iommufd(iommufd: Arc<std::os::fd::OwnedFd>, ioas_id: u32) -> DmaBackend {
-        DmaBackend::Iommufd { fd: iommufd, ioas_id }
+    pub fn dma_backend_from_iommufd(
+        iommufd: Arc<std::os::fd::OwnedFd>,
+        ioas_id: u32,
+    ) -> DmaBackend {
+        DmaBackend::Iommufd {
+            fd: iommufd,
+            ioas_id,
+        }
     }
 
     /// Construct a `DmaBackend` for legacy container backend.
@@ -150,7 +153,10 @@ impl Clutch {
 /// Replicates `VfioDevice::map_bar` but works with a borrowed fd, so the
 /// anchor retains ownership. The mmap remains valid as long as the fd
 /// (held by the anchor) stays open.
-#[expect(clippy::cast_possible_truncation, reason = "struct argsz always fits u32")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "struct argsz always fits u32"
+)]
 fn map_bar_from_fd(
     bdf: &str,
     device_fd: BorrowedFd<'_>,

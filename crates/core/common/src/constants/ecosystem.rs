@@ -34,8 +34,9 @@ pub mod os_identifiers {
 }
 
 /// Protocol strings for `NodeType` (coordination discovery API).
-/// Legacy wire-format labels removed S314 (BEARDOG, SONGBIRD, NESTGATE had zero production callers).
-/// Prefer `capabilities::*` constants for discovery.
+///
+/// Legacy wire-format labels removed S314 (BEARDOG, SONGBIRD, NESTGATE had zero
+/// production callers). Prefer `capabilities::*` constants for discovery.
 pub mod node_type {
     /// Hardware infrastructure primal
     pub const TOADSTOOL: &str = "ToadStool";

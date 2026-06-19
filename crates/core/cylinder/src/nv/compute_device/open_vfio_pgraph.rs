@@ -10,7 +10,7 @@ use crate::vfio::device::{DmaBackend, MappedBar};
 use super::super::generation::GenerationProfile;
 use super::super::nv_gsp_bridge::NvGspBridge;
 use super::gr_falcon_boot::{fecs_setup_channel, reboot_fecs_after_reset};
-use super::gr_ungating::{force_pri_enumerate, ungate_gr_engine, UngatingLog};
+use super::gr_ungating::{UngatingLog, force_pri_enumerate, ungate_gr_engine};
 
 /// Handle PGRAPH ungating and FECS channel setup after deferred boot.
 pub(super) fn handle_pgraph_ungating_and_fecs_setup(
@@ -85,9 +85,7 @@ pub(super) fn handle_pgraph_ungating_and_fecs_setup(
                      destructive reset kills PRI ring on GV100+ under VFIO"
                 );
             } else {
-                tracing::warn!(
-                    "GPC PRI still gated — full destructive GR reset + PIO FECS boot"
-                );
+                tracing::warn!("GPC PRI still gated — full destructive GR reset + PIO FECS boot");
 
                 match crate::vfio::sovereign_stages::pgraph_engine_reset(bar0) {
                     Ok(detail) => tracing::info!(%detail, "ungating: PGRAPH engine reset"),

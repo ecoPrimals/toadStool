@@ -10,12 +10,12 @@
 
 #[cfg(feature = "amd")]
 pub mod amd_metal;
+pub mod bar_cartography;
 pub mod boot_state;
+pub mod cache_ops;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod ce_validate;
 pub mod channel;
-pub mod bar_cartography;
-pub mod cache_ops;
 pub mod clutch;
 pub mod device;
 pub mod dma;
@@ -24,6 +24,9 @@ pub mod ember_gate;
 pub mod gpu_vendor;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod guarded_sysfs;
+pub mod init_kepler;
+pub mod init_pipeline;
+pub mod init_volta;
 pub mod ioctl;
 pub mod irq;
 pub mod isolation;
@@ -39,9 +42,8 @@ pub(crate) mod pci_config;
 pub mod pci_discovery;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod pmu_investigate;
-pub mod init_kepler;
-pub mod init_pipeline;
-pub mod init_volta;
+#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
+pub mod reagent;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_handoff;
 pub mod sovereign_init;
@@ -54,8 +56,6 @@ pub mod sovereign_tiers;
 pub mod sovereign_types;
 pub mod sysfs_bar0;
 pub mod types;
-#[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
-pub mod reagent;
 pub mod warm_capture;
 
 pub use boot_state::{BootCapability, ColdBootReason, SovereignBootState, probe_boot_state};

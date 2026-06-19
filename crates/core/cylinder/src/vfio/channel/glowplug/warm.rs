@@ -3,11 +3,11 @@
 
 use crate::error::DevinitError;
 
+use super::super::bar2_init;
 use super::super::devinit;
 use super::super::diagnostic::interpreter::memory_probe;
 use super::super::hbm2_training;
 use super::super::oracle::{DigitalPmu, OracleState};
-use super::super::bar2_init;
 use super::super::registers::{cg, misc, pri};
 use super::GlowPlug;
 use super::constants::is_dangerous_register;

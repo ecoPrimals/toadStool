@@ -203,7 +203,13 @@ pub(crate) async fn primal_announce(
         format!("{dir}/{socket_name}")
     } else {
         std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(
-            |_| std::env::temp_dir().join("biomeos").join(&socket_name).to_string_lossy().into_owned(),
+            |_| {
+                std::env::temp_dir()
+                    .join("biomeos")
+                    .join(&socket_name)
+                    .to_string_lossy()
+                    .into_owned()
+            },
             |d| format!("{d}/biomeos/{socket_name}"),
         )
     };
@@ -366,7 +372,9 @@ mod tests {
     #[tokio::test]
     async fn test_primal_announce_structure() {
         let reg = empty_registry();
-        let result = primal_announce("0.2.0", &reg, None).await.expect("primal_announce");
+        let result = primal_announce("0.2.0", &reg, None)
+            .await
+            .expect("primal_announce");
         assert_eq!(result["primal"], PRIMAL_NAME);
         assert_eq!(result["version"], "0.2.0");
         assert_eq!(result["domain"], "compute");
@@ -387,13 +395,18 @@ mod tests {
         let result = primal_announce("0.2.0", &reg, Some(bound))
             .await
             .expect("primal_announce");
-        assert_eq!(result["socket"].as_str(), Some("/tmp/custom-bound/compute.sock"));
+        assert_eq!(
+            result["socket"].as_str(),
+            Some("/tmp/custom-bound/compute.sock")
+        );
     }
 
     #[tokio::test]
     async fn test_primal_announce_wave43_neural_api_fields() {
         let reg = empty_registry();
-        let result = primal_announce("0.2.0", &reg, None).await.expect("primal_announce");
+        let result = primal_announce("0.2.0", &reg, None)
+            .await
+            .expect("primal_announce");
 
         assert!(result["socket"].is_string());
         let socket = result["socket"].as_str().expect("socket path");

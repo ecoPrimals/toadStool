@@ -158,11 +158,7 @@ fn get_toadstool_socket_paths() -> Vec<PathBuf> {
                 .join("display.sock"),
         );
     }
-    paths.push(
-        std::env::temp_dir()
-            .join(PRIMAL_NAME)
-            .join("display.sock"),
-    );
+    paths.push(std::env::temp_dir().join(PRIMAL_NAME).join("display.sock"));
 
     paths
 }
@@ -180,9 +176,7 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
 
     // 2. XDG_RUNTIME_DIR
     if let Ok(runtime_dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
-        paths.push(
-            PathBuf::from(runtime_dir).join(format!("{PRIMAL_NAME}-ipc-port")),
-        );
+        paths.push(PathBuf::from(runtime_dir).join(format!("{PRIMAL_NAME}-ipc-port")));
     }
 
     // 3. HOME/.local/share (secondary)

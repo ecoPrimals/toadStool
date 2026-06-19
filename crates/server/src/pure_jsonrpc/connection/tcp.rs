@@ -119,7 +119,10 @@ pub(crate) async fn handle_tcp_connection(
                 })?;
             info!(
                 protocol_type = format_args!("0x{:02X}", pt[0]),
-                hmac = format_args!("{:02x}{:02x}{:02x}{:02x}", hmac_tag[0], hmac_tag[1], hmac_tag[2], hmac_tag[3]),
+                hmac = format_args!(
+                    "{:02x}{:02x}{:02x}{:02x}",
+                    hmac_tag[0], hmac_tag[1], hmac_tag[2], hmac_tag[3]
+                ),
                 "riboCipher mito-beacon signal accepted on TCP"
             );
             return handle_ribocipher_clear_tcp(handler, stream, pt[0]).await;
@@ -220,8 +223,7 @@ async fn handle_http_keepalive_tcp(
     let mut request_line = first_request_line;
     loop {
         let (headers, body) = read_http_request_continuation_tcp(reader).await?;
-        let response_body =
-            process_request(&handler, &body, ConnectionTrustHints::TCP).await?;
+        let response_body = process_request(&handler, &body, ConnectionTrustHints::TCP).await?;
 
         let client_wants_close = headers
             .get("connection")

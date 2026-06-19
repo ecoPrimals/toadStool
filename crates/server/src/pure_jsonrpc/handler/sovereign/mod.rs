@@ -8,8 +8,8 @@ mod capture;
 mod init;
 mod snapshot;
 
+pub use capture::*;
 pub use init::*;
 pub use snapshot::*;
-pub use capture::*;
 
 const DEFAULT_BAR0_SIZE: usize = 16 * 1024 * 1024;

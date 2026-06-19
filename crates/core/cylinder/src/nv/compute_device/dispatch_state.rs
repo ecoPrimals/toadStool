@@ -4,8 +4,8 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use crate::error::{DriverError, DriverResult};
 use crate::BufferHandle;
+use crate::error::{DriverError, DriverResult};
 
 use super::{GPFIFO_ENTRIES, IOVA_LIMIT, PAGE_SIZE};
 

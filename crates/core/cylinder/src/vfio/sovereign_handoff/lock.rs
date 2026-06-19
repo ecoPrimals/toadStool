@@ -26,7 +26,9 @@ impl HandoffGuard {
                 bdf: bdf.to_string(),
             });
         }
-        Ok(Self { bdf: bdf.to_string() })
+        Ok(Self {
+            bdf: bdf.to_string(),
+        })
     }
 }
 

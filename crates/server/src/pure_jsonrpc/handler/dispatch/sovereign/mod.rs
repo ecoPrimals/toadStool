@@ -89,5 +89,7 @@ pub(super) fn classify_tier_sysfs(
 ) -> Option<toadstool_cylinder::vfio::sovereign_tiers::TierEvidence> {
     use toadstool_cylinder::vfio::device::MappedBar;
     let bar = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024).ok()?;
-    Some(toadstool_cylinder::vfio::sovereign_tiers::classify_tier(&bar))
+    Some(toadstool_cylinder::vfio::sovereign_tiers::classify_tier(
+        &bar,
+    ))
 }

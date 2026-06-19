@@ -418,10 +418,7 @@ impl BootPipeline for VegaInit {
         "Vega 20"
     }
 
-    fn probe(
-        &self,
-        bar: &dyn RegisterAccess,
-    ) -> Result<VegaProbeResult, DriverError> {
+    fn probe(&self, bar: &dyn RegisterAccess) -> Result<VegaProbeResult, DriverError> {
         let grbm = bar
             .read_u32(GRBM_STATUS as u32)
             .map_err(|e| DriverError::Unsupported(format!("GRBM_STATUS read: {e}").into()))?;
@@ -489,10 +486,7 @@ impl BootPipeline for VegaInit {
         ))
     }
 
-    fn verify(
-        &self,
-        bar: &dyn RegisterAccess,
-    ) -> Result<bool, DriverError> {
+    fn verify(&self, bar: &dyn RegisterAccess) -> Result<bool, DriverError> {
         let grbm = bar.read_u32(GRBM_STATUS as u32).unwrap_or(0xFFFF_FFFF);
         let srbm = bar.read_u32(SRBM_STATUS as u32).unwrap_or(0xFFFF_FFFF);
         let gfx_idle = (grbm & BUSY_BIT_MASK) == 0;

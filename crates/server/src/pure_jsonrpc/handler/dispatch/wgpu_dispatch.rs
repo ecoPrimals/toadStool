@@ -149,7 +149,13 @@ pub(super) fn try_wgpu_dispatch(
         return Some(Err("wgpu device is lost — cannot dispatch".into()));
     }
 
-    Some(run_wgpu_dispatch(ctx, binary, wgsl_source, workgroup_size, buffer_descs))
+    Some(run_wgpu_dispatch(
+        ctx,
+        binary,
+        wgsl_source,
+        workgroup_size,
+        buffer_descs,
+    ))
 }
 
 #[cfg(not(feature = "gpu-discovery"))]
@@ -184,7 +190,10 @@ fn run_wgpu_dispatch(
             .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
 
-        tracing::info!(spirv_words = spirv_words.len(), "wgpu dispatch: SPIR-V passthrough");
+        tracing::info!(
+            spirv_words = spirv_words.len(),
+            "wgpu dispatch: SPIR-V passthrough"
+        );
         #[expect(unsafe_code, reason = "spirv shader module creation requires unsafe")]
         // SAFETY: SPIR-V magic validated; compiled by coralReef (trusted primal).
         unsafe {
@@ -197,9 +206,14 @@ fn run_wgpu_dispatch(
     } else if let Some(wgsl) = wgsl_source {
         if !is_valid_spirv && !binary.is_empty() {
             tracing::info!(
-                binary_magic = format_args!("0x{:08x}", if binary.len() >= 4 {
-                    u32::from_le_bytes([binary[0], binary[1], binary[2], binary[3]])
-                } else { 0 }),
+                binary_magic = format_args!(
+                    "0x{:08x}",
+                    if binary.len() >= 4 {
+                        u32::from_le_bytes([binary[0], binary[1], binary[2], binary[3]])
+                    } else {
+                        0
+                    }
+                ),
                 "wgpu dispatch: binary is not SPIR-V — using naga/WGSL path"
             );
         }
@@ -297,8 +311,7 @@ fn run_wgpu_dispatch(
             if needs_upload
                 && let Some(data) = desc.get("data").and_then(serde_json::Value::as_array)
             {
-                let bytes: Vec<u8> =
-                    data.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect();
+                let bytes: Vec<u8> = data.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect();
                 ctx.queue.write_buffer(&gpu_buf, 0, &bytes);
             }
 

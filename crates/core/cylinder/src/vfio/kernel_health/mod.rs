@@ -58,7 +58,10 @@ pub enum KernelHealthDiagnosis {
     /// autoconf.h is newer than the kernel image.
     AutoconfStale { detail: String },
     /// Probe and reference disagree on struct module layout.
-    StructLayoutMismatch { expected_exit: u64, actual_exit: u64 },
+    StructLayoutMismatch {
+        expected_exit: u64,
+        actual_exit: u64,
+    },
     /// Could not compile the probe module (missing headers/toolchain).
     ProbeCompileFailed { reason: String },
     /// No reference module found to cross-check against.
@@ -70,7 +73,10 @@ impl std::fmt::Display for KernelHealthDiagnosis {
         match self {
             Self::Healthy => write!(f, "kernel build environment healthy"),
             Self::AutoconfStale { detail } => write!(f, "autoconf.h stale: {detail}"),
-            Self::StructLayoutMismatch { expected_exit, actual_exit } => {
+            Self::StructLayoutMismatch {
+                expected_exit,
+                actual_exit,
+            } => {
                 write!(
                     f,
                     "struct module layout mismatch: reference exit=0x{expected_exit:x}, \

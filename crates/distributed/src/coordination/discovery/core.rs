@@ -257,9 +257,9 @@ impl CoordinationNetworkDiscovery {
         }
 
         let current_utilization = if total_capacity.cpu_cores > 0.0 {
-            let cpu_utilization = f64::from(
-                toadstool_sysmon::cpu_usage(CPU_USAGE_SAMPLE_WINDOW).unwrap_or(0.0),
-            ) / 100.0;
+            let cpu_utilization =
+                f64::from(toadstool_sysmon::cpu_usage(CPU_USAGE_SAMPLE_WINDOW).unwrap_or(0.0))
+                    / 100.0;
 
             let memory_utilization = toadstool_sysmon::memory_info()
                 .map(|m| {
@@ -338,8 +338,8 @@ mod tests {
     use crate::ResourceRequirements;
     use crate::coordination::types::{
         ConnectionHealth, CoordinationConnection, CoordinationDiscoveryConfig,
-        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig,
-        NodeCapabilities, NodeMetadata, NodeRegistration, NodeType, ProtocolConfig, SubTask,
+        CoordinationTransport, HttpProtocolConfig, MessageQueueProtocolConfig, NodeCapabilities,
+        NodeMetadata, NodeRegistration, NodeType, ProtocolConfig, SubTask,
     };
     use crate::types::resources::{
         CpuRequirements, MemoryRequirements, NetworkRequirements as NetReq, StorageRequirements,

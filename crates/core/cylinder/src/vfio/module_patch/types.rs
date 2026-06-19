@@ -59,23 +59,33 @@ impl std::str::FromStr for PatchStrategy {
         if s == "RetAfterFtrace" {
             return Ok(Self::RetAfterFtrace);
         }
-        if let Some(inner) = s.strip_prefix("NopCallAt(").and_then(|s| s.strip_suffix(')')) {
+        if let Some(inner) = s
+            .strip_prefix("NopCallAt(")
+            .and_then(|s| s.strip_suffix(')'))
+        {
             let offset = parse_usize_hex_or_dec(inner.trim())
                 .map_err(|e| format!("NopCallAt offset: {e}"))?;
             return Ok(Self::NopCallAt(offset));
         }
-        if let Some(inner) = s.strip_prefix("PatchByteAt(").and_then(|s| s.strip_suffix(')')) {
+        if let Some(inner) = s
+            .strip_prefix("PatchByteAt(")
+            .and_then(|s| s.strip_suffix(')'))
+        {
             let parts: Vec<&str> = inner.split(',').map(|p| p.trim()).collect();
             if parts.len() != 3 {
                 return Err(format!("PatchByteAt expects 3 args, got {}", parts.len()));
             }
             let fn_offset = parse_usize_hex_or_dec(parts[0])
                 .map_err(|e| format!("PatchByteAt fn_offset: {e}"))?;
-            let expected = parse_u8_hex_or_dec(parts[1])
-                .map_err(|e| format!("PatchByteAt expected: {e}"))?;
+            let expected =
+                parse_u8_hex_or_dec(parts[1]).map_err(|e| format!("PatchByteAt expected: {e}"))?;
             let replacement = parse_u8_hex_or_dec(parts[2])
                 .map_err(|e| format!("PatchByteAt replacement: {e}"))?;
-            return Ok(Self::PatchByteAt { fn_offset, expected, replacement });
+            return Ok(Self::PatchByteAt {
+                fn_offset,
+                expected,
+                replacement,
+            });
         }
         Err(format!("unrecognized patch strategy: '{s}'"))
     }
@@ -85,7 +95,8 @@ fn parse_usize_hex_or_dec(s: &str) -> Result<usize, String> {
     if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
         usize::from_str_radix(hex, 16).map_err(|e| e.to_string())
     } else {
-        s.parse().map_err(|e: std::num::ParseIntError| e.to_string())
+        s.parse()
+            .map_err(|e: std::num::ParseIntError| e.to_string())
     }
 }
 
@@ -93,7 +104,8 @@ fn parse_u8_hex_or_dec(s: &str) -> Result<u8, String> {
     if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
         u8::from_str_radix(hex, 16).map_err(|e| e.to_string())
     } else {
-        s.parse().map_err(|e: std::num::ParseIntError| e.to_string())
+        s.parse()
+            .map_err(|e: std::num::ParseIntError| e.to_string())
     }
 }
 
@@ -122,7 +134,9 @@ pub struct PatchSet {
     pub min_applied: usize,
 }
 
-pub(crate) fn default_min_applied() -> usize { 1 }
+pub(crate) fn default_min_applied() -> usize {
+    1
+}
 
 /// Errors from module patching operations.
 #[derive(Debug, thiserror::Error)]
@@ -142,7 +156,9 @@ pub enum PatchError {
     #[error("nm failed on {path}: {detail}")]
     NmFailed { path: String, detail: String },
 
-    #[error("ftrace call site not found at offset {offset:#x} for {symbol} (expected 0xe8/0x90/0x00/0x0f, got {found:#04x})")]
+    #[error(
+        "ftrace call site not found at offset {offset:#x} for {symbol} (expected 0xe8/0x90/0x00/0x0f, got {found:#04x})"
+    )]
     NoFtraceCallSite {
         symbol: String,
         offset: usize,

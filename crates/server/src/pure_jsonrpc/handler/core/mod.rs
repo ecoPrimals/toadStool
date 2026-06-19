@@ -13,7 +13,9 @@ pub(crate) use compute::{gpu_info, gpu_memory, version_info};
 pub(crate) use health::{
     health, health_drain, health_liveness, health_readiness, health_simple, health_version,
 };
-pub(crate) use identity::{capabilities_list, discover_capabilities, identity_get, primal_announce};
+pub(crate) use identity::{
+    capabilities_list, discover_capabilities, identity_get, primal_announce,
+};
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 
@@ -198,7 +200,10 @@ mod tests {
         let v = health_version("v-ver-1").await.expect("ok");
         assert_eq!(v["version"], "v-ver-1");
         assert!(v["session"].as_str().is_some(), "session field required");
-        assert!(v["build_hash"].as_str().is_some(), "build_hash field required");
+        assert!(
+            v["build_hash"].as_str().is_some(),
+            "build_hash field required"
+        );
         assert_eq!(v["service"], "toadstool");
     }
 
@@ -209,8 +214,14 @@ mod tests {
         let v = health_drain(&draining, &ready).await.expect("ok");
         assert_eq!(v["status"], "draining");
         assert_eq!(v["accepting_new_work"], false);
-        assert!(draining.load(Ordering::Relaxed), "draining flag should be set");
-        assert!(!ready.load(Ordering::Relaxed), "ready flag should be cleared");
+        assert!(
+            draining.load(Ordering::Relaxed),
+            "draining flag should be set"
+        );
+        assert!(
+            !ready.load(Ordering::Relaxed),
+            "ready flag should be cleared"
+        );
     }
 
     #[tokio::test]

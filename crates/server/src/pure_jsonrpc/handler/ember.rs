@@ -43,13 +43,9 @@ impl JsonRpcHandler {
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
         let list = self.glowplug.list_devices();
-        let device = list
-            .devices
-            .iter()
-            .find(|d| d.bdf == bdf)
-            .ok_or_else(|| {
-                JsonRpcError::invalid_params(format!("Device not found in ember.list: {bdf}"))
-            })?;
+        let device = list.devices.iter().find(|d| d.bdf == bdf).ok_or_else(|| {
+            JsonRpcError::invalid_params(format!("Device not found in ember.list: {bdf}"))
+        })?;
 
         let personality = if device.personality == "vfio-pci" {
             device.personality.clone()
@@ -147,7 +143,9 @@ impl JsonRpcHandler {
         match self.glowplug.get_device(bdf) {
             Some(info) => serde_json::to_value(&info)
                 .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}"))),
-            None => Err(JsonRpcError::invalid_params(format!("Device not found: {bdf}"))),
+            None => Err(JsonRpcError::invalid_params(format!(
+                "Device not found: {bdf}"
+            ))),
         }
     }
 
@@ -225,11 +223,9 @@ impl JsonRpcHandler {
             .and_then(|p| p.get("bdf"))
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
-        let reset_path =
-            toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "reset");
-        std::fs::write(&reset_path, "1").map_err(|e| {
-            JsonRpcError::internal_error(format!("SBR failed for {bdf}: {e}"))
-        })?;
+        let reset_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "reset");
+        std::fs::write(&reset_path, "1")
+            .map_err(|e| JsonRpcError::internal_error(format!("SBR failed for {bdf}: {e}")))?;
         debug!(bdf, "device.reset via sysfs SBR");
         Ok(serde_json::json!({
             "bdf": bdf,
@@ -288,7 +284,10 @@ impl JsonRpcHandler {
         if alive {
             let _keepalive_guard = crate::background::pcie_keepalive::SwapGuard::enter();
             let swap_start = std::time::Instant::now();
-            let swap = self.glowplug.swap_device_orchestrated(bdf, "vfio-pci").await;
+            let swap = self
+                .glowplug
+                .swap_device_orchestrated(bdf, "vfio-pci")
+                .await;
             stages.push(serde_json::json!({
                 "name": "swap_to_vfio-pci",
                 "success": swap.success,
@@ -327,7 +326,11 @@ mod tests {
         )
     }
 
-    fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
+    fn mk_request(
+        method: &str,
+        params: Option<serde_json::Value>,
+        id: i32,
+    ) -> JsonRpcRequest<'static> {
         JsonRpcRequest {
             jsonrpc: Cow::Borrowed("2.0"),
             method: Cow::Owned(method.to_string()),
@@ -345,7 +348,10 @@ mod tests {
         assert!(response.error.is_none());
         let result = response.result.expect("ember.list result");
         assert!(
-            result.get("devices").and_then(serde_json::Value::as_array).is_some(),
+            result
+                .get("devices")
+                .and_then(serde_json::Value::as_array)
+                .is_some(),
             "ember.list must return a devices array (possibly empty)"
         );
     }
@@ -359,11 +365,17 @@ mod tests {
         assert!(response.error.is_none());
         let result = response.result.expect("ember.status result");
         assert!(
-            result.get("devices").and_then(serde_json::Value::as_array).is_some(),
+            result
+                .get("devices")
+                .and_then(serde_json::Value::as_array)
+                .is_some(),
             "ember.status must include devices list"
         );
         assert!(
-            result.get("uptime_secs").and_then(serde_json::Value::as_u64).is_some(),
+            result
+                .get("uptime_secs")
+                .and_then(serde_json::Value::as_u64)
+                .is_some(),
             "ember.status must include uptime_secs"
         );
     }
@@ -372,7 +384,11 @@ mod tests {
     async fn ember_reacquire_missing_bdf_returns_invalid_params() {
         let handler = test_handler();
         let response = handler
-            .handle_request(&mk_request("ember.reacquire", Some(serde_json::json!({})), 3))
+            .handle_request(&mk_request(
+                "ember.reacquire",
+                Some(serde_json::json!({})),
+                3,
+            ))
             .await;
         let err = response.error.expect("expected invalid params");
         assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
@@ -454,7 +470,11 @@ mod tests {
     async fn device_warm_catch_missing_bdf_returns_invalid_params() {
         let handler = test_handler();
         let response = handler
-            .handle_request(&mk_request("device.warm_catch", Some(serde_json::json!({})), 9))
+            .handle_request(&mk_request(
+                "device.warm_catch",
+                Some(serde_json::json!({})),
+                9,
+            ))
             .await;
         let err = response.error.expect("expected invalid params");
         assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);

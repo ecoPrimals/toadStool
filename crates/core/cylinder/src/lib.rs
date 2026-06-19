@@ -355,12 +355,30 @@ mod tests {
             fn alloc(&mut self, _: u64, _: MemoryDomain) -> DriverResult<BufferHandle> {
                 Err(DriverError::Unsupported("stub".into()))
             }
-            fn free(&mut self, _: BufferHandle) -> DriverResult<()> { Ok(()) }
-            fn upload(&mut self, _: BufferHandle, _: u64, _: &[u8]) -> DriverResult<()> { Ok(()) }
-            fn readback(&self, _: BufferHandle, _: u64, _: usize) -> DriverResult<Vec<u8>> { Ok(vec![]) }
-            fn dispatch(&mut self, _: &[u8], _: &[BufferHandle], _: DispatchDims, _: &ShaderInfo) -> DriverResult<()> { Ok(()) }
-            fn sync(&mut self) -> DriverResult<()> { Ok(()) }
-            fn capabilities(&self) -> &HardwareCapabilities { unimplemented!() }
+            fn free(&mut self, _: BufferHandle) -> DriverResult<()> {
+                Ok(())
+            }
+            fn upload(&mut self, _: BufferHandle, _: u64, _: &[u8]) -> DriverResult<()> {
+                Ok(())
+            }
+            fn readback(&self, _: BufferHandle, _: u64, _: usize) -> DriverResult<Vec<u8>> {
+                Ok(vec![])
+            }
+            fn dispatch(
+                &mut self,
+                _: &[u8],
+                _: &[BufferHandle],
+                _: DispatchDims,
+                _: &ShaderInfo,
+            ) -> DriverResult<()> {
+                Ok(())
+            }
+            fn sync(&mut self) -> DriverResult<()> {
+                Ok(())
+            }
+            fn capabilities(&self) -> &HardwareCapabilities {
+                unimplemented!()
+            }
         }
         let mut dev = StubDevice;
         let result = dev.init_gr_context(&[(0x900, 0x1234)]);

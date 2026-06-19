@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::load::{insmod_guarded_with_params, rmmod_guarded};
 use super::super::{GuardedSysfsError, INSMOD_TIMEOUT, RMMOD_TIMEOUT};
+use super::load::{insmod_guarded_with_params, rmmod_guarded};
 
 /// Builder for out-of-tree Linux kernel modules via kbuild.
 ///
@@ -87,8 +87,10 @@ impl KmodBuilder {
     fn ensure_unloaded(&self) -> Result<(), GuardedSysfsError> {
         let sys_path = crate::linux_paths::sysfs_module_path(&self.name);
         if Path::new(&sys_path).exists() {
-            tracing::info!(module = self.name.as_str(),
-                           "kmod already loaded — unloading for reload");
+            tracing::info!(
+                module = self.name.as_str(),
+                "kmod already loaded — unloading for reload"
+            );
             let _ = rmmod_guarded(&self.name, RMMOD_TIMEOUT);
         }
         Ok(())
@@ -101,13 +103,12 @@ impl KmodBuilder {
     /// this when you only need the compiled artifact (e.g. ELF inspection
     /// in kernel health probes).
     pub fn compile_only(&self) -> Result<PathBuf, GuardedSysfsError> {
-        let krel = crate::linux_paths::kernel_release().ok_or_else(|| {
-            GuardedSysfsError::KmodFailed {
+        let krel =
+            crate::linux_paths::kernel_release().ok_or_else(|| GuardedSysfsError::KmodFailed {
                 cmd: "kernel_release".into(),
                 args: String::new(),
                 reason: "could not read /proc/sys/kernel/osrelease".into(),
-            }
-        })?;
+            })?;
 
         // Check persistent cache first — survives reboots, avoids kbuild
         // entirely when the kernel version hasn't changed.
@@ -123,13 +124,12 @@ impl KmodBuilder {
             return Ok(cached_ko);
         }
 
-        let kbuild = crate::linux_paths::kbuild_dir().ok_or_else(|| {
-            GuardedSysfsError::KmodFailed {
+        let kbuild =
+            crate::linux_paths::kbuild_dir().ok_or_else(|| GuardedSysfsError::KmodFailed {
                 cmd: "kbuild_dir".into(),
                 args: String::new(),
                 reason: "kernel release unavailable for kbuild path".into(),
-            }
-        })?;
+            })?;
 
         let tmpdir = Path::new(&self.tmpdir);
         std::fs::create_dir_all(tmpdir)?;
@@ -154,8 +154,11 @@ impl KmodBuilder {
         )?;
 
         // Compile
-        tracing::info!(module = self.name.as_str(), krel,
-                       "kmod builder: compiling via kbuild");
+        tracing::info!(
+            module = self.name.as_str(),
+            krel,
+            "kmod builder: compiling via kbuild"
+        );
         let compile_out = Command::new("make")
             .arg("-C")
             .arg(tmpdir)
@@ -206,8 +209,10 @@ impl KmodBuilder {
     /// compile → unprotected device (Exp 226 regression).
     pub fn build_and_load(&self) -> Result<(), GuardedSysfsError> {
         if self.is_loaded_with_matching_params() {
-            tracing::info!(module = self.name.as_str(),
-                           "kmod already loaded with correct params — skipping rebuild");
+            tracing::info!(
+                module = self.name.as_str(),
+                "kmod already loaded with correct params — skipping rebuild"
+            );
             return Ok(());
         }
 
@@ -215,7 +220,9 @@ impl KmodBuilder {
 
         let ko_path = self.compile_only()?;
 
-        let params_str: String = self.params.iter()
+        let params_str: String = self
+            .params
+            .iter()
             .map(|(k, v)| format!("{k}={v}"))
             .collect::<Vec<_>>()
             .join(" ");
@@ -346,14 +353,16 @@ pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
         && let Ok(loaded_bdfs) = std::fs::read_to_string(&sys_param)
     {
         let loaded = loaded_bdfs.trim();
-        let already_covered = bdf.split(',')
+        let already_covered = bdf
+            .split(',')
             .all(|b| loaded.split(',').any(|l| l.trim() == b.trim()));
         if already_covered {
             tracing::info!(bdf, loaded, "no_bus_reset already covers this device");
             return Ok(());
         }
         // Need to reload with the union of old + new BDFs
-        let mut all_bdfs: Vec<&str> = loaded.split(',')
+        let mut all_bdfs: Vec<&str> = loaded
+            .split(',')
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .collect();
@@ -363,7 +372,11 @@ pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
             }
         }
         let combined = all_bdfs.join(",");
-        tracing::info!(bdf, combined, "reloading no_bus_reset with expanded device list");
+        tracing::info!(
+            bdf,
+            combined,
+            "reloading no_bus_reset with expanded device list"
+        );
         return KmodBuilder::new(NO_BUS_RESET_MODULE)
             .source(NO_BUS_RESET_SOURCE)
             .tmpdir(&no_bus_reset_tmpdir())
@@ -388,7 +401,8 @@ pub fn suppress_all_resets(bdf: &str) -> Result<(), GuardedSysfsError> {
         && let Ok(loaded_bdfs) = std::fs::read_to_string(&sys_param)
     {
         let loaded = loaded_bdfs.trim();
-        let already_covered = bdf.split(',')
+        let already_covered = bdf
+            .split(',')
             .all(|b| loaded.split(',').any(|l| l.trim() == b.trim()));
         let flr_param = crate::linux_paths::sysfs_module_parameter(NO_BUS_RESET_MODULE, "no_flr");
         let flr_active = Path::new(&flr_param).exists()
@@ -396,10 +410,15 @@ pub fn suppress_all_resets(bdf: &str) -> Result<(), GuardedSysfsError> {
                 .map(|v| v.trim() == "1")
                 .unwrap_or(false);
         if already_covered && flr_active {
-            tracing::info!(bdf, loaded, "no_bus_reset+no_flr already covers this device");
+            tracing::info!(
+                bdf,
+                loaded,
+                "no_bus_reset+no_flr already covers this device"
+            );
             return Ok(());
         }
-        let mut all_bdfs: Vec<&str> = loaded.split(',')
+        let mut all_bdfs: Vec<&str> = loaded
+            .split(',')
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .collect();
@@ -562,8 +581,8 @@ pub fn unsuppress_bus_reset_for(bdf: &str) -> Result<(), GuardedSysfsError> {
         tracing::info!(bdf, "no_bus_reset module not loaded — SBR already allowed");
         return Ok(());
     }
-    let loaded = std::fs::read_to_string(param_path)
-        .map_err(|e| GuardedSysfsError::WriteFailed {
+    let loaded =
+        std::fs::read_to_string(param_path).map_err(|e| GuardedSysfsError::WriteFailed {
             path: sys_param.clone(),
             reason: e.to_string(),
         })?;

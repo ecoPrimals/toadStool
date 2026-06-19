@@ -203,7 +203,9 @@ mod tests {
         // Backdate the health timestamp so the node appears stale — no sleep needed.
         let node_id = "fresh".to_string();
         if let Some(ts) = reg.health_timestamps.get_mut(&node_id) {
-            *ts = Instant::now().checked_sub(Duration::from_millis(200)).unwrap();
+            *ts = Instant::now()
+                .checked_sub(Duration::from_millis(200))
+                .unwrap();
         }
         assert_eq!(reg.get_healthy_nodes(Duration::from_secs(3600)).len(), 1);
         assert!(reg.get_healthy_nodes(Duration::from_millis(50)).is_empty());

@@ -30,8 +30,11 @@ impl ModuleSnapshot {
 
 impl std::fmt::Display for ModuleSnapshot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}(size={}, ref={}, state={}, stuck={})",
-               self.name, self.size, self.refcount, self.state, self.is_stuck)
+        write!(
+            f,
+            "{}(size={}, ref={}, state={}, stuck={})",
+            self.name, self.size, self.refcount, self.state, self.is_stuck
+        )
     }
 }
 
@@ -92,14 +95,18 @@ pub(crate) fn parse_module_stuck(name: &str, contents: &str) -> bool {
         let fields: Vec<&str> = line.split_whitespace().collect();
         if fields.len() >= 5 && fields[0] == name {
             if fields[4] == "Unloading" || fields[4] == "Loading" {
-                tracing::warn!(module = name, state = fields[4],
-                               refcount = fields[2],
-                               "module in stuck state");
+                tracing::warn!(
+                    module = name,
+                    state = fields[4],
+                    refcount = fields[2],
+                    "module in stuck state"
+                );
                 return true;
             }
-            if let Ok(refcount) = fields[2].parse::<i64>() && refcount < 0 {
-                tracing::warn!(module = name, refcount,
-                               "module has negative refcount");
+            if let Ok(refcount) = fields[2].parse::<i64>()
+                && refcount < 0
+            {
+                tracing::warn!(module = name, refcount, "module has negative refcount");
                 return true;
             }
         }
@@ -110,13 +117,11 @@ pub(crate) fn parse_module_stuck(name: &str, contents: &str) -> bool {
 /// Resolve the IOMMU group number for a PCI device.
 fn iommu_group_number(bdf: &str) -> Option<u32> {
     let link = crate::linux_paths::sysfs_pci_device_file(bdf, "iommu_group");
-    std::fs::read_link(&link)
-        .ok()
-        .and_then(|p| {
-            p.file_name()
-                .and_then(|n| n.to_str())
-                .and_then(|s| s.parse::<u32>().ok())
-        })
+    std::fs::read_link(&link).ok().and_then(|p| {
+        p.file_name()
+            .and_then(|n| n.to_str())
+            .and_then(|s| s.parse::<u32>().ok())
+    })
 }
 
 /// Check whether the IOMMU group for a BDF is free of external holders.
@@ -144,20 +149,24 @@ pub fn iommu_group_ready(bdf: &str) -> Result<(), GuardedSysfsError> {
 
     for entry in entries.filter_map(|e| e.ok()) {
         let name = entry.file_name();
-        let Some(pid_str) = name.to_str() else { continue };
-        let Ok(pid) = pid_str.parse::<u32>() else { continue };
+        let Some(pid_str) = name.to_str() else {
+            continue;
+        };
+        let Ok(pid) = pid_str.parse::<u32>() else {
+            continue;
+        };
 
         let fd_dir = crate::linux_paths::proc_pid_fd_dir(pid);
-        let Ok(fds) = std::fs::read_dir(&fd_dir) else { continue };
+        let Ok(fds) = std::fs::read_dir(&fd_dir) else {
+            continue;
+        };
 
         for fd in fds.filter_map(|f| f.ok()) {
             if let Ok(target) = std::fs::read_link(fd.path())
                 && (target == Path::new(&vfio_path) || target == vfio_path_canonical)
             {
                 return Err(GuardedSysfsError::PreFlightFailed {
-                    reason: format!(
-                        "IOMMU group {group_id} held by PID {pid} (fd → {vfio_path})"
-                    ),
+                    reason: format!("IOMMU group {group_id} held by PID {pid} (fd → {vfio_path})"),
                 });
             }
         }
@@ -192,13 +201,15 @@ pub fn release_bar0_fds(bdf: &str) -> usize {
             continue;
         };
         let matches = target == Path::new(&resource_path)
-            || resource_canonical
-                .as_ref()
-                .is_some_and(|c| target == **c);
+            || resource_canonical.as_ref().is_some_and(|c| target == **c);
         if !matches {
             continue;
         }
-        let Some(fd_num) = entry.file_name().to_str().and_then(|s| s.parse::<i32>().ok()) else {
+        let Some(fd_num) = entry
+            .file_name()
+            .to_str()
+            .and_then(|s| s.parse::<i32>().ok())
+        else {
             continue;
         };
         // SAFETY: we own this fd (it's in /proc/self/fd). Closing a leaked

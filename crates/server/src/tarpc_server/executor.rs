@@ -58,8 +58,8 @@ impl StandaloneExecutor {
     /// Creates a new standalone executor with system-queried capabilities.
     pub fn new() -> Self {
         // Query real system resources (self-knowledge)
-        let cpu_cores = std::thread::available_parallelism()
-            .map_or(4, |n| u32::try_from(n.get()).unwrap_or(4));
+        let cpu_cores =
+            std::thread::available_parallelism().map_or(4, |n| u32::try_from(n.get()).unwrap_or(4));
 
         let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
             total: 0,
@@ -195,8 +195,8 @@ impl WorkloadExecutor for StandaloneExecutor {
             let avg_cpu_util = f32::midpoint(pre_cpu_util, post_cpu_util);
 
             // Estimate cores used based on utilization delta
-            let total_cores = std::thread::available_parallelism()
-                .map_or(4, std::num::NonZero::get);
+            let total_cores =
+                std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
             #[expect(
                 clippy::cast_precision_loss,
                 clippy::cast_possible_truncation,

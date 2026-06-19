@@ -172,7 +172,11 @@ impl TrialResult {
             fecs = self.fecs_state.short_desc(),
             pmu = self.pmu_state.short_desc(),
             sec2 = self.sec2_state.short_desc(),
-            pfifo = if self.pfifo_enabled { "enabled" } else { "disabled" },
+            pfifo = if self.pfifo_enabled {
+                "enabled"
+            } else {
+                "disabled"
+            },
         )
     }
 }
@@ -220,12 +224,19 @@ impl DriverProbe {
 
     /// Comparison summary across all trials.
     pub fn comparison_summary(&self) -> String {
-        let mut lines = vec![format!("DriverProbe({}) — {} trials:", self.bdf, self.trials.len())];
+        let mut lines = vec![format!(
+            "DriverProbe({}) — {} trials:",
+            self.bdf,
+            self.trials.len()
+        )];
         for trial in &self.trials {
             lines.push(format!("  {}", trial.summary()));
         }
         if let Some(best) = self.best_by_engines() {
-            lines.push(format!("  Best by engines: {} ({} engines)", best.driver, best.active_engines));
+            lines.push(format!(
+                "  Best by engines: {} ({} engines)",
+                best.driver, best.active_engines
+            ));
         }
         lines.join("\n")
     }

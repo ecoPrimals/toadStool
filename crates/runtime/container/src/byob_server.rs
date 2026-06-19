@@ -71,24 +71,31 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
         .with_state(byob_executor);
 
     // Transport injection: check TRANSPORT_ENDPOINT first (sourDough standard)
-    if let Some(te) = toadstool_common::TransportEndpoint::from_env()
-        .map_err(ToadStoolError::configuration)?
+    if let Some(te) =
+        toadstool_common::TransportEndpoint::from_env().map_err(ToadStoolError::configuration)?
     {
         match te {
             toadstool_common::TransportEndpoint::Tcp { ref host, port } => {
-                let addr: SocketAddr = format!("{host}:{port}")
-                    .parse()
-                    .map_err(|e| ToadStoolError::configuration(format!("Invalid TRANSPORT_ENDPOINT address: {e}")))?;
-                info!("Starting Toadstool BYOB Server on {} (transport-injected)", addr);
-                let listener = TcpListener::bind(addr)
-                    .await
-                    .map_err(|e| ToadStoolError::runtime(format!("Failed to bind BYOB server: {e}")))?;
+                let addr: SocketAddr = format!("{host}:{port}").parse().map_err(|e| {
+                    ToadStoolError::configuration(format!(
+                        "Invalid TRANSPORT_ENDPOINT address: {e}"
+                    ))
+                })?;
+                info!(
+                    "Starting Toadstool BYOB Server on {} (transport-injected)",
+                    addr
+                );
+                let listener = TcpListener::bind(addr).await.map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to bind BYOB server: {e}"))
+                })?;
                 return axum::serve(listener, app.into_make_service())
                     .await
                     .map_err(|e| ToadStoolError::runtime(format!("BYOB server error: {e}")));
             }
             other => {
-                info!("TRANSPORT_ENDPOINT={other} not applicable for HTTP BYOB server, falling back to config");
+                info!(
+                    "TRANSPORT_ENDPOINT={other} not applicable for HTTP BYOB server, falling back to config"
+                );
             }
         }
     }
@@ -104,7 +111,10 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     let addr: SocketAddr = format!("{bind_address}:{port}")
         .parse()
         .map_err(|e| ToadStoolError::configuration(format!("Invalid bind address: {e}")))?;
-    info!("Starting Toadstool BYOB Server on {} (self-bind fallback)", addr);
+    info!(
+        "Starting Toadstool BYOB Server on {} (self-bind fallback)",
+        addr
+    );
 
     let listener = TcpListener::bind(addr)
         .await

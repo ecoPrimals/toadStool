@@ -33,8 +33,8 @@
 //! subsystem.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
 use tokio::time::MissedTickBehavior;
@@ -383,9 +383,7 @@ pub fn detect_plx_bridge(bdf: &str) -> Option<String> {
     detect_pcie_bridges(bdf)
         .into_iter()
         .next()
-        .filter(|b| {
-            crate::sysfs::read_pci_id(b, "vendor") == PLX_VENDOR_ID
-        })
+        .filter(|b| crate::sysfs::read_pci_id(b, "vendor") == PLX_VENDOR_ID)
 }
 
 #[cfg(test)]

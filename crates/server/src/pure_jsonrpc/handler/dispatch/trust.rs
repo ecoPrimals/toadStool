@@ -211,7 +211,10 @@ mod tests {
             (DispatchTrustLevel::Anonymous, "anonymous"),
             (DispatchTrustLevel::LocalTransport, "local_transport"),
             (DispatchTrustLevel::BtspVerified, "btsp_verified"),
-            (DispatchTrustLevel::MutuallyAuthenticated, "mutually_authenticated"),
+            (
+                DispatchTrustLevel::MutuallyAuthenticated,
+                "mutually_authenticated",
+            ),
         ];
         for (level, expected) in levels {
             let ctx = CallerContext {

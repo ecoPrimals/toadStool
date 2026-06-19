@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(dead_code, reason = "hardware register constants — comprehensive coverage for evolving absorption")]
+#![allow(
+    dead_code,
+    reason = "hardware register constants — comprehensive coverage for evolving absorption"
+)]
 
 //! PMC (Power Management Controller) — engine enables and boot identity.
 
@@ -105,7 +108,11 @@ impl InterruptProfile {
 /// The alternative (no quench) is a system-wide lockup from IRQ storm.
 pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
     let bar0_path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
-    let f = match std::fs::OpenOptions::new().read(true).write(true).open(&bar0_path) {
+    let f = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&bar0_path)
+    {
         Ok(f) => f,
         Err(e) => {
             tracing::warn!(bdf, context, error = %e, "interrupt quench: cannot open BAR0");
@@ -131,32 +138,23 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
             let base = ptr.cast::<u8>();
             // SAFETY: all offsets are within the 0x1000 mapped BAR0 page.
             let old_en = unsafe {
-                std::ptr::read_volatile(
-                    base.add(profile.intr_en_readable as usize).cast::<u32>(),
-                )
+                std::ptr::read_volatile(base.add(profile.intr_en_readable as usize).cast::<u32>())
             };
 
             let disable_off = profile.disable_offset() as usize;
             let disable_val = profile.disable_value();
             unsafe {
-                std::ptr::write_volatile(
-                    base.add(disable_off).cast::<u32>(),
-                    disable_val,
-                );
+                std::ptr::write_volatile(base.add(disable_off).cast::<u32>(), disable_val);
             }
 
             // SAFETY: offset is within the 0x1000 mapped BAR0 page.
             let new_en = unsafe {
-                std::ptr::read_volatile(
-                    base.add(profile.intr_en_readable as usize).cast::<u32>(),
-                )
+                std::ptr::read_volatile(base.add(profile.intr_en_readable as usize).cast::<u32>())
             };
 
             // SAFETY: offset is within the 0x1000 mapped BAR0 page.
             let pending = unsafe {
-                std::ptr::read_volatile(
-                    base.add(profile.intr_pending as usize).cast::<u32>(),
-                )
+                std::ptr::read_volatile(base.add(profile.intr_pending as usize).cast::<u32>())
             };
 
             // SAFETY: unmapping the 0x1000 BAR0 page mapped above.
@@ -174,7 +172,8 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
 
             if new_en != 0 {
                 tracing::warn!(
-                    bdf, context,
+                    bdf,
+                    context,
                     new_en = format_args!("0x{new_en:08x}"),
                     "interrupt quench: INTR_EN still nonzero"
                 );
@@ -190,7 +189,11 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
 /// This is a PCI-spec generic operation that works across all GPU generations.
 pub fn intx_disable(bdf: &str, context: &str) {
     let cfg_path = crate::linux_paths::sysfs_pci_device_file(bdf, "config");
-    let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+    let mut f = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&cfg_path)
+    {
         Ok(f) => f,
         Err(e) => {
             tracing::warn!(bdf, context, error = %e, "INTx disable: cannot open config");
@@ -200,15 +203,14 @@ pub fn intx_disable(bdf: &str, context: &str) {
 
     use std::io::{Read, Seek, Write};
     let mut cmd_bytes = [0u8; 2];
-    if f.seek(std::io::SeekFrom::Start(4)).is_ok()
-        && f.read_exact(&mut cmd_bytes).is_ok()
-    {
+    if f.seek(std::io::SeekFrom::Start(4)).is_ok() && f.read_exact(&mut cmd_bytes).is_ok() {
         let old_cmd = u16::from_le_bytes(cmd_bytes);
         let new_cmd = old_cmd | 0x0400;
         let _ = f.seek(std::io::SeekFrom::Start(4));
         let _ = f.write_all(&new_cmd.to_le_bytes());
         tracing::info!(
-            bdf, context,
+            bdf,
+            context,
             old_cmd = format_args!("0x{old_cmd:04x}"),
             new_cmd = format_args!("0x{new_cmd:04x}"),
             "PCI INTx disabled"
@@ -233,7 +235,11 @@ const PCI_CAP_ID_MSIX: u8 = 0x11;
 /// generating unhandled interrupts (Exp 233 Run #3 IRQ storm vector).
 pub fn disable_pci_msi(bdf: &str, context: &str) {
     let cfg_path = crate::linux_paths::sysfs_pci_device_file(bdf, "config");
-    let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+    let mut f = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&cfg_path)
+    {
         Ok(f) => f,
         Err(e) => {
             tracing::warn!(bdf, context, error = %e, "MSI disable: cannot open config");
@@ -251,7 +257,11 @@ pub fn disable_pci_msi(bdf: &str, context: &str) {
 
     let status = u16::from_le_bytes([hdr[0x06], hdr[0x07]]);
     if status & 0x0010 == 0 {
-        tracing::info!(bdf, context, "MSI disable: no capabilities list (status bit 4 clear)");
+        tracing::info!(
+            bdf,
+            context,
+            "MSI disable: no capabilities list (status bit 4 clear)"
+        );
         return;
     }
 
@@ -285,7 +295,8 @@ pub fn disable_pci_msi(bdf: &str, context: &str) {
                     let _ = f.write_all(&new_bytes);
                 }
                 tracing::info!(
-                    bdf, context,
+                    bdf,
+                    context,
                     cap_offset = format_args!("0x{cap_offset:02x}"),
                     old_ctrl = format_args!("0x{msg_ctrl:04x}"),
                     new_ctrl = format_args!("0x{new_ctrl:04x}"),
@@ -293,7 +304,8 @@ pub fn disable_pci_msi(bdf: &str, context: &str) {
                 );
             } else {
                 tracing::info!(
-                    bdf, context,
+                    bdf,
+                    context,
                     cap_offset = format_args!("0x{cap_offset:02x}"),
                     "PCI MSI already disabled"
                 );
@@ -312,7 +324,8 @@ pub fn disable_pci_msi(bdf: &str, context: &str) {
                 }
             }
             tracing::info!(
-                bdf, context,
+                bdf,
+                context,
                 cap_offset = format_args!("0x{cap_offset:02x}"),
                 old_ctrl = format_args!("0x{msg_ctrl:04x}"),
                 new_ctrl = format_args!("0x{new_ctrl:04x}"),
@@ -343,7 +356,11 @@ pub fn disable_pci_msi(bdf: &str, context: &str) {
 /// (RM, firmware) will fail with Bus Master off.
 pub fn disable_bus_master(bdf: &str, context: &str) {
     let cfg_path = crate::linux_paths::sysfs_pci_device_file(bdf, "config");
-    let mut f = match std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+    let mut f = match std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&cfg_path)
+    {
         Ok(f) => f,
         Err(e) => {
             tracing::warn!(bdf, context, error = %e, "Bus Master disable: cannot open config");
@@ -353,15 +370,14 @@ pub fn disable_bus_master(bdf: &str, context: &str) {
 
     use std::io::{Read, Seek, Write};
     let mut cmd_bytes = [0u8; 2];
-    if f.seek(std::io::SeekFrom::Start(4)).is_ok()
-        && f.read_exact(&mut cmd_bytes).is_ok()
-    {
+    if f.seek(std::io::SeekFrom::Start(4)).is_ok() && f.read_exact(&mut cmd_bytes).is_ok() {
         let old_cmd = u16::from_le_bytes(cmd_bytes);
         let new_cmd = old_cmd & !0x0004;
         let _ = f.seek(std::io::SeekFrom::Start(4));
         let _ = f.write_all(&new_cmd.to_le_bytes());
         tracing::info!(
-            bdf, context,
+            bdf,
+            context,
             old_cmd = format_args!("0x{old_cmd:04x}"),
             new_cmd = format_args!("0x{new_cmd:04x}"),
             "PCI Bus Master disabled"

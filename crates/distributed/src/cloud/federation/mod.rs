@@ -16,7 +16,7 @@ pub mod discovery;
 pub mod policy;
 mod state;
 
-pub use policy::{DEFAULT_HEARTBEAT_TIMEOUT_SECS, FederationMember, MIN_HEARTBEAT_INTERVAL_SECS};
+pub use policy::{DEFAULT_HEARTBEAT_TIMEOUT_SECS, FederationMember};
 
 // ─── Federation Errors ───────────────────────────────────────────────────────
 

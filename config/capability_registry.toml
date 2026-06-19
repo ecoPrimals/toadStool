@@ -1,7 +1,7 @@
 # ToadStool Capability Registry — machine-readable capability declaration
 # Wave 78 ecosystem standard | AGPL-3.0-or-later
 # Generated from DIRECT_JSONRPC_METHODS + capabilities.list Wire Standard L3
-# Version: v0.2.0 | Session: S291
+# Version: v0.2.0 | Session: S320+
 
 [meta]
 primal = "toadstool"

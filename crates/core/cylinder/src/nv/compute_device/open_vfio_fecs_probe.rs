@@ -70,8 +70,12 @@ pub(super) fn probe_fecs_for_deferred_boot(
                 is_clear,
                 "PRI ring cold init: enumerate + ACK"
             );
-            if is_clear { break; }
-            if is_pri_fault && round >= 2 { break; }
+            if is_clear {
+                break;
+            }
+            if is_pri_fault && round >= 2 {
+                break;
+            }
         }
 
         // Clear GPC station interrupts to fully settle the ring.
@@ -92,12 +96,12 @@ pub(super) fn probe_fecs_for_deferred_boot(
     let fecs_alias = bar0
         .read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS)
         .unwrap_or(0xDEAD);
-    let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
+    let fecs_pc = bar0
+        .read_u32(falcon::FECS_BASE + falcon::PC)
+        .unwrap_or(0xDEAD);
     let is_bad_read = fecs_alias & 0xBADF_0000 == 0xBADF_0000;
     let fecs_in_hreset = !is_bad_read && (fecs_alias & falcon::CPUCTL_HRESET != 0);
-    let fecs_running = !is_bad_read
-        && !fecs_in_hreset
-        && (fecs_alias & falcon::CPUCTL_HALTED == 0);
+    let fecs_running = !is_bad_read && !fecs_in_hreset && (fecs_alias & falcon::CPUCTL_HALTED == 0);
     let fecs_needs_boot = is_bad_read || fecs_in_hreset;
 
     let fecs_fw_wiped = *pmc_was_cold && fecs_pc < 0x100;

@@ -198,9 +198,7 @@ impl GspBridge for NoopGspBridge {
                 Ok(())
             }
             None => {
-                tracing::warn!(
-                    "NoopGspBridge: apply_gr_bar0_init skipped (no init sequence)"
-                );
+                tracing::warn!("NoopGspBridge: apply_gr_bar0_init skipped (no init sequence)");
                 Ok(())
             }
         }
@@ -230,13 +228,15 @@ impl GspBridge for NoopGspBridge {
 
     fn boot_fecs(&self, _bar0: &MappedBar, _chip: &str) -> DriverResult<FalconBootResult> {
         Err(crate::DriverError::Unsupported(
-            "FECS boot requires NvGspBridge or warm-handoff preserving FECS state"
-                .into(),
+            "FECS boot requires NvGspBridge or warm-handoff preserving FECS state".into(),
         ))
     }
 
     fn pgob_diagnostic(&self, _bar0: &MappedBar, label: &str) {
-        tracing::debug!(label, "NoopGspBridge: pgob_diagnostic skipped (no firmware)");
+        tracing::debug!(
+            label,
+            "NoopGspBridge: pgob_diagnostic skipped (no firmware)"
+        );
     }
 
     fn pgob_disable(&self, _bar0: &MappedBar) -> DriverResult<PgobResult> {

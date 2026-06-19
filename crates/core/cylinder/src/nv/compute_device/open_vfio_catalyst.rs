@@ -9,7 +9,7 @@ use crate::vfio::device::{DmaBackend, MappedBar};
 use super::super::generation::GenerationProfile;
 use super::super::nv_gsp_bridge::NvGspBridge;
 use super::gr_falcon_boot::{boot_gpccs_fecs_catalyst, fecs_setup_channel};
-use super::gr_ungating::{force_pri_enumerate, ungate_gr_engine, UngatingLog};
+use super::gr_ungating::{UngatingLog, force_pri_enumerate, ungate_gr_engine};
 
 /// Catalyst path: targeted PRI recovery + GPC ungating + nouveau falcon boot.
 pub(super) fn handle_catalyst_path(

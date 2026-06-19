@@ -453,7 +453,9 @@ pub enum SovereignStagesError {
     },
 
     /// PGOB power-domain step timed out.
-    #[error("PGOB power step {step_index} at {addr:#010x} timed out (pre={pre:#010x}, post={post:#010x})")]
+    #[error(
+        "PGOB power step {step_index} at {addr:#010x} timed out (pre={pre:#010x}, post={post:#010x})"
+    )]
     PgobStepTimeout {
         /// Zero-based index into the power domain step table.
         step_index: usize,
@@ -517,7 +519,10 @@ pub enum SovereignStagesError {
 
 impl SovereignStagesError {
     /// Bridges `DriverResult`/`DriverError` from GR/FECS helpers into this enum.
-    #[expect(dead_code, reason = "VFIO compute error — pending sovereign dispatch wiring")]
+    #[expect(
+        dead_code,
+        reason = "VFIO compute error — pending sovereign dispatch wiring"
+    )]
     #[cfg(all(target_os = "linux", feature = "vfio"))]
     pub(crate) fn vfio_compute(err: DriverError) -> Self {
         Self::VfioCompute(Box::new(err))

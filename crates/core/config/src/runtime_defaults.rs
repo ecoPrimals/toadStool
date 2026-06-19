@@ -10,8 +10,8 @@ pub mod validation;
 
 use std::path::Path;
 
-use tracing::{info, warn};
 use toadstool_common::interned_strings::socket_env;
+use tracing::{info, warn};
 
 use crate::ToadStoolConfig;
 

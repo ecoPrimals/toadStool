@@ -54,9 +54,7 @@ pub fn catalog_linux_firmware(chip: &str) -> Vec<FirmwareBlob> {
     for (subsystem, filename, acr_required) in &known_blobs {
         let path = PathBuf::from(format!("{base}/{subsystem}/{filename}"));
         if path.exists() {
-            let size_bytes = std::fs::metadata(&path)
-                .map(|m| m.len())
-                .unwrap_or(0);
+            let size_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
             found.push(FirmwareBlob {
                 subsystem: (*subsystem).to_owned(),
                 filename: (*filename).to_owned(),

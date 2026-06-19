@@ -212,8 +212,7 @@ pub fn pushbuf_submit(
         ..Default::default()
     };
 
-    let ioctl_nr =
-        drm::drm_iowr_pub(DRM_NOUVEAU_GEM_PUSHBUF, size_of_u32::<NouveauGemPushbuf>());
+    let ioctl_nr = drm::drm_iowr_pub(DRM_NOUVEAU_GEM_PUSHBUF, size_of_u32::<NouveauGemPushbuf>());
     drm::drm_ioctl_named(fd, ioctl_nr, &mut pb, "nouveau_gem_pushbuf")
 }
 
@@ -230,8 +229,7 @@ pub fn gem_cpu_prep(fd: RawFd, gem_handle: u32) -> DriverResult<()> {
         handle: gem_handle,
         flags: NOUVEAU_GEM_CPU_PREP_WRITE,
     };
-    let ioctl_nr =
-        drm::drm_iowr_pub(DRM_NOUVEAU_GEM_CPU_PREP, size_of_u32::<NouveauGemCpuPrep>());
+    let ioctl_nr = drm::drm_iowr_pub(DRM_NOUVEAU_GEM_CPU_PREP, size_of_u32::<NouveauGemCpuPrep>());
     drm::drm_ioctl_named(fd, ioctl_nr, &mut prep, "nouveau_gem_cpu_prep")
 }
 

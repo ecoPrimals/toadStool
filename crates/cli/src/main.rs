@@ -77,7 +77,11 @@ async fn main() -> Result<()> {
     setup::init_enhanced_logging(cli.verbose)?;
 
     // SECURITY WARNING: Alert users about incomplete security implementations
-    if std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SECURITY_WARNING_ACKNOWLEDGED).is_err() {
+    if std::env::var(
+        toadstool_common::interned_strings::socket_env::TOADSTOOL_SECURITY_WARNING_ACKNOWLEDGED,
+    )
+    .is_err()
+    {
         warn!(
             "🚨 SECURITY WARNING: This ToadStool instance has incomplete cryptographic verification"
         );

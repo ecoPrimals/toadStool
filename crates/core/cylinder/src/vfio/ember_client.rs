@@ -29,9 +29,10 @@ fn default_ember_socket_path_without_env_override() -> String {
     use std::path::PathBuf;
     use toadstool_common::interned_strings::socket_env;
 
-    let base =
-        std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(|_| std::env::temp_dir(), PathBuf::from);
-    let ns = std::env::var(socket_env::BIOMEOS_ECOSYSTEM_NAMESPACE).unwrap_or_else(|_| "biomeos".into());
+    let base = std::env::var(socket_env::XDG_RUNTIME_DIR)
+        .map_or_else(|_| std::env::temp_dir(), PathBuf::from);
+    let ns =
+        std::env::var(socket_env::BIOMEOS_ECOSYSTEM_NAMESPACE).unwrap_or_else(|_| "biomeos".into());
     let family = std::env::var(socket_env::BIOMEOS_FAMILY_ID).unwrap_or_else(|_| "default".into());
     base.join(ns)
         .join(format!("toadstool-ember-{family}.sock"))
@@ -45,7 +46,10 @@ fn default_ember_socket_path_without_env_override() -> String {
 pub(super) fn default_socket() -> String {
     use toadstool_common::interned_strings::socket_env;
 
-    if let Some(v) = std::env::var(socket_env::TOADSTOOL_EMBER_SOCKET).ok().filter(|s| !s.is_empty()) {
+    if let Some(v) = std::env::var(socket_env::TOADSTOOL_EMBER_SOCKET)
+        .ok()
+        .filter(|s| !s.is_empty())
+    {
         return v;
     }
     default_ember_socket_path_without_env_override()

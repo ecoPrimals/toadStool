@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::pure_jsonrpc::types::JsonRpcError;
 use serde_json::Value;
 use toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions;
@@ -48,7 +49,10 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
 
     let _gate_bypass = toadstool_cylinder::vfio::ember_gate::EmberGateBypass::enter();
 
-    #[expect(clippy::single_match_else, reason = "bar0_source may grow more variants")]
+    #[expect(
+        clippy::single_match_else,
+        reason = "bar0_source may grow more variants"
+    )]
     let bar0 = match bar0_source {
         "vfio" => {
             let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
@@ -58,9 +62,7 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
                     ))
                 })?;
             let bar = dev.map_bar(0).map_err(|e| {
-                JsonRpcError::internal_error(format!(
-                    "VFIO BAR0 map failed for {bdf}: {e}"
-                ))
+                JsonRpcError::internal_error(format!("VFIO BAR0 map failed for {bdf}: {e}"))
             })?;
             dma_backend_for_opts = Some(dev.dma_backend());
             info!(bdf = %bdf, "sovereign.init: VFIO opened (DMA backend available)");
@@ -100,9 +102,7 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     if let Some(path) = opts.golden_state_path.as_ref() {
         match std::fs::read_to_string(path) {
             Ok(json_str) => {
-                if let Ok(pairs) =
-                    serde_json::from_str::<Vec<(usize, u32)>>(&json_str)
-                {
+                if let Ok(pairs) = serde_json::from_str::<Vec<(usize, u32)>>(&json_str) {
                     opts.golden_state = Some(pairs);
                 }
             }
@@ -120,11 +120,7 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
                         let engine = seq.chip.engine_label();
                         info!(path = %path, engine = %engine, writes = seq.len(),
                               "loaded golden-state GrInitSequence for engine replay");
-                        opts.engine_init_sequences.push((
-                            engine,
-                            seq,
-                            None,
-                        ));
+                        opts.engine_init_sequences.push((engine, seq, None));
                     }
                     Err(e) => {
                         info!(path = %path, error = %e, "engine_init_path JSON parse failed, continuing without");
@@ -174,15 +170,13 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     };
 
     let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
-    let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
-        profile, bridge, sm,
-    );
+    let strategy =
+        toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(profile, bridge, sm);
 
     info!(bdf = %bdf, halt_before = ?opts.halt_before, "sovereign.init: starting pipeline");
 
-    let result = toadstool_cylinder::vfio::sovereign_init::sovereign_init(
-        &bar0, bdf, &opts, &*strategy,
-    );
+    let result =
+        toadstool_cylinder::vfio::sovereign_init::sovereign_init(&bar0, bdf, &opts, &*strategy);
 
     info!(
         bdf = %bdf,
@@ -231,24 +225,17 @@ pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> 
     let mut _vfio_anchor = None;
 
     let bar0 = if bar0_source == "vfio" {
-        let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
-            .map_err(|e| {
-                JsonRpcError::internal_error(format!(
-                    "VFIO device open failed for {bdf}: {e}"
-                ))
-            })?;
+        let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf).map_err(|e| {
+            JsonRpcError::internal_error(format!("VFIO device open failed for {bdf}: {e}"))
+        })?;
         let bar = dev.map_bar(0).map_err(|e| {
-            JsonRpcError::internal_error(format!(
-                "VFIO BAR0 map failed for {bdf}: {e}"
-            ))
+            JsonRpcError::internal_error(format!("VFIO BAR0 map failed for {bdf}: {e}"))
         })?;
         _vfio_anchor = Some(dev);
         bar
     } else {
         toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-            .map_err(|e| {
-                JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
-            })?
+            .map_err(|e| JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}")))?
     };
 
     let diag = devinit::FalconDiagnostic::probe(&bar0, Some(bdf));
@@ -294,14 +281,12 @@ pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> 
                 "diagnostic": diag_json,
             }))
         }
-        Ok(false) => {
-            Ok(serde_json::json!({
-                "bdf": bdf,
-                "action": "devinit_not_needed",
-                "vram_alive": false,
-                "diagnostic": diag_json,
-            }))
-        }
+        Ok(false) => Ok(serde_json::json!({
+            "bdf": bdf,
+            "action": "devinit_not_needed",
+            "vram_alive": false,
+            "diagnostic": diag_json,
+        })),
         Err(e) => {
             info!(bdf = %bdf, error = %e, "sovereign.devinit: devinit failed");
             Ok(serde_json::json!({
@@ -328,9 +313,10 @@ pub fn sovereign_classify_tier(params: Option<&Value>) -> Result<Value, JsonRpcE
         .and_then(Value::as_str)
         .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf'"))?;
 
-    let bar0 =
-        toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-            .map_err(|e| JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}")))?;
+    let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+        .map_err(|e| {
+        JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+    })?;
 
     let sm_override = params
         .and_then(|p| p.get("sm_version"))
@@ -409,20 +395,18 @@ pub fn sovereign_experiment(params: Option<&Value>) -> Result<Value, JsonRpcErro
         .ok_or_else(|| JsonRpcError::invalid_params("Missing 'stage' (1-6)"))?
         as u32;
 
-    let chip = params
-        .and_then(|p| p.get("chip"))
-        .and_then(Value::as_str);
+    let chip = params.and_then(|p| p.get("chip")).and_then(Value::as_str);
 
     info!(bdf, stage, chip = ?chip, "sovereign.experiment: starting stage");
 
-    let bar0 =
-        toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-            .map_err(|e| {
-                JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
-            })?;
+    let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+        .map_err(|e| {
+        JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+    })?;
 
-    let result = toadstool_cylinder::vfio::sovereign_stages::run_experiment_stage(&bar0, stage, chip)
-        .map_err(JsonRpcError::invalid_params)?;
+    let result =
+        toadstool_cylinder::vfio::sovereign_stages::run_experiment_stage(&bar0, stage, chip)
+            .map_err(JsonRpcError::invalid_params)?;
 
     info!(
         bdf,

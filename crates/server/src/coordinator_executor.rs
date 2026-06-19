@@ -96,10 +96,9 @@ impl WorkloadExecutor for CoordinatorExecutor {
             let request = convert_submission_to_request(&submission);
 
             // Submit to coordinator (isomorphic/fractal routing)
-            let execution_id = coordinator
-                .submit_execution(request)
-                .await
-                .map_err(|e| ServiceError::Coordinator(format!("Coordinator execution failed: {e}")))?;
+            let execution_id = coordinator.submit_execution(request).await.map_err(|e| {
+                ServiceError::Coordinator(format!("Coordinator execution failed: {e}"))
+            })?;
 
             info!("Workload submitted to coordinator: {}", execution_id);
 

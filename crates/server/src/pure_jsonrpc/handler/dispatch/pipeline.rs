@@ -152,43 +152,52 @@ impl DispatchHandler {
                 }
             }
 
-            let mut stage_params = stage.params.clone();
-            if !completed_results.is_empty()
-                && let Some(obj) = stage_params.as_object_mut()
-            {
-                obj.insert(
-                    "previous_results".to_string(),
-                    serde_json::to_value(&completed_results).unwrap_or_else(|e| {
-                        warn!(
-                            error = %e,
-                            "failed to serialize previous_results for pipeline stage; using null"
+            // Borrow params directly for the first stage; only clone when we
+            // need to inject previous_results into downstream stages.
+            let owned_params;
+            let params_ref = if completed_results.is_empty() {
+                &stage.params
+            } else {
+                owned_params = {
+                    let mut params = stage.params.clone();
+                    if let Some(obj) = params.as_object_mut() {
+                        obj.insert(
+                            "previous_results".to_string(),
+                            serde_json::to_value(&completed_results).unwrap_or_else(|e| {
+                                warn!(
+                                    error = %e,
+                                    "failed to serialize previous_results for pipeline stage; using null"
+                                );
+                                serde_json::Value::Null
+                            }),
                         );
-                        serde_json::Value::Null
-                    }),
-                );
-            }
+                    }
+                    params
+                };
+                &owned_params
+            };
 
             let start = std::time::Instant::now();
             let result = self
-                .execute_stage_method(&stage.method, &stage_params, ctx)
+                .execute_stage_method(&stage.method, params_ref, ctx)
                 .await;
             let elapsed_ms = start.elapsed().as_millis() as u64;
 
             match result {
                 Ok(value) => {
-                    completed_results.insert(stage_id.clone(), value.clone());
                     stage_results.push(PipelineStageResult {
                         stage_id: stage_id.clone(),
                         method: stage.method.clone(),
                         substrate: stage.substrate,
                         status: "completed".to_string(),
                         elapsed_ms,
-                        result: Some(value),
+                        result: Some(value.clone()),
                         error: None,
                     });
+                    completed_results.insert(stage_id.clone(), value);
                 }
                 Err(e) => {
-                    let error_msg = e.message.to_string();
+                    let error_msg = e.message.into_owned();
                     stage_results.push(PipelineStageResult {
                         stage_id: stage_id.clone(),
                         method: stage.method.clone(),
@@ -312,12 +321,8 @@ impl DispatchHandler {
         ctx: &CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
         match method {
-            "compute.dispatch.submit" => {
-                self.dispatch_submit_with_context(Some(params), ctx).await
-            }
-            "shader.dispatch" => {
-                self.shader_dispatch_with_context(Some(params), ctx).await
-            }
+            "compute.dispatch.submit" => self.dispatch_submit_with_context(Some(params), ctx).await,
+            "shader.dispatch" => self.shader_dispatch_with_context(Some(params), ctx).await,
             _ => Err(JsonRpcError::invalid_params(format!(
                 "Unsupported pipeline stage method: {method} \
                  (supported: compute.dispatch.submit, shader.dispatch)"

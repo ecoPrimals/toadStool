@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+use super::types::{ConfigReport, EcosystemReport, HardwareReport, PrimalStatus};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use super::types::{ConfigReport, EcosystemReport, HardwareReport, PrimalStatus};
 
 pub(crate) async fn check_hardware_health() -> HardwareReport {
     let mut issues = vec![];
@@ -80,7 +80,9 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
 async fn check_gpu_available() -> bool {
     #[cfg(target_os = "linux")]
     {
-        Path::new("/usr/share/vulkan/icd.d").exists() || std::env::var(toadstool_common::interned_strings::socket_env::VK_ICD_FILENAMES).is_ok()
+        Path::new("/usr/share/vulkan/icd.d").exists()
+            || std::env::var(toadstool_common::interned_strings::socket_env::VK_ICD_FILENAMES)
+                .is_ok()
     }
     #[cfg(not(target_os = "linux"))]
     {

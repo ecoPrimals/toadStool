@@ -60,9 +60,7 @@ impl DispatchHandler {
         })?;
 
         let device = cache.get_mut(bdf).ok_or_else(|| {
-            JsonRpcError::internal_error(format!(
-                "VFIO device {bdf} not in cache after creation"
-            ))
+            JsonRpcError::internal_error(format!("VFIO device {bdf} not in cache after creation"))
         })?;
 
         let start = std::time::Instant::now();

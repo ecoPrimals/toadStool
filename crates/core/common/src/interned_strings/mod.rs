@@ -148,10 +148,14 @@ impl CapabilityDomain {
             || label_eq(l, primals::LEGACY_STORAGE_KEBAB)
         {
             Some(Self::Storage)
-        } else if label_eq(l, capabilities::COMPUTE) || label_eq(l, primals::TOADSTOOL) || l == "toad-stool"
+        } else if label_eq(l, capabilities::COMPUTE)
+            || label_eq(l, primals::TOADSTOOL)
+            || l == "toad-stool"
         {
             Some(Self::Compute)
-        } else if label_eq(l, capabilities::ROUTING) || label_eq(l, primals::LEGACY_INTELLIGENCE_LABEL) {
+        } else if label_eq(l, capabilities::ROUTING)
+            || label_eq(l, primals::LEGACY_INTELLIGENCE_LABEL)
+        {
             Some(Self::Routing)
         } else if label_eq(l, capabilities::INTELLIGENCE) || l == "ai" {
             Some(Self::Intelligence)

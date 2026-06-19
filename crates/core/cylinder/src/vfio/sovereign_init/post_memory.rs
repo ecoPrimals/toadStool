@@ -6,7 +6,9 @@ use std::time::Instant;
 use crate::vfio::device::MappedBar;
 use crate::vfio::sovereign_stages::{falcon_boot, gr_init};
 use crate::vfio::sovereign_strategy::SovereignStrategy;
-use crate::vfio::sovereign_types::{HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus};
+use crate::vfio::sovereign_types::{
+    HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus,
+};
 
 use super::context::PipelineCtx;
 use super::memory_path::MemoryPathContinue;

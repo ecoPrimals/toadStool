@@ -20,7 +20,10 @@ pub fn rename_module_identity(
             path: "(in-memory)".into(),
             detail: format!(
                 "new module name '{}' ({} bytes) exceeds old name '{}' ({} bytes)",
-                new_name, new_name.len(), old_name, old_name.len(),
+                new_name,
+                new_name.len(),
+                old_name,
+                old_name.len(),
             ),
         });
     }

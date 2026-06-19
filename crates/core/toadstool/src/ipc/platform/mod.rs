@@ -228,8 +228,12 @@ fn get_runtime_dir() -> String {
     if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
         return format!("/run/user/{uid}");
     }
-    std::env::var(socket_env::BIOMEOS_RUNTIME_DIR)
-        .unwrap_or_else(|_| std::env::temp_dir().join("biomeos-runtime").to_string_lossy().into_owned())
+    std::env::var(socket_env::BIOMEOS_RUNTIME_DIR).unwrap_or_else(|_| {
+        std::env::temp_dir()
+            .join("biomeos-runtime")
+            .to_string_lossy()
+            .into_owned()
+    })
 }
 
 // ============================================================================

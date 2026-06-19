@@ -55,12 +55,10 @@ impl DistributedSecurityProvider {
         let discovery = SecurityDiscovery::new(config.clone());
 
         let client = match SecurityClient::new_async(config.clone()).await {
-            Ok(client) => {
-                match client.discover().await {
-                    Ok(endpoints) if !endpoints.is_empty() => Some(Arc::new(client)),
-                    _ => None,
-                }
-            }
+            Ok(client) => match client.discover().await {
+                Ok(endpoints) if !endpoints.is_empty() => Some(Arc::new(client)),
+                _ => None,
+            },
             Err(_) => None,
         };
 

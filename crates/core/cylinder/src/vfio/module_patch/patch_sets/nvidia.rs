@@ -354,7 +354,6 @@ impl PatchSet {
                     symbol: "rm_shutdown_adapter".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
-
                 // ── Host conflict isolation ─────────────────────────────
                 // MODULE_NAME="nvidia" is baked into .rodata — these
                 // functions create /proc/driver/nvidia/ and
@@ -381,7 +380,6 @@ impl PatchSet {
                     symbol: "nvswitch_init".into(),
                     strategy: PatchStrategy::Ret1AtEntry,
                 },
-
                 // ── Cap system NOPs (namespace collision) ───────────────
                 // Cap functions use hardcoded "driver/nvidia" paths from
                 // MODULE_NAME. Return fake non-NULL handles to satisfy
@@ -402,7 +400,6 @@ impl PatchSet {
                     symbol: "nv_cap_create_file_entry".into(),
                     strategy: PatchStrategy::Ret1AtEntry,
                 },
-
                 // ── Cap access control bypass ───────────────────────────
                 PatchTarget {
                     symbol: "nv_cap_validate_and_dup_fd".into(),
@@ -420,7 +417,6 @@ impl PatchSet {
                     symbol: "nv_cap_destroy_entry".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
-
                 // ── Module exit safety ────────────────────────────────────
                 // cleanup_module is NOT NOP'd — it must run so the PCI driver
                 // is properly unregistered via nv_pci_unregister_driver().
@@ -437,7 +433,6 @@ impl PatchSet {
                     symbol: "nv_destroy_rsync_info".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
-
                 // ── init_module patches (chrdev isolation) ──────────────
                 PatchTarget {
                     symbol: "init_module".into(),

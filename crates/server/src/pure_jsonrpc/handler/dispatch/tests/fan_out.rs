@@ -184,10 +184,7 @@ async fn fan_out_envelope_rejects_excess_units() {
     let handler = test_handler();
     let ctx = ctx_with_envelope(1);
     let params = work_units_json(5);
-    let err = handler
-        .fan_out(Some(&params), &ctx)
-        .await
-        .unwrap_err();
+    let err = handler.fan_out(Some(&params), &ctx).await.unwrap_err();
     assert_eq!(
         err.code,
         toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED

@@ -165,7 +165,10 @@ impl DriverLabPlan {
 
         let n = self.trials.len();
         if n >= 2 {
-            out.push(format!("Diffs to generate: {} pairwise comparisons", n * (n - 1) / 2));
+            out.push(format!(
+                "Diffs to generate: {} pairwise comparisons",
+                n * (n - 1) / 2
+            ));
         }
 
         out
@@ -350,10 +353,7 @@ impl DriverLabExecutor {
 
             match capture_fn(&self.plan.bdf, &trial.label, &trial.scan_ranges) {
                 Ok(snapshot_bytes) => {
-                    let snapshot_path = format!(
-                        "{}/{}.json",
-                        self.plan.output_dir, trial.label
-                    );
+                    let snapshot_path = format!("{}/{}.json", self.plan.output_dir, trial.label);
                     let saved = std::fs::create_dir_all(&self.plan.output_dir)
                         .and_then(|()| std::fs::write(&snapshot_path, &snapshot_bytes));
 
@@ -406,10 +406,8 @@ impl DriverLabExecutor {
 
             if let (Some((_, bytes_a)), Some((_, bytes_b))) = (snap_a, snap_b) {
                 let changed = count_json_diffs(bytes_a, bytes_b);
-                let diff_path = format!(
-                    "{}/diff_{}_{}.json",
-                    self.plan.output_dir, label_a, label_b
-                );
+                let diff_path =
+                    format!("{}/diff_{}_{}.json", self.plan.output_dir, label_a, label_b);
 
                 let _ = std::fs::write(
                     &diff_path,

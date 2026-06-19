@@ -45,8 +45,8 @@ impl WorkgroupConfig {
     /// Update with new measurement
     pub fn update(&mut self, performance_us: f64) {
         // Running average
-        let alpha = 0.3; // Weight for new measurement
-        self.performance_us = alpha * performance_us + (1.0 - alpha) * self.performance_us;
+        let alpha: f64 = 0.3;
+        self.performance_us = (1.0 - alpha).mul_add(self.performance_us, alpha * performance_us);
 
         self.sample_count += 1;
         self.confidence = (self.confidence + 0.05).min(1.0);

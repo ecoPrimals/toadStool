@@ -118,7 +118,7 @@ impl HandoffCapabilityProfile {
             70..=74 => (6, "gv100"),    // GV100: 6 GPCs
             75..=79 => (6, "tu102"),    // TU102: 6 GPCs
             80..=87 => (8, "ga100"),    // GA100: 8 GPCs
-            89      => (12, "ad102"),   // AD102: 12 GPCs
+            89 => (12, "ad102"),        // AD102: 12 GPCs
             90..=99 => (8, "gh100"),    // GH100: 8 GPCs (estimated)
             100..=120 => (12, "gb100"), // GB100: 12 GPCs (estimated)
             _ => (6, "gv100"),          // fallback
@@ -241,7 +241,12 @@ impl RmChannelEvidence {
             .filter(|s| s.get("ok").and_then(|v| v.as_bool()).unwrap_or(false))
             .count() as u16;
         let all_ok = json.get("success")?.as_bool().unwrap_or(false);
-        Some(Self { channel_id, work_submit_token, steps_completed, all_ok })
+        Some(Self {
+            channel_id,
+            work_submit_token,
+            steps_completed,
+            all_ok,
+        })
     }
 }
 

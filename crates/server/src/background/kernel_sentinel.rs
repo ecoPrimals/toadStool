@@ -110,7 +110,15 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
     report.push('\n');
 
     report.push_str("=== MODULE STATE ===\n");
-    for name in &["nvsov", "nvidia", "nvidia_uvm", "nvidia_modeset", "nvidia_drm", "vfio_pci", "no_bus_reset"] {
+    for name in &[
+        "nvsov",
+        "nvidia",
+        "nvidia_uvm",
+        "nvidia_modeset",
+        "nvidia_drm",
+        "vfio_pci",
+        "no_bus_reset",
+    ] {
         if let Some(snap) = toadstool_cylinder::vfio::guarded_sysfs::module_snapshot(name) {
             let _ = writeln!(report, "{name}: {snap}");
         }
@@ -121,18 +129,20 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
     let gpu_bdfs = discover_gpu_bdfs();
     for bdf in &gpu_bdfs {
         let _ = writeln!(report, "--- {bdf} ---");
-        let resource_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
+        let resource_path =
+            toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
         match std::fs::metadata(&resource_path) {
-            Ok(_) => {
-                match read_gpu_registers_safe(bdf) {
-                    Some(regs) => {
-                        for (name, val) in &regs {
-                            let _ = writeln!(report, "  {name}: 0x{val:08x}");
-                        }
+            Ok(_) => match read_gpu_registers_safe(bdf) {
+                Some(regs) => {
+                    for (name, val) in &regs {
+                        let _ = writeln!(report, "  {name}: 0x{val:08x}");
                     }
-                    None => report.push_str("  (BAR0 read failed — GPU may be owned by vfio-pci or dead)\n"),
                 }
-            }
+                None => {
+                    report
+                        .push_str("  (BAR0 read failed — GPU may be owned by vfio-pci or dead)\n");
+                }
+            },
             Err(_) => report.push_str("  (resource0 not accessible)\n"),
         }
     }
@@ -142,11 +152,12 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
     for bdf in &gpu_bdfs {
         let config_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
         if let Ok(data) = std::fs::read(&config_path)
-            && data.len() >= 8 {
-                let cmd = u16::from_le_bytes([data[4], data[5]]);
-                let status = u16::from_le_bytes([data[6], data[7]]);
-                let _ = writeln!(report, "{bdf}: CMD=0x{cmd:04x} STATUS=0x{status:04x}");
-            }
+            && data.len() >= 8
+        {
+            let cmd = u16::from_le_bytes([data[4], data[5]]);
+            let status = u16::from_le_bytes([data[6], data[7]]);
+            let _ = writeln!(report, "{bdf}: CMD=0x{cmd:04x} STATUS=0x{status:04x}");
+        }
     }
 
     // Write the report
@@ -157,7 +168,9 @@ fn save_crash_report(trigger_line: &str, recent_lines: &[String]) {
 
     // Also attempt emergency quench if a handoff is active
     if super::catalyst_watchdog::is_active() {
-        warn!("SENTINEL: kernel crash detected during active handoff — triggering emergency quench");
+        warn!(
+            "SENTINEL: kernel crash detected during active handoff — triggering emergency quench"
+        );
         super::catalyst_watchdog::force_emergency_quench();
     }
 }

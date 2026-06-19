@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use crate::types::{MessageFormat, TransportType};
 use toadstool_common::auth::ServiceAuthConfig;
-use toadstool_common::interned_strings::socket_env;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
+use toadstool_common::interned_strings::socket_env;
 
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 300;

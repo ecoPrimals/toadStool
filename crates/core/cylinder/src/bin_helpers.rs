@@ -28,8 +28,8 @@ impl Bar0 {
     /// Caller must ensure `fd` refers to a valid PCI resource file, that
     /// `size` does not exceed the BAR region, and that the fd outlives this mapping.
     pub unsafe fn map(fd: std::os::fd::BorrowedFd<'_>, size: usize) -> io::Result<Self> {
-        let mmap = DeviceMmap::map_shared_rw(fd, 0, size)
-            .map_err(|e| io::Error::other(e.to_string()))?;
+        let mmap =
+            DeviceMmap::map_shared_rw(fd, 0, size).map_err(|e| io::Error::other(e.to_string()))?;
         Ok(Self { mmap })
     }
 
@@ -62,9 +62,6 @@ impl Bar0 {
 
     /// Volatile 32-bit write at `offset` (byte offset, must be 4-byte aligned).
     pub fn w32(&self, offset: u32, val: u32) {
-        let _ = self
-            .mmap
-            .as_volatile()
-            .write_u32(offset as usize, val);
+        let _ = self.mmap.as_volatile().write_u32(offset as usize, val);
     }
 }

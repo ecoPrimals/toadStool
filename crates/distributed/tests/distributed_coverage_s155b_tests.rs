@@ -22,9 +22,9 @@ use toadstool_distributed::cloud::{
 use toadstool_distributed::coordination::{
     BroadcastConfig, ConnectionHealth, CoordinationBroadcaster, CoordinationConnection,
     CoordinationConnectionConfig, CoordinationLoadBalancer, CoordinationTransport,
-    DistributionConfig, HttpProtocolConfig, JobAnalysis, JobComplexity,
-    JobDistributionStrategy, LoadBalancerConfig as CoordinationLoadBalancerConfig,
-    MassiveJobDistributor, MessageQueueProtocolConfig, ProtocolConfig,
+    DistributionConfig, HttpProtocolConfig, JobAnalysis, JobComplexity, JobDistributionStrategy,
+    LoadBalancerConfig as CoordinationLoadBalancerConfig, MassiveJobDistributor,
+    MessageQueueProtocolConfig, ProtocolConfig,
 };
 use toadstool_distributed::network::{NetworkDistributor, NetworkDistributorConfig, NodeHealth};
 use toadstool_distributed::primal_capabilities::workload::{

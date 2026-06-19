@@ -5,7 +5,13 @@ use tokio::sync::RwLock;
 
 /// Network metrics collector for distributed execution
 pub struct NetworkMetricsCollector {
-    #[cfg_attr(not(test), expect(dead_code, reason = "stored for lifecycle; consumed in test assertions"))]
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "stored for lifecycle; consumed in test assertions"
+        )
+    )]
     metrics: Arc<RwLock<NetworkMetricsData>>,
 }
 

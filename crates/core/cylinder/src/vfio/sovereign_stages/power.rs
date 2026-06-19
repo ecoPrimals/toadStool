@@ -67,11 +67,7 @@ pub(crate) fn cg_sweep(bar0: &MappedBar) -> CgSweepResult {
         }
     }
 
-    tracing::info!(
-        changes,
-        faulted,
-        "CG sweep complete"
-    );
+    tracing::info!(changes, faulted, "CG sweep complete");
 
     CgSweepResult {
         changes,
@@ -123,7 +119,10 @@ pub(crate) fn pri_bus_recover(bar0: &MappedBar) -> PriRecoveryResult {
         std::thread::sleep(Duration::from_millis(5));
 
         // Re-enumerate all ring stations so they re-register with the master
-        let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+        let _ = bar0.write_u32(
+            pri::PRI_RINGMASTER_COMMAND,
+            pri::PRI_RINGMASTER_CMD_ENUMERATE,
+        );
         std::thread::sleep(Duration::from_millis(20));
 
         let rm_after = bar0.read_u32(pri::PRI_RINGMASTER_INTR_STATUS).unwrap_or(0);
@@ -138,12 +137,7 @@ pub(crate) fn pri_bus_recover(bar0: &MappedBar) -> PriRecoveryResult {
     let health = monitor.probe_all_domains();
     let alive = health
         .iter()
-        .filter(|(_, _, h)| {
-            matches!(
-                h,
-                crate::vfio::channel::pri_monitor::DomainHealth::Alive
-            )
-        })
+        .filter(|(_, _, h)| matches!(h, crate::vfio::channel::pri_monitor::DomainHealth::Alive))
         .count();
     let faulted = health
         .iter()
@@ -163,12 +157,7 @@ pub(crate) fn pri_bus_recover(bar0: &MappedBar) -> PriRecoveryResult {
 
     std::thread::sleep(Duration::from_millis(50));
 
-    tracing::info!(
-        alive,
-        faulted,
-        recovered,
-        "PRI bus recovery after CG sweep"
-    );
+    tracing::info!(alive, faulted, recovered, "PRI bus recovery after CG sweep");
 
     PriRecoveryResult {
         alive,

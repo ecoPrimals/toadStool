@@ -39,8 +39,7 @@ impl CpuComputeResource {
     ///
     /// Returns when the Rayon thread pool cannot be constructed.
     pub fn new() -> ToadStoolResult<Self> {
-        let num_cores = std::thread::available_parallelism()
-            .map_or(1, std::num::NonZero::get);
+        let num_cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
 
         let thread_pool = Self::build_thread_pool(num_cores, "toadstool-cpu")?;
         Ok(Self::from_thread_pool(num_cores, thread_pool))
@@ -59,7 +58,10 @@ impl CpuComputeResource {
         Ok(Self::from_thread_pool(1, thread_pool))
     }
 
-    fn build_thread_pool(num_threads: usize, name_prefix: &str) -> ToadStoolResult<rayon::ThreadPool> {
+    fn build_thread_pool(
+        num_threads: usize,
+        name_prefix: &str,
+    ) -> ToadStoolResult<rayon::ThreadPool> {
         let prefix = name_prefix.to_string();
         rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
@@ -363,8 +365,7 @@ impl CpuComputeResource {
     }
 
     fn detect_ram_size() -> u64 {
-        toadstool_sysmon::memory_info()
-            .map_or(0, |m| m.total)
+        toadstool_sysmon::memory_info().map_or(0, |m| m.total)
     }
 
     /// Detect cache hierarchy
@@ -653,9 +654,7 @@ impl Default for CpuComputeResource {
     fn default() -> Self {
         Self::new()
             .or_else(|primary| {
-                tracing::error!(
-                    "Failed to create CPU compute resource: {primary}, using fallback"
-                );
+                tracing::error!("Failed to create CPU compute resource: {primary}, using fallback");
                 Self::new_fallback()
             })
             .unwrap_or_else(|fallback| {

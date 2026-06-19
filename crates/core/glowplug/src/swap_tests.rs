@@ -61,8 +61,8 @@ fn orchestrator_default_timeout() {
 
 #[test]
 fn orchestrator_custom_timeout() {
-    let orch = SwapOrchestrator::new(MockExecutor::new())
-        .with_quiescence_timeout(Duration::from_secs(10));
+    let orch =
+        SwapOrchestrator::new(MockExecutor::new()).with_quiescence_timeout(Duration::from_secs(10));
     assert_eq!(orch.quiescence_timeout(), Duration::from_secs(10));
 }
 
@@ -215,10 +215,12 @@ async fn orchestrate_swap_release_failure_is_non_fatal() {
     assert_eq!(result.steps.len(), 7);
     assert_eq!(result.steps[2].name, "drop_handle");
     assert_eq!(result.steps[2].status, StepStatus::Skipped);
-    assert!(result.steps[2]
-        .detail
-        .as_ref()
-        .is_some_and(|d| d.contains("release failed (non-fatal)")));
+    assert!(
+        result.steps[2]
+            .detail
+            .as_ref()
+            .is_some_and(|d| d.contains("release failed (non-fatal)"))
+    );
 }
 
 /// Executor where swap succeeds but returns `success: false` in observation.
@@ -259,10 +261,12 @@ async fn orchestrate_swap_unhealthy_device_fails_at_health_step() {
     assert_eq!(result.steps.len(), 7);
     assert_eq!(result.steps[6].name, "health_check");
     assert_eq!(result.steps[6].status, StepStatus::Failed);
-    assert!(result.steps[6]
-        .detail
-        .as_ref()
-        .is_some_and(|d| d.contains("not healthy")));
+    assert!(
+        result.steps[6]
+            .detail
+            .as_ref()
+            .is_some_and(|d| d.contains("not healthy"))
+    );
     assert!(result.summary.contains("failed"));
 }
 

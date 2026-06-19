@@ -2,9 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use super::elf::{read_cstr, read_u32_le, read_u64_le, read_u16_le, resolve_symtab};
-use super::paths::kernel_release;
 use super::KernelHealthError;
+use super::elf::{read_cstr, read_u16_le, read_u32_le, read_u64_le, resolve_symtab};
+use super::paths::kernel_release;
 
 /// Parse the `.gnu.linkonce.this_module` RELA entries from an existing `.ko`
 /// file to determine what `struct module` init/exit offsets that module was
@@ -18,7 +18,9 @@ pub fn reference_module_offsets(ko_path: &Path) -> Result<(u64, u64), KernelHeal
     parse_this_module_rela_offsets(&data)
 }
 
-pub(crate) fn parse_this_module_rela_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelHealthError> {
+pub(crate) fn parse_this_module_rela_offsets(
+    elf_data: &[u8],
+) -> Result<(u64, u64), KernelHealthError> {
     if elf_data.len() < 64 || &elf_data[0..4] != b"\x7fELF" || elf_data[4] != 2 {
         return Err(KernelHealthError::ElfParse("invalid 64-bit ELF".into()));
     }
@@ -88,10 +90,8 @@ pub(crate) fn parse_this_module_rela_offsets(elf_data: &[u8]) -> Result<(u64, u6
             }
             let st_name = read_u32_le(elf_data, sym_entry)? as usize;
             let sym_name = read_cstr(elf_data, strtab_off + st_name);
-            let is_exit_sym =
-                sym_name.contains("cleanup_module") || sym_name.ends_with("_exit");
-            let should_capture_exit =
-                exit_offset.is_none() || sym_name.contains("cleanup_module");
+            let is_exit_sym = sym_name.contains("cleanup_module") || sym_name.ends_with("_exit");
+            let should_capture_exit = exit_offset.is_none() || sym_name.contains("cleanup_module");
 
             if sym_name.contains("init_module") || sym_name.ends_with("_init") {
                 if init_offset.is_none() || sym_name.contains("init_module") {
