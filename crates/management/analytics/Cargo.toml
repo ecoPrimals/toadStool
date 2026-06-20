@@ -23,7 +23,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Machine learning and analytics
-ndarray = "0.16"
+ndarray = { workspace = true }
 statrs = "0.18"
 
 # Database for storing metrics - REMOVED: Brings in ring via rustls (violates pure Rust)

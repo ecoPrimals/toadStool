@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::os::fd::AsFd;
 use std::sync::Arc;
 
+const DEFAULT_ESTIMATED_DURATION: std::time::Duration = std::time::Duration::from_mins(1);
+
 impl DispatchHandler {
     pub fn new(
         coral_client: SharedVisualizationClient,
@@ -95,7 +97,7 @@ impl DispatchHandler {
             priority: 3,
             preferred_devices,
             min_vram_bytes: 0,
-            estimated_duration: std::time::Duration::from_mins(1),
+            estimated_duration: DEFAULT_ESTIMATED_DURATION,
             caller_gate_id,
             hardware_owner_gate_id,
         };

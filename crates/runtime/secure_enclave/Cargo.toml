@@ -22,7 +22,7 @@ futures = { workspace = true }
 # OLD: zstd, lz4 (both pulled in C dependencies via zstd-sys, lz4-sys)
 # NEW: 100% Pure Rust alternatives for NestGate decompression support!
 lz4_flex = { version = "0.13", default-features = false, features = ["safe-decode"] }  # Pure Rust LZ4, safe-decode prevents RUSTSEC-2026-0041
-ruzstd = "0.8"  # Pure Rust Zstd implementation (no C dependencies!)
+ruzstd = { workspace = true }  # Pure Rust Zstd implementation (no C dependencies!)
 
 # Cryptography — encryption/decryption delegated to BearDog via Tower Atomic
 # (crypto.encrypt / crypto.decrypt over JSON-RPC Unix socket).

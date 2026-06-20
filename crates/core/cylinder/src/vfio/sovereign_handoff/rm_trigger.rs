@@ -50,8 +50,9 @@ pub(crate) fn trigger_rm_init(
 
     tracing::info!(module_name, major, "found catalyst chardev major");
 
-    let rm_trigger_bin = std::env::var("TOADSTOOL_RM_TRIGGER_BIN")
-        .unwrap_or_else(|_| "/usr/local/bin/rm_trigger".to_string());
+    let rm_trigger_bin =
+        std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_RM_TRIGGER_BIN)
+            .unwrap_or_else(|_| "/usr/local/bin/rm_trigger".to_string());
     if std::path::Path::new(&rm_trigger_bin).exists() {
         super::forensics::breadcrumb(&format!(
             "rm_trigger: spawning binary (major={major}, channel={create_channel}, bdf={bdf})"

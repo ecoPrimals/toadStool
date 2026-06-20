@@ -123,8 +123,10 @@ impl ConditionEvaluator {
                 cpu_percent,
                 memory_mb,
             } => {
-                let current_cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
-                    .unwrap_or(0.0);
+                let current_cpu = toadstool_sysmon::cpu_usage(
+                    toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW,
+                )
+                .unwrap_or(0.0);
                 #[expect(
                     clippy::cast_possible_truncation,
                     reason = "used memory in MB fits u32 (max 4 TB)"

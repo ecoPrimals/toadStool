@@ -17,6 +17,9 @@
 use base64::Engine;
 
 #[cfg(feature = "gpu-discovery")]
+const DEVICE_LOST_SETTLE: std::time::Duration = std::time::Duration::from_millis(50);
+
+#[cfg(feature = "gpu-discovery")]
 struct WgpuDispatchContext {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -107,7 +110,7 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
     // that were silently swallowed by request_device.
     let _ = device.poll(wgpu::Maintain::Wait);
     // Small yield to let the device-lost callback fire.
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    tokio::time::sleep(DEVICE_LOST_SETTLE).await;
 
     if device_lost.load(std::sync::atomic::Ordering::SeqCst) {
         tracing::error!(

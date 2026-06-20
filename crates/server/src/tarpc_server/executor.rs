@@ -2,11 +2,10 @@
 //! Workload executor trait and [`StandaloneExecutor`] (single-node / dev).
 
 use std::future::Future;
-use std::time::Duration;
 
 use tracing::{info, warn};
 
-const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);
+use toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW;
 
 use crate::rpc_types::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, ServiceError,

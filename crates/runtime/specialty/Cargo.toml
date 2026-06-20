@@ -19,14 +19,14 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 
 # Legacy system communication
-serialport = { version = "4.3", default-features = false, optional = true }
+serialport = { workspace = true, optional = true }
 rexpect = "0.5"
 telnet = "0.2"
 regex = { workspace = true }
 # encoding removed: was declared but unused in source (RUSTSEC-2021-0153 unmaintained).
 # CharacterEncoding enum is defined locally. If legacy codec support is needed,
 # use encoding_rs (maintained by Mozilla, pure Rust).
-bytes = "1.0"
+bytes = { workspace = true }
 
 # Mainframe and enterprise systems
 # ibm-mq = { version = "0.1", optional = true }  # Not on crates.io

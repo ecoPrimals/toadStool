@@ -114,7 +114,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 thiserror = "2.0"
 rustix = "1.1.4"
+ruzstd = "0.8"
 regex = "1.10"
+serialport = { version = "4.3", default-features = false }
+ndarray = "0.16"
 
 # Configuration
 config = "0.15"

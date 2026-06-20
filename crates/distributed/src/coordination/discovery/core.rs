@@ -5,11 +5,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW;
 use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
-
-const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);
 
 use crate::coordination::types::{
     CapabilityTracker, CoordinationConnection, CoordinationDiscoveryConfig,

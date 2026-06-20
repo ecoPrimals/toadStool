@@ -350,6 +350,12 @@ pub const TOADSTOOL_SHADER_COMPILER_ADDR: &str = "TOADSTOOL_SHADER_COMPILER_ADDR
 /// Set `1` or `true` to restrict GPU backends to Vulkan (no display server probe).
 pub const TOADSTOOL_HEADLESS: &str = "TOADSTOOL_HEADLESS";
 
+/// Override path to the `rm_trigger` binary for catalyst sovereign handoff.
+pub const TOADSTOOL_RM_TRIGGER_BIN: &str = "TOADSTOOL_RM_TRIGGER_BIN";
+
+/// Override path for sovereign handoff forensics breadcrumb log.
+pub const TOADSTOOL_FORENSICS_LOG: &str = "TOADSTOOL_FORENSICS_LOG";
+
 /// Display IPC: full `host:port` TCP endpoint override.
 pub const TOADSTOOL_DISPLAY_IPC_ADDR: &str = "TOADSTOOL_DISPLAY_IPC_ADDR";
 /// Display IPC: port-only override (pairs with loopback host from shared network constants).

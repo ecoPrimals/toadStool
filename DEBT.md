@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: June 19, 2026 — S320+
+**Date**: June 20, 2026 — S321+
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -713,6 +713,24 @@ Four fuzz targets (S197 + `gpu_buffer_access` S203p); **CI smoke** runs each wit
 Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `crates/core/toadstool/src/proptest_strategies.rs`,
 `crates/core/hw-learn/src/proptest_strategies.rs`, `.github/workflows/ci.yml`.
 
+
+## S321 Resolved Debt
+
+- **D-ENV-CENTRALIZE**: 3 raw `std::env::var("...")` literals migrated to `socket_env` constants:
+  `TOADSTOOL_HEADLESS` (existing constant, wired), `TOADSTOOL_RM_TRIGGER_BIN` (new),
+  `TOADSTOOL_FORENSICS_LOG` (new). Zero production raw env strings remaining.
+- **D-DURATION-DEDUP**: 4× duplicate `from_millis(50)` CPU probe unified to shared
+  `toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW`. Named 8 additional
+  inline Duration literals: `DEFAULT_ESTIMATED_DURATION`, `KMSG_READ_BACKOFF`,
+  `DEVICE_LOST_SETTLE`, `FECS_UNHALT_SETTLE`, `FECS_CTXSW_INIT_SETTLE`, `SBR_RESET_SETTLE`,
+  `UDEV_POLL_INTERVAL`, `POOL_RETRY_BACKOFF`.
+- **D-DEP-UNIFY**: Workspace-unified 4 deps: `bytes` (specialty `"1.0"` → workspace `1.11.1`),
+  `ruzstd` (cylinder + secure_enclave `"0.8"` → workspace), `serialport` (edge + specialty +
+  display `"4.3"` → workspace), `ndarray` (akida-reservoir + performance + analytics `"0.16"` →
+  workspace). Zero non-workspace version drift remaining.
+- **D-REAGENT-REFACTOR**: `cylinder/vfio/reagent/mod.rs` (704L at 750L gate) smart-refactored
+  into 3 modules: `mod.rs` (420L types + manifest + discovery), `capture.rs` (230L pipeline +
+  helpers), `mmiotrace.rs` (92L distillation). All re-exports preserved, zero external API change.
 
 ## Recently Resolved (S203t)
 

@@ -4,6 +4,7 @@ use super::DispatchHandler;
 
 const CATALYST_WATCHDOG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(450);
 const WARM_HANDOFF_RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(7);
+const SBR_RESET_SETTLE: std::time::Duration = std::time::Duration::from_millis(500);
 
 /// Orchestrates the full warm handoff: module patching → insmod →
 /// seeder bind → settle → warm swap to vfio-pci → tier classification
@@ -119,7 +120,7 @@ pub(crate) async fn sovereign_warm_handoff(
                 if let Err(e) = std::fs::write(&reset_path, "1") {
                     tracing::error!(bdf, error = %e, "SBR cleanup failed — proceeding anyway");
                 } else {
-                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    std::thread::sleep(SBR_RESET_SETTLE);
                     tracing::info!(bdf, "SBR cleanup complete — GPU reset to clean state");
                 }
             }

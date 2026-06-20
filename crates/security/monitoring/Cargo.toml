@@ -13,6 +13,7 @@ categories = ["development-tools::profiling"]
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+toadstool-common = { path = "../../core/common" }
 toadstool-sysmon = { workspace = true }
 
 [dev-dependencies]

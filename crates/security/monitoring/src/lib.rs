@@ -209,7 +209,10 @@ impl SecurityMonitor {
         reason = "precision loss and truncation acceptable for metrics"
     )] // numeric conversions for metrics
     pub async fn sample_resources(&self) {
-        let cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0);
+        let cpu = toadstool_sysmon::cpu_usage(
+            toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW,
+        )
+        .unwrap_or(0.0);
         let (mem_used, mem_total) =
             toadstool_sysmon::memory_info().map_or((0, 1), |m| (m.used, m.total));
         let timestamp_ms = SystemTime::now()

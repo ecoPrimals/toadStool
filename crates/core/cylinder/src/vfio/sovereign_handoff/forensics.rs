@@ -15,7 +15,7 @@ static INITIALIZED: AtomicBool = AtomicBool::new(false);
 const DEFAULT_FORENSICS_PATH: &str = "/var/log/handoff-forensics.log";
 
 fn forensics_path() -> PathBuf {
-    std::env::var("TOADSTOOL_FORENSICS_LOG")
+    std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_FORENSICS_LOG)
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(DEFAULT_FORENSICS_PATH))
 }

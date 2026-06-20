@@ -12,6 +12,8 @@ use std::time::Duration;
 use toadstool_common::interned_strings::socket_env;
 use tracing::{debug, info, warn};
 
+const UDEV_POLL_INTERVAL: Duration = Duration::from_millis(100);
+
 /// Setup Akida NPU kernel driver
 pub struct NpuSetup {
     driver_path: Option<PathBuf>,
@@ -303,7 +305,7 @@ fn verify_device_nodes() -> Result<()> {
             info!("Device nodes created");
             return Ok(());
         }
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(UDEV_POLL_INTERVAL);
     }
 
     Err(AkidaError::setup_failed(

@@ -156,3 +156,14 @@ pub const TOKEN_REFRESH_INTERVAL: Duration = Duration::from_secs(3600);
 /// Timestamp validation window (5 minutes)
 /// Used for replay protection - messages older than this are rejected
 pub const TIMESTAMP_VALIDATION_WINDOW: Duration = Duration::from_secs(300);
+
+// ============================================================================
+// System Probing
+// ============================================================================
+
+/// CPU usage sampling window for `/proc/stat` delta measurement.
+///
+/// Used by `toadstool_sysmon::cpu_usage()` callers across the workspace.
+/// 50ms balances accuracy with responsiveness — shorter windows are noisy,
+/// longer ones block the caller.
+pub const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);

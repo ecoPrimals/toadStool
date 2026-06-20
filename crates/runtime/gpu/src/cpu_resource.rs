@@ -17,6 +17,8 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+const POOL_RETRY_BACKOFF: Duration = Duration::from_millis(10);
+
 /// CPU compute resource using Rayon for parallel execution
 pub struct CpuComputeResource {
     /// Number of CPU cores available
@@ -188,7 +190,7 @@ impl CpuComputeResource {
             if let Ok(pool) = rayon::ThreadPoolBuilder::new().num_threads(0).build() {
                 return pool;
             }
-            std::thread::sleep(std::time::Duration::from_millis(10));
+            std::thread::sleep(POOL_RETRY_BACKOFF);
         }
     }
 

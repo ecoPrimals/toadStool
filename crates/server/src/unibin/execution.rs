@@ -105,8 +105,10 @@ impl UnibinExecutionConfig {
             max_queue_size: unibin_execution_defaults::DEFAULT_MAX_JOB_QUEUE_SIZE,
             health_reporting_interval_secs:
                 unibin_execution_defaults::DEFAULT_COORDINATION_HEALTH_REPORT_INTERVAL_SECS,
-            headless: std::env::var("TOADSTOOL_HEADLESS")
-                .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
+            headless: std::env::var(
+                toadstool_common::interned_strings::socket_env::TOADSTOOL_HEADLESS,
+            )
+            .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true")),
             transport_endpoint: toadstool_common::transport_endpoint::TransportEndpoint::from_env()
                 .unwrap_or_else(|e| {
                     tracing::warn!("invalid TRANSPORT_ENDPOINT: {e}");

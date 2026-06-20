@@ -57,6 +57,8 @@ const GPU_WARN_PATTERNS: &[&str] = &[
     "msi_device_data_release",
 ];
 
+const KMSG_READ_BACKOFF: std::time::Duration = std::time::Duration::from_millis(100);
+
 /// Classify a kernel log line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Severity {
@@ -256,7 +258,7 @@ pub fn start_sentinel_thread() -> std::io::Result<()> {
                     }
                     _ => {
                         // Other error or EOF — brief sleep to avoid spin
-                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        std::thread::sleep(KMSG_READ_BACKOFF);
                         continue;
                     }
                 };

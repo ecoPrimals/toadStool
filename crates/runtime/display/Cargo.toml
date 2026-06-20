@@ -21,7 +21,7 @@ evdev = "0.13"              # Pure Rust evdev (NO libevdev!)
 # Serial transport (wraps edge crate's serialport capability)
 # default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
 # Port enumeration still works; may return less detail or stale entries.
-serialport = { version = "4.3", optional = true, default-features = false }
+serialport = { workspace = true, optional = true }
 
 # Async runtime
 tokio = { workspace = true }

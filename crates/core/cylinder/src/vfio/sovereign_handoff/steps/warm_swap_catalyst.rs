@@ -7,6 +7,9 @@
 
 use std::time::{Duration, Instant};
 
+const FECS_UNHALT_SETTLE: Duration = Duration::from_millis(200);
+const FECS_CTXSW_INIT_SETTLE: Duration = Duration::from_secs(1);
+
 use crate::nv::registers::{falcon, gpc, pmc, pri};
 use crate::vfio::device::MappedBar;
 use crate::vfio::warm_capture::Bar0Snapshot;
@@ -146,7 +149,7 @@ pub(crate) fn attempt_fecs_init_ctxsw(
                 "FECS halted — attempting unhalt (CPUCTL START_CPU)"
             );
             let _ = bar0.write_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize, 0x2);
-            std::thread::sleep(Duration::from_millis(200));
+            std::thread::sleep(FECS_UNHALT_SETTLE);
             let pc_after = bar0.read_u32(falcon::FECS_CTXSW_PC as usize).unwrap_or(0);
             let cpuctl_after = bar0
                 .read_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize)
@@ -165,7 +168,7 @@ pub(crate) fn attempt_fecs_init_ctxsw(
         );
         match crate::vfio::channel::fecs::fecs_init_ctxsw(bar0) {
             Ok(r) => {
-                std::thread::sleep(Duration::from_secs(1));
+                std::thread::sleep(FECS_CTXSW_INIT_SETTLE);
                 let tpc0 = bar0
                     .read_u32((gpc::gpc_tpc0(0) + 0x100) as usize)
                     .unwrap_or(0xdead);

@@ -84,7 +84,10 @@ impl ResourceManager {
     #[must_use]
     pub fn current_usage() -> ResourceUsage {
         let cpu_percent = (f64::from(
-            toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0),
+            toadstool_sysmon::cpu_usage(
+                toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW,
+            )
+            .unwrap_or(0.0),
         ) / 100.0)
             .clamp(0.0, 1.0);
 

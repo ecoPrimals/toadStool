@@ -13,7 +13,7 @@ categories = ["hardware-support", "os::linux-apis"]
 bytemuck = { version = "1", features = ["derive"] }
 object = { version = "0.39.1", features = ["read", "write"] }
 rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe", "fs", "system"] }
-ruzstd = "0.8"
+ruzstd = { workspace = true }
 toml = "0.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
