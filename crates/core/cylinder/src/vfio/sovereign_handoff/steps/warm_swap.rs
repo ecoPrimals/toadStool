@@ -16,6 +16,9 @@ use super::super::rollback::halt_result;
 use super::super::types::{HandoffResult, HandoffStep};
 use super::warm_swap_catalyst;
 
+const DRIVER_SWAP_TIMEOUT: Duration = Duration::from_secs(5);
+const PRI_RING_SETTLE: Duration = Duration::from_millis(10);
+
 fn breadcrumb(msg: &str) {
     crate::vfio::sovereign_handoff::forensics::breadcrumb(msg);
 }
@@ -184,7 +187,7 @@ fn catalyst_rebind(ctx: &mut PipelineContext<'_>, t: Instant) -> Option<HandoffR
             guarded_sysfs::sysfs_write_guarded(
                 &ctx.override_path,
                 &ctx.config.final_driver,
-                Duration::from_secs(5),
+                DRIVER_SWAP_TIMEOUT,
             ),
             Ok(()),
         );
@@ -220,7 +223,7 @@ fn catalyst_rebind(ctx: &mut PipelineContext<'_>, t: Instant) -> Option<HandoffR
         // ── FULL REBIND (clutch succeeded) ───────────────────────
         let poll_deadline = ctx.deadline.saturating_sub(ctx.overall.elapsed());
         let poll_start = Instant::now();
-        let poll_interval = Duration::from_secs(5);
+        let poll_interval = DRIVER_SWAP_TIMEOUT;
         let mut override_set = false;
         let mut probe_sent = false;
         let mut final_driver = guarded_sysfs::read_current_driver(&ctx.config.bdf);
@@ -244,7 +247,7 @@ fn catalyst_rebind(ctx: &mut PipelineContext<'_>, t: Instant) -> Option<HandoffR
                     guarded_sysfs::sysfs_write_guarded(
                         &ctx.override_path,
                         &ctx.config.final_driver,
-                        Duration::from_secs(5),
+                        DRIVER_SWAP_TIMEOUT,
                     ),
                     Ok(()),
                 )
@@ -264,7 +267,7 @@ fn catalyst_rebind(ctx: &mut PipelineContext<'_>, t: Instant) -> Option<HandoffR
                     guarded_sysfs::sysfs_write_guarded(
                         &ctx.probe_path,
                         &ctx.config.bdf,
-                        Duration::from_secs(5),
+                        DRIVER_SWAP_TIMEOUT,
                     ),
                     Ok(()),
                 ) {
@@ -411,7 +414,7 @@ fn catalyst_bar0_capture(ctx: &mut PipelineContext<'_>) {
             } else {
                 let pri_faults_persistent = if pri_intr != 0 {
                     let _ = post_swap_bar0.write_u32(pri::COMMAND as usize, 0x2);
-                    std::thread::sleep(Duration::from_millis(10));
+                    std::thread::sleep(PRI_RING_SETTLE);
                     let pri_after = post_swap_bar0
                         .read_u32(pri::INTR_STATUS as usize)
                         .unwrap_or(0);

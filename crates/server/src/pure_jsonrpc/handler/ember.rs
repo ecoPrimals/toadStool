@@ -4,6 +4,9 @@ use super::*;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use tracing::debug;
 
+const DEVICE_INIT_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
+const POST_RESET_SETTLE: std::time::Duration = std::time::Duration::from_millis(500);
+
 impl JsonRpcHandler {
     pub(super) fn ember_list(&self) -> serde_json::Value {
         let list = self.glowplug.list_devices();
@@ -184,7 +187,7 @@ impl JsonRpcHandler {
         }
 
         let wait_start = std::time::Instant::now();
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        std::thread::sleep(DEVICE_INIT_WAIT);
         stages.push(serde_json::json!({
             "name": "wait_init",
             "success": true,
@@ -257,7 +260,7 @@ impl JsonRpcHandler {
         }));
 
         let wait_start = std::time::Instant::now();
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(POST_RESET_SETTLE);
         stages.push(serde_json::json!({
             "name": "wait",
             "success": true,

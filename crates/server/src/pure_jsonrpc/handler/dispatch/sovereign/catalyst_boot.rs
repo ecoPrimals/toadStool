@@ -3,6 +3,9 @@
 use super::DispatchHandler;
 use super::init;
 
+const CATALYST_BOOT_WATCHDOG_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(2);
+const CATALYST_BOOT_RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
+
 /// Catalyst-free boot: nouveau warm handoff + golden state replay + tier classification.
 ///
 /// The end-state pipeline: no proprietary driver at runtime. Uses nouveau
@@ -107,11 +110,11 @@ pub(crate) async fn sovereign_catalyst_boot(
     let _watchdog_guard = crate::background::catalyst_watchdog::activate(
         &bdf_owned,
         watchdog_profile,
-        Some(std::time::Duration::from_mins(2)),
+        Some(CATALYST_BOOT_WATCHDOG_TIMEOUT),
         &config.module_name,
     );
 
-    let rpc_timeout = std::time::Duration::from_secs(90);
+    let rpc_timeout = CATALYST_BOOT_RPC_TIMEOUT;
     let blocking_future = tokio::task::spawn_blocking(move || {
         toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_heartbeat(
             &config,

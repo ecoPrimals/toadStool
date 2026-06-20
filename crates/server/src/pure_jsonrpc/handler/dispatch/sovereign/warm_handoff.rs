@@ -2,6 +2,9 @@
 
 use super::DispatchHandler;
 
+const CATALYST_WATCHDOG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(450);
+const WARM_HANDOFF_RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(7);
+
 /// Orchestrates the full warm handoff: module patching → insmod →
 /// seeder bind → settle → warm swap to vfio-pci → tier classification
 /// → rmmod. The operator never touches the kernel.
@@ -212,11 +215,11 @@ pub(crate) async fn sovereign_warm_handoff(
     let _watchdog_guard = crate::background::catalyst_watchdog::activate(
         &watchdog_bdf,
         watchdog_profile,
-        Some(std::time::Duration::from_secs(450)),
+        Some(CATALYST_WATCHDOG_TIMEOUT),
         &config.module_name,
     );
 
-    let rpc_timeout = std::time::Duration::from_mins(7);
+    let rpc_timeout = WARM_HANDOFF_RPC_TIMEOUT;
     let module_name_for_signal = config.module_name.clone();
     let blocking_future = tokio::task::spawn_blocking(move || {
         toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_signals(

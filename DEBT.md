@@ -678,7 +678,7 @@ distributed (coordination discovery core/registry/client, crypto validators),
 CLI (network config security/reliability/traffic validation),
 integration (primal manager lifecycle, storage artifacts),
 WASM (component model registry/core).
-Files: `scripts/run-coverage.sh`, `.github/workflows/ci.yml`.
+Files: `scripts/run-coverage.sh` (local). CI runs fmt/clippy/lib tests only — no llvm-cov in pipeline yet.
 
 
 ## Evolved Debt (monitoring)
