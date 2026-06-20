@@ -1,7 +1,7 @@
 # ToadStool Capability Registry — machine-readable capability declaration
 # Wave 78 ecosystem standard | AGPL-3.0-or-later
 # Generated from DIRECT_JSONRPC_METHODS + capabilities.list Wire Standard L3
-# Version: v0.2.0 | Session: S320+
+# Version: v0.2.0 | Session: S321+
 
 [meta]
 primal = "toadstool"
@@ -217,6 +217,7 @@ methods = [
 owner = "toadstool"
 description = "Health probes and lifecycle"
 methods = [
+    "health",
     "health.liveness",
     "health.readiness",
     "health.check",

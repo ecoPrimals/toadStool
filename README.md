@@ -268,7 +268,7 @@ toadStool/
 7. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 8. **Vendor-agnostic** -- WGPU/Vulkan for GPU discovery, any vendor works
 9. **Sovereign compute** -- no vendor lock-in, pure Rust core
-10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (46 blocks, all justified; all in hw-safe/GPU/VFIO/display/plugin containment crates)
+10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (44 blocks, all justified; all in hw-safe/GPU/VFIO/display/plugin containment crates)
 11. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -290,7 +290,7 @@ toadStool/
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **zero production `#[allow]`** — all converted to `#[expect]` with `reason` (S291); ~13 test-only `#[allow]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
 | External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif`. S288: `modbus` (feature-gated `modbus-transport`). S289: `bollard` (feature-gated `docker`, not default) |
-| Env centralization | **~98%** (~410+ env reads via `socket_env::` constants); <10 raw `env::var("...")` remaining (S282–S285) |
+| Env centralization | **100%** (zero production raw env string literals, S321; ~410+ reads via `socket_env::` constants) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -330,7 +330,7 @@ toadStool/
 - **S289–S293 (Jun 4–5, 2026)**: **Deep Debt VIII–X + Telemetry** — `tarpc` gating, unwrap purge, cylinder splits, LEGACY deprecation tracing, telemetry wire contract v1.1, bollard/serialport feature-gated, `CallerContext` threading, zero production panics.
 - **S284–S288 (Jun 3, 2026)**: **Deep Debt VI–VIII** — Last 3 files >800L split, BearDog aliases removed, `modbus` gated, SAFETY docs, security migration, typed stub errors. Zero production files >800L.
 - **S278–S283 (May 27–31, 2026)**: **Deep Debt I–V + Module Sprint** — Split 7 oversized files, ported 4 C tools to Rust, libc eliminated, env centralized (~98%), unsafe hardened, zero clippy.
-- **S90–S198 (Mar–Apr 2026)**: Full evolution history from REST API deletion through capability-based discovery, unsafe containment (89→46 blocks), dependency sovereignty, and coverage expansion (19K→21.5K tests). See [CHANGELOG.md](CHANGELOG.md).
+- **S90–S198 (Mar–Apr 2026)**: Full evolution history from REST API deletion through capability-based discovery, unsafe containment (89→44 blocks), dependency sovereignty, and coverage expansion (19K→21.5K tests). See [CHANGELOG.md](CHANGELOG.md).
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
@@ -383,7 +383,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 2026 — S317. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **~98% env centralized.** **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S316: cpu_resource split 749→673, glowplug_client split 729→635). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced: unsignalled connections rejected with error response (S315). **GuideStone `health` method** — `{status, primal, version}` (S315).
+**Last Updated**: Jun 20, 2026 — S321+. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S320: warm_swap 818→479+305; S321: reagent 704→3 files). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **GuideStone `health` method** (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319). **Workspace deps unified** (S321). **Duration dedup** — `CPU_USAGE_SAMPLE_WINDOW` + 8 named constants (S321).
 
 ---
 

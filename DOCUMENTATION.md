@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Jun 2026 — S320+
+**Last Updated**: Jun 20, 2026 — S321+
 
 ---
 
@@ -30,7 +30,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S320+ — Jun 2026)
+## Current State (S321+ — Jun 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
@@ -42,7 +42,10 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **gRPC + OpenCL DELETED** (S319) — enum variants, config, stubs, detection all removed (−458 lines).
 - **Bare `"health"` method** (S315) — returns `{status, primal, version}` per GuideStone standard.
 - **Zero hardcoded cross-primal names** — `LEGACY_*_PASCAL` constants for wire compat (S320+).
-- **Zero production files >750L** — `warm_swap.rs` 818L → 479L + 305L catalyst helpers (S320+).
+- **Zero production files >750L** — `warm_swap.rs` 818L → 479L + 305L catalyst helpers (S320+). `reagent/mod.rs` 704L → 3 files (S321).
+- **Env centralization complete** (S321) — zero production raw `env::var("...")` literals; `TOADSTOOL_RM_TRIGGER_BIN` + `TOADSTOOL_FORENSICS_LOG` added to `socket_env`.
+- **Duration dedup** (S321) — `CPU_USAGE_SAMPLE_WINDOW` unified across 5 crates; 8 additional named constants.
+- **Dep unification** (S321) — `bytes`/`ruzstd`/`serialport`/`ndarray` workspace-unified; zero version drift.
 - **TOADSTOOL-AUTO-REGISTER** (S309, Wave 111) — PCI sysfs GPU/NPU in `ipc.register` + `primal.announce`.
 - **PRIMAL-SOCKET-CLEANUP** (S308, Wave 107) — `BIOMEOS_SOCKET_DIR` wired; zero `/tmp` writes.
 - **Coverage Push I–IV** (S294–S298) — +174 tests, `--socket` wired, `--headless` mode, musl-static VPS binary.
@@ -51,7 +54,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S320+).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S321+).
 
 ---
 

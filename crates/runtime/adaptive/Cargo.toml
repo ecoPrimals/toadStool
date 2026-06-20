@@ -38,9 +38,6 @@ proptest = { workspace = true }
 default = ["gpu-discovery"]
 gpu-discovery = ["dep:wgpu"]
 
-# [[bench]]
-# name = "adaptive_benchmarks"
-# harness = false
 
 [lints]
 workspace = true

@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 19, 2026 (Sessions 43-320+)
+## [Unreleased] - Jun 20, 2026 (Sessions 43-321+)
+
+### Session S321 (Jun 20, 2026) — Deep Debt XIX: Env Centralization + Duration Dedup + Dep Unification + Reagent Split
+
+Fourth deep-debt pass closing environment, dependency, and file-size hygiene gaps.
+
+- **Env centralization complete** — last 3 raw `std::env::var("...")` literals migrated to `socket_env` constants: `TOADSTOOL_HEADLESS` (existing, wired), `TOADSTOOL_RM_TRIGGER_BIN` (new), `TOADSTOOL_FORENSICS_LOG` (new). Zero production raw env strings remaining.
+- **Duration deduplication** — 4× duplicate `from_millis(50)` CPU probe unified to `toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW`. 8 additional inline Duration literals named: `DEFAULT_ESTIMATED_DURATION`, `KMSG_READ_BACKOFF`, `DEVICE_LOST_SETTLE`, `FECS_UNHALT_SETTLE`, `FECS_CTXSW_INIT_SETTLE`, `SBR_RESET_SETTLE`, `UDEV_POLL_INTERVAL`, `POOL_RETRY_BACKOFF`.
+- **Dependency unification** — `bytes` (specialty `"1.0"` → workspace `1.11.1`), `ruzstd` (→ workspace `0.8`), `serialport` (→ workspace `4.3`), `ndarray` (→ workspace `0.16`). Zero non-workspace version drift.
+- **Reagent module split** — `cylinder/vfio/reagent/mod.rs` (704L at 750L gate) → `mod.rs` (~420L) + `capture.rs` (~230L) + `mmiotrace.rs` (~92L). All re-exports preserved, zero external API change.
 
 ### Session S320 (Jun 16, 2026) — Wave 114: MitoBeacon Acceptance (Genetics-Layer Wiring)
 
