@@ -6,7 +6,7 @@ mod lifecycle;
 mod vfio;
 
 use super::DispatchHandler;
-use super::submit;
+use crate::pure_jsonrpc::handler::dispatch::submit_params as submit;
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_ember::VfioAnchor;

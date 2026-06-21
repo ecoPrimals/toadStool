@@ -3,7 +3,7 @@
 
 use super::{submit_params, test_handler};
 use crate::pure_jsonrpc::handler::dispatch::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
-use crate::pure_jsonrpc::handler::dispatch::submit::{
+use crate::pure_jsonrpc::handler::dispatch::submit_params::{
     enforce_envelope, resolve_binary_param, resolve_buffers, resolve_shader_info,
     resolve_workgroup_size,
 };

@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 21, 2026 (Sessions 43-322+)
+## [Unreleased] - Jun 21, 2026 (Sessions 43-323+)
+
+### Session S323 (Jun 21, 2026) — Test Extraction + Submit Split + Flaky Fix + Edge Coverage
+
+File-size gate push and coverage expansion sprint.
+
+- **Test extraction** — inline `#[cfg(test)]` blocks extracted from `method_gate.rs` (644→279L, 25 tests), `job.rs` (652→277L, 27 tests), and `shader_dispatch.rs` (590→471L, 11 tests) to dedicated `*_tests.rs` files. 63 tests total moved with zero loss.
+- **Submit param split** — `dispatch/submit.rs` (642→487L): parameter resolution helpers (`enforce_envelope`, `resolve_binary_param`, `resolve_workgroup_size`, `resolve_buffers`, `resolve_shader_info`) extracted to `submit_params.rs` (174L). All 6 consumer sites updated to import from new module. Handler stays orchestration-only.
+- **Flaky test fix** — `test_resource_monitoring_tracks_peak_executions` un-ignored: replaced `yield_now()` tight loop with 50ms sleep polling and increased timeout from 1s to 3s. 3/3 stable on multi_thread executor.
+- **Edge communication coverage** — `edge/communication.rs` (325L, previously zero tests) now has 9 unit tests covering protocol key detection, NetworkProtocol trait methods, manager creation, and error handling.
+- **Quality gates** — 9,074+ lib tests, 0 failures. Zero clippy, zero fmt diff. All production files under 750L gate.
 
 ### Session S322 (Jun 21, 2026) — Client RiboCipher Fix + Composition Graduation + ipc_watch Coverage + Test Extraction
 

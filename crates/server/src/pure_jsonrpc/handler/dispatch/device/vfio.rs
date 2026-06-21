@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! `device.vfio.*` JSON-RPC handlers — VFIO open and roundtrip dispatch.
 
-use super::{DispatchHandler, submit};
+use super::DispatchHandler;
+use crate::pure_jsonrpc::handler::dispatch::submit_params as submit;
 use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use std::sync::atomic::Ordering;

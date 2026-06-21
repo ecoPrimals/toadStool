@@ -322,3 +322,99 @@ impl CommunicationProtocol for NetworkProtocol {
         Box::pin(async { Ok(()) })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn protocol_key_serial_paths() {
+        assert_eq!(
+            CommunicationManager::protocol_key_for_address("/dev/ttyUSB0"),
+            "serial"
+        );
+        assert_eq!(
+            CommunicationManager::protocol_key_for_address("/dev/ttyACM0"),
+            "serial"
+        );
+        assert_eq!(
+            CommunicationManager::protocol_key_for_address("COM3"),
+            "serial"
+        );
+    }
+
+    #[test]
+    fn protocol_key_tcp_addresses() {
+        assert_eq!(
+            CommunicationManager::protocol_key_for_address("192.168.1.100:8080"),
+            "tcp"
+        );
+        assert_eq!(
+            CommunicationManager::protocol_key_for_address("localhost:3000"),
+            "tcp"
+        );
+        assert_eq!(
+            CommunicationManager::protocol_key_for_address("edge-device.local:5000"),
+            "tcp"
+        );
+    }
+
+    #[tokio::test]
+    async fn network_protocol_name() {
+        let proto = NetworkProtocol {
+            timeout: Duration::from_secs(1),
+        };
+        assert_eq!(proto.get_name(), "TCP");
+    }
+
+    #[tokio::test]
+    async fn network_protocol_always_available() {
+        let proto = NetworkProtocol {
+            timeout: Duration::from_secs(1),
+        };
+        assert!(proto.is_available().await);
+    }
+
+    #[tokio::test]
+    async fn network_connect_disconnect_are_noop() {
+        let proto = NetworkProtocol {
+            timeout: Duration::from_secs(1),
+        };
+        proto.connect("127.0.0.1:9999").await.unwrap();
+        proto.disconnect("127.0.0.1:9999").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn network_send_to_unreachable_host_returns_error() {
+        let proto = NetworkProtocol {
+            timeout: Duration::from_millis(50),
+        };
+        let result = proto.send_message("192.0.2.1:1", b"test").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn network_receive_from_unreachable_host_returns_error() {
+        let proto = NetworkProtocol {
+            timeout: Duration::from_millis(50),
+        };
+        let result = proto.receive_message("192.0.2.1:1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn manager_creation_registers_tcp() {
+        let config = EdgeRuntimeConfig::default();
+        let manager = CommunicationManager::new(&config).await.unwrap();
+        let protocols = manager.protocols.read().await;
+        assert!(protocols.contains_key("tcp"));
+    }
+
+    #[tokio::test]
+    async fn manager_send_to_missing_serial_returns_error() {
+        let config = EdgeRuntimeConfig::default();
+        let manager = CommunicationManager::new(&config).await.unwrap();
+        let result = manager.send("/dev/ttyUSB0", b"hello").await;
+        assert!(result.is_err());
+    }
+}

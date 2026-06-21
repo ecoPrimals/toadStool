@@ -282,7 +282,7 @@ async fn capabilities_glowplug_has_orchestrator_type() {
 
 #[test]
 fn resolve_shader_info_accepts_toadstool_native_names() {
-    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    use crate::pure_jsonrpc::handler::dispatch::submit_params::resolve_shader_info;
     let si = serde_json::json!({
         "gpr_count": 32,
         "shared_mem_bytes": 16384,
@@ -301,7 +301,7 @@ fn resolve_shader_info_accepts_toadstool_native_names() {
 
 #[test]
 fn resolve_shader_info_accepts_coralreef_field_names() {
-    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    use crate::pure_jsonrpc::handler::dispatch::submit_params::resolve_shader_info;
     let si = serde_json::json!({
         "gprs": 48,
         "shared_memory": 32768,
@@ -319,7 +319,7 @@ fn resolve_shader_info_accepts_coralreef_field_names() {
 
 #[test]
 fn resolve_shader_info_native_name_preferred_over_alias() {
-    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    use crate::pure_jsonrpc::handler::dispatch::submit_params::resolve_shader_info;
     let si = serde_json::json!({
         "gpr_count": 32,
         "gprs": 64,
@@ -339,7 +339,7 @@ fn resolve_shader_info_native_name_preferred_over_alias() {
 
 #[test]
 fn resolve_shader_info_defaults_without_metadata() {
-    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    use crate::pure_jsonrpc::handler::dispatch::submit_params::resolve_shader_info;
     let si = serde_json::json!({});
     let info = resolve_shader_info(&si, [64, 1, 1]);
     assert_eq!(info.gpr_count, 0);

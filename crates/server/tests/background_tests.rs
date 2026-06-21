@@ -169,28 +169,13 @@ async fn test_resource_monitoring_updates_statistics() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "Flaky due to timing sensitivity - resource monitoring interval may not capture execution"]
 async fn test_resource_monitoring_tracks_peak_executions() {
-    // NOTE: This test is flaky due to subtle timing issues between:
-    // 1. Starting background services
-    // 2. Adding the execution to active_executions
-    // 3. Resource monitoring task's interval ticks
-    //
-    // The resource monitoring task uses interval.tick() which completes immediately
-    // on the first call, then waits for subsequent ticks. This makes it difficult
-    // to guarantee that the execution is present during a monitoring cycle.
-    //
-    // Recommended fix: Refactor resource monitoring to use channels/events
-    // instead of polling, or add explicit synchronization primitives.
-
     let state = create_test_state();
     let mut rx = state.event_broadcaster.subscribe();
 
-    // Start with no executions
     let initial_peak = state.stats.read().await.peak_concurrent_executions;
     assert_eq!(initial_peak, 0);
 
-    // Start background services first
     let handle = tokio::spawn({
         let s = state.clone();
         async move {
@@ -198,8 +183,8 @@ async fn test_resource_monitoring_tracks_peak_executions() {
         }
     });
 
-    // ✅ FULLY MODERNIZED: Wait for first event to confirm services started
-    let _ = tokio::time::timeout(Duration::from_millis(100), rx.recv()).await;
+    // Wait for first event to confirm services started
+    let _ = tokio::time::timeout(Duration::from_millis(200), rx.recv()).await;
 
     // Add mock execution
     {
@@ -220,23 +205,22 @@ async fn test_resource_monitoring_tracks_peak_executions() {
         executions.insert(execution.execution_id, execution);
     }
 
-    // ✅ FULLY MODERNIZED: Wait for statistics update event instead of polling
-    let peak_found = tokio::time::timeout(Duration::from_secs(1), async {
+    // Poll with brief sleeps to let the monitoring tick observe the execution.
+    // The monitoring interval is short (~1s), so 3s timeout gives ample margin.
+    let peak_found = tokio::time::timeout(Duration::from_secs(3), async {
         loop {
             let peak = state.stats.read().await.peak_concurrent_executions;
             if peak > 0 {
                 return true;
             }
-            // Brief yield to allow background tasks to run
-            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(50)).await;
         }
     })
     .await;
 
-    // Verify peak was detected and tracked
     assert!(
         peak_found.is_ok(),
-        "Peak concurrent executions should be detected"
+        "Peak concurrent executions should be detected within 3s"
     );
     let peak = state.stats.read().await.peak_concurrent_executions;
     assert!(peak >= 1, "Peak executions should be tracked, got: {peak}");

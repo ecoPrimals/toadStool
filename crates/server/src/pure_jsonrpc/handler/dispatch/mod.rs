@@ -20,6 +20,7 @@ mod shader_dispatch;
 mod sovereign;
 mod state;
 mod submit;
+mod submit_params;
 pub mod telemetry;
 pub(crate) mod trust;
 mod types;
