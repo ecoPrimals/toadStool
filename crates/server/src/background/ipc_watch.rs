@@ -21,6 +21,59 @@ const POLL_INTERVAL_NO_DISCOVERY: Duration = Duration::from_secs(30);
 const SHADER_CAPABILITY: &str =
     toadstool_common::constants::primal_identity::capability::SHADER_COMPILER;
 
+/// Mutable state carried across poll iterations.
+struct WatcherState {
+    revision: u64,
+    discovery_available: bool,
+}
+
+/// Process a single `ipc.watch` response, returning `true` if a `registered`
+/// event triggered cache invalidation.
+///
+/// Extracted from the event loop to enable unit testing of event processing.
+async fn process_response(
+    response: &serde_json::Value,
+    state: &mut WatcherState,
+    shader_client: &SharedVisualizationClient,
+) -> bool {
+    if let Some(new_rev) = response.get("revision").and_then(serde_json::Value::as_u64) {
+        state.revision = new_rev;
+    }
+
+    let mut invalidated = false;
+
+    if let Some(events) = response.get("events").and_then(|v| v.as_array()) {
+        for event in events {
+            let kind = event
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let primal = event
+                .get("primal")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+
+            if kind == "registered" {
+                info!(
+                    primal,
+                    kind,
+                    state.revision,
+                    "ipc.watch: shader provider registered — invalidating cache"
+                );
+                shader_client.invalidate().await;
+                invalidated = true;
+            } else {
+                debug!(
+                    primal,
+                    kind, state.revision, "ipc.watch: shader provider event"
+                );
+            }
+        }
+    }
+
+    invalidated
+}
+
 /// Run the `ipc.watch` background poller.
 ///
 /// Connects to the discovery capability socket and polls `ipc.watch` for shader
@@ -29,20 +82,22 @@ const SHADER_CAPABILITY: &str =
 pub async fn run(shader_client: SharedVisualizationClient) {
     info!("ipc.watch background poller starting (watching for shader capability)");
 
-    let mut revision: u64 = 0;
-    let mut discovery_available = false;
+    let mut state = WatcherState {
+        revision: 0,
+        discovery_available: false,
+    };
 
     loop {
         let env = SocketPathEnv::from_env();
         let discovery_socket = resolve_capability_socket_fallback("discovery", &env);
 
         if !discovery_socket.exists() {
-            if discovery_available {
+            if state.discovery_available {
                 warn!(
                     path = %discovery_socket.display(),
                     "discovery service socket disappeared — will retry"
                 );
-                discovery_available = false;
+                state.discovery_available = false;
             }
             tokio::time::sleep(POLL_INTERVAL_NO_DISCOVERY).await;
             continue;
@@ -51,7 +106,7 @@ pub async fn run(shader_client: SharedVisualizationClient) {
         let client = UnixJsonRpcClient::new(&discovery_socket);
 
         let params = serde_json::json!({
-            "since_revision": revision,
+            "since_revision": state.revision,
             "capabilities": [SHADER_CAPABILITY],
         });
 
@@ -60,56 +115,28 @@ pub async fn run(shader_client: SharedVisualizationClient) {
             .await
         {
             Ok(response) => {
-                if !discovery_available {
+                if !state.discovery_available {
                     info!(
                         path = %discovery_socket.display(),
                         "discovery ipc.watch connected"
                     );
-                    discovery_available = true;
+                    state.discovery_available = true;
                 }
 
-                if let Some(new_rev) = response.get("revision").and_then(serde_json::Value::as_u64)
-                {
-                    revision = new_rev;
-                }
-
-                if let Some(events) = response.get("events").and_then(|v| v.as_array()) {
-                    for event in events {
-                        let kind = event
-                            .get("kind")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-                        let primal = event
-                            .get("primal")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-
-                        if kind == "registered" {
-                            info!(
-                                primal,
-                                kind,
-                                revision,
-                                "ipc.watch: shader provider registered — invalidating cache"
-                            );
-                            shader_client.invalidate().await;
-                        } else {
-                            debug!(primal, kind, revision, "ipc.watch: shader provider event");
-                        }
-                    }
-                }
+                process_response(&response, &mut state, &shader_client).await;
             }
             Err(e) => {
-                if discovery_available {
+                if state.discovery_available {
                     debug!(
                         error = %e,
                         "ipc.watch poll failed — discovery service may be restarting"
                     );
-                    discovery_available = false;
+                    state.discovery_available = false;
                 }
             }
         }
 
-        let interval = if discovery_available {
+        let interval = if state.discovery_available {
             POLL_INTERVAL
         } else {
             POLL_INTERVAL_NO_DISCOVERY
@@ -117,3 +144,7 @@ pub async fn run(shader_client: SharedVisualizationClient) {
         tokio::time::sleep(interval).await;
     }
 }
+
+#[cfg(test)]
+#[path = "ipc_watch_tests.rs"]
+mod tests;

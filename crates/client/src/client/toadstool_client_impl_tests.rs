@@ -224,8 +224,16 @@ mod jsonrpc_unix_mock {
     }
 
     async fn handle_one_connection(stream: UnixStream, state: MockState) {
+        use tokio::io::AsyncReadExt;
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
+
+        // Consume riboCipher CLEAR signal [0xEC, 0x01] sent by UnixJsonRpcClient
+        let mut signal = [0u8; 2];
+        if reader.read_exact(&mut signal).await.is_err() {
+            return;
+        }
+
         let mut line = String::new();
         if reader.read_line(&mut line).await.is_err() {
             return;

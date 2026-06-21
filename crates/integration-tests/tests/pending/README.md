@@ -5,15 +5,7 @@ fully integrated**. They are quarantined here so they do not block CI.
 
 ## Remaining Files
 
-| File | Blocking on | Notes |
-|---|---|---|
-| `e2e_composition_workflow.rs` | Composition engine E2E path | APIs exist (`CompositionEngine`, `CompositionRequest`, `Constraint`); needs E2E wiring |
-
-## Removed (S41 — stale API)
-
-| File | Reason |
-|---|---|
-| `e2e_primal_discovery_workflow.rs` | Used removed `EcosystemDiscovery`; API is now `EcosystemCoordinator` |
+No files currently pending — all quarantined tests have been graduated.
 
 ## Graduated (moved to `tests/`)
 
@@ -22,6 +14,13 @@ fully integrated**. They are quarantined here so they do not block CI.
 | S22 | `error_handling_tests`, `resource_requirements_tests`, `security_context_tests`, `config_management_tests`, `evolution_fault_tests`, `evolution_chaos_tests` |
 | S23 | `runtime_execution_tests` |
 | S24 | `error_paths_discovery_tests`, `fault_tests` (→ `chaos/`), `security_tests` (→ `security/`) |
+| S322 | `e2e_composition_workflow` — CompositionEngine, CompositionRequest, Constraint evaluation (11 tests) |
+
+## Removed (S41 — stale API)
+
+| File | Reason |
+|---|---|
+| `e2e_primal_discovery_workflow.rs` | Used removed `EcosystemDiscovery`; API is now `EcosystemCoordinator` |
 
 ## Removed (S31h — stale/broken)
 

@@ -27,6 +27,14 @@
 /// Consumers (barraCuda, biomeOS) should validate this on connection.
 pub const TELEMETRY_SCHEMA_VERSION: &str = "1.1";
 
+/// Known consumers of the dispatch telemetry schema.
+///
+/// These are wire-contract identifiers: downstream primals match on these exact
+/// strings when connecting to `dispatch.telemetry.schema`. Do not change them
+/// without coordinating with the consumer teams.
+pub const CONSUMER_BARRACUDA_MLP: &str = "barraCuda:ml.mlp_train";
+pub const CONSUMER_BIOMEOS_PERCEPTRON: &str = "biomeOS:L5.perceptron";
+
 use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use serde::{Deserialize, Serialize};
 
@@ -315,7 +323,7 @@ pub fn telemetry_schema() -> serde_json::Value {
                 "affected_dims": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 19, 21, 22, 23, 25, 27, 32, 34, 35]
             }
         },
-        "consumers": ["barraCuda:ml.mlp_train", "biomeOS:L5.perceptron"],
+        "consumers": [CONSUMER_BARRACUDA_MLP, CONSUMER_BIOMEOS_PERCEPTRON],
         "normalization": "min_max_per_dimension",
         "timestamp_epoch": "unix_ms",
     })
