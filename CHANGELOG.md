@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 20, 2026 (Sessions 43-321+)
+## [Unreleased] - Jun 21, 2026 (Sessions 43-322+)
+
+### Session S322 (Jun 21, 2026) — Client RiboCipher Fix + Composition Graduation + ipc_watch Coverage + Test Extraction
+
+Test quality and coverage sprint closing the client exclusion, quarantine backlog, and file-size targets.
+
+- **Client riboCipher fix** — `toadstool-client` mock server now consumes `[0xEC, 0x01]` CLEAR signal before reading JSON, unblocking 12 previously-failing tests. S311 regression resolved; client package re-included in workspace test suite.
+- **Composition tests graduated** — `e2e_composition_workflow.rs` moved from `pending/` quarantine to active integration test suite. 11 `CompositionEngine` tests now run in default `cargo test`. Quarantine README updated, `pending/` directory cleared.
+- **ipc_watch coverage** — zero-coverage production module (`background/ipc_watch.rs`) refactored: event processing extracted to `process_response()` helper. 9 unit tests added covering revision tracking, cache invalidation, and edge cases.
+- **Test extraction** — inline `#[cfg(test)]` blocks extracted from `mmio.rs` (689→612L) and `trials.rs` (697→467L) to dedicated `mmio_tests.rs` and `trials_tests.rs` files. File-gate compliance improved.
+- **Telemetry wire-contract constants** — consumer primal identifiers (`barraCuda:ml.mlp_train`, `biomeOS:L5.perceptron`) extracted to `CONSUMER_BARRACUDA_MLP` and `CONSUMER_BIOMEOS_PERCEPTRON` constants alongside `TELEMETRY_SCHEMA_VERSION`.
 
 ### Session S321 (Jun 20, 2026) — Deep Debt XIX: Env Centralization + Duration Dedup + Dep Unification + Reagent Split
 

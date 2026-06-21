@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S321+ | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jun 2026 | S322+ | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,069+ lib-only default; +1,289 behind `legacy-coordination`), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,065+ lib-only default; +1,289 behind `legacy-coordination`), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
@@ -383,7 +383,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jun 20, 2026 — S321+. **23,000+** workspace tests, 0 failures (9,069+ lib default; +1,289 legacy-coordination). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S320: warm_swap 818→479+305; S321: reagent 704→3 files). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **GuideStone `health` method** (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319). **Workspace deps unified** (S321). **Duration dedup** — `CPU_USAGE_SAMPLE_WINDOW` + 8 named constants (S321).
+**Last Updated**: Jun 21, 2026 — S322+. **23,000+** workspace tests, 0 failures (9,065+ lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — `BIOMEOS_SOCKET_DIR` > `XDG_RUNTIME_DIR` > `temp_dir` (S308). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (S320: warm_swap 818→479+305; S321: reagent 704→3 files; S322: mmio 689→612, trials 697→467). **Zero production `#[allow]`**. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3. `ProtectSystem=strict` compatible (S308). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **GuideStone `health` method** (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319). **Workspace deps unified** (S321). **Duration dedup** — `CPU_USAGE_SAMPLE_WINDOW` + 8 named constants (S321). **Client riboCipher fixed** + composition tests graduated + ipc_watch covered + telemetry constants (S322).
 
 ---
 
