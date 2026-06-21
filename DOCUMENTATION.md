@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Jun 21, 2026 — S322+
+**Last Updated**: Jun 21, 2026 — S323+
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S321+ — Jun 2026)
+## Current State (S323+ — Jun 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,000+ tests** (9,069+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **23,000+ tests** (9,074+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **112 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
 - **100% SPDX AGPL-3.0-or-later** headers across all `.rs` files (S320+).
 - **Zero-copy dispatch** (S320+) — `Arc<EncryptionKey>` cache, pipeline first-stage borrow, `binary_size` telemetry, error consolidation.
@@ -42,7 +42,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **gRPC + OpenCL DELETED** (S319) — enum variants, config, stubs, detection all removed (−458 lines).
 - **Bare `"health"` method** (S315) — returns `{status, primal, version}` per GuideStone standard.
 - **Zero hardcoded cross-primal names** — `LEGACY_*_PASCAL` constants for wire compat (S320+).
-- **Zero production files >750L** — `warm_swap.rs` 818L → 479L + 305L catalyst helpers (S320+). `reagent/mod.rs` 704L → 3 files (S321).
+- **Zero production files >750L** — `warm_swap.rs` 818L → 479L + 305L catalyst helpers (S320+). `reagent/mod.rs` 704L → 3 files (S321). S322: mmio 689→612, trials 697→467. S323: method_gate 644→279, job 652→277, shader_dispatch 590→471, submit 642→487+174, cpu_resource 675→536+154.
 - **Env centralization complete** (S321) — zero production raw `env::var("...")` literals; `TOADSTOOL_RM_TRIGGER_BIN` + `TOADSTOOL_FORENSICS_LOG` added to `socket_env`.
 - **Duration dedup** (S321) — `CPU_USAGE_SAMPLE_WINDOW` unified across 5 crates; 8 additional named constants.
 - **Dep unification** (S321) — `bytes`/`ruzstd`/`serialport`/`ndarray` workspace-unified; zero version drift.
@@ -54,7 +54,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S321+).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S323+).
 
 ---
 

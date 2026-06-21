@@ -38,7 +38,6 @@ pub mod memory;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod module_patch;
 pub mod nv_metal;
-pub(crate) mod pci_config;
 pub mod pci_discovery;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod pmu_investigate;
