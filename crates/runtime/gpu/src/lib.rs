@@ -40,6 +40,7 @@ pub mod compiler;
 pub mod compute_dispatch;
 pub mod config;
 pub mod coordinator;
+mod cpu_pool_resilience;
 pub mod cpu_resource;
 pub mod distributed; // Refactored from distributed_scheduler
 pub mod engine;
