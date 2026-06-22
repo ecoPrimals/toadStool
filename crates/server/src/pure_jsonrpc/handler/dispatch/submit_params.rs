@@ -102,6 +102,8 @@ pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_workgroup_size(
 
 /// Resolve buffer descriptors. Accepts trio-standard `buffers[]` with `data_b64`
 /// fields — decodes them to `data` (u8 arrays) for downstream consumption.
+///
+/// Zero-clone: builds output maps field-by-field instead of cloning input values.
 pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_buffers(
     p: &serde_json::Value,
 ) -> serde_json::Value {
@@ -112,15 +114,20 @@ pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_buffers(
     let resolved: Vec<serde_json::Value> = buffers
         .iter()
         .map(|buf| {
-            if let Some(b64) = buf.get("data_b64").and_then(|v| v.as_str()) {
-                let mut out = buf.clone();
-                if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(b64) {
-                    out["data"] = serde_json::json!(decoded);
-                    if let Some(obj) = out.as_object_mut() {
-                        obj.remove("data_b64");
+            let Some(obj) = buf.as_object() else {
+                return buf.clone();
+            };
+            if let Some(b64) = obj.get("data_b64").and_then(|v| v.as_str()) {
+                let mut out = serde_json::Map::with_capacity(obj.len());
+                for (k, v) in obj {
+                    if k != "data_b64" {
+                        out.insert(k.clone(), v.clone());
                     }
                 }
-                out
+                if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(b64) {
+                    out.insert("data".into(), serde_json::json!(decoded));
+                }
+                serde_json::Value::Object(out)
             } else {
                 buf.clone()
             }

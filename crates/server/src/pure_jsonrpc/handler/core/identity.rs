@@ -193,25 +193,15 @@ pub(crate) async fn primal_announce(
     semantic_registry: &SemanticMethodRegistry,
     bound_socket: Option<&std::path::Path>,
 ) -> JsonRpcResult {
-    use toadstool_common::interned_strings::socket_env;
-
     let methods = all_callable_methods(semantic_registry);
     let socket_name = format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN);
     let socket = if let Some(path) = bound_socket {
         path.to_string_lossy().into_owned()
-    } else if let Ok(dir) = std::env::var(socket_env::BIOMEOS_SOCKET_DIR) {
-        format!("{dir}/{socket_name}")
     } else {
-        std::env::var(socket_env::XDG_RUNTIME_DIR).map_or_else(
-            |_| {
-                std::env::temp_dir()
-                    .join("biomeos")
-                    .join(&socket_name)
-                    .to_string_lossy()
-                    .into_owned()
-            },
-            |d| format!("{d}/biomeos/{socket_name}"),
-        )
+        toadstool_common::primal_sockets::get_biomeos_dir()
+            .join(&socket_name)
+            .to_string_lossy()
+            .into_owned()
     };
 
     let devices = crate::glowplug_client::discover_gpu_bdfs();

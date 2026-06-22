@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 22, 2026 (Sessions 43-324+)
+## [Unreleased] - Jun 22, 2026 (Sessions 43-325+)
+
+### Session S325 (Jun 22, 2026) — Kernel Sentinel Coverage + Path Consolidation + Clone Elimination + Discovery Gate
+
+Deep debt sprint: coverage for crash forensics, hardcoding removal, hot-path allocation reduction, and production safety gate.
+
+- **Kernel sentinel coverage** — `kernel_sentinel.rs` (320L prod, zero tests) now has 28 unit tests covering `classify_line()` for all `CRASH_PATTERNS` (8 entries) and `GPU_WARN_PATTERNS` (8 entries), priority ordering (Critical > GpuWarn > Normal), empty/harmless input handling, and `parse_kmsg_message()` for `/dev/kmsg` format parsing (standard, no-semicolon, multiple-semicolons, empty). `parse_kmsg_message` extracted as standalone function from inline thread logic.
+- **Biomeos path consolidation** — 3 ad-hoc `runtime.join("biomeos")` paths replaced with canonical `toadstool_common::primal_sockets::get_biomeos_dir()`: `execution.rs` fleet file writer, `visualization_client.rs` shader compiler discovery, `identity.rs` primal announce. Eliminates duplicated env-var cascade logic; unused `socket_env` import removed.
+- **Hot-path clone elimination** — `resolve_buffers()` rewritten to build output `Map` field-by-field instead of cloning entire `serde_json::Value` when `data_b64` is present. `RemoteDispatcher::forward` response parsing uses `map.remove("result")` to take ownership instead of `result.clone()`.
+- **Discovery fallback production gate** — `FallbackEndpoints::from_env()` now checks `TOADSTOOL_ENV=production` and defaults `enable_localhost_fallback` to `false` in production. Explicit `TOADSTOOL_DISCOVERY_FALLBACK_ENABLED=true` still overrides. 4 new tests: disabled returns error, production disables, development enables, explicit override.
+- **Quality gates** — 9,127+ lib tests, 0 failures. Zero clippy, zero fmt diff.
 
 ### Session S324 (Jun 22, 2026) — Test Unignore + Catalyst Coverage + Dispatcher E2E + MMIO Split
 

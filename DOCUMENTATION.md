@@ -34,7 +34,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,000+ tests** (9,095+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **23,000+ tests** (9,127+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **112 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
 - **100% SPDX AGPL-3.0-or-later** headers across all `.rs` files (S320+).
 - **Zero-copy dispatch** (S320+) — `Arc<EncryptionKey>` cache, pipeline first-stage borrow, `binary_size` telemetry, error consolidation.

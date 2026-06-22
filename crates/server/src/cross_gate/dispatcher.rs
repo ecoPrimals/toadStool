@@ -90,15 +90,21 @@ impl RemoteDispatcher {
             .await
             .map_err(|e| RemoteDispatchError::Transport(format!("TCP read: {e}")))?;
 
-        let response: serde_json::Value = serde_json::from_slice(&response_buf)
+        let mut response: serde_json::Value = serde_json::from_slice(&response_buf)
             .map_err(|e| RemoteDispatchError::Serialize(format!("response parse: {e}")))?;
 
-        if let Some(result) = response.get("result") {
-            Ok(result.clone())
-        } else if let Some(error) = response.get("error") {
-            Err(RemoteDispatchError::Remote(error.to_string()))
+        if let Some(map) = response.as_object_mut() {
+            if let Some(result) = map.remove("result") {
+                Ok(result)
+            } else if let Some(error) = map.get("error") {
+                Err(RemoteDispatchError::Remote(error.to_string()))
+            } else {
+                Err(RemoteDispatchError::Remote("unexpected response".into()))
+            }
         } else {
-            Err(RemoteDispatchError::Remote("unexpected response".into()))
+            Err(RemoteDispatchError::Remote(
+                "response is not an object".into(),
+            ))
         }
     }
 }

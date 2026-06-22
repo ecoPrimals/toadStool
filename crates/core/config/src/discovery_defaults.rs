@@ -176,6 +176,8 @@ impl FallbackEndpoints {
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::ports::DISCOVERY_LOCALHOST_FALLBACK_BASE);
+        let is_production = std::env::var(socket_env::TOADSTOOL_ENV)
+            .is_ok_and(|v| v.eq_ignore_ascii_case("production"));
         let enable_localhost_fallback =
             std::env::var(socket_env::TOADSTOOL_DISCOVERY_FALLBACK_ENABLED)
                 .ok()
@@ -184,7 +186,7 @@ impl FallbackEndpoints {
                     "false" | "0" | "no" | "off" => Some(false),
                     _ => None,
                 })
-                .unwrap_or(true);
+                .unwrap_or(!is_production);
         Self {
             enable_localhost_fallback,
             localhost_base_port,
@@ -255,5 +257,65 @@ mod tests {
 
         let endpoint2 = fallback.fallback_endpoint(1).expect("Should succeed");
         assert_eq!(endpoint2, "http://localhost:9081");
+    }
+
+    #[test]
+    fn test_fallback_disabled_returns_error() {
+        let fallback = FallbackEndpoints {
+            enable_localhost_fallback: false,
+            localhost_base_port: 9080,
+        };
+        assert!(fallback.fallback_endpoint(0).is_err());
+    }
+
+    #[test]
+    fn test_production_env_disables_fallback() {
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENV", Some("production")),
+                ("TOADSTOOL_DISCOVERY_FALLBACK_ENABLED", None::<&str>),
+            ],
+            || {
+                let fallback = FallbackEndpoints::from_env();
+                assert!(
+                    !fallback.enable_localhost_fallback,
+                    "fallback should be disabled in production"
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_non_production_env_enables_fallback() {
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENV", Some("development")),
+                ("TOADSTOOL_DISCOVERY_FALLBACK_ENABLED", None::<&str>),
+            ],
+            || {
+                let fallback = FallbackEndpoints::from_env();
+                assert!(
+                    fallback.enable_localhost_fallback,
+                    "fallback should be enabled in development"
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_explicit_enable_overrides_production() {
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_ENV", Some("production")),
+                ("TOADSTOOL_DISCOVERY_FALLBACK_ENABLED", Some("true")),
+            ],
+            || {
+                let fallback = FallbackEndpoints::from_env();
+                assert!(
+                    fallback.enable_localhost_fallback,
+                    "explicit enable should override production default"
+                );
+            },
+        );
     }
 }

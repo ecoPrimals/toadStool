@@ -133,10 +133,8 @@ impl VisualizationClient {
             return Some(UnixJsonRpcClient::new(capability_sock));
         }
 
-        let runtime_dir =
-            std::env::var(toadstool_common::interned_strings::socket_env::XDG_RUNTIME_DIR).ok()?;
-        let runtime = PathBuf::from(&runtime_dir);
-        let biomeos = runtime.join("biomeos");
+        let biomeos = toadstool_common::primal_sockets::get_biomeos_dir();
+        let runtime = biomeos.parent().unwrap_or(biomeos.as_path()).to_path_buf();
 
         let eco_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
         if eco_sock.exists() {
