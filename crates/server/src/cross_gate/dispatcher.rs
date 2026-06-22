@@ -112,7 +112,7 @@ fn local_gate_id() -> String {
 }
 
 /// Attach source gate identity so the remote gate can verify provenance.
-fn enrich_params_with_gate_provenance(
+pub(super) fn enrich_params_with_gate_provenance(
     params: serde_json::Value,
     source_gate_id: &str,
 ) -> serde_json::Value {

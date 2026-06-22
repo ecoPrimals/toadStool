@@ -352,3 +352,231 @@ async fn test_remote_dispatcher_forward_nonexistent_tcp_returns_transport_error(
         "expected Transport error, got {err:?}"
     );
 }
+
+// ============================================================================
+// Success-path mock tests
+// ============================================================================
+
+/// Spawn a mock JSON-RPC Unix server that speaks the riboCipher protocol:
+/// 1. Read 2-byte prefix [0xEC, 0x01]
+/// 2. Read NDJSON request line
+/// 3. Write NDJSON response line
+async fn mock_jsonrpc_unix_server(
+    socket_path: &std::path::Path,
+    expected_method: &'static str,
+    response_result: serde_json::Value,
+) -> tokio::task::JoinHandle<()> {
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::UnixListener::bind(socket_path).expect("bind mock socket");
+    tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let mut reader = tokio::io::BufReader::new(stream);
+        let mut prefix = [0u8; 2];
+        reader
+            .read_exact(&mut prefix)
+            .await
+            .expect("read riboCipher prefix");
+        assert_eq!(prefix, [0xEC, 0x01], "expected riboCipher NDJSON signal");
+
+        let mut line = String::new();
+        reader
+            .read_line(&mut line)
+            .await
+            .expect("read request line");
+        let request: serde_json::Value =
+            serde_json::from_str(line.trim()).expect("parse JSON-RPC request");
+        assert_eq!(
+            request["method"].as_str().unwrap(),
+            expected_method,
+            "method mismatch"
+        );
+        assert!(
+            request["params"]["_dispatch_trust"]["source_gate_id"]
+                .as_str()
+                .is_some(),
+            "provenance metadata missing"
+        );
+        let response = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": response_result,
+            "id": request["id"]
+        });
+        let mut resp_bytes = serde_json::to_vec(&response).expect("serialize response");
+        resp_bytes.push(b'\n');
+        reader
+            .get_mut()
+            .write_all(&resp_bytes)
+            .await
+            .expect("write response");
+    })
+}
+
+#[tokio::test]
+async fn test_remote_dispatcher_forward_unix_success_path() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let sock = dir.path().join("test-dispatch.sock");
+
+    let expected_result = serde_json::json!({"job_id": "j-42", "status": "queued"});
+    let handle = mock_jsonrpc_unix_server(&sock, "compute.submit", expected_result.clone()).await;
+
+    let params = serde_json::json!({"model": "tinyllama:latest", "prompt": "hello"});
+    let result = RemoteDispatcher::forward(sock.to_str().unwrap(), "compute.submit", params).await;
+
+    assert!(result.is_ok(), "forward failed: {result:?}");
+    let value = result.unwrap();
+    assert_eq!(value["job_id"], "j-42");
+    assert_eq!(value["status"], "queued");
+    handle.await.ok();
+}
+
+#[tokio::test]
+async fn test_remote_dispatcher_forward_unix_preserves_provenance() {
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let sock = dir.path().join("provenance-check.sock");
+
+    let listener = tokio::net::UnixListener::bind(&sock).expect("bind");
+    let handle = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let mut reader = tokio::io::BufReader::new(stream);
+        let mut prefix = [0u8; 2];
+        reader.read_exact(&mut prefix).await.expect("read prefix");
+        let mut line = String::new();
+        reader.read_line(&mut line).await.expect("read line");
+        let req: serde_json::Value = serde_json::from_str(line.trim()).expect("parse");
+        let trust = &req["params"]["_dispatch_trust"];
+        assert!(trust.is_object(), "_dispatch_trust should be object");
+        let gate_id = trust["source_gate_id"].as_str().unwrap();
+        assert!(!gate_id.is_empty(), "source_gate_id should not be empty");
+
+        let resp = serde_json::json!({"jsonrpc":"2.0","result":{"gate": gate_id},"id":req["id"]});
+        let mut body = serde_json::to_vec(&resp).unwrap();
+        body.push(b'\n');
+        reader.get_mut().write_all(&body).await.unwrap();
+    });
+
+    let result = RemoteDispatcher::forward(
+        sock.to_str().unwrap(),
+        "compute.status",
+        serde_json::json!({"job_id": "j-1"}),
+    )
+    .await;
+
+    assert!(result.is_ok());
+    let val = result.unwrap();
+    assert!(val["gate"].as_str().is_some());
+    handle.await.ok();
+}
+
+#[tokio::test]
+async fn test_remote_dispatcher_forward_unix_remote_error() {
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let sock = dir.path().join("error-path.sock");
+
+    let listener = tokio::net::UnixListener::bind(&sock).expect("bind");
+    let handle = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let mut reader = tokio::io::BufReader::new(stream);
+        let mut prefix = [0u8; 2];
+        reader.read_exact(&mut prefix).await.expect("read prefix");
+        let mut line = String::new();
+        reader.read_line(&mut line).await.expect("read line");
+        let req: serde_json::Value = serde_json::from_str(line.trim()).expect("parse");
+        let resp = serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32603, "message": "GPU OOM"},
+            "id": req["id"]
+        });
+        let mut body = serde_json::to_vec(&resp).unwrap();
+        body.push(b'\n');
+        reader.get_mut().write_all(&body).await.unwrap();
+    });
+
+    let result = RemoteDispatcher::forward(
+        sock.to_str().unwrap(),
+        "compute.submit",
+        serde_json::json!({}),
+    )
+    .await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = format!("{err:?}");
+    assert!(
+        err_msg.contains("GPU OOM"),
+        "error should contain the remote error message, got {err_msg}"
+    );
+    handle.await.ok();
+}
+
+#[tokio::test]
+async fn test_remote_dispatcher_forward_tcp_success_path() {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind TCP");
+    let addr = listener.local_addr().expect("local_addr");
+
+    let expected_result = serde_json::json!({"status": "completed", "output": [1, 2, 3]});
+    let result_clone = expected_result.clone();
+    let handle = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let mut reader = tokio::io::BufReader::new(stream);
+        let mut line = String::new();
+        reader.read_line(&mut line).await.expect("read line");
+        let req: serde_json::Value = serde_json::from_str(line.trim()).expect("parse request");
+        assert_eq!(req["method"], "compute.submit");
+        let resp = serde_json::json!({
+            "jsonrpc": "2.0",
+            "result": result_clone,
+            "id": req["id"]
+        });
+        reader
+            .get_mut()
+            .write_all(&serde_json::to_vec(&resp).unwrap())
+            .await
+            .unwrap();
+    });
+
+    let result = RemoteDispatcher::forward(
+        &addr.to_string(),
+        "compute.submit",
+        serde_json::json!({"data": "test"}),
+    )
+    .await;
+
+    assert!(result.is_ok(), "TCP forward failed: {result:?}");
+    let val = result.unwrap();
+    assert_eq!(val["status"], "completed");
+    assert_eq!(val["output"], serde_json::json!([1, 2, 3]));
+    handle.await.ok();
+}
+
+#[tokio::test]
+async fn test_enrich_params_preserves_existing_dispatch_trust() {
+    use super::dispatcher::enrich_params_with_gate_provenance;
+
+    let params = serde_json::json!({
+        "model": "test",
+        "_dispatch_trust": {"source_gate_id": "original-gate"}
+    });
+    let enriched = enrich_params_with_gate_provenance(params, "new-gate");
+    assert_eq!(
+        enriched["_dispatch_trust"]["source_gate_id"], "original-gate",
+        "should not overwrite existing _dispatch_trust"
+    );
+}
+
+#[tokio::test]
+async fn test_enrich_params_wraps_non_object_payload() {
+    use super::dispatcher::enrich_params_with_gate_provenance;
+
+    let params = serde_json::json!("just-a-string");
+    let enriched = enrich_params_with_gate_provenance(params, "gate-1");
+    assert_eq!(enriched["payload"], "just-a-string");
+    assert_eq!(enriched["_dispatch_trust"]["source_gate_id"], "gate-1");
+}

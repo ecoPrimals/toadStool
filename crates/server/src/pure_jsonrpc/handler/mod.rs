@@ -14,6 +14,8 @@ mod hw_learn;
 mod job;
 pub mod method_gate;
 mod mmio;
+mod mmio_ember;
+mod mmio_falcon;
 mod resources;
 mod router;
 mod silicon;

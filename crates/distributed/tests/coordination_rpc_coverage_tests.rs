@@ -178,7 +178,6 @@ async fn test_rpc_client_new_empty_endpoints_fails() {
 }
 
 #[tokio::test]
-#[ignore = "Requires coordination socket discovery - may block"]
 async fn test_rpc_client_new_with_endpoint_succeeds() {
     let service = make_discovered_service_with_endpoint();
     let result = CoordinationClient::new(&service).await;
@@ -186,7 +185,6 @@ async fn test_rpc_client_new_with_endpoint_succeeds() {
 }
 
 #[tokio::test]
-#[ignore = "Requires coordination socket discovery - may block"]
 async fn test_rpc_client_with_timeout() {
     let service = make_discovered_service_with_endpoint();
     let timeout = Duration::from_secs(5);

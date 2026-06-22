@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 21, 2026 (Sessions 43-323+)
+## [Unreleased] - Jun 22, 2026 (Sessions 43-324+)
+
+### Session S324 (Jun 22, 2026) — Test Unignore + Catalyst Coverage + Dispatcher E2E + MMIO Split
+
+Deep debt sprint: test graduation, coverage gaps, and file-size extraction.
+
+- **Test graduation** — 6 previously-ignored tests un-ignored and passing: 4 security discovery tests (`discover_entropy`, `generate_seed`, `generate_seed_with_request`, `discover_via_env_security_url`) and 2 coordination RPC tests (`rpc_client_new_with_endpoint`, `rpc_client_with_timeout`). Discovery returns graceful fallback; RPC socket probe is non-blocking.
+- **Catalyst watchdog coverage** — `catalyst_watchdog.rs` (468L prod, zero tests) now has 15 unit tests covering `Phase::from_u8`, activate/deactivate lifecycle, heartbeat semantics, module cleanup transitions, `defense_status()` JSON shape (idle/active/cleanup), `watchdog_status()` shape, timeout defaults. Mutex-guarded to prevent global state races.
+- **Dispatcher mock E2E** — 7 new `cross_gate::tests` including 3 mock Unix socket server tests exercising the full riboCipher + NDJSON protocol (success path, provenance verification, remote error), 1 TCP success path, 2 `enrich_params` tests for provenance enrichment semantics. First E2E success-path coverage for `RemoteDispatcher::forward`.
+- **MMIO module split** — `mmio.rs` (613→275L): falcon handlers extracted to `mmio_falcon.rs` (179L), ember device handlers to `mmio_ember.rs` (194L). Re-exports preserve `mmio::*` API for router. Zero import changes needed.
+- **Quality gates** — 9,095+ lib tests, 0 failures. Zero clippy, zero fmt diff. All production files under 750L.
 
 ### Session S323 (Jun 21, 2026) — Test Extraction + Submit Split + Flaky Fix + Edge Coverage
 

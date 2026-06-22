@@ -13,7 +13,6 @@ use toadstool_integration_security::{
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "CapabilityDiscovery / environment dependent; run with --ignored in isolation"]
 async fn test_discover_entropy_returns_client_or_error() {
     let result = discover_entropy().await;
     match &result {
@@ -27,7 +26,6 @@ async fn test_discover_entropy_returns_client_or_error() {
 }
 
 #[tokio::test]
-#[ignore = "CapabilityDiscovery / environment dependent; run with --ignored in isolation"]
 async fn test_discover_then_generate_seed() {
     let result: Result<_, toadstool_integration_security::SecurityError> = async {
         let client = discover_entropy().await?;
@@ -83,7 +81,6 @@ fn test_seed_request_mixing_valid() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "CapabilityDiscovery / environment dependent; run with --ignored in isolation"]
 async fn test_generate_seed_with_request() {
     let result: Result<_, toadstool_integration_security::SecurityError> = async {
         let client = discover_entropy().await?;
@@ -134,7 +131,6 @@ fn test_seed_quality_new() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "connect uses discover_crypto_socket; run with --ignored in isolation"]
 async fn test_discover_via_env_security_url() {
     temp_env::async_with_vars(
         [("BEARDOG_URL", Some("unix:///run/security.sock"))],
