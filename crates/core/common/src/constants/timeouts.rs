@@ -167,3 +167,74 @@ pub const TIMESTAMP_VALIDATION_WINDOW: Duration = Duration::from_secs(300);
 /// 50ms balances accuracy with responsiveness — shorter windows are noisy,
 /// longer ones block the caller.
 pub const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn request_timeout_ordering() {
+        assert!(SHORT_REQUEST_TIMEOUT < DEFAULT_REQUEST_TIMEOUT);
+        assert!(DEFAULT_REQUEST_TIMEOUT < LONG_REQUEST_TIMEOUT);
+    }
+
+    #[test]
+    fn cache_ttl_ordering() {
+        assert!(SHORT_CACHE_TTL < DEFAULT_CACHE_TTL);
+        assert!(DEFAULT_CACHE_TTL < LONG_CACHE_TTL);
+    }
+
+    #[test]
+    fn btsp_rpc_fits_within_handshake_budget() {
+        assert!(
+            BTSP_RPC_TIMEOUT * 2 < BTSP_HANDSHAKE_TIMEOUT,
+            "two BTSP RPCs ({:?} each) must fit within handshake budget ({:?})",
+            BTSP_RPC_TIMEOUT,
+            BTSP_HANDSHAKE_TIMEOUT
+        );
+    }
+
+    #[test]
+    fn zero_config_phases_within_target() {
+        let phases = DISCOVERY_PHASE_TIMEOUT
+            + ECOSYSTEM_PHASE_TIMEOUT
+            + CONFIG_PHASE_TIMEOUT
+            + DEPLOYMENT_PHASE_TIMEOUT
+            + VERIFICATION_PHASE_TIMEOUT;
+        assert!(
+            phases <= ZERO_CONFIG_TARGET,
+            "zero-config phases sum ({phases:?}) exceeds target ({:?})",
+            ZERO_CONFIG_TARGET
+        );
+    }
+
+    #[test]
+    fn health_check_faster_than_interval() {
+        assert!(
+            HEALTH_CHECK_TIMEOUT < HEALTH_CHECK_INTERVAL,
+            "health check timeout ({:?}) must be less than interval ({:?})",
+            HEALTH_CHECK_TIMEOUT,
+            HEALTH_CHECK_INTERVAL
+        );
+    }
+
+    #[test]
+    fn retry_delay_ordering() {
+        assert!(INITIAL_RETRY_DELAY < MAX_RETRY_DELAY);
+    }
+
+    #[test]
+    fn connection_pool_idle_less_than_lifetime() {
+        assert!(POOL_IDLE_TIMEOUT < POOL_MAX_LIFETIME);
+    }
+
+    #[test]
+    fn biome_shutdown_within_startup() {
+        assert!(BIOME_SHUTDOWN_TIMEOUT <= BIOME_STARTUP_TIMEOUT);
+    }
+
+    #[test]
+    fn dispatch_timeout_less_than_workload() {
+        assert!(DISPATCH_DEFAULT_TIMEOUT < WORKLOAD_EXECUTION_TIMEOUT);
+    }
+}

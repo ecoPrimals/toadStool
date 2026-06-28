@@ -7,6 +7,7 @@
 //! of stages, validates the graph, and executes stages in topological order —
 //! feeding each stage's result into downstream stages via `previous_results`.
 
+use serde::Deserialize;
 use std::collections::HashMap;
 
 use tracing::warn;
@@ -77,7 +78,7 @@ impl DispatchHandler {
             .get("stages")
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'stages' array"))
             .and_then(|v| {
-                serde_json::from_value(v.clone())
+                Vec::<PipelineStageRequest>::deserialize(v)
                     .map_err(|e| JsonRpcError::invalid_params(format!("Invalid stages: {e}")))
             })?;
 

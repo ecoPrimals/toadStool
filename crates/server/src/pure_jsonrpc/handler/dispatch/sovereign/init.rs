@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use serde::Deserialize;
+
 use super::DispatchHandler;
 
 /// Path 1 (clutch): if a VfioAnchor exists for this BDF, engage the clutch
@@ -61,12 +63,11 @@ pub(crate) async fn sovereign_init_ember(
         (&sysfs_bar, dma)
     };
 
-    let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
-        if let Some(p) = params {
-            serde_json::from_value(p.clone()).unwrap_or_default()
-        } else {
-            toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions::default()
-        };
+    let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions = params
+        .and_then(|p| {
+            toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions::deserialize(p).ok()
+        })
+        .unwrap_or_default();
 
     if let Some(path) = opts.vbios_rom_path.as_ref()
         && let Ok(rom) = std::fs::read(path)

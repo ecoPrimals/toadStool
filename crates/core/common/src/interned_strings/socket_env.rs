@@ -573,3 +573,63 @@ pub const TWIST_BIOSCIENCE_API_KEY: &str = "TWIST_BIOSCIENCE_API_KEY";
 // ── Deprecated legacy ────────────────────────────────────────────────
 #[deprecated(since = "0.5.0", note = "use FAMILY_SEED")]
 pub const BEARDOG_FAMILY_SEED: &str = "BEARDOG_FAMILY_SEED";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capability_socket_vars_match_const_name() {
+        assert_eq!(BIOMEOS_CRYPTO_SOCKET, "BIOMEOS_CRYPTO_SOCKET");
+        assert_eq!(BIOMEOS_COORDINATION_SOCKET, "BIOMEOS_COORDINATION_SOCKET");
+        assert_eq!(BIOMEOS_STORAGE_SOCKET, "BIOMEOS_STORAGE_SOCKET");
+        assert_eq!(BIOMEOS_ROUTING_SOCKET, "BIOMEOS_ROUTING_SOCKET");
+        assert_eq!(TOADSTOOL_SECURITY_SOCKET, "TOADSTOOL_SECURITY_SOCKET");
+        assert_eq!(
+            TOADSTOOL_COORDINATION_SOCKET,
+            "TOADSTOOL_COORDINATION_SOCKET"
+        );
+        assert_eq!(TOADSTOOL_STORAGE_SOCKET, "TOADSTOOL_STORAGE_SOCKET");
+        assert_eq!(
+            TOADSTOOL_INTELLIGENCE_SOCKET,
+            "TOADSTOOL_INTELLIGENCE_SOCKET"
+        );
+    }
+
+    #[test]
+    fn xdg_vars_match_specification() {
+        assert_eq!(XDG_RUNTIME_DIR, "XDG_RUNTIME_DIR");
+        assert_eq!(XDG_DATA_HOME, "XDG_DATA_HOME");
+        assert_eq!(XDG_CACHE_HOME, "XDG_CACHE_HOME");
+        assert_eq!(XDG_CONFIG_HOME, "XDG_CONFIG_HOME");
+    }
+
+    #[test]
+    fn core_identity_vars_use_toadstool_prefix() {
+        assert!(TOADSTOOL_FAMILY_ID.starts_with("TOADSTOOL_"));
+        assert!(TOADSTOOL_NODE_ID.starts_with("TOADSTOOL_"));
+        assert!(TOADSTOOL_AUTH_ISSUER.starts_with("TOADSTOOL_"));
+    }
+
+    #[test]
+    fn biomeos_socket_dir_env_matches() {
+        assert_eq!(BIOMEOS_SOCKET_DIR, "BIOMEOS_SOCKET_DIR");
+    }
+
+    #[test]
+    fn toadstool_env_var_matches() {
+        assert_eq!(TOADSTOOL_ENV, "TOADSTOOL_ENV");
+    }
+
+    #[test]
+    #[expect(deprecated)]
+    fn legacy_vars_are_identity_based() {
+        assert!(LEGACY_BEARDOG_SOCKET_ENV.contains("BEARDOG"));
+        assert!(LEGACY_NESTGATE_SOCKET_ENV.contains("NESTGATE"));
+    }
+
+    #[test]
+    fn socket_mode_env_name_matches() {
+        assert_eq!(TOADSTOOL_SOCKET_MODE, "TOADSTOOL_SOCKET_MODE");
+    }
+}

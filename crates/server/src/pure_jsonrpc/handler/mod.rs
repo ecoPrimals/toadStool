@@ -238,6 +238,8 @@ impl JsonRpcHandler {
         request: &JsonRpcRequest<'_>,
         conn: ConnectionTrustHints,
     ) -> JsonRpcResponse {
+        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
+
         if request.jsonrpc != JSONRPC_VERSION {
             self.error_count.fetch_add(1, Ordering::Relaxed);
             return JsonRpcResponse {
@@ -246,11 +248,9 @@ impl JsonRpcHandler {
                 error: Some(JsonRpcError::invalid_request(
                     "Invalid JSON-RPC version (must be '2.0')",
                 )),
-                id: request.id.clone().unwrap_or(serde_json::Value::Null),
+                id,
             };
         }
-
-        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
 
         info!(method = %request.method.as_ref(), "JSON-RPC request");
 

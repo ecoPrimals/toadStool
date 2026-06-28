@@ -89,11 +89,11 @@ impl DispatchHandler {
         &self,
         result: &serde_json::Value,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let Some(ref client) = self.crypto_client else {
+        let Some(ct_b64) = result.get("ct").and_then(|v| v.as_str()) else {
             return Ok(result.clone());
         };
 
-        let Some(ct_b64) = result.get("ct").and_then(|v| v.as_str()) else {
+        let Some(ref client) = self.crypto_client else {
             return Ok(result.clone());
         };
 

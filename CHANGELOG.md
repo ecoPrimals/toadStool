@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 28, 2026 (Sessions 43-326+)
+## [Unreleased] - Jun 28, 2026 (Sessions 43-327+)
+
+### Session S327 (Jun 28, 2026) — Hot-Path Clone Elimination + Invariant Tests + Router Extraction
+
+Zero-clone dispatch evolution, constant invariant testing, and router decomposition.
+
+- **Hot-path clone elimination** — 6 files: `fan_out.rs` and `pipeline.rs` switched from `serde_json::from_value(v.clone())` to `T::deserialize(v)` (zero-copy from `&Value`); `sovereign/init.rs` and `sovereign/profile.rs` same pattern for `SovereignInitOptions`; `handler/mod.rs` deduplicated `request.id.clone()` (extract once before version check); `submit.rs` reordered `decrypt_result` to check cheap `ct` field before `crypto_client` borrow.
+- **Timeout invariant tests** — `timeouts.rs` +9 tests: ordering (SHORT < DEFAULT < LONG), BTSP RPC fits within handshake budget, zero-config phases sum within target, health check faster than interval, retry/pool/biome/dispatch ordering invariants.
+- **Socket env invariant tests** — `socket_env.rs` +7 tests: capability socket var name consistency, XDG spec compliance, TOADSTOOL_ prefix convention, deprecated legacy detection, socket mode env name match.
+- **Submit params test expansion** — +11 tests: valid base64, legacy u8 array, b64-preferred-over-legacy, buffer b64 decode, non-object passthrough, partial dimensions, workgroup_size fallback, envelope edge cases (no envelope, mem_mb reject, timeout reject).
+- **Router decomposition** — `router.rs` 776→441L: extracted ~340 lines of `#[cfg(test)]` const arrays and 7 contract tests to `router_tests.rs` (230L) via `#[path]` attribute. Production routing logic unchanged.
+- **Quality gates** — 9,171+ lib tests, 0 failures. Zero clippy, zero fmt diff.
 
 ### Session S326 (Jun 28, 2026) — Router Contract Tests + Graph Node Coverage + Glowplug Split
 
@@ -14,7 +25,7 @@ Convergence + debt sprint: routing contract safety net, builder/serde coverage, 
 - **Router contract tests** — `router.rs` (438L, zero direct tests) now has 7 contract tests: duplicate detection for both direct and dispatch tables, semantic core method routability verification (compute.execute, auth.*, pipeline.*), minimum method count assertion (112+), provenance JSON shape validation, and naming convention enforcement (dotted methods + bare health).
 - **Graph node coverage** — `graph_node.rs` expanded from 5 to 16 tests (+11): duration serde roundtrip (u64 seconds), JSON omission when duration is None, primal default via deserialization, builder paths for storage_gb/bytes, network_mbps, gpu_memory_bytes, memory_bytes, Duration, and full-field all-at-once construction.
 - **Glowplug PCI discovery split** — `glowplug_client.rs` (642→467L): 8 sysfs/PCI discovery functions extracted to `glowplug_discovery.rs` (192L) — `discover_gpu_bdfs`, `discover_gpu_devices`, `discover_single_device`, `is_gpu_bdf`, `read_device_name`, `probe_vram_alive`, `is_display_connected`, `pci_bdf_matches`, `read_bar0_registers`, `read_current_driver`. Re-exported for all existing callers. Zero API changes.
-- **Quality gates** — 9,145+ lib tests, 0 failures. Zero clippy, zero fmt diff.
+- **Quality gates** — 9,145+ lib tests (pre-S327), 0 failures. Zero clippy, zero fmt diff.
 
 ### Session S325 (Jun 22, 2026) — Kernel Sentinel Coverage + Path Consolidation + Clone Elimination + Discovery Gate
 

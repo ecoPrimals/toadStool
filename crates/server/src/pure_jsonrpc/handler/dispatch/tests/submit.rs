@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! `dispatch/submit.rs` param resolution, thermal gate, and envelope integration tests.
 
+use base64::Engine;
+
 use super::{submit_params, test_handler};
 use crate::pure_jsonrpc::handler::dispatch::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
 use crate::pure_jsonrpc::handler::dispatch::submit_params::{
@@ -218,4 +220,100 @@ fn enforce_envelope_without_limits_always_passes() {
         method_allowlist: vec![],
     });
     assert!(enforce_envelope(&ctx, 1024, 4096, 60_000).is_ok());
+}
+
+#[test]
+fn enforce_envelope_no_envelope_passes() {
+    let ctx = CallerContext::anonymous();
+    assert!(enforce_envelope(&ctx, 10 * 1024 * 1024, 999_999, 999_999).is_ok());
+}
+
+#[test]
+fn enforce_envelope_mem_mb_rejects_oversized_binary() {
+    let ctx = ctx_with(ResourceEnvelope {
+        mem_mb: Some(1),
+        cpu_cores: None,
+        max_timeout_ms: None,
+        method_allowlist: vec![],
+    });
+    let err = enforce_envelope(&ctx, 2 * 1024 * 1024, 0, 0).unwrap_err();
+    assert!(err.message.contains("mem_mb"));
+}
+
+#[test]
+fn enforce_envelope_timeout_rejects_excessive() {
+    let ctx = ctx_with(ResourceEnvelope {
+        mem_mb: None,
+        cpu_cores: None,
+        max_timeout_ms: Some(5_000),
+        method_allowlist: vec![],
+    });
+    let err = enforce_envelope(&ctx, 0, 0, 10_000).unwrap_err();
+    assert!(err.message.contains("timeout"));
+}
+
+#[test]
+fn resolve_binary_param_valid_base64() {
+    let data = [0xDE, 0xAD, 0xBE, 0xEF];
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+    let params = serde_json::json!({ "binary_b64": b64 });
+    let result = resolve_binary_param(&params).unwrap();
+    assert_eq!(result, data);
+}
+
+#[test]
+fn resolve_binary_param_legacy_u8_array() {
+    let params = serde_json::json!({ "binary": [1, 2, 3, 255] });
+    let result = resolve_binary_param(&params).unwrap();
+    assert_eq!(result, vec![1, 2, 3, 255]);
+}
+
+#[test]
+fn resolve_binary_param_b64_preferred_over_legacy() {
+    let b64 = base64::engine::general_purpose::STANDARD.encode([42]);
+    let params = serde_json::json!({
+        "binary_b64": b64,
+        "binary": [99, 99, 99],
+    });
+    let result = resolve_binary_param(&params).unwrap();
+    assert_eq!(result, vec![42]);
+}
+
+#[test]
+fn resolve_buffers_decodes_data_b64() {
+    let b64 = base64::engine::general_purpose::STANDARD.encode([1, 2, 3]);
+    let params = serde_json::json!({
+        "buffers": [
+            { "name": "input", "data_b64": b64, "size": 3 },
+            { "name": "output", "size": 128 },
+        ]
+    });
+    let resolved = resolve_buffers(&params);
+    let arr = resolved.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    assert!(arr[0].get("data").is_some());
+    assert!(arr[0].get("data_b64").is_none());
+    assert_eq!(arr[0]["name"], "input");
+    assert_eq!(arr[1]["name"], "output");
+    assert!(arr[1].get("data").is_none());
+}
+
+#[test]
+fn resolve_buffers_non_object_items_pass_through() {
+    let params = serde_json::json!({ "buffers": ["raw_string", 42] });
+    let resolved = resolve_buffers(&params);
+    let arr = resolved.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+}
+
+#[test]
+fn resolve_workgroup_size_partial_dimensions() {
+    let params = serde_json::json!({ "dispatch_dims": [64] });
+    assert_eq!(resolve_workgroup_size(&params), [64, 1, 1]);
+}
+
+#[test]
+fn resolve_workgroup_size_falls_back_to_workgroup_size() {
+    let params = serde_json::json!({ "workgroup_size": [16, 8, 4] });
+    assert_eq!(resolve_workgroup_size(&params), [16, 8, 4]);
 }

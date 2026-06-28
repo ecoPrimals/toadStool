@@ -8,6 +8,8 @@
 //! - Auto-generates `unit_id` when not provided
 //! - Degradation: sequential `compute.dispatch.submit` produces identical results
 
+use serde::Deserialize;
+
 use super::DispatchHandler;
 use super::types::{FanOutAssignment, FanOutUnitStatus, FanOutWorkUnit, SubstrateFilter};
 use crate::pure_jsonrpc::handler::method_gate::CallerContext;
@@ -26,7 +28,7 @@ impl DispatchHandler {
 
         let work_units: Vec<FanOutWorkUnit> = params
             .get("work_units")
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .and_then(|v| Vec::<FanOutWorkUnit>::deserialize(v).ok())
             .ok_or_else(|| {
                 JsonRpcError::invalid_params("compute.fan_out requires 'work_units' array")
             })?;
@@ -39,7 +41,7 @@ impl DispatchHandler {
 
         let filter: SubstrateFilter = params
             .get("substrate_filter")
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .and_then(|v| SubstrateFilter::deserialize(v).ok())
             .unwrap_or_default();
 
         let dag_session_id = params
