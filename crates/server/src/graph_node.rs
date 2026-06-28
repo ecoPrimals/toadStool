@@ -364,4 +364,112 @@ mod tests {
         let node = GraphNode::builder("n", "op").primal("squirrel").build();
         assert_eq!(node.primal, "squirrel");
     }
+
+    #[test]
+    fn builder_storage_gb() {
+        let node = GraphNode::builder("n", "op").storage_gb(10).build();
+        assert_eq!(
+            node.requirements.storage.as_ref().map(|s| s.min_bytes),
+            Some(10 * 1024 * 1024 * 1024)
+        );
+    }
+
+    #[test]
+    fn builder_storage_bytes() {
+        let node = GraphNode::builder("n", "op").storage_bytes(4096).build();
+        assert_eq!(
+            node.requirements.storage.as_ref().map(|s| s.min_bytes),
+            Some(4096)
+        );
+    }
+
+    #[test]
+    fn builder_network_mbps() {
+        let node = GraphNode::builder("n", "op").network_mbps(100).build();
+        let net = node.requirements.network.as_ref().unwrap();
+        assert_eq!(net.min_bandwidth, Some(100 * 1024 * 1024 / 8));
+    }
+
+    #[test]
+    fn builder_gpu_memory_bytes() {
+        let node = GraphNode::builder("n", "op").gpu_memory_bytes(8192).build();
+        let gpu = node.requirements.gpu.as_ref().unwrap();
+        assert_eq!(gpu.min_memory_bytes, Some(8192));
+        assert_eq!(gpu.min_units, 1);
+    }
+
+    #[test]
+    fn builder_memory_bytes() {
+        let node = GraphNode::builder("n", "op").memory_bytes(1024).build();
+        assert_eq!(
+            node.requirements.memory.as_ref().map(|m| m.min_bytes),
+            Some(1024)
+        );
+    }
+
+    #[test]
+    fn builder_duration() {
+        let node = GraphNode::builder("n", "op")
+            .duration(Duration::from_millis(500))
+            .build();
+        assert_eq!(node.duration, Some(Duration::from_millis(500)));
+    }
+
+    #[test]
+    fn duration_serde_roundtrip() {
+        let node = GraphNode::builder("n", "op").duration_secs(42).build();
+        let json = serde_json::to_value(&node).unwrap();
+        assert_eq!(json["duration"], 42);
+        let restored: GraphNode = serde_json::from_value(json).unwrap();
+        assert_eq!(restored.duration, Some(Duration::from_secs(42)));
+    }
+
+    #[test]
+    fn duration_none_omitted_from_json() {
+        let node = GraphNode::simple("n", "op");
+        let json = serde_json::to_value(&node).unwrap();
+        assert!(json.get("duration").is_none());
+    }
+
+    #[test]
+    fn deserialize_without_primal_uses_default() {
+        let json = serde_json::json!({
+            "id": "test",
+            "operation": "compute"
+        });
+        let node: GraphNode = serde_json::from_value(json).unwrap();
+        assert_eq!(node.primal, primal_identity::PRIMAL_NAME);
+    }
+
+    #[test]
+    fn builder_default_primal_is_toadstool() {
+        let node = GraphNode::builder("n", "op").build();
+        assert_eq!(node.primal, primal_identity::PRIMAL_NAME);
+    }
+
+    #[test]
+    fn builder_all_fields() {
+        let node = GraphNode::builder("full", "gpu_compute")
+            .primal("custom")
+            .cpu(8.0)
+            .memory_gb(32)
+            .gpu_memory_gb(24)
+            .storage_gb(100)
+            .network_mbps(1000)
+            .duration_secs(300)
+            .metadata("key1", "val1")
+            .metadata("key2", "val2")
+            .build();
+
+        assert_eq!(node.id, "full");
+        assert_eq!(node.primal, "custom");
+        assert_eq!(node.operation, "gpu_compute");
+        assert!(node.requirements.cpu.is_some());
+        assert!(node.requirements.memory.is_some());
+        assert!(node.requirements.gpu.is_some());
+        assert!(node.requirements.storage.is_some());
+        assert!(node.requirements.network.is_some());
+        assert_eq!(node.duration, Some(Duration::from_secs(300)));
+        assert_eq!(node.metadata.len(), 2);
+    }
 }

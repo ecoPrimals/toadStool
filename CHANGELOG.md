@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 22, 2026 (Sessions 43-325+)
+## [Unreleased] - Jun 28, 2026 (Sessions 43-326+)
+
+### Session S326 (Jun 28, 2026) — Router Contract Tests + Graph Node Coverage + Glowplug Split
+
+Convergence + debt sprint: routing contract safety net, builder/serde coverage, and file-size extraction.
+
+- **Router contract tests** — `router.rs` (438L, zero direct tests) now has 7 contract tests: duplicate detection for both direct and dispatch tables, semantic core method routability verification (compute.execute, auth.*, pipeline.*), minimum method count assertion (112+), provenance JSON shape validation, and naming convention enforcement (dotted methods + bare health).
+- **Graph node coverage** — `graph_node.rs` expanded from 5 to 16 tests (+11): duration serde roundtrip (u64 seconds), JSON omission when duration is None, primal default via deserialization, builder paths for storage_gb/bytes, network_mbps, gpu_memory_bytes, memory_bytes, Duration, and full-field all-at-once construction.
+- **Glowplug PCI discovery split** — `glowplug_client.rs` (642→467L): 8 sysfs/PCI discovery functions extracted to `glowplug_discovery.rs` (192L) — `discover_gpu_bdfs`, `discover_gpu_devices`, `discover_single_device`, `is_gpu_bdf`, `read_device_name`, `probe_vram_alive`, `is_display_connected`, `pci_bdf_matches`, `read_bar0_registers`, `read_current_driver`. Re-exported for all existing callers. Zero API changes.
+- **Quality gates** — 9,145+ lib tests, 0 failures. Zero clippy, zero fmt diff.
 
 ### Session S325 (Jun 22, 2026) — Kernel Sentinel Coverage + Path Consolidation + Clone Elimination + Discovery Gate
 

@@ -115,6 +115,7 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 // Test-only mocks (see also `toadstool_testing::mocks` for integration test helpers)
 
 pub mod glowplug_client;
+pub(crate) mod glowplug_discovery;
 pub mod glowplug_types;
 pub(crate) mod visualization_client; // Shader / GPU-dispatch helper client (capability-discovered)
 
