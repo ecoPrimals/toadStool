@@ -378,4 +378,4 @@ after Phase D.
 
 ## Completed Sessions (Archived)
 
-Session history for S43–S323+ lives in [CHANGELOG.md](CHANGELOG.md). Fossil record for S87–S240 archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
+Session history for S43–S327+ lives in [CHANGELOG.md](CHANGELOG.md). Fossil record for S87–S240 archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.

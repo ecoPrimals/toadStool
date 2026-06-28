@@ -10,10 +10,10 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S325, Jun 22, 2026)
+- **Version**: 0.2.0 (Session S327, Jun 28, 2026)
 - **Lib tests**: 9,171+ (0 failures, unlimited parallelism)
 - **Workspace tests**: 23,000+ (0 failures, ~221 hardware-gated ignores; 9,171+ lib-only)
-- **JSON-RPC methods**: 111 (direct) + semantic registry aliases
+- **JSON-RPC methods**: 112 (direct) + semantic registry aliases
 - **Workspace crates**: 47
 - **Clippy**: 0 warnings (`-D warnings`)
 - **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned)

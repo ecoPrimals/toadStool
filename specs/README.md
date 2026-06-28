@@ -112,10 +112,10 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 | Unsafe code | All documented with `// SAFETY:` | ✅ |
 | Files > 1000 lines | 0 | ✅ |
 | Hardcoded IPs/ports/primal names | 0 in production | ✅ |
-| Test coverage | Target 90%, current ~83.6% (llvm-cov) | D-COV |
+| Test coverage | Target 90%, current ~85%+ (llvm-cov) | D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
-### Key Numbers (S310)
+### Key Numbers (S327)
 
 - **23,000+ workspace / 9,171+ lib-only** tests (0 failures), **112 JSON-RPC methods**
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial

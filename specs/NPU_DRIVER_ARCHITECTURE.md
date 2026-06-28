@@ -532,7 +532,7 @@ fn test_both_backends_produce_same_results() {
 ## 9. FUTURE WORK
 
 - [ ] GPU backend (Vulkan compute)
-- [ ] FPGA backend (OpenCL)
+- [ ] FPGA backend (WGPU/VFIO)
 - [ ] Network backend (remote NPU access)
 - [ ] Hybrid backend (kernel + userspace)
 

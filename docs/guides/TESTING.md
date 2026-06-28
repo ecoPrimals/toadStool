@@ -1,6 +1,6 @@
 # Testing Guide
 
-**Last Updated**: Jun 2026 — S310
+**Last Updated**: Jun 2026 — S327
 
 ## Quick Status
 
