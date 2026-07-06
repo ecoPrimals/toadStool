@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jun 28, 2026 (Sessions 43-327+)
+## [Unreleased] - Jul 6, 2026 (Sessions 43-328+)
+
+### Session S328 (Jul 6, 2026) — DH-1 `/tmp` Hardcoding Fix (systemd `ProtectSystem=strict`)
+
+Wave 132h final debt item: systemd service runtime directory resolution.
+
+- **DH-1 `/tmp` fix** — `resolve_runtime_dir()` now has a 3-tier resolution: (1) `XDG_RUNTIME_DIR`, (2) `/run/membrane/<user>` when systemd `INVOCATION_ID` is set, (3) `temp_dir()` fallback for development only. Previously, when both `BIOMEOS_SOCKET_DIR` and `XDG_RUNTIME_DIR` were unset, resolution fell through to `std::env::temp_dir()` → `/tmp`, which is blocked by `ProtectSystem=strict` on systemd VPS units.
+- **`SocketPathEnv`** — added `invocation_id` field (captures `INVOCATION_ID` from systemd service environment).
+- **`socket_env` constants** — added `INVOCATION_ID` constant.
+- **Quality gates** — 9,175+ lib tests, 0 failures. Zero clippy, zero fmt diff.
 
 ### Session S327 (Jun 28, 2026) — Hot-Path Clone Elimination + Invariant Tests + Router Extraction
 

@@ -111,7 +111,9 @@ mod tests {
             let dir = get_runtime_dir();
             assert!(!dir.is_empty());
             assert!(
-                dir.contains("toadstool-runtime") || dir.starts_with("/run/user/"),
+                dir.contains("toadstool-runtime")
+                    || dir.starts_with("/run/user/")
+                    || dir.starts_with("/run/membrane/"),
                 "expected runtime dir pattern, got: {dir}"
             );
         });

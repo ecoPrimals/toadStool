@@ -50,6 +50,10 @@ pub struct SocketPathEnv {
     pub biomeos_socket_dir: Option<String>,
     /// `BIOMEOS_INSECURE` — when "1", disables BTSP (dev only; conflicts with `FAMILY_ID`)
     pub biomeos_insecure: Option<String>,
+    /// `INVOCATION_ID` — set by systemd for every service invocation. When present,
+    /// enables `/run/membrane/` as a runtime directory tier (DH-1: avoids `/tmp`
+    /// under `ProtectSystem=strict`).
+    pub invocation_id: Option<String>,
     /// Coordination service URL/path hint (not socket-specific): `TOADSTOOL_COORDINATION_ENDPOINT`,
     /// `COORDINATION_URL`, `COORDINATION_ENDPOINT`, legacy `SONGBIRD_URL` / `SONGBIRD_ENDPOINT`.
     pub coordination_connection_hint: Option<String>,
@@ -149,6 +153,7 @@ impl SocketPathEnv {
             biomeos_socket_dir: std::env::var(socket_env::BIOMEOS_SOCKET_DIR).ok(),
             nucleus_socket: std::env::var(socket_env::NUCLEUS_SOCKET).ok(),
             biomeos_insecure: std::env::var(socket_env::BIOMEOS_INSECURE).ok(),
+            invocation_id: std::env::var(socket_env::INVOCATION_ID).ok(),
             coordination_connection_hint: std::env::var(
                 socket_env::TOADSTOOL_COORDINATION_ENDPOINT,
             )

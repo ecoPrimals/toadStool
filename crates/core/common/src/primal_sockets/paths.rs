@@ -41,14 +41,26 @@ pub fn service_label_to_capability_id(label: &str) -> Option<&'static str> {
     }
 }
 
-/// Pure logic: resolve runtime dir from environment snapshot
+/// Pure logic: resolve runtime dir from environment snapshot.
+///
+/// Resolution tiers:
+/// 1. `XDG_RUNTIME_DIR` (XDG standard — `/run/user/<uid>`)
+/// 2. `/run/membrane/<user>` when running under systemd (`INVOCATION_ID` set) —
+///    avoids `/tmp` which is blocked by `ProtectSystem=strict` (DH-1)
+/// 3. `temp_dir()/toadstool-runtime-<user>` (development / non-systemd fallback)
 #[must_use]
 pub fn resolve_runtime_dir(env: &SocketPathEnv) -> String {
     if let Some(ref xdg) = env.xdg_runtime_dir {
         return xdg.clone();
     }
-    let temp_dir = std::env::temp_dir();
+
     let username = env.user.as_deref().unwrap_or("default");
+
+    if env.invocation_id.is_some() {
+        return format!("/run/membrane/{username}");
+    }
+
+    let temp_dir = std::env::temp_dir();
     temp_dir
         .join(format!("toadstool-runtime-{username}"))
         .to_string_lossy()
@@ -310,6 +322,54 @@ mod tests {
         };
         let dir = resolve_runtime_dir(&env);
         assert!(dir.contains("toadstool-runtime-default"));
+    }
+
+    #[test]
+    fn test_resolve_runtime_dir_systemd_uses_run_membrane() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: None,
+            user: Some("ecoprimals".to_string()),
+            invocation_id: Some("abc123".to_string()),
+            ..Default::default()
+        };
+        let dir = resolve_runtime_dir(&env);
+        assert_eq!(dir, "/run/membrane/ecoprimals");
+    }
+
+    #[test]
+    fn test_resolve_runtime_dir_xdg_wins_over_systemd() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: Some("/run/user/1000".to_string()),
+            invocation_id: Some("abc123".to_string()),
+            user: Some("testuser".to_string()),
+            ..Default::default()
+        };
+        let dir = resolve_runtime_dir(&env);
+        assert_eq!(dir, "/run/user/1000");
+    }
+
+    #[test]
+    fn test_resolve_runtime_dir_systemd_default_user() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: None,
+            user: None,
+            invocation_id: Some("def456".to_string()),
+            ..Default::default()
+        };
+        let dir = resolve_runtime_dir(&env);
+        assert_eq!(dir, "/run/membrane/default");
+    }
+
+    #[test]
+    fn test_resolve_biomeos_dir_under_systemd() {
+        let env = SocketPathEnv {
+            xdg_runtime_dir: None,
+            user: Some("svc".to_string()),
+            invocation_id: Some("xyz".to_string()),
+            ..Default::default()
+        };
+        let dir = resolve_biomeos_dir(&env);
+        assert_eq!(dir, PathBuf::from("/run/membrane/svc/biomeos"));
     }
 
     #[test]

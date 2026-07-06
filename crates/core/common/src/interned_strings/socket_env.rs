@@ -369,6 +369,9 @@ pub const NOTIFY_SOCKET: &str = "NOTIFY_SOCKET";
 pub const LISTEN_FDS: &str = "LISTEN_FDS";
 pub const LISTEN_PID: &str = "LISTEN_PID";
 pub const LISTEN_FDNAMES: &str = "LISTEN_FDNAMES";
+/// Set by systemd for every service invocation — presence indicates we are running
+/// under a systemd unit, enabling `/run/membrane/` as a runtime directory tier.
+pub const INVOCATION_ID: &str = "INVOCATION_ID";
 
 // Server identity (unibin).
 pub const TOADSTOOL_GATE_ID: &str = "TOADSTOOL_GATE_ID";
