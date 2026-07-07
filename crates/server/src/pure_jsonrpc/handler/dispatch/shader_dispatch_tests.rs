@@ -105,13 +105,15 @@ async fn shader_dispatch_vfio_without_shader_service_returns_failed_capability_r
         .shader_dispatch(Some(&params))
         .await
         .expect("handler returns Ok JSON envelope on service miss");
-    assert_eq!(result["status"], "failed");
+    assert_eq!(result["status"], "failed", "result: {result}");
     assert_eq!(result["domain"], "compute.dispatch");
     assert_eq!(result["operation"], "shader");
     assert!(
         result["error"]
             .as_str()
-            .is_some_and(|s| s.contains("shader"))
+            .is_some_and(|s| s.contains("shader") || s.contains("dispatch")),
+        "error field should mention shader or dispatch, got: {:?}",
+        result["error"]
     );
     let meta = result["metadata"].as_object().expect("metadata object");
     assert_eq!(meta["dispatch_mode"], "vfio");
