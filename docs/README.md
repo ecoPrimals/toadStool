@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: Jun 2026 — S327
+**Updated**: Jul 2026 — S330
 
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub. Session trackers archived to the [ecosystem fossil record](https://github.com/ecoPrimals/fossilRecord).
 

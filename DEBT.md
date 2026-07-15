@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: July 6, 2026 — S328+
+**Date**: July 15, 2026 — S330+
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -2293,7 +2293,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~85%+ line coverage** (llvm-cov). **23,000+ tests** (9,175+ lib-only, S328+). Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. |
+| D-COV | Test coverage → 90% | Medium | **~85%+ line coverage** (llvm-cov). **23,000+ tests** (9,206+ lib-only, S330+). Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
