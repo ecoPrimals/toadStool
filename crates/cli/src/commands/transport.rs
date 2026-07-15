@@ -30,7 +30,7 @@ pub async fn execute_transport_command(action: &TransportCommands) -> Result<()>
                 run_status().await?;
             }
         }
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(target_os = "linux"))]

@@ -71,12 +71,10 @@ pub struct CpuFeatures {
 /// Detect CPU capabilities and characteristics
 pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo> {
     #[cfg(target_os = "linux")]
-    let mut cpu_info = {
-        let mut info = CpuInfo::default();
-        if let Ok(cpuinfo) = tokio::fs::read_to_string(procfs::CPUINFO).await {
-            info = parse_linux_cpuinfo(&cpuinfo);
-        }
-        info
+    let mut cpu_info = if let Ok(cpuinfo) = tokio::fs::read_to_string(procfs::CPUINFO).await {
+        parse_linux_cpuinfo(&cpuinfo)
+    } else {
+        CpuInfo::default()
     };
 
     // Try to get CPU info from sysctl on macOS

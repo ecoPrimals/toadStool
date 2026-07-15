@@ -173,12 +173,12 @@ impl AuthenticationManager {
         #[cfg(unix)]
         {
             let backend = super::auth_backend::SecurityBackend::new_async().await?;
-            return Ok(Self {
+            Ok(Self {
                 config,
                 current_token: None,
                 backend: Arc::new(AuthBackendDispatch::Security(backend)),
                 refresh_task: None,
-            });
+            })
         }
         #[cfg(not(unix))]
         Err(crate::ToadStoolError::configuration(

@@ -132,6 +132,7 @@ impl std::fmt::Debug for WebGpuAllocation {
 /// allocation. On other platforms, uses a heap `Vec` with cache-line padding.
 #[derive(Debug)]
 pub struct CpuAllocation {
+    /// RAII-managed aligned allocation (Linux: `hw-safe`).
     #[cfg(target_os = "linux")]
     pub alloc: toadstool_hw_safe::AlignedAlloc,
     #[cfg(not(target_os = "linux"))]

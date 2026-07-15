@@ -227,7 +227,7 @@ pub(crate) fn read_system_info() -> (usize, u64, u64) {
             }
         }
 
-        return (total_cpu_cores, total_memory_bytes, available_memory_bytes);
+        (total_cpu_cores, total_memory_bytes, available_memory_bytes)
     }
 
     #[cfg(target_os = "macos")]

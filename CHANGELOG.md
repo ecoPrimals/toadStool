@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 15, 2026 (Sessions 43-329+)
+## [Unreleased] - Jul 15, 2026 (Sessions 43-330+)
+
+### Session S330 (Jul 15, 2026) — Deep Debt: Clone Elimination + Test Coverage + Clippy Zero
+
+Hot-path clone elimination, test coverage expansion for 3 key untested production files, and resolution of all remaining clippy warnings workspace-wide.
+
+- **`decrypt_result` ownership** — `submit.rs`: changed `decrypt_result(&self, result: &Value)` to take `Value` by value, eliminating 2 `.clone()` calls on the common path (no `ct` field or no crypto client). Caller already owns the dispatch result.
+- **Unix connection tests** — `connection/unix.rs` +12 inline tests: extracted 6 pure helpers (`is_ribocipher_signal_byte`, `ndjson_line_prefix_after_first_byte`, `early_health_response`, `unsignalled_connection_reject_json`, `parse_http_header_field`, `format_http_response_header`) and added coverage for riboCipher prefix detection, NDJSON buffer init, HTTP header parsing, early health response mapping, and rejection payloads.
+- **Discovery engine tests** — `discovery_engine/mod.rs` +11 inline tests: environment provider config defaults, endpoint parsing (empty strings, TCP missing port), capability string parsing (case-insensitive), registry service entry deserialization (field aliases, malformed JSON, default capability), and mDNS TXT record parsing.
+- **Execution config tests** — `execution_tests.rs` +8 tests: `bind_any_os_port` with custom host, `tcp_ipc_bind_addr` explicit override and fallback, `max_concurrent`/`timeout` custom values, defaults without env, headless mode (`1` and `TRUE`), invalid numeric env graceful fallback.
+- **Clippy zero** — resolved all remaining clippy warnings: `needless_return` in 5 crates (auto-fixed), missing doc on `CpuAllocation::alloc` field, `if-else is expression` in `detect_cpu`, underscore-prefixed binding in sandbox `setup_filesystem_mounts`.
+- **Quality gates** — 9,206 lib tests (+31), 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S329 (Jul 15, 2026) — Cross-Architecture Adoption (Wave 141a: Silicon Atheism)
 

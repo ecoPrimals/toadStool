@@ -87,14 +87,14 @@ impl DispatchHandler {
     /// Returns the value unchanged if no crypto client is present.
     async fn decrypt_result(
         &self,
-        result: &serde_json::Value,
+        result: serde_json::Value,
     ) -> Result<serde_json::Value, JsonRpcError> {
         let Some(ct_b64) = result.get("ct").and_then(|v| v.as_str()) else {
-            return Ok(result.clone());
+            return Ok(result);
         };
 
         let Some(ref client) = self.crypto_client else {
-            return Ok(result.clone());
+            return Ok(result);
         };
 
         let ciphertext = base64::engine::general_purpose::STANDARD
@@ -373,7 +373,7 @@ impl DispatchHandler {
                     Ok(result) => {
                         let dispatch_ms = pre_dispatch.elapsed().as_millis() as u64;
                         let readback_start = std::time::Instant::now();
-                        let decrypted = self.decrypt_result(&result).await?;
+                        let decrypted = self.decrypt_result(result).await?;
                         let readback_ms = readback_start.elapsed().as_millis() as u64;
                         super::telemetry::emit_dispatch_completion_telemetry(
                             &super::telemetry::DispatchTelemetryEmit {

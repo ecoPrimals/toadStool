@@ -88,10 +88,10 @@ impl StorageProvisioningManager {
                 config.replication_factor,
             )
             .await?;
-            return Ok(Self {
+            Ok(Self {
                 config,
                 backend: Arc::new(StorageBackendDispatch::Socket(backend)),
-            });
+            })
         }
         #[cfg(not(unix))]
         Err(ToadStoolError::configuration(

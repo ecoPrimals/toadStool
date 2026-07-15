@@ -111,10 +111,10 @@ impl AgentDeploymentManager {
                 config.mcp_enabled,
             )
             .await?;
-            return Ok(Self {
+            Ok(Self {
                 _config: config,
                 backend: Arc::new(AgentBackendDispatch::Intelligence(backend)),
-            });
+            })
         }
         #[cfg(not(unix))]
         Err(crate::ToadStoolError::configuration(

@@ -97,7 +97,7 @@ impl UnifiedMemoryBackend for CpuBackend {
                 self.capabilities.alignment_requirement
             );
 
-            return Ok(BackendAllocation::Cpu(CpuAllocation { alloc }));
+            Ok(BackendAllocation::Cpu(CpuAllocation { alloc }))
         }
 
         #[cfg(not(target_os = "linux"))]

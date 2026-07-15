@@ -131,10 +131,10 @@ impl IsolatedMemoryRegion {
                 aligned_size
             );
 
-            return Ok(Self {
+            Ok(Self {
                 inner,
                 logical_size: size,
-            });
+            })
         }
 
         #[cfg(not(target_os = "linux"))]
@@ -179,7 +179,7 @@ impl IsolatedMemoryRegion {
     fn backing_slice(&self) -> &[u8] {
         #[cfg(target_os = "linux")]
         {
-            return self.inner.as_slice();
+            self.inner.as_slice()
         }
 
         #[cfg(not(target_os = "linux"))]
@@ -191,7 +191,7 @@ impl IsolatedMemoryRegion {
     fn backing_slice_mut(&mut self) -> &mut [u8] {
         #[cfg(target_os = "linux")]
         {
-            return self.inner.as_mut_slice();
+            self.inner.as_mut_slice()
         }
 
         #[cfg(not(target_os = "linux"))]
@@ -241,7 +241,7 @@ impl IsolatedMemoryRegion {
     pub fn physical_size(&self) -> usize {
         #[cfg(target_os = "linux")]
         {
-            return self.inner.size();
+            self.inner.size()
         }
 
         #[cfg(not(target_os = "linux"))]
