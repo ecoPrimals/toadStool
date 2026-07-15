@@ -7,12 +7,14 @@ use toadstool::{
     ToadStoolResult, WorkloadType,
 };
 use toadstool_runtime_container::ContainerRuntimeEngine;
+#[cfg(target_os = "linux")]
 use toadstool_runtime_gpu::UniversalGpuEngine;
 use toadstool_runtime_native::NativeRuntimeEngine;
 use toadstool_runtime_specialty::SpecialtyRuntimeEngine;
 use toadstool_runtime_wasm::WasmRuntimeEngine;
 
 /// Production GPU engine type (universal GPU engine).
+#[cfg(target_os = "linux")]
 pub type GpuRuntimeEngine = UniversalGpuEngine;
 
 /// Bundles all first-party runtime engines for use with [`toadstool::runtime::EngineRegistry`],
@@ -22,7 +24,8 @@ pub enum RuntimeEngineDispatch {
     Native(NativeRuntimeEngine),
     /// OCI/container runtime.
     Container(ContainerRuntimeEngine),
-    /// GPU compute runtime.
+    /// GPU compute runtime (Linux only).
+    #[cfg(target_os = "linux")]
     Gpu(GpuRuntimeEngine),
     /// WebAssembly (`wasmi`) runtime.
     Wasm(WasmRuntimeEngine),
@@ -35,6 +38,7 @@ impl std::fmt::Debug for RuntimeEngineDispatch {
         match self {
             Self::Native(e) => f.debug_tuple("Native").field(e).finish(),
             Self::Container(e) => f.debug_tuple("Container").field(e).finish(),
+            #[cfg(target_os = "linux")]
             Self::Gpu(_) => f.write_str("Gpu(...)"),
             Self::Wasm(e) => f.debug_tuple("Wasm").field(e).finish(),
             Self::Specialty(e) => f.debug_tuple("Specialty").field(e).finish(),
@@ -51,6 +55,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
             match self {
                 Self::Native(e) => e.initialize(config).await,
                 Self::Container(e) => e.initialize(config).await,
+                #[cfg(target_os = "linux")]
                 Self::Gpu(e) => e.initialize(config).await,
                 Self::Wasm(e) => e.initialize(config).await,
                 Self::Specialty(e) => RuntimeEngine::initialize(e, config).await,
@@ -66,6 +71,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
             match self {
                 Self::Native(e) => e.execute(request).await,
                 Self::Container(e) => e.execute(request).await,
+                #[cfg(target_os = "linux")]
                 Self::Gpu(e) => e.execute(request).await,
                 Self::Wasm(e) => e.execute(request).await,
                 Self::Specialty(e) => e.execute(request).await,
@@ -77,6 +83,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
         match self {
             Self::Native(e) => e.get_capabilities(),
             Self::Container(e) => e.get_capabilities(),
+            #[cfg(target_os = "linux")]
             Self::Gpu(e) => e.get_capabilities(),
             Self::Wasm(e) => e.get_capabilities(),
             Self::Specialty(e) => e.get_capabilities(),
@@ -87,6 +94,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
         match self {
             Self::Native(e) => e.supports_workload(workload_type),
             Self::Container(e) => e.supports_workload(workload_type),
+            #[cfg(target_os = "linux")]
             Self::Gpu(e) => e.supports_workload(workload_type),
             Self::Wasm(e) => e.supports_workload(workload_type),
             Self::Specialty(e) => e.supports_workload(workload_type),
@@ -100,6 +108,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
             match self {
                 Self::Native(e) => e.get_metrics().await,
                 Self::Container(e) => e.get_metrics().await,
+                #[cfg(target_os = "linux")]
                 Self::Gpu(e) => e.get_metrics().await,
                 Self::Wasm(e) => e.get_metrics().await,
                 Self::Specialty(e) => RuntimeEngine::get_metrics(e).await,
@@ -112,6 +121,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
             match self {
                 Self::Native(e) => e.shutdown().await,
                 Self::Container(e) => e.shutdown().await,
+                #[cfg(target_os = "linux")]
                 Self::Gpu(e) => e.shutdown().await,
                 Self::Wasm(e) => e.shutdown().await,
                 Self::Specialty(e) => e.shutdown().await,
@@ -124,6 +134,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
 mod tests {
     use toadstool::WorkloadType;
     use toadstool_runtime_container::ContainerRuntimeEngine;
+    #[cfg(target_os = "linux")]
     use toadstool_runtime_gpu::UniversalGpuEngine;
     use toadstool_runtime_native::NativeRuntimeEngine;
     use toadstool_runtime_specialty::{SpecialtyRuntimeConfig, SpecialtyRuntimeEngine};
@@ -163,6 +174,7 @@ mod tests {
         assert!(!caps.supported_workloads.is_empty());
     }
 
+    #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn gpu_variant_delegates_get_capabilities() {
         let inner = UniversalGpuEngine::new().await.expect("gpu engine");

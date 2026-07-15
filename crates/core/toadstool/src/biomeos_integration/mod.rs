@@ -38,6 +38,7 @@
 /// Legacy agent backend (trait-based, hardcoded providers).
 pub mod agent_backend;
 /// Capability-based agent backend (recommended).
+#[cfg(unix)]
 pub mod agent_backend_evolved;
 /// AI agent deployment manager
 pub mod agents;
@@ -61,19 +62,24 @@ pub mod types;
 // Re-export legacy backends for backward compatibility
 #[cfg(any(test, feature = "test-mocks"))]
 pub use agent_backend::InMemoryAgentBackend;
-pub use agent_backend::{AgentBackend, AgentBackendDispatch, IntelligenceBackend};
+#[cfg(unix)]
+pub use agent_backend::IntelligenceBackend;
+pub use agent_backend::{AgentBackend, AgentBackendDispatch};
 pub use agents::*;
 pub use auth::*;
+pub use auth_backend::AuthBackend;
 #[cfg(any(test, feature = "test-mocks"))]
 pub use auth_backend::InMemoryAuthBackend;
-pub use auth_backend::{AuthBackend, SecurityBackend};
+#[cfg(unix)]
+pub use auth_backend::SecurityBackend;
 pub use storage::*;
-pub use storage_backend::{
-    InMemoryBackend, SocketStorageBackend, StorageBackend, StorageBackendDispatch, VolumeStatus,
-};
+#[cfg(unix)]
+pub use storage_backend::SocketStorageBackend;
+pub use storage_backend::{InMemoryBackend, StorageBackend, StorageBackendDispatch, VolumeStatus};
 pub use types::*;
 
 // Re-export evolved backends (RECOMMENDED for new code)
+#[cfg(unix)]
 pub use agent_backend_evolved::AgentBackend as AgentBackendEvolved;
 #[cfg(test)]
 pub use auth_backend_evolved::AuthBackend as AuthBackendEvolved;

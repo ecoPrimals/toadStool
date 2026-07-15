@@ -9,17 +9,24 @@
 mod auth;
 mod core;
 mod dispatch;
+#[cfg(target_os = "linux")]
 mod ember;
+#[cfg(target_os = "linux")]
 mod hw_learn;
 mod job;
 pub mod method_gate;
+#[cfg(target_os = "linux")]
 mod mmio;
+#[cfg(target_os = "linux")]
 mod mmio_ember;
+#[cfg(target_os = "linux")]
 mod mmio_falcon;
 mod resources;
 mod router;
 mod silicon;
+#[cfg(target_os = "linux")]
 mod sovereign;
+#[cfg(target_os = "linux")]
 mod transport;
 mod workload;
 
@@ -38,13 +45,16 @@ pub use method_gate::{
 use super::types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
 use dispatch::DispatchHandler;
+#[cfg(target_os = "linux")]
 pub use hw_learn::HwLearnHandler;
 use job::JobHandler;
 use resources::ResourceHandler;
 use silicon::SiliconHandler;
+#[cfg(target_os = "linux")]
 use transport::TransportHandler;
 use workload::WorkloadHandler;
 
+#[cfg(target_os = "linux")]
 use crate::glowplug_client::{self, SharedGlowPlugClient};
 
 /// Pure Rust JSON-RPC Handler
@@ -66,13 +76,17 @@ pub struct JsonRpcHandler {
     semantic_registry: SemanticMethodRegistry,
     pub(super) dispatch: DispatchHandler,
     /// Shared anchor store for warm keepalive — leaked on SIGTERM.
+    #[cfg(target_os = "linux")]
     anchor_store: dispatch::AnchorStore,
+    #[cfg(target_os = "linux")]
     hw_learn: HwLearnHandler,
     job: JobHandler,
     workload: WorkloadHandler,
     resources: ResourceHandler,
+    #[cfg(target_os = "linux")]
     transport: TransportHandler,
     silicon: SiliconHandler,
+    #[cfg(target_os = "linux")]
     pub(super) glowplug: SharedGlowPlugClient,
     /// Actual bound JSON-RPC UDS path (set at server startup).
     bound_socket_path: Option<Arc<PathBuf>>,
@@ -114,6 +128,7 @@ impl JsonRpcHandler {
         // Spawn ipc.watch background poller — watches songBird for shader
         // capability registrations and invalidates the visualization client
         // cache so dispatch can discover coralReef at any time (GAP-HS-119).
+        #[cfg(unix)]
         {
             let watch_client = Arc::clone(&coral_client);
             tokio::spawn(async move {
@@ -126,10 +141,6 @@ impl JsonRpcHandler {
         {
             tracing::info!("Phase D: local cylinder device factory registered");
             dispatch.set_local_device_factory(dispatch::create_cylinder_device_factory());
-        }
-        #[cfg(not(target_os = "linux"))]
-        if let Some(factory) = dispatch::create_cylinder_device_factory() {
-            dispatch.set_local_device_factory(factory);
         }
 
         // Build resource orchestrator for multi-tenant GPU scheduling.
@@ -167,6 +178,7 @@ impl JsonRpcHandler {
 
         dispatch.set_gate_ownership(Arc::clone(&gate_ownership));
 
+        #[cfg(target_os = "linux")]
         let anchor_store = dispatch.anchor_store();
 
         Self {
@@ -178,19 +190,24 @@ impl JsonRpcHandler {
             gate,
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch,
+            #[cfg(target_os = "linux")]
             anchor_store,
+            #[cfg(target_os = "linux")]
             hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(Arc::clone(&gate_ownership)),
             workload: WorkloadHandler::new(executor),
             resources: ResourceHandler::new(),
+            #[cfg(target_os = "linux")]
             transport: TransportHandler::new(),
             silicon: SiliconHandler::new(),
+            #[cfg(target_os = "linux")]
             glowplug: glowplug_client::create_glowplug_client(),
             bound_socket_path,
         }
     }
 
     /// Get the anchor store for wiring into the SIGTERM leak handler.
+    #[cfg(target_os = "linux")]
     pub fn anchor_store(&self) -> dispatch::AnchorStore {
         self.anchor_store.clone()
     }

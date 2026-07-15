@@ -15,8 +15,11 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 toadstool-sysmon = { path = "../sysmon" }
-rustix = { workspace = true, features = ["fs"] }
 proptest = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies.rustix]
+workspace = true
+features = ["fs"]
 
 [features]
 default = []

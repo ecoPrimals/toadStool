@@ -3,8 +3,10 @@
 //!
 //! Bridges the model parser with the device driver for loading models to hardware.
 
+#[cfg(unix)]
 use crate::{AkidaModelError, Model, Result};
 
+#[cfg(unix)]
 impl Model {
     /// Load model to Akida device
     ///
@@ -45,6 +47,7 @@ impl Model {
     /// - Device incompatible with model
     /// - Transfer fails
     /// - Validation fails
+    #[cfg(unix)]
     pub fn load_to_device(
         &self,
         device: &mut akida_driver::AkidaDevice,
@@ -81,6 +84,7 @@ impl Model {
     ///
     /// **Deep Debt**: Self-knowledge!
     /// Model knows how to transform itself into device program.
+    #[cfg(unix)]
     fn to_program(&self) -> Result<akida_driver::ModelProgram> {
         // For now, use the raw program data
         // Later we'll construct this from layers + weights
@@ -101,6 +105,7 @@ impl Model {
 mod tests {
 
     #[test]
+    #[cfg(unix)]
     fn test_model_to_program() {
         // For this test, we just verify the program creation logic
         // Use a larger buffer that would pass parsing

@@ -3,12 +3,24 @@
 //!
 //! **CRITICAL EXPERIMENT**: This determines if reservoir computing is feasible!
 
+#[cfg(not(unix))]
+fn main() {
+    eprintln!("test-state-extraction requires Unix (Akida kernel driver)");
+    std::process::exit(1);
+}
+
+#[cfg(unix)]
 use akida_driver::DeviceManager;
+#[cfg(unix)]
 use akida_models::Model;
+#[cfg(unix)]
 use akida_reservoir_research::ReservoirResult as Result;
+#[cfg(unix)]
 use akida_reservoir_research::state_extraction::StateExtractor;
+#[cfg(unix)]
 use tracing::{error, info, warn};
 
+#[cfg(unix)]
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging

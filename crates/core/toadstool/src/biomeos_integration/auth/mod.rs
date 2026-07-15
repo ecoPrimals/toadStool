@@ -140,13 +140,22 @@ impl AuthenticationManager {
         if has_hint || has_config {
             let source = if has_hint { "environment" } else { "config" };
             tracing::info!("Discovered crypto service via {source}, connecting async");
-            let backend = super::auth_backend::SecurityBackend::new_async().await?;
-            return Ok(Self {
-                config,
-                current_token: None,
-                backend: Arc::new(AuthBackendDispatch::Security(backend)),
-                refresh_task: None,
-            });
+            #[cfg(unix)]
+            {
+                let backend = super::auth_backend::SecurityBackend::new_async().await?;
+                return Ok(Self {
+                    config,
+                    current_token: None,
+                    backend: Arc::new(AuthBackendDispatch::Security(backend)),
+                    refresh_task: None,
+                });
+            }
+            #[cfg(not(unix))]
+            {
+                return Err(crate::ToadStoolError::configuration(
+                    "Unix socket auth backends are unavailable on this platform",
+                ));
+            }
         }
 
         Err(crate::ToadStoolError::configuration(
@@ -159,14 +168,22 @@ impl AuthenticationManager {
     /// # Errors
     ///
     /// Returns an error if crypto service discovery fails or the backend cannot be initialized.
+    #[cfg_attr(not(unix), allow(unused_variables))]
     pub async fn with_crypto_service(config: AuthManagerConfig) -> ToadStoolResult<Self> {
-        let backend = super::auth_backend::SecurityBackend::new_async().await?;
-        Ok(Self {
-            config,
-            current_token: None,
-            backend: Arc::new(AuthBackendDispatch::Security(backend)),
-            refresh_task: None,
-        })
+        #[cfg(unix)]
+        {
+            let backend = super::auth_backend::SecurityBackend::new_async().await?;
+            return Ok(Self {
+                config,
+                current_token: None,
+                backend: Arc::new(AuthBackendDispatch::Security(backend)),
+                refresh_task: None,
+            });
+        }
+        #[cfg(not(unix))]
+        Err(crate::ToadStoolError::configuration(
+            "Unix socket auth backends are unavailable on this platform",
+        ))
     }
 
     /// Creates auth manager with in-memory backend (no crypto).

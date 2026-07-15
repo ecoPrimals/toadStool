@@ -60,7 +60,7 @@ pub enum PciDiscoveryError {
     DeviceMissingAfterRescan,
 }
 
-#[cfg(feature = "vfio")]
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 impl PciDiscoveryError {
     /// Wrap an [`std::io::Error`] with the sysfs path and operation label.
     pub(crate) fn sysfs_io(
@@ -241,7 +241,7 @@ pub enum DevinitError {
     NoBootScriptsInBitI,
 }
 
-#[cfg(feature = "vfio")]
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 impl DevinitError {
     /// Wrap an [`std::io::Error`] with path and operation.
     pub(crate) fn vbios_resource_io(
@@ -273,16 +273,18 @@ pub enum ChannelError {
     },
 
     /// `mmap` of sysfs BAR0 (`resource0`) failed.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[error("mmap BAR0 {path}: {source}")]
     Bar0Mmap {
         /// Full sysfs path to `resource0`.
         path: String,
         /// `mmap` errno from the kernel.
         #[source]
-        source: rustix::io::Errno,
+        source: std::io::Error,
     },
 
     /// `mmap` returned a null pointer.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[error("mmap returned null for BAR0 {path}")]
     Bar0MmapNull {
         /// Full sysfs path.
@@ -359,7 +361,7 @@ pub enum ChannelError {
     },
 }
 
-#[cfg(feature = "vfio")]
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 impl ChannelError {
     /// Wrap an [`std::io::Error`] with path and operation.
     pub(crate) fn resource_io(
@@ -529,6 +531,7 @@ impl SovereignStagesError {
     }
 }
 
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 impl From<crate::vfio::channel::hbm2_training::Hbm2TrainingError> for SovereignStagesError {
     fn from(e: crate::vfio::channel::hbm2_training::Hbm2TrainingError) -> Self {
         Self::Hbm2Training(e.to_string())

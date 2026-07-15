@@ -4,8 +4,11 @@
 //! Provides unified interface for kernel and userspace backends.
 //! Deep debt compliant: capability-based, runtime discovery, no hardcoding.
 
+#[cfg(unix)]
 use crate::backends::kernel::KernelBackend;
+#[cfg(unix)]
 use crate::backends::userspace::UserspaceBackend;
+#[cfg(target_os = "linux")]
 use crate::backends::vfio::VfioBackend;
 use crate::capabilities::Capabilities;
 use crate::error::Result;
@@ -123,14 +126,20 @@ impl std::fmt::Display for BackendType {
 #[derive(Debug)]
 pub enum NpuBackendDispatch {
     /// Kernel driver (`/dev/akida*`).
+    #[cfg(unix)]
     Kernel(KernelBackend),
     /// Userspace driver (mmap PCIe BARs).
+    #[cfg(unix)]
     Userspace(UserspaceBackend),
     /// VFIO driver (pure Rust with DMA).
+    #[cfg(target_os = "linux")]
     Vfio(VfioBackend),
     /// In-memory backend for tests and simulations (no hardware).
     #[cfg(any(test, feature = "test-mocks"))]
     Synthetic(SyntheticNpuBackend),
+    /// Placeholder when no platform backends are available.
+    #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+    Unsupported,
 }
 
 impl NpuBackend for NpuBackendDispatch {
@@ -143,71 +152,123 @@ impl NpuBackend for NpuBackendDispatch {
 
     fn capabilities(&self) -> &Capabilities {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.capabilities(),
+            #[cfg(unix)]
             Self::Userspace(b) => b.capabilities(),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.capabilities(),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.capabilities(),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => unreachable!("Unsupported backend has no capabilities"),
         }
     }
 
     fn load_model(&mut self, model: &[u8]) -> Result<ModelHandle> {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.load_model(model),
+            #[cfg(unix)]
             Self::Userspace(b) => b.load_model(model),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.load_model(model),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.load_model(model),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => {
+                let _ = model;
+                Err(crate::error::AkidaError::capability_query_failed(
+                    "NPU backends are not available on this platform",
+                ))
+            }
         }
     }
 
     fn load_reservoir(&mut self, w_in: &[f32], w_res: &[f32]) -> Result<()> {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.load_reservoir(w_in, w_res),
+            #[cfg(unix)]
             Self::Userspace(b) => b.load_reservoir(w_in, w_res),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.load_reservoir(w_in, w_res),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.load_reservoir(w_in, w_res),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => {
+                let _ = (w_in, w_res);
+                Err(crate::error::AkidaError::capability_query_failed(
+                    "NPU backends are not available on this platform",
+                ))
+            }
         }
     }
 
     fn infer(&mut self, input: &[f32]) -> Result<Vec<f32>> {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.infer(input),
+            #[cfg(unix)]
             Self::Userspace(b) => b.infer(input),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.infer(input),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.infer(input),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => {
+                let _ = input;
+                Err(crate::error::AkidaError::capability_query_failed(
+                    "NPU backends are not available on this platform",
+                ))
+            }
         }
     }
 
     fn measure_power(&self) -> Result<f32> {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.measure_power(),
+            #[cfg(unix)]
             Self::Userspace(b) => b.measure_power(),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.measure_power(),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.measure_power(),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => Err(crate::error::AkidaError::capability_query_failed(
+                "NPU backends are not available on this platform",
+            )),
         }
     }
 
     fn backend_type(&self) -> BackendType {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.backend_type(),
+            #[cfg(unix)]
             Self::Userspace(b) => b.backend_type(),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.backend_type(),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.backend_type(),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => BackendType::Kernel,
         }
     }
 
     fn is_ready(&self) -> bool {
         match self {
+            #[cfg(unix)]
             Self::Kernel(b) => b.is_ready(),
+            #[cfg(unix)]
             Self::Userspace(b) => b.is_ready(),
+            #[cfg(target_os = "linux")]
             Self::Vfio(b) => b.is_ready(),
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.is_ready(),
+            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
+            Self::Unsupported => false,
         }
     }
 }
@@ -235,6 +296,7 @@ pub enum BackendSelection {
 /// # Errors
 ///
 /// Returns error if no suitable backend can be initialized for the given device.
+#[cfg(unix)]
 pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<NpuBackendDispatch> {
     match selection {
         BackendSelection::Auto => {
@@ -245,6 +307,7 @@ pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Np
             }
 
             // Try VFIO second (pure Rust with DMA)
+            #[cfg(target_os = "linux")]
             if let Ok(backend) = VfioBackend::init(device_id) {
                 tracing::info!("Using VFIO backend for {device_id}");
                 return Ok(NpuBackendDispatch::Vfio(backend));
@@ -261,6 +324,32 @@ pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Np
             UserspaceBackend::init(device_id).map(NpuBackendDispatch::Userspace)
         }
 
-        BackendSelection::Vfio => VfioBackend::init(device_id).map(NpuBackendDispatch::Vfio),
+        BackendSelection::Vfio => {
+            #[cfg(target_os = "linux")]
+            {
+                VfioBackend::init(device_id).map(NpuBackendDispatch::Vfio)
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                Err(crate::error::AkidaError::capability_query_failed(
+                    "VFIO backend is only available on Linux",
+                ))
+            }
+        }
     }
+}
+
+/// Select appropriate backend based on availability and requirements
+///
+/// # Errors
+///
+/// Returns error on platforms without Unix NPU backend support.
+#[cfg(not(unix))]
+pub fn select_backend(
+    _selection: BackendSelection,
+    _device_id: &str,
+) -> Result<NpuBackendDispatch> {
+    Err(crate::error::AkidaError::capability_query_failed(
+        "NPU backends are not available on this platform",
+    ))
 }

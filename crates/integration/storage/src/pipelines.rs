@@ -21,13 +21,11 @@ impl StorageClient {
 
         // Modern async RPC call
         let pipeline_id: String = self
-            .rpc_client
-            .call_typed(
+            .rpc_call_typed(
                 "storage.pipeline.create",
                 serde_json::to_value(&config).map_err(|e| StorageError::Pipeline(e.to_string()))?,
             )
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
+            .await?;
 
         info!("✅ Successfully created pipeline: {}", pipeline_id);
         Ok(pipeline_id)
@@ -44,13 +42,11 @@ impl StorageClient {
 
         // Modern async RPC call
         let execution_id: String = self
-            .rpc_client
-            .call_typed(
+            .rpc_call_typed(
                 "storage.pipeline.start",
                 serde_json::json!({ "pipeline_id": pipeline_id }),
             )
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
+            .await?;
 
         info!(
             "✅ Successfully started pipeline: {} with execution ID: {}",
@@ -73,13 +69,11 @@ impl StorageClient {
 
         // Modern async RPC call
         let status: PipelineStatus = self
-            .rpc_client
-            .call_typed(
+            .rpc_call_typed(
                 "storage.pipeline.get_status",
                 serde_json::json!({ "pipeline_id": pipeline_id }),
             )
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
+            .await?;
 
         info!(
             "✅ Successfully retrieved status for pipeline: {}",

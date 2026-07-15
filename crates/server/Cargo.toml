@@ -14,15 +14,12 @@ categories = ["network-programming"]
 toadstool = { path = "../core/toadstool", features = ["networking"] }
 toadstool-config = { path = "../core/config" }
 toadstool-core = { path = "../toadstool-core" }
-toadstool-display = { path = "../runtime/display" }
 toadstool-common = { path = "../core/common" }
-toadstool-cylinder = { path = "../core/cylinder" }
 toadstool-ember = { path = "../core/ember" }
 toadstool-glowplug = { path = "../core/glowplug" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols", features = ["tarpc-transport"] }
 toadstool-runtime-container = { path = "../runtime/container", features = ["docker"] }
-toadstool-runtime-gpu = { path = "../runtime/gpu" }
 toadstool-runtime-native = { path = "../runtime/native" }
 toadstool-runtime-specialty = { path = "../runtime/specialty" }
 toadstool-runtime-wasm = { path = "../runtime/wasm" }
@@ -50,9 +47,7 @@ bytes = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 
-# systemd sd_notify protocol (SCM_RIGHTS fd passing for warm keepalive)
-# + mm: catalyst watchdog emergency BAR0 mmap for interrupt quench
-rustix = { workspace = true, features = ["net", "mm", "fs"] }
+rustix = { workspace = true, features = ["net", "fs"] }
 
 # Logging
 tracing = { workspace = true }
@@ -63,11 +58,6 @@ uuid = { workspace = true }
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
 toadstool-sysmon = { workspace = true }
 
-# Hardware learning pipeline — observe → distill → apply
-hw-learn = { path = "../core/hw-learn" }
-
-# NVIDIA GPU power management — BAR0, firmware inventory, sensors
-nvpmu = { path = "../core/nvpmu" }
 
 # GPU detection via barraCuda (vendor-agnostic)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
@@ -100,6 +90,13 @@ sandbox = ["dep:toadstool-security-sandbox", "dep:toadstool-security-policies"]
 #
 # See: UNIBIN_MIGRATION_STATUS_FEB02_2026.md
 # Reference: wateringHole/UNIBIN_ARCHITECTURE_STANDARD.md
+
+[target.'cfg(target_os = "linux")'.dependencies]
+toadstool-display = { path = "../runtime/display" }
+toadstool-cylinder = { path = "../core/cylinder" }
+toadstool-runtime-gpu = { path = "../runtime/gpu" }
+hw-learn = { path = "../core/hw-learn" }
+nvpmu = { path = "../core/nvpmu" }
 
 [dev-dependencies]
 toadstool-display = { path = "../runtime/display", features = ["test-mocks"] }

@@ -3,13 +3,20 @@
 //!
 //! Queries the discovery service to find providers for a given capability.
 
+#[cfg(unix)]
 use crate::primal_identity::Capability;
+#[cfg(unix)]
 use crate::primal_sockets::{SocketPathEnv, resolve_capability_socket_fallback};
+#[cfg(unix)]
 use crate::unix_jsonrpc_client::UnixJsonRpcClient;
+#[cfg(unix)]
 use std::path::PathBuf;
 
+#[cfg(unix)]
 use super::error::{CapabilityError, Result};
+#[cfg(unix)]
 use super::provider::CapabilityProvider;
+#[cfg(unix)]
 use super::serialize;
 
 /// Query discovery service for all providers of a capability.
@@ -17,6 +24,7 @@ use super::serialize;
 /// Resolution precedence for the discovery socket:
 /// 1. `DISCOVERY_SOCKET` env var (set by NUCLEUS composition → Songbird)
 /// 2. `resolve_capability_socket_fallback("coordination", ...)` (BIOMEOS/legacy tiers)
+#[cfg(unix)]
 pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
     let env = SocketPathEnv::from_env();
     let discovery_socket = resolve_capability_socket_fallback("discovery", &env);
@@ -79,6 +87,7 @@ pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityPro
 /// Returns [`CapabilityError`] if:
 /// - Discovery service is unavailable (socket unreachable)
 /// - Response is invalid (missing services array, name, or endpoint fields)
+#[cfg(unix)]
 pub async fn discover_all(capability: Capability) -> Result<Vec<CapabilityProvider>> {
     query_providers(capability).await
 }

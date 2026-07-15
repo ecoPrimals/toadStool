@@ -60,6 +60,7 @@ impl From<ToadStoolError> for BtspJsonLineError {
 
 // ── Timeout helpers (pub(crate) so relay.rs can use them) ──────────────
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn handshake_timeout() -> Duration {
     std::env::var(socket_env::BTSP_HANDSHAKE_TIMEOUT_SECS)
         .ok()
@@ -67,6 +68,7 @@ pub(crate) fn handshake_timeout() -> Duration {
         .map_or(timeouts::BTSP_HANDSHAKE_TIMEOUT, Duration::from_secs)
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn rpc_timeout() -> Duration {
     std::env::var(socket_env::BTSP_RPC_TIMEOUT_SECS)
         .ok()
@@ -154,6 +156,7 @@ pub fn resolve_security_socket_path() -> Result<PathBuf, BtspJsonLineError> {
 
 // ── Shared helpers (pub(crate) for relay + negotiate) ──────────────────
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) async fn send_error_line<S: AsyncWrite + Unpin>(
     stream: &mut S,
     reason: &str,
@@ -168,6 +171,7 @@ pub(crate) async fn send_error_line<S: AsyncWrite + Unpin>(
     stream.flush().await
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn parse_negotiated_cipher(raw: &str) -> Result<BtspCipher, BtspJsonLineError> {
     let n = raw.trim().to_ascii_lowercase().replace('-', "_");
     match n.as_str() {
@@ -180,6 +184,7 @@ pub(crate) fn parse_negotiated_cipher(raw: &str) -> Result<BtspCipher, BtspJsonL
     }
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn require_str(
     obj: &serde_json::Map<String, Value>,
     key: &str,
@@ -195,6 +200,7 @@ pub(crate) fn require_str(
     }
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) async fn require_str_line<S: AsyncWrite + Unpin>(
     stream: &mut S,
     obj: &serde_json::Map<String, Value>,

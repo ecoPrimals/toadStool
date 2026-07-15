@@ -15,6 +15,7 @@ use super::types::{
     DecryptionResult, EncryptionMetadata, EncryptionResult, PermissionRequest, ProviderMetadata,
     SecurityPermission, SignatureResult, VerificationResult,
 };
+#[cfg(unix)]
 use super::unix_socket_provider::UnixSocketSecurityProvider;
 
 #[cfg(feature = "dev-crypto")]
@@ -25,6 +26,7 @@ use super::software_hsm::SoftwareHsmProvider;
 /// Production and test security providers behind a single concrete type.
 pub enum SecurityProviderDispatch {
     /// Unix domain socket JSON-RPC transport.
+    #[cfg(unix)]
     UnixSocket(UnixSocketSecurityProvider),
     /// TCP JSON-RPC transport.
     Tcp(TcpSecurityProvider),
@@ -47,6 +49,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.capabilities().await,
                 SecurityProviderDispatch::Tcp(p) => p.capabilities().await,
                 SecurityProviderDispatch::Distributed(p) => p.capabilities().await,
@@ -63,6 +66,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.metadata().await,
                 SecurityProviderDispatch::Tcp(p) => p.metadata().await,
                 SecurityProviderDispatch::Distributed(p) => p.metadata().await,
@@ -83,6 +87,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.encrypt(data, options).await,
                 SecurityProviderDispatch::Tcp(p) => p.encrypt(data, options).await,
                 SecurityProviderDispatch::Distributed(p) => p.encrypt(data, options).await,
@@ -103,6 +108,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.decrypt(ciphertext, metadata).await,
                 SecurityProviderDispatch::Tcp(p) => p.decrypt(ciphertext, metadata).await,
                 SecurityProviderDispatch::Distributed(p) => p.decrypt(ciphertext, metadata).await,
@@ -123,6 +129,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.sign(data, options).await,
                 SecurityProviderDispatch::Tcp(p) => p.sign(data, options).await,
                 SecurityProviderDispatch::Distributed(p) => p.sign(data, options).await,
@@ -144,6 +151,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => {
                     p.verify(data, signature, public_key_id).await
                 }
@@ -171,6 +179,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.create_permission(request).await,
                 SecurityProviderDispatch::Tcp(p) => p.create_permission(request).await,
                 SecurityProviderDispatch::Distributed(p) => p.create_permission(request).await,
@@ -190,6 +199,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.validate_permission(permission).await,
                 SecurityProviderDispatch::Tcp(p) => p.validate_permission(permission).await,
                 SecurityProviderDispatch::Distributed(p) => p.validate_permission(permission).await,
@@ -212,6 +222,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => {
                     p.revoke_permission(permission_id, reason).await
                 }
@@ -240,6 +251,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 SecurityProviderDispatch::UnixSocket(p) => p.health_check().await,
                 SecurityProviderDispatch::Tcp(p) => p.health_check().await,
                 SecurityProviderDispatch::Distributed(p) => p.health_check().await,

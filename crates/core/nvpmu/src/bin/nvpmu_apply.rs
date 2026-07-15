@@ -8,9 +8,12 @@
 //!   sudo nvpmu-apply 0000:65:00.0 `gv100_recipe.json`
 //!   nvpmu-apply 0000:65:00.0 `gv100_recipe.json` --dry-run
 
+#[cfg(target_os = "linux")]
 use nvpmu::bar0::Bar0Access;
+#[cfg(target_os = "linux")]
 use nvpmu::init::{InitResult, apply_recipe};
 
+#[cfg(target_os = "linux")]
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -87,4 +90,10 @@ fn main() {
         eprintln!("FAILURE: recipe application had errors");
         std::process::exit(1);
     }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("This tool requires Linux");
+    std::process::exit(1);
 }

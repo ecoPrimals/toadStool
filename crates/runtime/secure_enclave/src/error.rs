@@ -20,6 +20,7 @@ pub enum Error {
     },
 
     /// Memory locking failed (mlock)
+    #[cfg(target_os = "linux")]
     #[error("Failed to lock memory pages: {reason}")]
     MemoryLock {
         /// Reason for lock failure
@@ -27,6 +28,7 @@ pub enum Error {
     },
 
     /// Memory protection failed (madvise)
+    #[cfg(target_os = "linux")]
     #[error("Failed to set memory protection: {reason}")]
     MemoryProtection {
         /// Reason for protection failure
@@ -106,6 +108,7 @@ impl Error {
     }
 
     /// Create a memory lock error
+    #[cfg(target_os = "linux")]
     pub fn memory_lock(reason: impl Into<String>) -> Self {
         Self::MemoryLock {
             reason: reason.into(),
@@ -113,6 +116,7 @@ impl Error {
     }
 
     /// Create a memory protection error
+    #[cfg(target_os = "linux")]
     pub fn memory_protection(reason: impl Into<String>) -> Self {
         Self::MemoryProtection {
             reason: reason.into(),

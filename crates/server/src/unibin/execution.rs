@@ -8,7 +8,9 @@ use tracing::{error, info, warn};
 use crate::CoordinatorExecutor;
 use crate::errors::{ServerError, ServerResult};
 use crate::glowplug_client::discover_gpu_bdfs;
-use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix, serve_unix_prebound};
+use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp};
+#[cfg(unix)]
+use crate::pure_jsonrpc::{serve_unix, serve_unix_prebound};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch};
 
 use super::capabilities;
@@ -206,6 +208,7 @@ pub async fn create_executor(
 /// # Errors
 ///
 /// Returns `ServerError` if Unix or TCP server startup fails.
+#[cfg_attr(not(unix), allow(unused_variables))]
 pub async fn start_servers_with_fallback(
     server: ToadStoolTarpcServer,
     jsonrpc_handler: Arc<JsonRpcHandler>,
@@ -213,7 +216,7 @@ pub async fn start_servers_with_fallback(
     jsonrpc_socket: PathBuf,
     tcp_port: Option<u16>,
     cfg: &UnibinExecutionConfig,
-    jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
+    #[cfg(unix)] jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
 ) -> ServerResult<()> {
     // Transport injection: if TRANSPORT_ENDPOINT is set, use the injected transport
     if let Some(ref te) = cfg.transport_endpoint {
@@ -221,14 +224,23 @@ pub async fn start_servers_with_fallback(
         info!("🔌 TRANSPORT_ENDPOINT injected: {te}");
         return match te {
             TransportEndpoint::Uds { path } => {
-                try_unix_servers(
-                    &server,
-                    &jsonrpc_handler,
-                    &socket_path,
-                    path,
-                    jsonrpc_listener,
-                )
-                .await
+                #[cfg(unix)]
+                {
+                    try_unix_servers(
+                        &server,
+                        &jsonrpc_handler,
+                        &socket_path,
+                        path,
+                        jsonrpc_listener,
+                    )
+                    .await
+                }
+                #[cfg(not(unix))]
+                {
+                    Err(ServerError::Network(
+                        "Unix domain sockets are not supported on this platform".into(),
+                    ))
+                }
             }
             TransportEndpoint::Tcp { host, port } => {
                 info!("   Launcher-injected TCP: {host}:{port}");
@@ -257,32 +269,42 @@ pub async fn start_servers_with_fallback(
         });
     }
 
-    info!("   Trying Unix socket IPC (optimal)...");
-
-    match try_unix_servers(
-        &server,
-        &jsonrpc_handler,
-        &socket_path,
-        &jsonrpc_socket,
-        jsonrpc_listener,
-    )
-    .await
+    #[cfg(unix)]
     {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            let error_str = e.to_string();
-            if is_platform_constraint_str(&error_str) {
-                warn!("⚠️  Unix sockets unavailable: {}", error_str);
-                warn!("   Detected platform constraint, adapting...");
-                start_tcp_servers(server, jsonrpc_handler, cfg).await
-            } else {
-                error!("❌ Real error (not platform constraint): {}", error_str);
-                Err(e)
+        info!("   Trying Unix socket IPC (optimal)...");
+
+        match try_unix_servers(
+            &server,
+            &jsonrpc_handler,
+            &socket_path,
+            &jsonrpc_socket,
+            jsonrpc_listener,
+        )
+        .await
+        {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                let error_str = e.to_string();
+                if is_platform_constraint_str(&error_str) {
+                    warn!("⚠️  Unix sockets unavailable: {}", error_str);
+                    warn!("   Detected platform constraint, adapting...");
+                    start_tcp_servers(server, jsonrpc_handler, cfg).await
+                } else {
+                    error!("❌ Real error (not platform constraint): {}", error_str);
+                    Err(e)
+                }
             }
         }
     }
+
+    #[cfg(not(unix))]
+    {
+        info!("   Unix sockets unavailable on this platform — using TCP IPC");
+        start_tcp_servers(server, jsonrpc_handler, cfg).await
+    }
 }
 
+#[cfg(unix)]
 async fn try_unix_servers(
     server: &ToadStoolTarpcServer,
     jsonrpc_handler: &Arc<JsonRpcHandler>,

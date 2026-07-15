@@ -51,12 +51,18 @@
 mod backend;
 pub mod backends;
 mod capabilities;
+#[cfg(unix)]
 mod device;
+#[cfg(unix)]
 mod discovery;
 mod error;
+#[cfg(unix)]
 mod inference;
+#[cfg(unix)]
 mod io;
+#[cfg(unix)]
 mod loading;
+#[cfg(target_os = "linux")]
 pub mod mmio;
 #[cfg(any(test, feature = "test-mocks"))]
 mod synthetic;
@@ -85,23 +91,30 @@ pub mod pcie_ids {
 pub use backend::{
     BackendSelection, BackendType, ModelHandle, NpuBackend, NpuBackendDispatch, select_backend,
 };
+#[cfg(unix)]
 pub use backends::UserspaceBackend;
 pub use capabilities::{
     BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,
     WeightMutationSupport,
 };
+#[cfg(unix)]
 pub use device::{AkidaDevice, DeviceHandle};
+#[cfg(unix)]
 pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};
+#[cfg(unix)]
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
+#[cfg(unix)]
 pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
 #[cfg(any(test, feature = "test-mocks"))]
 pub use synthetic::SyntheticNpuBackend;
 
 /// Re-export commonly used types
 pub mod prelude {
+    #[cfg(unix)]
     pub use crate::{
-        AkidaDevice, Capabilities, DeviceManager, InferenceConfig, InferenceExecutor,
-        InferenceResult, LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig, Result,
+        AkidaDevice, DeviceManager, InferenceConfig, InferenceExecutor, InferenceResult,
+        LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig,
     };
+    pub use crate::{Capabilities, Result};
 }

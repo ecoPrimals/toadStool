@@ -52,12 +52,23 @@ pub mod service_discovery; // NEW: Capability-based service discovery (infant pa
 pub mod sysfs_paths; // Linux sysfs path helpers (PCI, module, class)
 pub mod system_time_serde; // Serde for std::time::SystemTime (Unix timestamp)
 pub mod transport_endpoint; // sourDough-compatible TransportEndpoint (Wave 100 transport evolution)
+#[cfg(unix)]
 pub mod uid_detector; // NEW: Pure Rust unix socket path discovery (100% pure Rust!)
 pub mod universal_adapter;
-pub mod unix_jsonrpc_client; // NEW: JSON-RPC 2.0 over unix sockets (pure Rust!) // NEW: Phase 1B - Capability-based primal discovery (infant discovery)
-
-/// Alias for [`unix_jsonrpc_client`] (BearDog / security IPC naming in phase handoffs).
+#[cfg(unix)]
+pub mod unix_jsonrpc_client;
+#[cfg(not(unix))]
+#[path = "unix_jsonrpc_client_stub.rs"]
+pub mod unix_jsonrpc_client;
+#[cfg(not(unix))]
 pub mod unix_jsonrpc {
+    //! Alias for [`unix_jsonrpc_client`] (stub on non-Unix platforms).
+    pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
+}
+
+#[cfg(unix)]
+pub mod unix_jsonrpc {
+    //! Alias for [`unix_jsonrpc_client`] (BearDog / security IPC naming in phase handoffs).
     pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
 }
 

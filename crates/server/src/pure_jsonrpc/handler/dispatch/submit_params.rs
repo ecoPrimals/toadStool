@@ -142,6 +142,7 @@ pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_buffers(
 ///
 /// toadStool names: `gpr_count`, `shared_mem_bytes`, `barrier_count`, `wave_size`, `local_mem_bytes`
 /// coralReef names: `gprs`, `shared_memory`, `barriers`, `wave_size`, `local_memory`
+#[cfg(target_os = "linux")]
 pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_shader_info(
     si: &serde_json::Value,
     workgroup: [u32; 3],

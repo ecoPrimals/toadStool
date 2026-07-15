@@ -12,19 +12,28 @@
     clippy::collapsible_if
 )]
 
+#[cfg(target_os = "linux")]
 use std::os::fd::AsFd;
+#[cfg(target_os = "linux")]
 use std::path::Path;
+#[cfg(target_os = "linux")]
 use std::process::ExitCode;
+#[cfg(target_os = "linux")]
 use std::sync::atomic::{Ordering, fence};
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::nv::registers::{falcon, gpc, pgraph, pmc, pmu};
 
+#[cfg(target_os = "linux")]
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
 
 /// Legacy SEC2 base (pre-GV100 topology — retained for diagnostic comparison).
+#[cfg(target_os = "linux")]
 const SEC2_BASE_LEGACY: u32 = 0x840000;
 
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::bin_helpers::Bar0;
 
+#[cfg(target_os = "linux")]
 fn cpuctl_state(cpuctl: u32) -> &'static str {
     if cpuctl & 0x20 != 0 {
         "RUNNING"
@@ -35,6 +44,7 @@ fn cpuctl_state(cpuctl: u32) -> &'static str {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -263,4 +273,10 @@ fn main() -> ExitCode {
     );
 
     ExitCode::SUCCESS
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("This tool requires Linux");
+    std::process::exit(1);
 }

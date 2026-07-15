@@ -6,6 +6,7 @@
 
 #[cfg(any(test, feature = "test-mocks"))]
 mod inmemory;
+#[cfg(unix)]
 mod intelligence;
 mod types;
 
@@ -15,9 +16,12 @@ mod tests;
 use std::future::Future;
 
 use super::types::{AgentConfig, ModelConfig};
+#[cfg(not(unix))]
+use crate::ToadStoolError;
 use crate::ToadStoolResult;
 #[cfg(any(test, feature = "test-mocks"))]
 pub use inmemory::InMemoryAgentBackend;
+#[cfg(unix)]
 pub use intelligence::IntelligenceBackend;
 pub use types::{
     AgentInfo, AgentResourceUsage, AgentStatus, ModelInfo, ModelPerformanceMetrics,
@@ -27,10 +31,14 @@ pub use types::{
 /// Concrete agent backend for dependency injection (replaces `Arc<dyn AgentBackend>`).
 pub enum AgentBackendDispatch {
     /// Intelligence / ML service backend (Unix JSON-RPC).
+    #[cfg(unix)]
     Intelligence(IntelligenceBackend),
     /// In-memory backend for tests and local simulation.
     #[cfg(any(test, feature = "test-mocks"))]
     InMemory(InMemoryAgentBackend),
+    /// Unix IPC unavailable on this platform.
+    #[cfg(not(unix))]
+    UnixUnavailable,
 }
 
 /// Trait defining the interface for agent deployment backends
@@ -131,13 +139,24 @@ pub trait AgentBackend: Send + Sync {
     }
 }
 
+/// Unix IPC backends are only available on Unix platforms.
+#[cfg(not(unix))]
+fn unix_agent_backend_unavailable() -> ToadStoolError {
+    ToadStoolError::configuration("Unix socket agent backends are unavailable on this platform")
+}
+
+#[cfg_attr(not(unix), allow(unused_variables))]
 impl AgentBackend for AgentBackendDispatch {
     fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.initialize().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.initialize().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -148,9 +167,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.deploy_agent(config).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.deploy_agent(config).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -161,9 +183,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.load_model(config).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.load_model(config).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -175,9 +200,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.scale_agent(agent_name, replicas).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.scale_agent(agent_name, replicas).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -188,9 +216,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.stop_agent(agent_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.stop_agent(agent_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -201,9 +232,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.remove_agent(agent_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.remove_agent(agent_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -214,9 +248,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.get_agent_status(agent_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.get_agent_status(agent_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -224,9 +261,12 @@ impl AgentBackend for AgentBackendDispatch {
     fn list_agents(&self) -> impl Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.list_agents().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.list_agents().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -234,9 +274,12 @@ impl AgentBackend for AgentBackendDispatch {
     fn list_models(&self) -> impl Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.list_models().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.list_models().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -247,9 +290,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.get_agent_resources(agent_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.get_agent_resources(agent_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -260,9 +306,12 @@ impl AgentBackend for AgentBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.unload_model(model_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.unload_model(model_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }
@@ -270,9 +319,12 @@ impl AgentBackend for AgentBackendDispatch {
     fn health_check(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Intelligence(b) => b.health_check().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.health_check().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_agent_backend_unavailable()),
             }
         }
     }

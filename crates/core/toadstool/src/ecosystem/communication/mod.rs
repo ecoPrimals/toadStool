@@ -27,7 +27,7 @@ use tracing::{debug, info};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::constants::timeouts;
-#[cfg(feature = "networking")]
+#[cfg(all(feature = "networking", unix))]
 use toadstool_common::interned_strings::protocols;
 use toadstool_common::service_discovery::DiscoveredService;
 
@@ -106,7 +106,7 @@ impl CommunicationManager {
     ///
     /// Returns error if the RPC client is unavailable or the remote call fails.
     #[cfg_attr(
-        feature = "networking",
+        all(feature = "networking", unix),
         expect(
             clippy::significant_drop_tightening,
             reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
@@ -120,7 +120,7 @@ impl CommunicationManager {
         debug!("📤 Sending message to service: {}", channel.service_name);
 
         match &channel.client {
-            #[cfg(feature = "networking")]
+            #[cfg(all(feature = "networking", unix))]
             ServiceClient::Tarpc(wrapper_mutex) => {
                 let guard = wrapper_mutex.lock().await;
                 let wrapper = guard.as_ref().ok_or_else(|| {
@@ -137,12 +137,12 @@ impl CommunicationManager {
                     .await
             }
 
-            #[cfg(feature = "networking")]
+            #[cfg(all(feature = "networking", unix))]
             ServiceClient::UnixSocket(rpc_client) => {
                 self.send_via_unix_socket(rpc_client, message).await
             }
 
-            #[cfg(not(feature = "networking"))]
+            #[cfg(not(all(feature = "networking", unix)))]
             ServiceClient::Disabled => Ok(self.fallback_response(message)),
         }
     }
@@ -153,7 +153,7 @@ impl CommunicationManager {
     ///
     /// Returns error if the health RPC fails or the client is not initialized.
     #[cfg_attr(
-        feature = "networking",
+        all(feature = "networking", unix),
         expect(
             clippy::significant_drop_tightening,
             reason = "drop order is intentional; Tarpc fallback_client() borrows from guard"
@@ -163,7 +163,7 @@ impl CommunicationManager {
         debug!("🔍 Checking health of service: {}", channel.service_name);
 
         match &channel.client {
-            #[cfg(feature = "networking")]
+            #[cfg(all(feature = "networking", unix))]
             ServiceClient::UnixSocket(rpc_client) => {
                 let _: serde_json::Value = rpc_client
                     .call("health", serde_json::json!({}))
@@ -174,7 +174,7 @@ impl CommunicationManager {
                 Ok(())
             }
 
-            #[cfg(feature = "networking")]
+            #[cfg(all(feature = "networking", unix))]
             ServiceClient::Tarpc(wrapper_mutex) => {
                 let guard = wrapper_mutex.lock().await;
                 let wrapper = guard.as_ref().ok_or_else(|| {
@@ -191,7 +191,7 @@ impl CommunicationManager {
                 Ok(())
             }
 
-            #[cfg(not(feature = "networking"))]
+            #[cfg(not(all(feature = "networking", unix)))]
             ServiceClient::Disabled => Ok(()),
         }
     }
@@ -248,7 +248,7 @@ impl CommunicationManager {
         }
     }
 
-    #[cfg(feature = "networking")]
+    #[cfg(all(feature = "networking", unix))]
     fn create_client_for_service(
         &self,
         service: &DiscoveredService,
@@ -289,7 +289,7 @@ impl CommunicationManager {
         ))
     }
 
-    #[cfg(not(feature = "networking"))]
+    #[cfg(not(all(feature = "networking", unix)))]
     const fn create_client_for_service(
         &self,
         _service: &DiscoveredService,
@@ -297,7 +297,7 @@ impl CommunicationManager {
         Ok(ServiceClient::Disabled)
     }
 
-    #[cfg(feature = "networking")]
+    #[cfg(all(feature = "networking", unix))]
     fn extract_socket_path(
         endpoint: &toadstool_common::primal_identity::ServiceEndpoint,
         service_name: &str,
@@ -318,7 +318,7 @@ impl CommunicationManager {
         )
     }
 
-    #[cfg(feature = "networking")]
+    #[cfg(all(feature = "networking", unix))]
     async fn send_via_unix_socket(
         &self,
         rpc_client: &toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
@@ -335,7 +335,7 @@ impl CommunicationManager {
         Ok(response_message)
     }
 
-    #[cfg(not(feature = "networking"))]
+    #[cfg(not(all(feature = "networking", unix)))]
     fn fallback_response(&self, original: EcosystemMessage) -> EcosystemMessage {
         EcosystemMessage {
             id: uuid::Uuid::new_v4(),

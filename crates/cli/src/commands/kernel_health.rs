@@ -4,10 +4,12 @@
 //! Runs 3-layer detection (autoconf freshness, struct layout probe,
 //! reference cross-check) and prints a human-readable report or JSON.
 
-use toadstool_cylinder::vfio::kernel_health;
-
 use crate::Result;
 
+#[cfg(target_os = "linux")]
+use toadstool_cylinder::vfio::kernel_health;
+
+#[cfg(target_os = "linux")]
 pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
     let report = kernel_health::full_kernel_health_check()
         .map_err(|e| crate::CliError::Other(format!("kernel health check failed: {e}")))?;
@@ -117,7 +119,13 @@ pub async fn execute_kernel_health(format: &str, repair: bool) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(not(target_os = "linux"))]
+pub async fn execute_kernel_health(_format: &str, _repair: bool) -> Result<()> {
+    eprintln!("This command requires Linux");
+    Err(crate::CliError::Other("This command requires Linux".into()))
+}
+
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
 

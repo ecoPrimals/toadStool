@@ -191,6 +191,7 @@ pub struct BootInitInfo {
 /// detail in probe/init results while the trait signature remains generic.
 /// The `summary` methods bridge vendor-specific results to cross-vendor
 /// `BootProbeInfo`/`BootInitInfo` for consumers that don't need the details.
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 pub trait BootPipeline: Send + Sync + std::fmt::Debug {
     /// Vendor-specific probe result type.
     type ProbeResult: std::fmt::Debug + Clone;

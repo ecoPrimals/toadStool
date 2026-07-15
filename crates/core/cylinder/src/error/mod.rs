@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Driver error types.
 
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 mod vfio;
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 pub use vfio::{ChannelError, DevinitError, PciDiscoveryError, SovereignStagesError};
 
 use std::borrow::Cow;
@@ -95,24 +97,29 @@ pub enum DriverError {
     },
 
     /// PCI sysfs/config-space discovery or PM transition failed.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[error("PCI discovery: {0}")]
     PciDiscovery(#[from] PciDiscoveryError),
 
     /// VFIO channel oracle / BAR0 resource access failed.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[error("channel: {0}")]
     Channel(#[from] ChannelError),
 
     /// VBIOS / devinit (PROM, interpreter, PMU upload) failed.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[error("devinit: {0}")]
     Devinit(#[from] DevinitError),
 
     /// Sovereign init stage helpers.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[error("sovereign stages: {0}")]
     SovereignStages(#[from] SovereignStagesError),
 }
 
 impl DriverError {
     /// Platform overflow during numeric conversion.
+    #[cfg(target_os = "linux")]
     pub(crate) fn platform_overflow(msg: &'static str) -> Self {
         Self::MmapFailed(msg.into())
     }
@@ -180,6 +187,7 @@ mod tests {
         assert!(e.to_string().contains("test"));
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn error_platform_overflow() {
         let e = DriverError::platform_overflow("offset exceeds platform pointer width");
@@ -214,6 +222,7 @@ mod tests {
         assert!(e.to_string().contains("unsupported"));
     }
 
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[test]
     fn error_display_pci_discovery_variant() {
         let inner = PciDiscoveryError::InvalidBdf { bdf: "bad".into() };
@@ -221,6 +230,7 @@ mod tests {
         assert!(e.to_string().contains("PCI discovery"));
     }
 
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[test]
     fn error_display_channel_variant() {
         let inner = ChannelError::Bar0ReadsAllOnes;
@@ -228,6 +238,7 @@ mod tests {
         assert!(e.to_string().contains("channel"));
     }
 
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[test]
     fn error_display_devinit_variant() {
         let inner = DevinitError::BitSignatureNotFound;
@@ -235,6 +246,7 @@ mod tests {
         assert!(e.to_string().contains("devinit"));
     }
 
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     #[test]
     fn error_display_sovereign_stages_variant() {
         let inner = SovereignStagesError::Bar0ProbeTimeout;

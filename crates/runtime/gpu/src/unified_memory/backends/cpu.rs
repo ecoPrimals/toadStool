@@ -13,6 +13,7 @@ use crate::unified_memory::{
     types::{BackendType, MemoryFlags, UnifiedMemoryCapabilities},
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+#[cfg(target_os = "linux")]
 use toadstool_hw_safe::AlignedAlloc;
 
 /// CPU shared memory backend
@@ -85,16 +86,38 @@ impl UnifiedMemoryBackend for CpuBackend {
         size: usize,
         _flags: MemoryFlags,
     ) -> ToadStoolResult<BackendAllocation> {
-        let alloc = AlignedAlloc::new(size, self.capabilities.alignment_requirement)
-            .map_err(|e| ToadStoolError::runtime(format!("CPU alloc: {e}")))?;
+        #[cfg(target_os = "linux")]
+        {
+            let alloc = AlignedAlloc::new(size, self.capabilities.alignment_requirement)
+                .map_err(|e| ToadStoolError::runtime(format!("CPU alloc: {e}")))?;
 
-        tracing::debug!(
-            "CPU backend allocated {} bytes (alignment {}, zeroed)",
-            alloc.size(),
-            self.capabilities.alignment_requirement
-        );
+            tracing::debug!(
+                "CPU backend allocated {} bytes (alignment {}, zeroed)",
+                alloc.size(),
+                self.capabilities.alignment_requirement
+            );
 
-        Ok(BackendAllocation::Cpu(CpuAllocation { alloc }))
+            return Ok(BackendAllocation::Cpu(CpuAllocation { alloc }));
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let alignment = self.capabilities.alignment_requirement;
+            let padded = size
+                .checked_add(alignment - 1)
+                .map(|n| n / alignment * alignment)
+                .unwrap_or(size)
+                .max(size);
+            let data = vec![0u8; padded];
+
+            tracing::debug!(
+                "CPU backend allocated {} bytes (alignment {}, heap fallback)",
+                data.len(),
+                alignment
+            );
+
+            Ok(BackendAllocation::Cpu(CpuAllocation::from_heap(data)))
+        }
     }
 
     async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {

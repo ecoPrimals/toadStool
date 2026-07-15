@@ -62,7 +62,9 @@ impl DispatchHandler {
         let bdf = resolve_dispatch_bdf(p)?;
         let dispatch_mode = detect_dispatch_mode(p, &bdf);
 
+        #[cfg(target_os = "linux")]
         let thermal = super::super::hw_learn::check_thermal_for_bdf_pub(&bdf);
+        #[cfg(target_os = "linux")]
         if let Some(ref status) = thermal
             && !status.compute_safe()
         {
@@ -70,6 +72,10 @@ impl DispatchHandler {
                 "GPU {bdf} thermal status {status:?} — refusing shader dispatch"
             )));
         }
+        #[cfg(target_os = "linux")]
+        let thermal_checked = thermal.is_some();
+        #[cfg(not(target_os = "linux"))]
+        let thermal_checked = false;
 
         let workgroup_size =
             p.get("workgroup_size")
@@ -123,6 +129,7 @@ impl DispatchHandler {
         let needs_shader_service = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
         // Phase D: try local dispatch via cylinder before coral_client IPC.
+        #[cfg(target_os = "linux")]
         if needs_shader_service {
             self.acquire_device_handle(&bdf).await;
 
@@ -168,7 +175,7 @@ impl DispatchHandler {
                                 "dispatch_mode": "local_cylinder",
                                 "binary_size": binary_bytes.len(),
                                 "arch": source_arch,
-                                "thermal_checked": thermal.is_some(),
+                                "thermal_checked": thermal_checked,
                                 "workgroup_size": workgroup_size,
                                 "readback": readback,
                             },
@@ -224,7 +231,7 @@ impl DispatchHandler {
                                 "dispatch_mode": "wgpu",
                                 "binary_size": binary_bytes.len(),
                                 "arch": source_arch,
-                                "thermal_checked": thermal.is_some(),
+                                "thermal_checked": thermal_checked,
                                 "workgroup_size": workgroup_size,
                                 "readback": readback,
                             },
@@ -332,7 +339,7 @@ impl DispatchHandler {
                                 "dispatch_mode": dispatch_mode,
                                 "binary_size": binary_bytes.len(),
                                 "arch": source_arch,
-                                "thermal_checked": thermal.is_some(),
+                                "thermal_checked": thermal_checked,
                                 "workgroup_size": workgroup_size,
                                 "readback": readback,
                             },
@@ -370,7 +377,7 @@ impl DispatchHandler {
                                 "dispatch_mode": dispatch_mode,
                                 "binary_size": binary_bytes.len(),
                                 "arch": source_arch,
-                                "thermal_checked": thermal.is_some(),
+                                "thermal_checked": thermal_checked,
                                 "workgroup_size": workgroup_size,
                                 "readback": readback,
                             },
@@ -407,7 +414,7 @@ impl DispatchHandler {
                 "dispatch_mode": dispatch_mode,
                 "binary_size": binary_bytes.len(),
                 "arch": source_arch,
-                "thermal_checked": thermal.is_some(),
+                "thermal_checked": thermal_checked,
                 "workgroup_size": workgroup_size,
                 "readback": readback,
             },

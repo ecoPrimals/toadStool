@@ -33,7 +33,20 @@ pub use json_line::{
 };
 pub use negotiate::{NegotiateOutcome, try_handle_negotiate};
 pub use phase3::{NegotiateParams, NegotiateResponse, Phase3Error, Phase3SessionKeys};
+#[cfg(unix)]
 pub use relay::relay_json_line_handshake;
+
+#[cfg(not(unix))]
+pub async fn relay_json_line_handshake<S>(
+    _stream: &mut S,
+    _first_line: &str,
+    _family_seed: &str,
+    _security_socket: &str,
+) -> Result<BtspSessionInfo, BtspJsonLineError> {
+    Err(BtspJsonLineError::Protocol(
+        "BTSP JSON-line handshake requires Unix domain sockets".into(),
+    ))
+}
 pub use server::BtspServer;
 pub use types::{
     BtspCipher, ChallengeResponse, ClientHello, HandshakeComplete, HandshakeError, ServerHello,

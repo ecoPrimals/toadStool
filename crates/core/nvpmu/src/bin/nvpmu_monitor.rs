@@ -12,6 +12,7 @@
 //! Usage:
 //!   nvpmu-monitor [--interval \<ms\>] [--json] [--once]
 
+#[cfg(target_os = "linux")]
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let json_mode = args.iter().any(|a| a == "--json");
@@ -138,6 +139,7 @@ fn main() {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn print_hwmon_sensors(bdf: &str, name: &str, sensors: &nvpmu::HwmonSensors, json_mode: bool) {
     if json_mode {
         let report = serde_json::json!({
@@ -169,6 +171,7 @@ fn print_hwmon_sensors(bdf: &str, name: &str, sensors: &nvpmu::HwmonSensors, jso
     }
 }
 
+#[cfg(target_os = "linux")]
 fn check_hwmon_devices(json_mode: bool) {
     if json_mode {
         return;
@@ -186,6 +189,7 @@ fn check_hwmon_devices(json_mode: bool) {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn read_amd_hwmon(json_mode: bool) {
     let Ok(entries) = std::fs::read_dir("/sys/class/hwmon") else {
         return;
@@ -256,8 +260,15 @@ fn read_amd_hwmon(json_mode: bool) {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn read_sensor_opt(hwmon: &std::path::Path, name: &str) -> Option<i64> {
     std::fs::read_to_string(hwmon.join(name))
         .ok()
         .and_then(|s| s.trim().parse().ok())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("This tool requires Linux");
+    std::process::exit(1);
 }

@@ -5,7 +5,31 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 6, 2026 (Sessions 43-328+)
+## [Unreleased] - Jul 15, 2026 (Sessions 43-329+)
+
+### Session S329 (Jul 15, 2026) — Cross-Architecture Adoption (Wave 141a: Silicon Atheism)
+
+`cargo check --target x86_64-pc-windows-gnu` now succeeds. Feature-gated all Linux-kernel hardware crates behind `#[cfg(target_os = "linux")]` and Unix-socket IPC behind `#[cfg(unix)]`.
+
+- **hw-safe** — gated `rustix` dep and all modules (`SafeMmapRegion`, `VolatileMmio`, `DeviceMmap`, `AlignedAlloc`, `LockedMemory`, VFIO DMA/setup) behind `#[cfg(target_os = "linux")]`; crate compiles as empty shell on non-Linux.
+- **display** — gated `drm`, `evdev`, `rustix`, `hw-safe` deps and all DRM/KMS/evdev/V4L2 modules behind `#[cfg(target_os = "linux")]`; extracted `WindowId` as unconditional type.
+- **cylinder** — gated `rustix`, `hw-safe` deps; gated `linux_paths`, `bin_helpers`, `mmio`, `mmio_region` modules; gated VFIO trait methods (`bar0`, `dma_backend`, `dup_anchor_fds`, `adopt_anchor_fds`) and `VfioDeviceExt` trait; Linux-only bins get non-Linux stubs.
+- **nvpmu** — gated `hw-learn`, `hw-safe`, `rustix` deps and all modules except `error` behind `#[cfg(target_os = "linux")]`; bins get non-Linux stubs.
+- **akida-driver** — gated VFIO/mmap/device backends behind `#[cfg(unix)]`/`#[cfg(target_os = "linux")]`; non-Unix `NpuBackendDispatch::Unsupported` variant.
+- **runtime/gpu** — gated `nvpmu`, `hw-safe` deps; firmware and aligned-alloc code gets non-Linux stubs.
+- **secure_enclave** — gated `rustix`, `hw-safe` deps; isolated memory uses `Vec<u8>` fallback on non-Linux.
+- **hw-learn** — gated `rustix` dep; `nouveau_drm` module behind `#[cfg(target_os = "linux")]`.
+- **glowplug** — gated `sysfs_executor` behind `#[cfg(target_os = "linux")]`; sysfs quiescence gets non-Linux stub.
+- **server** — Linux-only deps (`display`, `cylinder`, `gpu`, `hw-learn`, `nvpmu`) behind target cfg; handler modules (sovereign, mmio, ember, hw_learn, transport, background tasks) gated; router dispatch arms gated; Unix socket listeners gated.
+- **cli** — Linux-only deps behind target cfg; hardware commands (device, mode, kernel-health, transport) gated with non-Linux stubs; Unix daemon server gated.
+- **common** — `unix_jsonrpc_client`, `uid_detector` behind `#[cfg(unix)]`; BTSP relay, capability provider, secret string Unix paths gated.
+- **distributed, client, integration/\*** — Unix socket IPC gated with non-Unix stubs.
+- **sysmon** — `disk_usage()` gated behind `#[cfg(target_os = "linux")]` with non-Linux stub.
+- **ember** — VFIO anchor/handle/warm-keepalive modules behind `#[cfg(target_os = "linux")]`.
+- **specialty** — `rexpect` dep behind `#[cfg(unix)]`.
+- **sandbox** — Windows sandbox manager stub implemented.
+- **monitoring** — `procfs` usage gated behind `#[cfg(target_os = "linux")]`.
+- **Quality gates** — 9,175 lib tests, 0 failures. Zero clippy errors, zero fmt diff.
 
 ### Session S328 (Jul 6, 2026) — DH-1 `/tmp` Hardcoding Fix (systemd `ProtectSystem=strict`)
 

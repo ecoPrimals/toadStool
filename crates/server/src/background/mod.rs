@@ -18,16 +18,22 @@
 //! - [`kernel_sentinel`] — Exp 232 kernel oops sentinel: monitors /dev/kmsg for crash signatures, saves triage reports
 
 mod capability;
+#[cfg(target_os = "linux")]
 pub(crate) mod catalyst_watchdog;
 mod cleanup;
 mod health;
+#[cfg(unix)]
 pub(crate) mod ipc_watch;
+#[cfg(target_os = "linux")]
 pub(crate) mod kernel_sentinel;
+#[cfg(target_os = "linux")]
 pub(crate) mod pcie_keepalive;
 mod resource;
 mod statistics;
 
-use tracing::{error, info};
+#[cfg(target_os = "linux")]
+use tracing::error;
+use tracing::info;
 
 use toadstool::RuntimeEngine;
 
@@ -79,6 +85,7 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
     // Start PCIe bridge keepalive — pins all GPU bridge hierarchies and
     // generates periodic CfgRd traffic to prevent D3cold (critical for PLX,
     // AMD switches, and any multi-level PCIe topology)
+    #[cfg(target_os = "linux")]
     tokio::spawn(async move {
         pcie_keepalive::run().await;
     });
@@ -86,12 +93,14 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
     // Start catalyst handoff watchdog — OS thread (not tokio) that monitors
     // handoff liveness and performs emergency interrupt quench + process kill
     // if the pipeline becomes unresponsive (Exp 229 diesel engine safety net)
+    #[cfg(target_os = "linux")]
     if let Err(e) = catalyst_watchdog::start_watchdog_thread() {
         error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
     }
 
     // Start kernel oops sentinel — monitors /dev/kmsg for crash signatures
     // and saves triage reports before the system goes down (Exp 232)
+    #[cfg(target_os = "linux")]
     if let Err(e) = kernel_sentinel::start_sentinel_thread() {
         error!(error = %e, "failed to spawn kernel sentinel thread; crash forensics disabled");
     }

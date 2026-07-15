@@ -29,17 +29,25 @@
     unused_assignments
 )]
 
+#[cfg(target_os = "linux")]
 mod rm_ioctl;
+#[cfg(target_os = "linux")]
 mod rm_object_tree;
 
+#[cfg(target_os = "linux")]
 use std::os::fd::{AsFd, AsRawFd};
+#[cfg(target_os = "linux")]
 use std::process::ExitCode;
 
+#[cfg(target_os = "linux")]
 use rustix::ioctl::Opcode;
 
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::nv::rm_abi::NvChannelAllocParams;
 
+#[cfg(target_os = "linux")]
 use rm_ioctl::{NV_IOCTL_MAGIC, Nvos21Parameters, RM_ALLOC_OP, RM_CTRL_OP, RmRawIoctl, iowr};
+#[cfg(target_os = "linux")]
 use rm_object_tree::{
     H_CHANNEL, H_COMPUTE, H_CTX_SHARE, H_DEVICE, H_MEM_ERR_NOTIFIER, H_MEM_GPFIFO, H_MEM_USERD,
     H_ROOT, H_SUBDEVICE, H_TSG, H_VASPACE, RootClientResult, alloc_compute_channel,
@@ -47,16 +55,19 @@ use rm_object_tree::{
     post_attach_diagnostics, pre_attach_diagnostics,
 };
 
+#[cfg(target_os = "linux")]
 fn step_json(name: &str, ok: bool, detail: serde_json::Value) -> serde_json::Value {
     serde_json::json!({"step": name, "ok": ok, "detail": detail})
 }
 
+#[cfg(target_os = "linux")]
 fn ne_bytes<const N: usize>(slice: &[u8], field: &str) -> Result<[u8; N], String> {
     slice
         .try_into()
         .map_err(|_| format!("card_info {field}: expected {N} bytes, got {}", slice.len()))
 }
 
+#[cfg(target_os = "linux")]
 fn print_result(result: &serde_json::Value) {
     println!(
         "{}",
@@ -64,12 +75,14 @@ fn print_result(result: &serde_json::Value) {
     );
 }
 
+#[cfg(target_os = "linux")]
 fn cleanup(ctl_path: &str, gpu_path: &str) {
     let _ = std::fs::remove_file(ctl_path);
     let _ = std::fs::remove_file(gpu_path);
 }
 
 /// Read PMC_ENABLE (offset 0x200) from BAR0 via sysfs resource0 mmap
+#[cfg(target_os = "linux")]
 fn read_pmc_enable(bdf: &str) -> Option<u32> {
     let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
     let f = std::fs::OpenOptions::new().read(true).open(&path).ok()?;
@@ -100,12 +113,16 @@ fn read_pmc_enable(bdf: &str) -> Option<u32> {
 //   0x160 — NV_PMC_INTR_EN_SET(0): WRITE-ONLY, writing 1 bits enables
 //   0x180 — NV_PMC_INTR_EN_CLEAR(0): WRITE-ONLY, writing 1 bits disables
 // Writing to 0x140 is a NO-OP (lockup #5 confirmed: 0x7fffffff → 0x7fffffff).
+#[cfg(target_os = "linux")]
 const NV_PMC_INTR_EN_0: usize = 0x140;
+#[cfg(target_os = "linux")]
 const NV_PMC_INTR_EN_CLEAR_0: usize = 0x180;
 // Also clear the top-level interrupt pending register to ACK any in-flight IRQs
+#[cfg(target_os = "linux")]
 const NV_PMC_INTR_0: usize = 0x100;
 
 /// Quench all GPU interrupt generation BEFORE nvidia close tears down MSI/IRQ.
+#[cfg(target_os = "linux")]
 fn quench_gpu_interrupts(bdf: &str) {
     let bar0_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
     if let Ok(f) = std::fs::OpenOptions::new()
@@ -164,6 +181,7 @@ fn quench_gpu_interrupts(bdf: &str) {
 }
 
 /// Disable MSI at PCI config level — standalone version for rm_trigger binary.
+#[cfg(target_os = "linux")]
 fn disable_pci_msi_config(bdf: &str) {
     use std::io::{Read, Seek, Write};
     let cfg_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
@@ -247,6 +265,7 @@ fn disable_pci_msi_config(bdf: &str) {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     const CARD_INFO_ENTRY: usize = 72;
     const MAX_CARDS: usize = 8;
@@ -341,6 +360,7 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
     ))
 }
 
+#[cfg(target_os = "linux")]
 fn run_attach_gpus_to_fd(fd: &impl AsFd, gpu_id: u32) -> serde_json::Value {
     eprintln!("\n[Phase 0b] NV_ESC_ATTACH_GPUS_TO_FD: gpu_id=0x{gpu_id:x}...");
     let mut attach_buf = [gpu_id];
@@ -365,6 +385,7 @@ fn run_attach_gpus_to_fd(fd: &impl AsFd, gpu_id: u32) -> serde_json::Value {
     )
 }
 
+#[cfg(target_os = "linux")]
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -636,4 +657,10 @@ fn main() -> ExitCode {
 
     print_result(&result);
     ExitCode::SUCCESS
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("This tool requires Linux");
+    std::process::exit(1);
 }

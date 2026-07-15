@@ -25,6 +25,7 @@ use toadstool_common::universal_adapter::{CapabilityHandle, ServiceEndpoint};
 
 use super::dispatch::SecurityProviderDispatch;
 use super::provider::SecurityProvider;
+#[cfg(unix)]
 use super::unix_socket_provider::UnixSocketSecurityProvider;
 
 /// Factory for creating security providers
@@ -69,7 +70,12 @@ impl SecurityProviderFactory {
         // Inspect endpoint to determine provider type
         match handle.endpoint() {
             ServiceEndpoint::Http(url) => Self::create_http_provider(url).await,
+            #[cfg(unix)]
             ServiceEndpoint::UnixSocket(path) => Self::create_unix_socket_provider(path).await,
+            #[cfg(not(unix))]
+            ServiceEndpoint::UnixSocket(_) => Err(ToadStoolError::runtime(
+                "Unix socket security provider is unavailable on this platform",
+            )),
             ServiceEndpoint::Tcp { host, port } => Self::create_tcp_provider(host, *port).await,
             ServiceEndpoint::InProcess => Self::create_in_process_provider().await,
             ServiceEndpoint::Custom { protocol, address } => {
@@ -96,6 +102,7 @@ impl SecurityProviderFactory {
     ///
     /// Uses the UnixSocketSecurityProvider to communicate over Unix domain sockets.
     /// This is the preferred transport for inter-primal IPC (ecoBin compliant).
+    #[cfg(unix)]
     async fn create_unix_socket_provider(
         path: &std::path::Path,
     ) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
@@ -372,6 +379,7 @@ mod tests {
         assert!(err_msg.contains("Custom protocol"));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn test_unix_socket_provider_socket_not_found() {
         let handle = CapabilityHandle::new(

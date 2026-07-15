@@ -6,6 +6,7 @@
 mod capabilities;
 mod execution;
 mod format;
+#[cfg(target_os = "linux")]
 #[expect(unsafe_code, reason = "systemd fd store / sd_notify requires unsafe")]
 pub(crate) mod systemd_fdstore;
 
@@ -149,7 +150,9 @@ pub async fn run_server_main(
     // Wave 49/54 startup optimization: pre-bind JSON-RPC socket BEFORE heavy init
     // and start an early health responder so launchers get immediate health.liveness
     // responses while wgpu + mDNS + executor construction run in the background.
+    #[cfg(unix)]
     let (early_stop_tx, early_stop_rx) = tokio::sync::watch::channel(false);
+    #[cfg(unix)]
     let jsonrpc_listener =
         match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path).await {
             Ok(listener) => {
@@ -258,24 +261,28 @@ pub async fn run_server_main(
     ));
 
     // Extract anchor store before handler moves into the server task
+    #[cfg(target_os = "linux")]
     let anchor_store = jsonrpc_handler.anchor_store();
 
     // Recover VFIO anchors from systemd fd store (survives daemon restart)
-    let recovered = systemd_fdstore::retrieve_anchors();
-    if !recovered.is_empty() {
-        let count = recovered.len();
-        let mut store = anchor_store.lock().await;
-        for (bdf, anchor) in recovered {
+    #[cfg(target_os = "linux")]
+    {
+        let recovered = systemd_fdstore::retrieve_anchors();
+        if !recovered.is_empty() {
+            let count = recovered.len();
+            let mut store = anchor_store.lock().await;
+            for (bdf, anchor) in recovered {
+                info!(
+                    bdf,
+                    "recovered VfioAnchor from systemd fd store — GPU warm state preserved"
+                );
+                store.insert(bdf, anchor);
+            }
             info!(
-                bdf,
-                "recovered VfioAnchor from systemd fd store — GPU warm state preserved"
+                count,
+                "restored VfioAnchor(s) from previous daemon instance"
             );
-            store.insert(bdf, anchor);
         }
-        info!(
-            count,
-            "restored VfioAnchor(s) from previous daemon instance"
-        );
     }
 
     let tarpc_path_for_server = tarpc_socket_path.clone();
@@ -283,6 +290,7 @@ pub async fn run_server_main(
     let unibin_for_server = unibin_config.clone();
 
     // Stop the early health responder — full handler is ready to accept.
+    #[cfg(unix)]
     let _ = early_stop_tx.send(true);
     tokio::task::yield_now().await;
 
@@ -294,6 +302,7 @@ pub async fn run_server_main(
             jsonrpc_socket_for_server,
             tcp_port,
             &unibin_for_server,
+            #[cfg(unix)]
             jsonrpc_listener,
         )
         .await
@@ -304,20 +313,24 @@ pub async fn run_server_main(
     });
 
     // PCIe keepalive — prevents PLX PEX 8747 from D3cold-gating K80 GPUs.
+    #[cfg(target_os = "linux")]
     tokio::spawn(async { crate::background::pcie_keepalive::run().await });
 
     // Verify forensic logging works before any handoff is attempted.
+    #[cfg(target_os = "linux")]
     toadstool_cylinder::vfio::sovereign_handoff::forensics::startup_smoke_test();
 
     // Exp 229: catalyst handoff watchdog — monitors handoff liveness and
     // performs emergency interrupt quench + process kill if the pipeline
     // becomes unresponsive (diesel engine safety net).
+    #[cfg(target_os = "linux")]
     if let Err(e) = crate::background::catalyst_watchdog::start_watchdog_thread() {
         error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
     }
 
     // Exp 232: kernel oops sentinel — monitors /dev/kmsg for crash signatures
     // and saves triage reports before the system goes down.
+    #[cfg(target_os = "linux")]
     if let Err(e) = crate::background::kernel_sentinel::start_sentinel_thread() {
         error!(error = %e, "failed to spawn kernel sentinel thread; crash forensics disabled");
     }
@@ -365,6 +378,7 @@ pub async fn run_server_main(
     ready.store(true, Ordering::Release);
     info!("✅ Server fully initialized — health.liveness → alive");
 
+    #[cfg(target_os = "linux")]
     if let Err(e) = systemd_fdstore::sd_notify("READY=1\n") {
         info!("sd_notify(READY=1) skipped: {e} (normal outside systemd)");
     } else {
@@ -398,6 +412,7 @@ pub async fn run_server_main(
     // Store VFIO anchor fds in systemd's FileDescriptorStore.
     // systemd holds duplicated fds in PID 1, keeping the VFIO binding
     // alive across our process exit — prevents Secondary Bus Reset.
+    #[cfg(target_os = "linux")]
     {
         let anchors = anchor_store.lock().await;
         if !anchors.is_empty() {

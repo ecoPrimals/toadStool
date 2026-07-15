@@ -16,13 +16,16 @@ pub use executor::{StandaloneExecutor, WorkloadExecutor};
 #[cfg(test)]
 pub use executor::TestExecutor;
 
+#[cfg(unix)]
 use std::io::ErrorKind;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 use tarpc::context::Context;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
+#[cfg(unix)]
+use tracing::warn;
 
 use crate::errors::{ServerError, ServerResult};
 
@@ -128,6 +131,7 @@ impl ToadStoolTarpcServer {
     /// # Errors
     ///
     /// Returns [`ServerError`] if directory creation, socket bind, permission setting, or accept fails.
+    #[cfg(unix)]
     pub async fn serve_unix(self, socket_path: impl AsRef<std::path::Path>) -> ServerResult<()> {
         use tokio::net::UnixListener;
 

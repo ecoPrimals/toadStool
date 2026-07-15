@@ -62,8 +62,6 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use toadstool_cylinder::vfio::sovereign_handoff::{HandoffConfig, ModuleSourceConfig};
-
 /// A multi-stage warm initialization plan.
 ///
 /// Describes the complete sequence from cold/unbound GPU to sovereign
@@ -131,6 +129,7 @@ pub struct WarmInitStep {
     pub duration_ms: u64,
 }
 
+#[cfg(target_os = "linux")]
 impl WarmInitPlan {
     /// Derive a `WarmInitPlan` from the diesel engine's [`HandoffConfig`].
     ///
@@ -143,7 +142,11 @@ impl WarmInitPlan {
     /// produce `SeederContainment::BareMetal`. Only the agentReagents VM path
     /// uses `Contained`, which the diesel engine doesn't handle.
     #[must_use]
-    pub fn from_handoff_config(config: &HandoffConfig) -> Self {
+    pub fn from_handoff_config(
+        config: &toadstool_cylinder::vfio::sovereign_handoff::HandoffConfig,
+    ) -> Self {
+        use toadstool_cylinder::vfio::sovereign_handoff::ModuleSourceConfig;
+
         let module_source = match &config.module_source {
             ModuleSourceConfig::System => ModuleSource::System,
             ModuleSourceConfig::Patched {
@@ -177,7 +180,9 @@ impl WarmInitPlan {
             final_target: config.final_driver.clone(),
         }
     }
+}
 
+impl WarmInitPlan {
     /// BAR0 scan offsets for warm-state capture.
     ///
     /// Returns every 4-byte offset up to `scan_size` for use with

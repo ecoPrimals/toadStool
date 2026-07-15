@@ -4,6 +4,7 @@
 use super::DispatchHandler;
 use crate::visualization_client::SharedVisualizationClient;
 use std::collections::HashMap;
+#[cfg(target_os = "linux")]
 use std::os::fd::AsFd;
 use std::sync::Arc;
 
@@ -14,7 +15,6 @@ impl DispatchHandler {
         coral_client: SharedVisualizationClient,
         crypto_client: Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>>,
     ) -> Self {
-        let anchor_store: super::AnchorStore = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
         Self {
             coral_client,
             crypto_client,
@@ -22,10 +22,14 @@ impl DispatchHandler {
             jobs: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             pipelines: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             dispatch_count: std::sync::atomic::AtomicU64::new(0),
+            #[cfg(target_os = "linux")]
             device_pool: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            #[cfg(target_os = "linux")]
             local_device_factory: None,
+            #[cfg(target_os = "linux")]
             cached_devices: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
-            anchor_store,
+            #[cfg(target_os = "linux")]
+            anchor_store: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             resource_orchestrator: None,
             gate_ownership: None,
         }
@@ -36,15 +40,13 @@ impl DispatchHandler {
     }
 
     /// Get a clone of the anchor store for use in the SIGTERM handler.
+    #[cfg(target_os = "linux")]
     pub fn anchor_store(&self) -> super::AnchorStore {
         Arc::clone(&self.anchor_store)
     }
 
     /// Set the local device factory for Phase D sovereign dispatch.
-    ///
-    /// When set, dispatch attempts local execution before falling back to
-    /// coral_client IPC. The factory receives a BDF and returns a `ComputeDevice`
-    /// if the device can be opened locally.
+    #[cfg(target_os = "linux")]
     pub fn set_local_device_factory(&mut self, factory: super::LocalDeviceFactory) {
         self.local_device_factory = Some(factory);
     }
@@ -134,6 +136,7 @@ fn resolve_caller_gate_id(
     })
 }
 
+#[cfg(target_os = "linux")]
 impl DispatchHandler {
     /// Dup VFIO fds from the anchor store into `ReceivedVfioFds` for
     /// device adoption. Returns `None` if no anchor exists for this BDF.
@@ -193,6 +196,7 @@ impl DispatchHandler {
 }
 
 /// Convert a `WarmKeepaliveRef`'s DMA spec into cylinder's `DmaBackend`.
+#[cfg(target_os = "linux")]
 fn dma_from_keepalive(
     view: &toadstool_ember::warm_keepalive::WarmKeepaliveRef<'_>,
 ) -> Option<toadstool_cylinder::vfio::DmaBackend> {
@@ -220,6 +224,7 @@ mod tests {
         DispatchHandler::new(Arc::new(VisualizationClient::unavailable()), None)
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn new_handler_anchor_store_is_empty() {
         let handler = test_handler();

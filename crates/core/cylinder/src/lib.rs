@@ -85,11 +85,15 @@
 //!     /dev/dri/renderD*  /dev/vfio/* ← Linux DRM / VFIO
 //! ```
 
+#[cfg(target_os = "linux")]
 pub mod bin_helpers;
 pub mod error;
 pub mod hardware;
+#[cfg(target_os = "linux")]
 pub mod linux_paths;
+#[cfg(target_os = "linux")]
 pub(crate) mod mmio;
+#[cfg(target_os = "linux")]
 pub(crate) mod mmio_region;
 
 #[cfg(target_os = "linux")]
@@ -104,7 +108,9 @@ pub mod nv;
 #[cfg(all(target_os = "linux", feature = "vfio"))]
 pub mod vfio;
 
-pub use error::{ChannelError, DevinitError, DriverError, DriverResult, PciDiscoveryError};
+#[cfg(all(target_os = "linux", feature = "vfio"))]
+pub use error::{ChannelError, DevinitError, PciDiscoveryError, SovereignStagesError};
+pub use error::{DriverError, DriverResult};
 pub use hardware::{CompletionStyle, HardwareCapabilities, MemoryType, Vendor, WaveSize};
 
 /// An opaque GPU buffer handle.
@@ -237,42 +243,25 @@ pub trait ComputeDevice: Send + Sync {
     ///
     /// Returns `None` for devices without direct BAR access (non-VFIO,
     /// caps-only mode, or non-Linux platforms).
-    ///
-    /// New code should prefer [`VfioDeviceExt`] when the concrete type
-    /// is known. This default implementation exists for backward compat
-    /// with dispatch paths that hold `&dyn ComputeDevice`.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     fn bar0(&self) -> Option<&vfio::device::MappedBar> {
         None
     }
 
     /// Borrow the device's DMA backend if available.
-    ///
-    /// Returns `None` for devices without DMA capability.
-    ///
-    /// New code should prefer [`VfioDeviceExt`] when the concrete type
-    /// is known.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     fn dma_backend(&self) -> Option<&vfio::device::DmaBackend> {
         None
     }
 
     /// Duplicate the VFIO file descriptors for constructing a warm-keepalive anchor.
-    ///
-    /// Returns `None` for devices without a VFIO fd (DRM-backed, non-Linux).
-    /// When available, returns owned dup'd copies of the VFIO device and
-    /// backend fds — the caller can hold them independently to prevent
-    /// GPU bus resets on fd close.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     fn dup_anchor_fds(&self) -> Option<vfio::DupAnchorFds> {
         None
     }
 
     /// Adopt pre-existing VFIO file descriptors from an anchor/ember.
-    ///
-    /// When the device was created by the factory but couldn't open VFIO
-    /// directly (EBUSY — ember already holds the group), this method
-    /// allows injecting dup'd fds from the anchor store to complete the
-    /// VFIO session setup (BAR0 mmap, DMA backend, PFIFO channel).
-    ///
-    /// Default returns `Unsupported` for devices that don't need this.
+    #[cfg(all(target_os = "linux", feature = "vfio"))]
     fn adopt_anchor_fds(&mut self, _fds: vfio::ReceivedVfioFds) -> DriverResult<()> {
         Err(DriverError::Unsupported(
             "adopt_anchor_fds not supported on this device type".into(),
@@ -281,14 +270,7 @@ pub trait ComputeDevice: Send + Sync {
 }
 
 /// Extension trait for devices with direct VFIO hardware access.
-///
-/// Separates VFIO-specific capabilities (BAR0 mapping, DMA backend) from
-/// the vendor-neutral [`ComputeDevice`] trait. [`ComputeDevice`] stays
-/// purely about alloc/free/upload/readback/dispatch/sync/capabilities;
-/// VFIO concerns live here.
-///
-/// All [`ComputeDevice`] implementations that also have VFIO access
-/// (e.g. `NvVfioComputeDevice`) should implement this trait.
+#[cfg(all(target_os = "linux", feature = "vfio"))]
 pub trait VfioDeviceExt {
     /// Borrow the device's BAR0 mapping.
     fn vfio_bar0(&self) -> Option<&vfio::device::MappedBar>;

@@ -33,6 +33,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 #[derive(Debug)]
 pub enum IpcStream {
     /// Filesystem Unix socket stream.
+    #[cfg(unix)]
     Unix(tokio::net::UnixStream),
     /// Abstract Unix socket stream (Linux/Android).
     #[cfg(target_os = "linux")]
@@ -45,6 +46,7 @@ impl IpcStream {
     /// Get endpoint info for this stream
     pub const fn endpoint_type(&self) -> &'static str {
         match self {
+            #[cfg(unix)]
             Self::Unix(_) => "unix",
             #[cfg(target_os = "linux")]
             Self::Abstract(_) => "abstract",
@@ -61,6 +63,7 @@ impl AsyncRead for IpcStream {
         buf: &mut tokio::io::ReadBuf<'_>,
     ) -> std::task::Poll<std::io::Result<()>> {
         match &mut *self {
+            #[cfg(unix)]
             Self::Unix(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
             #[cfg(target_os = "linux")]
             Self::Abstract(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
@@ -76,6 +79,7 @@ impl AsyncWrite for IpcStream {
         buf: &[u8],
     ) -> std::task::Poll<Result<usize, std::io::Error>> {
         match &mut *self {
+            #[cfg(unix)]
             Self::Unix(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
             #[cfg(target_os = "linux")]
             Self::Abstract(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
@@ -88,6 +92,7 @@ impl AsyncWrite for IpcStream {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), std::io::Error>> {
         match &mut *self {
+            #[cfg(unix)]
             Self::Unix(stream) => std::pin::Pin::new(stream).poll_flush(cx),
             #[cfg(target_os = "linux")]
             Self::Abstract(stream) => std::pin::Pin::new(stream).poll_flush(cx),
@@ -100,6 +105,7 @@ impl AsyncWrite for IpcStream {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), std::io::Error>> {
         match &mut *self {
+            #[cfg(unix)]
             Self::Unix(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
             #[cfg(target_os = "linux")]
             Self::Abstract(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
@@ -133,6 +139,7 @@ impl IpcClient {
         }
 
         // Unix socket (Linux desktop, macOS)
+        #[cfg(unix)]
         endpoints.push(Endpoint::for_toadstool());
 
         // Tier 2: TCP fallback (universal)
@@ -158,11 +165,12 @@ impl IpcClient {
             });
         }
 
-        // Unix socket with primal name (ecoBin v2.0 compliant)
-        let socket_path = toadstool_common::platform_paths::biomeos_runtime_dir()
-            .join(format!("{}.sock", primal_name.to_lowercase()));
-
-        endpoints.push(Endpoint::Unix { path: socket_path });
+        #[cfg(unix)]
+        {
+            let socket_path = toadstool_common::platform_paths::biomeos_runtime_dir()
+                .join(format!("{}.sock", primal_name.to_lowercase()));
+            endpoints.push(Endpoint::Unix { path: socket_path });
+        }
 
         // Tier 2: TCP with environment-based port discovery
         // Deep Debt: No hardcoded ports for other primals.
@@ -206,8 +214,15 @@ impl IpcClient {
         te: &toadstool_common::TransportEndpoint,
     ) -> ToadStoolResult<Self> {
         let endpoint = match te {
+            #[cfg(unix)]
             toadstool_common::TransportEndpoint::Uds { path } => {
                 Endpoint::Unix { path: path.clone() }
+            }
+            #[cfg(not(unix))]
+            toadstool_common::TransportEndpoint::Uds { .. } => {
+                return Err(ToadStoolError::not_supported(
+                    "Unix domain socket transport is unavailable on this platform",
+                ));
             }
             toadstool_common::TransportEndpoint::Tcp { host, port } => Endpoint::Tcp {
                 host: host.clone(),
@@ -264,6 +279,7 @@ impl IpcClient {
     /// Try to connect to specific endpoint
     async fn try_connect(&self, endpoint: &Endpoint) -> ToadStoolResult<IpcStream> {
         match endpoint {
+            #[cfg(unix)]
             Endpoint::Unix { path } => {
                 let stream = platform::unix::connect(path).await?;
                 Ok(IpcStream::Unix(stream))

@@ -3,7 +3,9 @@
 //!
 //! Bridges model metadata with device inference execution.
 
-use crate::{AkidaModelError, Model, Result};
+use crate::Model;
+#[cfg(unix)]
+use crate::{AkidaModelError, Result};
 
 impl Model {
     /// Run inference on device
@@ -49,6 +51,7 @@ impl Model {
     /// - Input size doesn't match model
     /// - Inference fails
     /// - Output cannot be retrieved
+    #[cfg(unix)]
     pub fn infer(
         &self,
         input: &[u8],

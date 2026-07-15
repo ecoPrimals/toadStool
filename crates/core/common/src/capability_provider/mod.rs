@@ -12,6 +12,7 @@ mod provider;
 mod serialize;
 
 // Re-export public API for backward compatibility
+#[cfg(unix)]
 pub use discovery::discover_all;
 pub use error::{CapabilityError, Result};
 pub use provider::CapabilityProvider;

@@ -259,12 +259,22 @@ fn aperture_is_bar_mappable(aperture: &str) -> bool {
     )
 }
 
+#[cfg(target_os = "linux")]
 fn verify_ioctl(step_index: usize, card_path: &str, ioctl_nr: u64) -> StepResult {
     let result = super::nouveau_drm::execute_ioctl(step_index, card_path, ioctl_nr, &[]);
     StepResult {
         step_index,
         success: result.success,
         detail: format!("verify ioctl 0x{ioctl_nr:x}: {}", result.detail),
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn verify_ioctl(step_index: usize, _card_path: &str, ioctl_nr: u64) -> StepResult {
+    StepResult {
+        step_index,
+        success: false,
+        detail: format!("verify ioctl 0x{ioctl_nr:x}: DRM ioctl path unavailable on this platform"),
     }
 }
 

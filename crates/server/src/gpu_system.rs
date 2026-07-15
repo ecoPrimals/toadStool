@@ -170,47 +170,53 @@ pub fn query_spirv_codegen_safety() -> serde_json::Value {
 }
 
 /// Query firmware inventory for detected NVIDIA GPUs.
-///
-/// Probes `/lib/firmware/nvidia/{chip}/` for each detected GPU and reports
-/// `compute_viable`, `compute_blockers`, and `needs_software_pmu`.
-/// Non-NVIDIA GPUs are reported with a note.
 #[must_use]
 pub fn query_firmware_inventory() -> serde_json::Value {
-    let sysmon_gpus = toadstool_sysmon::discover_gpus();
-    let mut entries = Vec::new();
-
-    for gpu in &sysmon_gpus {
-        let driver = gpu.driver.as_str();
-        let is_nvidia =
-            driver.contains("nvidia") || driver.contains("nvk") || driver.contains("nouveau");
-
-        if is_nvidia {
-            let chip = infer_chip_codename(&gpu.pci_slot);
-            let inv = nvpmu::FirmwareInventory::probe(&chip);
-            entries.push(serde_json::json!({
-                "card_index": gpu.card_index,
-                "pci_slot": gpu.pci_slot,
-                "chip": chip,
-                "compute_viable": inv.compute_viable(),
-                "compute_blockers": inv.compute_blockers(),
-                "needs_software_pmu": inv.needs_software_pmu(),
-                "firmware": serde_json::to_value(&inv).unwrap_or_default(),
-            }));
-        } else {
-            entries.push(serde_json::json!({
-                "card_index": gpu.card_index,
-                "pci_slot": gpu.pci_slot,
-                "note": "Firmware inventory only supported for NVIDIA GPUs",
-            }));
-        }
+    #[cfg(not(target_os = "linux"))]
+    {
+        return serde_json::json!({
+            "note": "Firmware inventory is only available on Linux",
+            "devices": [],
+        });
     }
 
-    serde_json::json!({ "devices": entries })
+    #[cfg(target_os = "linux")]
+    {
+        let sysmon_gpus = toadstool_sysmon::discover_gpus();
+        let mut entries = Vec::new();
+
+        for gpu in &sysmon_gpus {
+            let driver = gpu.driver.as_str();
+            let is_nvidia =
+                driver.contains("nvidia") || driver.contains("nvk") || driver.contains("nouveau");
+
+            if is_nvidia {
+                let chip = infer_chip_codename(&gpu.pci_slot);
+                let inv = nvpmu::FirmwareInventory::probe(&chip);
+                entries.push(serde_json::json!({
+                    "card_index": gpu.card_index,
+                    "pci_slot": gpu.pci_slot,
+                    "chip": chip,
+                    "compute_viable": inv.compute_viable(),
+                    "compute_blockers": inv.compute_blockers(),
+                    "needs_software_pmu": inv.needs_software_pmu(),
+                    "firmware": serde_json::to_value(&inv).unwrap_or_default(),
+                }));
+            } else {
+                entries.push(serde_json::json!({
+                    "card_index": gpu.card_index,
+                    "pci_slot": gpu.pci_slot,
+                    "note": "Firmware inventory only supported for NVIDIA GPUs",
+                }));
+            }
+        }
+
+        serde_json::json!({ "devices": entries })
+    }
 }
 
 /// Infer chip codename from PCI device ID via sysfs.
-///
-/// Falls back to "unknown" if sysfs read fails.
+#[cfg(target_os = "linux")]
 fn infer_chip_codename(pci_slot: &str) -> String {
     let device_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(pci_slot, "device");
     let device_id = std::fs::read_to_string(&device_path)

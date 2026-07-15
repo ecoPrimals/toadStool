@@ -73,7 +73,10 @@ impl DispatchHandler {
 
         let dispatch_id = format!("fan-{}", uuid::Uuid::new_v4().as_hyphenated());
 
+        #[cfg(target_os = "linux")]
         let has_gpu = self.local_device_factory.is_some();
+        #[cfg(not(target_os = "linux"))]
+        let has_gpu = false;
 
         let mut assigned = Vec::new();
         let mut queued = Vec::new();

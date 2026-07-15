@@ -11,13 +11,15 @@ categories = ["hardware-support", "science"]
 
 [dependencies]
 toadstool-common = { path = "../common" }
-hw-learn = { path = "../hw-learn" }
-toadstool-hw-safe = { path = "../hw-safe" }
-rustix = { workspace = true, features = ["mm", "event", "time"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+hw-learn = { path = "../hw-learn" }
+toadstool-hw-safe = { path = "../hw-safe" }
+rustix = { workspace = true, features = ["mm", "event", "time"] }
 
 [[bin]]
 name = "nvpmu-apply"

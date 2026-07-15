@@ -5,12 +5,16 @@
 //! Client code doesn't depend on which concrete service implements the capability.
 
 use crate::primal_identity::Capability;
+#[cfg(unix)]
 use crate::unix_jsonrpc_client::UnixJsonRpcClient;
 use serde_json::Value;
 use std::path::PathBuf;
+#[cfg(unix)]
 use std::sync::Arc;
+#[cfg(unix)]
 use tokio::sync::RwLock;
 
+#[cfg(unix)]
 use super::discovery;
 use super::error::{CapabilityError, Result};
 
@@ -30,11 +34,13 @@ pub struct CapabilityProvider {
     capabilities: Vec<Capability>,
 
     /// Cached client connection
+    #[cfg(unix)]
     client: Arc<RwLock<Option<UnixJsonRpcClient>>>,
 }
 
 impl CapabilityProvider {
     /// Create provider from discovery service info (used by discovery module)
+    #[cfg_attr(not(unix), allow(dead_code))]
     pub(crate) fn from_service_info(
         service_name: String,
         socket_path: PathBuf,
@@ -44,6 +50,7 @@ impl CapabilityProvider {
             service_name,
             socket_path,
             capabilities,
+            #[cfg(unix)]
             client: Arc::new(RwLock::new(None)),
         }
     }
@@ -62,12 +69,19 @@ impl CapabilityProvider {
     ///
     /// Returns `CapabilityError::NoProviderFound` if no service offers this capability.
     /// Returns `CapabilityError::DiscoveryUnavailable` if can't reach discovery service.
+    #[cfg(unix)]
     pub async fn discover(capability: Capability) -> Result<Self> {
         let providers = discovery::query_providers(capability.clone()).await?;
         providers
             .into_iter()
             .next()
             .ok_or(CapabilityError::NoProviderFound(capability))
+    }
+
+    /// Discover a provider for a specific capability (non-Unix stub)
+    #[cfg(not(unix))]
+    pub async fn discover(_capability: Capability) -> Result<Self> {
+        Err(CapabilityError::DiscoveryUnavailable)
     }
 
     /// Call a method on this capability provider
@@ -77,6 +91,7 @@ impl CapabilityProvider {
     /// # Errors
     ///
     /// Returns error if provider is unreachable or call fails
+    #[cfg(unix)]
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let client = {
             let mut client_lock = self.client.write().await;
@@ -98,6 +113,14 @@ impl CapabilityProvider {
             .call(method, params)
             .await
             .map_err(|e| CapabilityError::RpcFailed(e.to_string()))
+    }
+
+    /// Call a method on this capability provider (non-Unix stub)
+    #[cfg(not(unix))]
+    pub async fn call(&self, _method: &str, _params: Value) -> Result<Value> {
+        Err(CapabilityError::RpcFailed(
+            "Unix domain sockets are not available on this platform".to_string(),
+        ))
     }
 
     /// Get the socket path for this provider.

@@ -18,9 +18,13 @@ pub use errors::*;
 pub use protocol::*;
 
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
 use serde_json::json;
 use std::sync::Arc;
-use toadstool_common::capability_provider::{CapabilityError, CapabilityProvider};
+#[cfg(unix)]
+use toadstool_common::capability_provider::CapabilityError;
+use toadstool_common::capability_provider::CapabilityProvider;
+#[cfg(unix)]
 use toadstool_common::primal_identity::Capability;
 use tokio::sync::RwLock;
 
@@ -54,28 +58,35 @@ impl SecurityClient {
     ///
     /// Discovers by capability: "Who provides security services?"
     async fn get_provider(&self) -> Result<CapabilityProvider> {
-        let mut provider_lock = self.provider.write().await;
-
-        if provider_lock.is_none() {
-            // Use Crypto capability for security services
-            use toadstool_common::primal_identity::CryptoCapability;
-            let capability = Capability::Crypto(CryptoCapability::Encryption);
-
-            let discovered =
-                CapabilityProvider::discover(capability)
-                    .await
-                    .map_err(|e| match e {
-                        CapabilityError::NoProviderFound(_) => SecurityClientError::NoProvider,
-                        other => SecurityClientError::Capability(other),
-                    })?;
-
-            *provider_lock = Some(discovered);
+        #[cfg(not(unix))]
+        {
+            return Err(SecurityClientError::NoProvider);
         }
+        #[cfg(unix)]
+        {
+            let mut provider_lock = self.provider.write().await;
 
-        provider_lock
-            .as_ref()
-            .cloned()
-            .ok_or(SecurityClientError::NoProvider)
+            if provider_lock.is_none() {
+                // Use Crypto capability for security services
+                use toadstool_common::primal_identity::CryptoCapability;
+                let capability = Capability::Crypto(CryptoCapability::Encryption);
+
+                let discovered =
+                    CapabilityProvider::discover(capability)
+                        .await
+                        .map_err(|e| match e {
+                            CapabilityError::NoProviderFound(_) => SecurityClientError::NoProvider,
+                            other => SecurityClientError::Capability(other),
+                        })?;
+
+                *provider_lock = Some(discovered);
+            }
+
+            provider_lock
+                .as_ref()
+                .cloned()
+                .ok_or(SecurityClientError::NoProvider)
+        }
     }
 
     /// Call a security RPC method with typed request/response.
@@ -89,13 +100,21 @@ impl SecurityClient {
         Req: Serialize + Sync,
         Resp: for<'de> Deserialize<'de>,
     {
-        let params = serde_json::to_value(request).map_err(SecurityClientError::Json)?;
-        let provider = self.get_provider().await?;
-        let response = provider
-            .call(method, params)
-            .await
-            .map_err(|e| map_err(e.to_string()))?;
-        serde_json::from_value(response).map_err(SecurityClientError::Json)
+        #[cfg(not(unix))]
+        {
+            let _ = (method, request, map_err);
+            return Err(SecurityClientError::NoProvider);
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(request).map_err(SecurityClientError::Json)?;
+            let provider = self.get_provider().await?;
+            let response = provider
+                .call(method, params)
+                .await
+                .map_err(|e| map_err(e.to_string()))?;
+            serde_json::from_value(response).map_err(SecurityClientError::Json)
+        }
     }
 
     /// Encrypt data
@@ -177,24 +196,32 @@ impl SecurityClient {
     ///
     /// Returns error if key generation fails
     pub async fn generate_key(&self, algorithm: String) -> Result<String> {
-        let provider = self.get_provider().await?;
+        #[cfg(not(unix))]
+        {
+            let _ = algorithm;
+            return Err(SecurityClientError::NoProvider);
+        }
+        #[cfg(unix)]
+        {
+            let provider = self.get_provider().await?;
 
-        let params = json!({
-            "algorithm": algorithm,
-        });
+            let params = json!({
+                "algorithm": algorithm,
+            });
 
-        let response = provider
-            .call("security.generate_key", params)
-            .await
-            .map_err(|e| SecurityClientError::KeyManagementFailed(e.to_string()))?;
+            let response = provider
+                .call("security.generate_key", params)
+                .await
+                .map_err(|e| SecurityClientError::KeyManagementFailed(e.to_string()))?;
 
-        let key_id = response["key_id"].as_str().ok_or_else(|| {
-            SecurityClientError::Capability(CapabilityError::InvalidResponse(
-                "No key_id in response".into(),
-            ))
-        })?;
+            let key_id = response["key_id"].as_str().ok_or_else(|| {
+                SecurityClientError::Capability(CapabilityError::InvalidResponse(
+                    "No key_id in response".into(),
+                ))
+            })?;
 
-        Ok(key_id.to_string())
+            Ok(key_id.to_string())
+        }
     }
 
     /// Delete key
@@ -203,18 +230,26 @@ impl SecurityClient {
     ///
     /// Returns error if key deletion fails
     pub async fn delete_key(&self, key_id: &str) -> Result<()> {
-        let provider = self.get_provider().await?;
+        #[cfg(not(unix))]
+        {
+            let _ = key_id;
+            return Err(SecurityClientError::NoProvider);
+        }
+        #[cfg(unix)]
+        {
+            let provider = self.get_provider().await?;
 
-        let params = json!({
-            "key_id": key_id,
-        });
+            let params = json!({
+                "key_id": key_id,
+            });
 
-        provider
-            .call("security.delete_key", params)
-            .await
-            .map_err(|e| SecurityClientError::KeyManagementFailed(e.to_string()))?;
+            provider
+                .call("security.delete_key", params)
+                .await
+                .map_err(|e| SecurityClientError::KeyManagementFailed(e.to_string()))?;
 
-        Ok(())
+            Ok(())
+        }
     }
 
     /// List available keys
@@ -223,23 +258,30 @@ impl SecurityClient {
     ///
     /// Returns error if provider unavailable
     pub async fn list_keys(&self) -> Result<Vec<String>> {
-        let provider = self.get_provider().await?;
+        #[cfg(not(unix))]
+        {
+            return Err(SecurityClientError::NoProvider);
+        }
+        #[cfg(unix)]
+        {
+            let provider = self.get_provider().await?;
 
-        let response = provider
-            .call("security.list_keys", json!({}))
-            .await
-            .map_err(|e| SecurityClientError::KeyManagementFailed(e.to_string()))?;
+            let response = provider
+                .call("security.list_keys", json!({}))
+                .await
+                .map_err(|e| SecurityClientError::KeyManagementFailed(e.to_string()))?;
 
-        let keys = response["keys"].as_array().ok_or_else(|| {
-            SecurityClientError::Capability(CapabilityError::InvalidResponse(
-                "No keys array in response".into(),
-            ))
-        })?;
+            let keys = response["keys"].as_array().ok_or_else(|| {
+                SecurityClientError::Capability(CapabilityError::InvalidResponse(
+                    "No keys array in response".into(),
+                ))
+            })?;
 
-        Ok(keys
-            .iter()
-            .filter_map(|k| k.as_str().map(String::from))
-            .collect::<Vec<_>>())
+            Ok(keys
+                .iter()
+                .filter_map(|k| k.as_str().map(String::from))
+                .collect::<Vec<_>>())
+        }
     }
 
     /// Check if security provider is available

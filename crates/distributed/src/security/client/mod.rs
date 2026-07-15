@@ -16,8 +16,11 @@
 
 use std::sync::Arc;
 
+#[cfg(unix)]
 use base64::Engine;
+#[cfg(unix)]
 use toadstool_common::primal_sockets::discover_crypto_socket;
+#[cfg(unix)]
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
 
@@ -25,8 +28,12 @@ use super::SecurityConfig;
 use super::discovery::SecurityDiscovery;
 use super::types::{
     EncryptionRequest, EncryptionResponse, KeyManagementRequest, KeyManagementResponse,
-    PermissionResponse, RevocationRequest, SecurityEndpoint, SignatureRequest, SignatureResponse,
-    ValidationResponse, VerificationRequest, VerificationResponse,
+    PermissionResponse, SecurityEndpoint, SignatureResponse,
+};
+#[cfg(unix)]
+use super::types::{
+    RevocationRequest, SignatureRequest, ValidationResponse, VerificationRequest,
+    VerificationResponse,
 };
 
 /// Security Unix Socket Client (Pure Rust!)
@@ -35,10 +42,18 @@ use super::types::{
 /// **TRUE PRIMAL**: Local IPC for compute primal → security primal communication
 pub struct SecurityClient {
     discovery: Arc<SecurityDiscovery>,
+    #[cfg(unix)]
     rpc_client: UnixJsonRpcClient,
 }
 
 impl SecurityClient {
+    #[cfg(not(unix))]
+    fn unix_unavailable<T>() -> ToadStoolResult<T> {
+        Err(ToadStoolError::configuration(
+            "Unix socket security client is unavailable on this platform",
+        ))
+    }
+
     /// Parse CryptoCapability from JSON response (pure function, testable without network)
     #[doc(hidden)]
     pub fn parse_capabilities_from_json(
@@ -88,18 +103,26 @@ impl SecurityClient {
     /// # Errors
     /// Returns error if no crypto service is discovered
     pub async fn new_async(config: SecurityConfig) -> ToadStoolResult<Self> {
-        let socket_path = discover_crypto_socket().await.map_err(|e| {
-            ToadStoolError::configuration(format!(
-                "No crypto service discovered: {e}. Ensure a security/crypto service is running.",
-            ))
-        })?;
+        #[cfg(unix)]
+        {
+            let socket_path = discover_crypto_socket().await.map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "No crypto service discovered: {e}. Ensure a security/crypto service is running.",
+                ))
+            })?;
 
-        let rpc_client = UnixJsonRpcClient::new(socket_path);
+            let rpc_client = UnixJsonRpcClient::new(socket_path);
 
-        Ok(Self {
-            discovery: Arc::new(SecurityDiscovery::new(config)),
-            rpc_client,
-        })
+            Ok(Self {
+                discovery: Arc::new(SecurityDiscovery::new(config)),
+                rpc_client,
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = config;
+            Self::unix_unavailable()
+        }
     }
 
     /// Synchronous constructor for testing (no async discovery).
@@ -107,18 +130,26 @@ impl SecurityClient {
     /// Uses `get_socket_path_for_capability` directly. Production callers
     /// should use [`new_async`](Self::new_async) for proper capability discovery.
     pub fn new_test(config: SecurityConfig) -> ToadStoolResult<Self> {
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
-        let rpc_client = UnixJsonRpcClient::new(socket_path);
+        #[cfg(unix)]
+        {
+            let socket_path =
+                toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
+            let rpc_client = UnixJsonRpcClient::new(socket_path);
 
-        Ok(Self {
-            discovery: Arc::new(SecurityDiscovery::new(config)),
-            rpc_client,
-        })
+            Ok(Self {
+                discovery: Arc::new(SecurityDiscovery::new(config)),
+                rpc_client,
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = config;
+            Self::unix_unavailable()
+        }
     }
 
     /// Create client with custom socket path (for testing error paths when service unavailable)
-    #[cfg(test)]
+    #[cfg(all(unix, test))]
     pub fn new_with_socket_path(
         config: SecurityConfig,
         socket_path: std::path::PathBuf,
@@ -139,34 +170,59 @@ impl SecurityClient {
     pub async fn query_capabilities_async(
         &self,
     ) -> ToadStoolResult<toadstool::encryption::CryptoCapability> {
-        let response: serde_json::Value = self
-            .rpc_client
-            .call_typed("crypto.capabilities", serde_json::json!({}))
-            .await
-            .map_err(|e| {
-                tracing::warn!("security/crypto service capabilities query failed: {}", e);
-                ToadStoolError::network(format!(
-                    "security/crypto service capabilities query failed: {e}"
-                ))
-            })?;
+        #[cfg(not(unix))]
+        {
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let response: serde_json::Value = self
+                .rpc_client
+                .call_typed("crypto.capabilities", serde_json::json!({}))
+                .await
+                .map_err(|e| {
+                    tracing::warn!("security/crypto service capabilities query failed: {}", e);
+                    ToadStoolError::network(format!(
+                        "security/crypto service capabilities query failed: {e}"
+                    ))
+                })?;
 
-        Ok(Self::parse_capabilities_from_json(&response))
+            Ok(Self::parse_capabilities_from_json(&response))
+        }
     }
 
     /// Encrypt data using Security via unix socket
     pub async fn encrypt(&self, request: EncryptionRequest) -> ToadStoolResult<EncryptionResponse> {
-        let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        self.rpc_client.call_typed("crypto.encrypt", params).await
+            self.rpc_client.call_typed("crypto.encrypt", params).await
+        }
     }
 
     /// Decrypt data using Security via unix socket
     pub async fn decrypt(&self, request: EncryptionRequest) -> ToadStoolResult<EncryptionResponse> {
-        let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        self.rpc_client.call_typed("crypto.decrypt", params).await
+            self.rpc_client.call_typed("crypto.decrypt", params).await
+        }
     }
 
     /// Manage keys using Security via unix socket
@@ -174,27 +230,45 @@ impl SecurityClient {
         &self,
         request: KeyManagementRequest,
     ) -> ToadStoolResult<KeyManagementResponse> {
-        let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        self.rpc_client
-            .call_typed("crypto.key_management", params)
-            .await
+            self.rpc_client
+                .call_typed("crypto.key_management", params)
+                .await
+        }
     }
 
     /// Sign data using Security via unix socket
     pub async fn sign(&self, data: &[u8]) -> ToadStoolResult<SignatureResponse> {
-        let request = SignatureRequest {
-            request_id: uuid::Uuid::new_v4(),
-            data: data.to_vec(),
-            key_id: None,
-            algorithm: None,
-        };
+        #[cfg(not(unix))]
+        {
+            let _ = data;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let request = SignatureRequest {
+                request_id: uuid::Uuid::new_v4(),
+                data: data.to_vec(),
+                key_id: None,
+                algorithm: None,
+            };
 
-        let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        self.rpc_client.call_typed("crypto.sign", params).await
+            self.rpc_client.call_typed("crypto.sign", params).await
+        }
     }
 
     /// Verify signature using Security via unix socket
@@ -204,20 +278,29 @@ impl SecurityClient {
         signature: &[u8],
         public_key_id: &str,
     ) -> ToadStoolResult<bool> {
-        let request = VerificationRequest {
-            request_id: uuid::Uuid::new_v4(),
-            data: data.to_vec(),
-            signature: signature.to_vec(),
-            public_key_id: public_key_id.to_string(),
-        };
+        #[cfg(not(unix))]
+        {
+            let _ = (data, signature, public_key_id);
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let request = VerificationRequest {
+                request_id: uuid::Uuid::new_v4(),
+                data: data.to_vec(),
+                signature: signature.to_vec(),
+                public_key_id: public_key_id.to_string(),
+            };
 
-        let params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        let result: VerificationResponse =
-            self.rpc_client.call_typed("crypto.verify", params).await?;
+            let result: VerificationResponse =
+                self.rpc_client.call_typed("crypto.verify", params).await?;
 
-        Ok(result.valid)
+            Ok(result.valid)
+        }
     }
 
     /// Create permission using Security via unix socket
@@ -225,12 +308,21 @@ impl SecurityClient {
         &self,
         request: &crate::security_provider::PermissionRequest,
     ) -> ToadStoolResult<PermissionResponse> {
-        let params = serde_json::to_value(request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        self.rpc_client
-            .call_typed("crypto.create_permission", params)
-            .await
+            self.rpc_client
+                .call_typed("crypto.create_permission", params)
+                .await
+        }
     }
 
     /// Validate permission using Security via unix socket
@@ -238,15 +330,24 @@ impl SecurityClient {
         &self,
         permission: &crate::security_provider::SecurityPermission,
     ) -> ToadStoolResult<bool> {
-        let params = serde_json::to_value(permission)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            let _ = permission;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(permission).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        let result: ValidationResponse = self
-            .rpc_client
-            .call_typed("crypto.validate_permission", params)
-            .await?;
+            let result: ValidationResponse = self
+                .rpc_client
+                .call_typed("crypto.validate_permission", params)
+                .await?;
 
-        Ok(result.valid)
+            Ok(result.valid)
+        }
     }
 
     /// Revoke permission using Security via unix socket
@@ -255,26 +356,35 @@ impl SecurityClient {
         permission_id: &uuid::Uuid,
         reason: &str,
     ) -> ToadStoolResult<()> {
-        let request = RevocationRequest {
-            reason: reason.to_string(),
-        };
-
-        let mut params = serde_json::to_value(&request)
-            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
-
-        if let Some(obj) = params.as_object_mut() {
-            obj.insert(
-                "permission_id".to_string(),
-                serde_json::json!(permission_id.to_string()),
-            );
+        #[cfg(not(unix))]
+        {
+            let _ = (permission_id, reason);
+            return Self::unix_unavailable();
         }
+        #[cfg(unix)]
+        {
+            let request = RevocationRequest {
+                reason: reason.to_string(),
+            };
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("crypto.revoke_permission", params)
-            .await?;
+            let mut params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::network(format!("Failed to serialize request: {e}"))
+            })?;
 
-        Ok(())
+            if let Some(obj) = params.as_object_mut() {
+                obj.insert(
+                    "permission_id".to_string(),
+                    serde_json::json!(permission_id.to_string()),
+                );
+            }
+
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("crypto.revoke_permission", params)
+                .await?;
+
+            Ok(())
+        }
     }
 
     /// Retrieve a purpose key from BearDog secrets store.
@@ -287,8 +397,14 @@ impl SecurityClient {
         purpose: &str,
         family: Option<&str>,
     ) -> ToadStoolResult<toadstool::encryption::EncryptionKey> {
-        let family_id =
-            match family {
+        #[cfg(not(unix))]
+        {
+            let _ = (purpose, family);
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let family_id = match family {
                 Some(f) => f.to_string(),
                 None => std::env::var(
                     toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY_ID,
@@ -306,77 +422,85 @@ impl SecurityClient {
                 })?,
             };
 
-        let key_name = format!("nucleus:{family_id}:purpose:{purpose}");
+            let key_name = format!("nucleus:{family_id}:purpose:{purpose}");
 
-        let params = serde_json::json!({ "name": key_name });
-        let response: serde_json::Value = self
-            .rpc_client
-            .call_typed("secrets.retrieve", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::network(format!("secrets.retrieve(\"{key_name}\") failed: {e}"))
-            })?;
+            let params = serde_json::json!({ "name": key_name });
+            let response: serde_json::Value = self
+                .rpc_client
+                .call_typed("secrets.retrieve", params)
+                .await
+                .map_err(|e| {
+                    ToadStoolError::network(format!("secrets.retrieve(\"{key_name}\") failed: {e}"))
+                })?;
 
-        let key_material_b64 = response["key"]
-            .as_str()
-            .or_else(|| response["value"].as_str())
-            .or_else(|| response.as_str())
-            .ok_or_else(|| {
-                ToadStoolError::runtime(format!(
-                    "secrets.retrieve(\"{key_name}\") returned no key material"
-                ))
-            })?;
+            let key_material_b64 = response["key"]
+                .as_str()
+                .or_else(|| response["value"].as_str())
+                .or_else(|| response.as_str())
+                .ok_or_else(|| {
+                    ToadStoolError::runtime(format!(
+                        "secrets.retrieve(\"{key_name}\") returned no key material"
+                    ))
+                })?;
 
-        let key_material = base64::engine::general_purpose::STANDARD
-            .decode(key_material_b64)
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("purpose key base64 decode failed: {e}"))
-            })?;
+            let key_material = base64::engine::general_purpose::STANDARD
+                .decode(key_material_b64)
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("purpose key base64 decode failed: {e}"))
+                })?;
 
-        let algorithm = response["algorithm"]
-            .as_str()
-            .unwrap_or("chacha20-poly1305")
-            .to_string();
+            let algorithm = response["algorithm"]
+                .as_str()
+                .unwrap_or("chacha20-poly1305")
+                .to_string();
 
-        Ok(toadstool::encryption::EncryptionKey::new(
-            key_name,
-            key_material,
-            algorithm,
-            toadstool::encryption::SecurityLevel::Enhanced,
-        ))
+            Ok(toadstool::encryption::EncryptionKey::new(
+                key_name,
+                key_material,
+                algorithm,
+                toadstool::encryption::SecurityLevel::Enhanced,
+            ))
+        }
     }
 
     /// Check health of security services
     pub async fn health_check(&self) -> ToadStoolResult<Vec<SecurityEndpoint>> {
-        let endpoints = self.discovery.discover().await?;
+        #[cfg(not(unix))]
+        {
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let endpoints = self.discovery.discover().await?;
 
-        let mut checked_endpoints = Vec::with_capacity(endpoints.len());
+            let mut checked_endpoints = Vec::with_capacity(endpoints.len());
 
-        for mut endpoint in endpoints {
-            let start = std::time::Instant::now();
+            for mut endpoint in endpoints {
+                let start = std::time::Instant::now();
 
-            let health_result: Result<serde_json::Value, _> = self
-                .rpc_client
-                .call_typed("crypto.health", serde_json::json!({}))
-                .await;
+                let health_result: Result<serde_json::Value, _> = self
+                    .rpc_client
+                    .call_typed("crypto.health", serde_json::json!({}))
+                    .await;
 
-            let latency_ms = start.elapsed().as_millis() as u64;
+                let latency_ms = start.elapsed().as_millis() as u64;
 
-            match health_result {
-                Ok(_response) => {
-                    endpoint.healthy = true;
-                    endpoint.latency_ms = Some(latency_ms);
+                match health_result {
+                    Ok(_response) => {
+                        endpoint.healthy = true;
+                        endpoint.latency_ms = Some(latency_ms);
+                    }
+                    Err(_) => {
+                        endpoint.healthy = false;
+                        endpoint.latency_ms = Some(latency_ms);
+                    }
                 }
-                Err(_) => {
-                    endpoint.healthy = false;
-                    endpoint.latency_ms = Some(latency_ms);
-                }
+
+                checked_endpoints.push(endpoint);
             }
 
-            checked_endpoints.push(endpoint);
+            Ok(checked_endpoints)
         }
-
-        Ok(checked_endpoints)
     }
 }
 

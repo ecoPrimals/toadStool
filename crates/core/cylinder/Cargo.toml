@@ -12,16 +12,18 @@ categories = ["hardware-support", "os::linux-apis"]
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
 object = { version = "0.39.1", features = ["read", "write"] }
-rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe", "fs", "system"] }
 ruzstd = { workspace = true }
 toml = "0.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 toadstool-common = { path = "../../core/common" }
-toadstool-hw-safe = { path = "../hw-safe" }
 toadstool-ember = { path = "../ember" }
 tracing = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe", "fs", "system"] }
+toadstool-hw-safe = { path = "../hw-safe" }
 
 [[bin]]
 name = "rm_trigger"

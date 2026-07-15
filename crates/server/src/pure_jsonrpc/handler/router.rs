@@ -11,8 +11,11 @@ use std::sync::atomic::Ordering;
 use tracing::debug;
 
 use super::method_gate::CallerContext;
+#[cfg(target_os = "linux")]
 use super::transport::TransportHandler;
-use super::{JsonRpcHandler, core, extract_caller_context, mmio, sovereign};
+use super::{JsonRpcHandler, core, extract_caller_context};
+#[cfg(target_os = "linux")]
+use super::{mmio, sovereign};
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
@@ -146,6 +149,7 @@ impl JsonRpcHandler {
 
             "gpu.query_info" | "gpu.info" => return core::gpu_info().await,
             "gpu.query_memory" | "gpu.memory" => return core::gpu_memory().await,
+            #[cfg(target_os = "linux")]
             "gpu.query_telemetry" | "gpu.telemetry" => {
                 return self.hw_learn.gpu_telemetry(params).await;
             }
@@ -155,26 +159,9 @@ impl JsonRpcHandler {
             "gate.list" => return self.job.gate_list().await,
             "gate.route" => return self.job.gate_route(params).await,
 
-            "transport.discover" => return Ok(TransportHandler::transport_discover(params)),
-            "transport.list" => return self.transport.transport_list().await,
-            "transport.route" => return self.transport.transport_route(params).await,
-            "transport.open" => return self.transport.transport_open(params).await,
-            "transport.stream" => return self.transport.transport_stream(params).await,
-            "transport.status" => return self.transport.transport_status(params).await,
-
-            "compute.hardware.observe" => return self.hw_learn.hw_learn_observe(params).await,
-            "compute.hardware.distill" => return self.hw_learn.hw_learn_distill(params).await,
-            "compute.hardware.apply" => return self.hw_learn.hw_learn_apply(params).await,
-            "compute.hardware.share_recipe" => {
-                return self.hw_learn.hw_learn_share_recipe(params).await;
-            }
-            "compute.hardware.auto_init" => return self.hw_learn.hw_learn_auto_init(params).await,
-            "compute.hardware.auto_init_all" => {
-                return self.hw_learn.hw_learn_auto_init_all(params).await;
-            }
-            "compute.hardware.status" => return self.hw_learn.hw_learn_status(params).await,
-            "compute.hardware.vfio_devices" => {
-                return self.hw_learn.hw_learn_vfio_devices(params).await;
+            #[cfg(target_os = "linux")]
+            method if Self::is_linux_only_method(method) => {
+                return self.handle_linux_method(method, params, &caller_ctx).await;
             }
 
             "shader.dispatch" => {
@@ -183,90 +170,6 @@ impl JsonRpcHandler {
                     .shader_dispatch_with_context(params, &caller_ctx)
                     .await;
             }
-
-            "ember.list" => return Ok(self.ember_list()),
-            "ember.status" => return Ok(self.ember_status()),
-            "ember.reacquire" => return self.ember_reacquire(params).await,
-            "ember.warm_cycle" => return self.ember_warm_cycle(params).await,
-            "ember.prepare_dma" => return self.dispatch.ember_prepare_dma(params).await,
-            "ember.cleanup_dma" => return self.dispatch.ember_cleanup_dma(params).await,
-            "ember.adopt_device" => return self.ember_adopt_device(params).await,
-            "device.swap" => return self.device_swap(params).await,
-            "device.warm_catch" => return self.device_warm_catch(params),
-            "device.get" => return self.device_get(params),
-            "device.experiment_lifecycle" => return self.device_experiment_lifecycle(params),
-            "device.reset" => return self.device_reset(params),
-            "device.resurrect" => return self.device_resurrect(params).await,
-            "device.health" => return mmio::ember_device_health(params),
-            "device.vfio.open" => {
-                return self.dispatch.device_vfio_open(params, &caller_ctx).await;
-            }
-            "device.vfio.roundtrip" => {
-                return self
-                    .dispatch
-                    .device_vfio_roundtrip(params, &caller_ctx)
-                    .await;
-            }
-            "device.gr.init" | "compute.context.init" => {
-                return self.dispatch.device_gr_init(params).await;
-            }
-
-            "sovereign.init" => {
-                return self.dispatch.sovereign_init_ember(params).await;
-            }
-            "sovereign.boot" => return self.dispatch.sovereign_init_ember(params).await,
-            "sovereign.profile" => {
-                return self.dispatch.sovereign_profile_ember(params).await;
-            }
-            "sovereign.warm_status" => {
-                return self.dispatch.sovereign_warm_status().await;
-            }
-            "sovereign.defense_status" => {
-                return Ok(crate::background::catalyst_watchdog::defense_status());
-            }
-            "sovereign.watchdog_status" => {
-                return Ok(crate::background::catalyst_watchdog::watchdog_status());
-            }
-            "sovereign.ce_validate" | "ce.validate" => {
-                return self.dispatch.sovereign_ce_validate_ember(params).await;
-            }
-            "sovereign.pmu_investigate" | "pmu.investigate" => {
-                return self.dispatch.sovereign_pmu_investigate(params).await;
-            }
-            "sovereign.warm_handoff" => {
-                return self.dispatch.sovereign_warm_handoff(params).await;
-            }
-            "sovereign.catalyst_boot" => {
-                return self.dispatch.sovereign_catalyst_boot(params).await;
-            }
-            "sovereign.classify_tier" => return sovereign::sovereign_classify_tier(params),
-            "sovereign.experiment" => return sovereign::sovereign_experiment(params),
-            "sovereign.devinit" => return sovereign::sovereign_devinit(params),
-            "sovereign.kernel_health" => return sovereign::sovereign_kernel_health(params),
-            "sovereign.snapshot" => return sovereign::sovereign_snapshot(params),
-            "sovereign.compare" => return sovereign::sovereign_compare(params),
-            "sovereign.catalyst_diff" => return sovereign::sovereign_catalyst_diff(params),
-            "sovereign.reagent_capture" => return sovereign::sovereign_reagent_capture(params),
-            "sovereign.recipe_replay" => return sovereign::sovereign_recipe_replay(params),
-            "sovereign.runtime_services_probe" => {
-                return sovereign::sovereign_runtime_services_probe(params);
-            }
-
-            "mmio.read32" => return mmio::mmio_read32(params),
-            "mmio.write32" => return mmio::mmio_write32(params),
-            "mmio.batch" => return mmio::mmio_batch(params),
-            "mmio.pramin.read32" => return mmio::mmio_pramin_read32(params),
-            "mmio.bar0.probe" => return mmio::mmio_bar0_probe(params),
-            "mmio.falcon.status" => return mmio::mmio_falcon_status(params),
-            "ember.falcon.upload_imem" => return mmio::falcon_upload_imem(params),
-            "ember.falcon.upload_dmem" => return mmio::falcon_upload_dmem(params),
-            "ember.falcon.start_cpu" => return mmio::falcon_start_cpu(params),
-            "ember.falcon.poll" => return mmio::falcon_poll(params),
-            "ember.pramin.write" => return mmio::pramin_write(params),
-            "ember.pramin.read" => return mmio::pramin_read(params),
-            "ember.fecs.state" => return mmio::ember_fecs_state(params),
-            "ember.device.health" => return mmio::ember_device_health(params),
-            "ember.device.recover" => return mmio::ember_device_recover(params),
 
             "compute.performance_surface.report" => {
                 return self.silicon.report(params).await;
@@ -365,6 +268,256 @@ impl JsonRpcHandler {
             "toadstool_provenance" => Self::toadstool_provenance().await,
             "gpu_info" => core::gpu_info().await,
             "gpu_memory" => core::gpu_memory().await,
+            #[cfg(target_os = "linux")]
+            impl_name if Self::is_linux_only_impl(impl_name) => {
+                self.dispatch_linux_impl(impl_name, params, ctx).await
+            }
+            "performance_surface_report" => self.silicon.report(params).await,
+            "performance_surface_query" => self.silicon.query(params).await,
+            "performance_surface_list" => self.silicon.list().await,
+            "route_multi_unit" => self.silicon.route_multi_unit(params).await,
+            "auth_check" => super::auth::auth_check(&self.gate, params),
+            "auth_mode" => super::auth::auth_mode(&self.gate),
+            "auth_peer_info" => super::auth::auth_peer_info(ctx),
+            _ => Err(JsonRpcError::method_not_found(impl_name)),
+        }
+    }
+
+    #[expect(
+        clippy::unused_async,
+        reason = "async for JSON-RPC handler trait consistency"
+    )]
+    async fn toadstool_provenance() -> JsonRpcResult {
+        Ok(toadstool::cross_spring_provenance::provenance_json())
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl JsonRpcHandler {
+    fn is_linux_only_method(method: &str) -> bool {
+        matches!(
+            method,
+            "transport.discover"
+                | "transport.list"
+                | "transport.route"
+                | "transport.open"
+                | "transport.stream"
+                | "transport.status"
+                | "compute.hardware.observe"
+                | "compute.hardware.distill"
+                | "compute.hardware.apply"
+                | "compute.hardware.share_recipe"
+                | "compute.hardware.auto_init"
+                | "compute.hardware.auto_init_all"
+                | "compute.hardware.status"
+                | "compute.hardware.vfio_devices"
+                | "ember.list"
+                | "ember.status"
+                | "ember.reacquire"
+                | "ember.warm_cycle"
+                | "ember.prepare_dma"
+                | "ember.cleanup_dma"
+                | "ember.adopt_device"
+                | "device.swap"
+                | "device.warm_catch"
+                | "device.get"
+                | "device.experiment_lifecycle"
+                | "device.reset"
+                | "device.resurrect"
+                | "device.health"
+                | "device.vfio.open"
+                | "device.vfio.roundtrip"
+                | "device.gr.init"
+                | "compute.context.init"
+                | "sovereign.init"
+                | "sovereign.boot"
+                | "sovereign.profile"
+                | "sovereign.warm_status"
+                | "sovereign.defense_status"
+                | "sovereign.watchdog_status"
+                | "sovereign.ce_validate"
+                | "ce.validate"
+                | "sovereign.pmu_investigate"
+                | "pmu.investigate"
+                | "sovereign.warm_handoff"
+                | "sovereign.catalyst_boot"
+                | "sovereign.classify_tier"
+                | "sovereign.experiment"
+                | "sovereign.devinit"
+                | "sovereign.kernel_health"
+                | "sovereign.snapshot"
+                | "sovereign.compare"
+                | "sovereign.catalyst_diff"
+                | "sovereign.reagent_capture"
+                | "sovereign.recipe_replay"
+                | "sovereign.runtime_services_probe"
+                | "mmio.read32"
+                | "mmio.write32"
+                | "mmio.batch"
+                | "mmio.pramin.read32"
+                | "mmio.bar0.probe"
+                | "mmio.falcon.status"
+                | "ember.falcon.upload_imem"
+                | "ember.falcon.upload_dmem"
+                | "ember.falcon.start_cpu"
+                | "ember.falcon.poll"
+                | "ember.pramin.write"
+                | "ember.pramin.read"
+                | "ember.fecs.state"
+                | "ember.device.health"
+                | "ember.device.recover"
+        )
+    }
+
+    async fn handle_linux_method(
+        &self,
+        method: &str,
+        params: Option<&serde_json::Value>,
+        caller_ctx: &CallerContext,
+    ) -> JsonRpcResult {
+        match method {
+            "transport.discover" => Ok(TransportHandler::transport_discover(params)),
+            "transport.list" => self.transport.transport_list().await,
+            "transport.route" => self.transport.transport_route(params).await,
+            "transport.open" => self.transport.transport_open(params).await,
+            "transport.stream" => self.transport.transport_stream(params).await,
+            "transport.status" => self.transport.transport_status(params).await,
+            "compute.hardware.observe" => self.hw_learn.hw_learn_observe(params).await,
+            "compute.hardware.distill" => self.hw_learn.hw_learn_distill(params).await,
+            "compute.hardware.apply" => self.hw_learn.hw_learn_apply(params).await,
+            "compute.hardware.share_recipe" => self.hw_learn.hw_learn_share_recipe(params).await,
+            "compute.hardware.auto_init" => self.hw_learn.hw_learn_auto_init(params).await,
+            "compute.hardware.auto_init_all" => self.hw_learn.hw_learn_auto_init_all(params).await,
+            "compute.hardware.status" => self.hw_learn.hw_learn_status(params).await,
+            "compute.hardware.vfio_devices" => self.hw_learn.hw_learn_vfio_devices(params).await,
+            "ember.list" => Ok(self.ember_list()),
+            "ember.status" => Ok(self.ember_status()),
+            "ember.reacquire" => self.ember_reacquire(params).await,
+            "ember.warm_cycle" => self.ember_warm_cycle(params).await,
+            "ember.prepare_dma" => self.dispatch.ember_prepare_dma(params).await,
+            "ember.cleanup_dma" => self.dispatch.ember_cleanup_dma(params).await,
+            "ember.adopt_device" => self.ember_adopt_device(params).await,
+            "device.swap" => self.device_swap(params).await,
+            "device.warm_catch" => self.device_warm_catch(params),
+            "device.get" => self.device_get(params),
+            "device.experiment_lifecycle" => self.device_experiment_lifecycle(params),
+            "device.reset" => self.device_reset(params),
+            "device.resurrect" => self.device_resurrect(params).await,
+            "device.health" => mmio::ember_device_health(params),
+            "device.vfio.open" => self.dispatch.device_vfio_open(params, caller_ctx).await,
+            "device.vfio.roundtrip" => {
+                self.dispatch
+                    .device_vfio_roundtrip(params, caller_ctx)
+                    .await
+            }
+            "device.gr.init" | "compute.context.init" => self.dispatch.device_gr_init(params).await,
+            "sovereign.init" | "sovereign.boot" => self.dispatch.sovereign_init_ember(params).await,
+            "sovereign.profile" => self.dispatch.sovereign_profile_ember(params).await,
+            "sovereign.warm_status" => self.dispatch.sovereign_warm_status().await,
+            "sovereign.defense_status" => {
+                Ok(crate::background::catalyst_watchdog::defense_status())
+            }
+            "sovereign.watchdog_status" => {
+                Ok(crate::background::catalyst_watchdog::watchdog_status())
+            }
+            "sovereign.ce_validate" | "ce.validate" => {
+                self.dispatch.sovereign_ce_validate_ember(params).await
+            }
+            "sovereign.pmu_investigate" | "pmu.investigate" => {
+                self.dispatch.sovereign_pmu_investigate(params).await
+            }
+            "sovereign.warm_handoff" => self.dispatch.sovereign_warm_handoff(params).await,
+            "sovereign.catalyst_boot" => self.dispatch.sovereign_catalyst_boot(params).await,
+            "sovereign.classify_tier" => sovereign::sovereign_classify_tier(params),
+            "sovereign.experiment" => sovereign::sovereign_experiment(params),
+            "sovereign.devinit" => sovereign::sovereign_devinit(params),
+            "sovereign.kernel_health" => sovereign::sovereign_kernel_health(params),
+            "sovereign.snapshot" => sovereign::sovereign_snapshot(params),
+            "sovereign.compare" => sovereign::sovereign_compare(params),
+            "sovereign.catalyst_diff" => sovereign::sovereign_catalyst_diff(params),
+            "sovereign.reagent_capture" => sovereign::sovereign_reagent_capture(params),
+            "sovereign.recipe_replay" => sovereign::sovereign_recipe_replay(params),
+            "sovereign.runtime_services_probe" => {
+                sovereign::sovereign_runtime_services_probe(params)
+            }
+            "mmio.read32" => mmio::mmio_read32(params),
+            "mmio.write32" => mmio::mmio_write32(params),
+            "mmio.batch" => mmio::mmio_batch(params),
+            "mmio.pramin.read32" => mmio::mmio_pramin_read32(params),
+            "mmio.bar0.probe" => mmio::mmio_bar0_probe(params),
+            "mmio.falcon.status" => mmio::mmio_falcon_status(params),
+            "ember.falcon.upload_imem" => mmio::falcon_upload_imem(params),
+            "ember.falcon.upload_dmem" => mmio::falcon_upload_dmem(params),
+            "ember.falcon.start_cpu" => mmio::falcon_start_cpu(params),
+            "ember.falcon.poll" => mmio::falcon_poll(params),
+            "ember.pramin.write" => mmio::pramin_write(params),
+            "ember.pramin.read" => mmio::pramin_read(params),
+            "ember.fecs.state" => mmio::ember_fecs_state(params),
+            "ember.device.health" => mmio::ember_device_health(params),
+            "ember.device.recover" => mmio::ember_device_recover(params),
+            _ => Err(JsonRpcError::method_not_found(method)),
+        }
+    }
+
+    fn is_linux_only_impl(impl_name: &str) -> bool {
+        matches!(
+            impl_name,
+            "gpu_telemetry"
+                | "hw_learn_observe"
+                | "hw_learn_distill"
+                | "hw_learn_apply"
+                | "hw_learn_share_recipe"
+                | "hw_learn_status"
+                | "hw_learn_auto_init"
+                | "hw_learn_auto_init_all"
+                | "hw_learn_vfio_devices"
+                | "ember_list"
+                | "ember_status"
+                | "ember_reacquire"
+                | "ember_warm_cycle"
+                | "ember_prepare_dma"
+                | "ember_cleanup_dma"
+                | "ember_adopt_device"
+                | "device_swap"
+                | "device_warm_catch"
+                | "device_get"
+                | "device_experiment_lifecycle"
+                | "device_reset"
+                | "device_resurrect"
+                | "ember_device_health"
+                | "device_vfio_open"
+                | "device_vfio_roundtrip"
+                | "device_gr_init"
+                | "sovereign_init"
+                | "sovereign_init_ember"
+                | "sovereign_boot"
+                | "sovereign_devinit"
+                | "sovereign_defense_status"
+                | "sovereign_watchdog_status"
+                | "mmio_read32"
+                | "mmio_write32"
+                | "mmio_batch"
+                | "mmio_pramin_read32"
+                | "mmio_bar0_probe"
+                | "mmio_falcon_status"
+                | "falcon_upload_imem"
+                | "falcon_upload_dmem"
+                | "falcon_start_cpu"
+                | "falcon_poll"
+                | "pramin_write"
+                | "pramin_read"
+                | "ember_fecs_state"
+                | "ember_device_recover"
+        )
+    }
+
+    async fn dispatch_linux_impl(
+        &self,
+        impl_name: &str,
+        params: Option<&serde_json::Value>,
+        ctx: &CallerContext,
+    ) -> JsonRpcResult {
+        match impl_name {
             "gpu_telemetry" => self.hw_learn.gpu_telemetry(params).await,
             "hw_learn_observe" => self.hw_learn.hw_learn_observe(params).await,
             "hw_learn_distill" => self.hw_learn.hw_learn_distill(params).await,
@@ -374,10 +527,6 @@ impl JsonRpcHandler {
             "hw_learn_auto_init" => self.hw_learn.hw_learn_auto_init(params).await,
             "hw_learn_auto_init_all" => self.hw_learn.hw_learn_auto_init_all(params).await,
             "hw_learn_vfio_devices" => self.hw_learn.hw_learn_vfio_devices(params).await,
-            "performance_surface_report" => self.silicon.report(params).await,
-            "performance_surface_query" => self.silicon.query(params).await,
-            "performance_surface_list" => self.silicon.list().await,
-            "route_multi_unit" => self.silicon.route_multi_unit(params).await,
             "ember_list" => Ok(self.ember_list()),
             "ember_status" => Ok(self.ember_status()),
             "ember_reacquire" => self.ember_reacquire(params).await,
@@ -420,19 +569,8 @@ impl JsonRpcHandler {
             "pramin_read" => mmio::pramin_read(params),
             "ember_fecs_state" => mmio::ember_fecs_state(params),
             "ember_device_recover" => mmio::ember_device_recover(params),
-            "auth_check" => super::auth::auth_check(&self.gate, params),
-            "auth_mode" => super::auth::auth_mode(&self.gate),
-            "auth_peer_info" => super::auth::auth_peer_info(ctx),
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
-    }
-
-    #[expect(
-        clippy::unused_async,
-        reason = "async for JSON-RPC handler trait consistency"
-    )]
-    async fn toadstool_provenance() -> JsonRpcResult {
-        Ok(toadstool::cross_spring_provenance::provenance_json())
     }
 }
 

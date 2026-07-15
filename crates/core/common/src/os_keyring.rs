@@ -12,6 +12,7 @@
 use crate::constants::PRIMAL_NAME;
 use crate::secret_string::SecretString;
 
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
 const SERVICE_NAME: &str = PRIMAL_NAME;
 
 /// Query the OS keyring for a named credential.

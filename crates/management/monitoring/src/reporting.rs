@@ -9,6 +9,7 @@ use tracing::debug;
 
 use toadstool::error::ToadStoolResult;
 use toadstool::resources::{ResourceMonitor, RuntimeMetrics, SystemResources};
+#[cfg(target_os = "linux")]
 use toadstool_common::constants::platform_paths::procfs;
 
 use crate::metric_types::SystemResourceMonitor;
@@ -195,12 +196,12 @@ pub(crate) fn memory_usage_percent(total_memory_bytes: u64, available_memory_byt
 /// Returns `(total_cpu_cores, total_memory_bytes, available_memory_bytes)`.
 /// Designed to run on a blocking thread pool via `spawn_blocking`.
 pub(crate) fn read_system_info() -> (usize, u64, u64) {
-    let mut total_cpu_cores = 1usize;
-    let mut total_memory_bytes = 1024 * 1024 * 1024u64;
-    let mut available_memory_bytes = total_memory_bytes;
-
     #[cfg(target_os = "linux")]
     {
+        let mut total_cpu_cores = 1usize;
+        let mut total_memory_bytes = 1024 * 1024 * 1024u64;
+        let mut available_memory_bytes = total_memory_bytes;
+
         if let Ok(cpuinfo) = std::fs::read_to_string(procfs::CPUINFO) {
             total_cpu_cores = cpuinfo
                 .lines()
@@ -225,10 +226,16 @@ pub(crate) fn read_system_info() -> (usize, u64, u64) {
                 }
             }
         }
+
+        return (total_cpu_cores, total_memory_bytes, available_memory_bytes);
     }
 
     #[cfg(target_os = "macos")]
     {
+        let mut total_cpu_cores = 1usize;
+        let mut total_memory_bytes = 1024 * 1024 * 1024u64;
+        let mut available_memory_bytes = total_memory_bytes;
+
         if let Ok(output) = std::process::Command::new("sysctl")
             .args(["-n", "hw.ncpu"])
             .output()
@@ -251,9 +258,14 @@ pub(crate) fn read_system_info() -> (usize, u64, u64) {
                 }
             }
         }
+
+        return (total_cpu_cores, total_memory_bytes, available_memory_bytes);
     }
 
-    (total_cpu_cores, total_memory_bytes, available_memory_bytes)
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        (1, 1024 * 1024 * 1024, 1024 * 1024 * 1024)
+    }
 }
 
 #[cfg(test)]

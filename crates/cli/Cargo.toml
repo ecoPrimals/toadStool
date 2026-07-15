@@ -37,10 +37,7 @@ toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
 toadstool-core = { path = "../toadstool-core" }
 toadstool-ember = { path = "../core/ember" }
-toadstool-cylinder = { path = "../core/cylinder" }
 toadstool-glowplug = { path = "../core/glowplug" }
-nvpmu = { path = "../core/nvpmu" }
-toadstool-display = { path = "../runtime/display" }
 toadstool-config = { path = "../core/config" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-server = { path = "../server" }  # UniBin Phase 2: Server library integration (library compiles!)
@@ -121,6 +118,11 @@ tempfile = { workspace = true }
 assert_cmd = "2.0"
 predicates = "3.0"
 http-body-util = "0.1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+toadstool-cylinder = { path = "../core/cylinder" }
+nvpmu = { path = "../core/nvpmu" }
+toadstool-display = { path = "../runtime/display" }
 
 [target.'cfg(unix)'.dev-dependencies]
 # EVOLVED: libc replaced with rustix (Feb 16, 2026) - ecoBin compliant, safer API

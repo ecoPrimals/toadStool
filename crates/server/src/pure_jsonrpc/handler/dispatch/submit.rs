@@ -168,7 +168,9 @@ impl DispatchHandler {
         let bdf = resolve_dispatch_bdf(p)?;
         let dispatch_mode = detect_dispatch_mode(p, &bdf);
 
+        #[cfg(target_os = "linux")]
         let thermal = super::super::hw_learn::check_thermal_for_bdf_pub(&bdf);
+        #[cfg(target_os = "linux")]
         if let Some(ref status) = thermal
             && !status.compute_safe()
         {
@@ -176,6 +178,10 @@ impl DispatchHandler {
                 "GPU {bdf} thermal status {status:?} — refusing dispatch"
             )));
         }
+        #[cfg(target_os = "linux")]
+        let thermal_checked = thermal.is_some();
+        #[cfg(not(target_os = "linux"))]
+        let thermal_checked = false;
 
         let workgroup_size = resolve_workgroup_size(p);
 
@@ -193,6 +199,7 @@ impl DispatchHandler {
             * u64::from(workgroup_size[2]);
         enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
+        #[cfg(target_os = "linux")]
         self.acquire_device_handle(&bdf).await;
 
         let job_id = uuid::Uuid::new_v4().to_string();
@@ -224,6 +231,7 @@ impl DispatchHandler {
         let needs_coral = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
         // Phase D: try local dispatch via cylinder before coral_client IPC.
+        #[cfg(target_os = "linux")]
         if needs_coral
             && let Some(local_result) = self
                 .try_local_dispatch(
@@ -282,7 +290,7 @@ impl DispatchHandler {
                             "bdf": bdf,
                             "dispatch_mode": "local_cylinder",
                             "binary_size": binary_size,
-                            "thermal_checked": thermal.is_some(),
+                            "thermal_checked": thermal_checked,
                             "workgroup_size": workgroup_size,
                         },
                     }));
@@ -400,7 +408,7 @@ impl DispatchHandler {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
                                 "binary_size": binary_size,
-                                "thermal_checked": thermal.is_some(),
+                                "thermal_checked": thermal_checked,
                                 "workgroup_size": workgroup_size,
                                 "encrypted": encrypted,
                                 "shader_info": shader_info,
@@ -442,7 +450,7 @@ impl DispatchHandler {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
                                 "binary_size": binary_size,
-                                "thermal_checked": thermal.is_some(),
+                                "thermal_checked": thermal_checked,
                                 "workgroup_size": workgroup_size,
                             },
                         }));
@@ -478,7 +486,7 @@ impl DispatchHandler {
                 "bdf": bdf,
                 "dispatch_mode": dispatch_mode,
                 "binary_size": binary_size,
-                "thermal_checked": thermal.is_some(),
+                "thermal_checked": thermal_checked,
                 "workgroup_size": workgroup_size,
                 "shader_info": shader_info,
             },

@@ -13,9 +13,11 @@ keywords = ["hardware", "mmap", "mmio", "unsafe", "wrapper"]
 categories.workspace = true
 
 [dependencies]
-rustix = { workspace = true, features = ["mm"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { workspace = true, features = ["mm"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

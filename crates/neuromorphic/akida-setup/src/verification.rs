@@ -5,8 +5,10 @@ use crate::error::{Result, SetupError};
 use crate::pcie::AkidaDevice;
 use crate::permissions::list_device_nodes;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::time::Duration;
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 /// Verify complete setup
 pub fn verify_setup(devices: &[AkidaDevice]) -> Result<()> {
@@ -83,10 +85,10 @@ fn verify_device_nodes() -> Result<()> {
     }
 
     // Check permissions
+    #[cfg(unix)]
     for node in &nodes {
         let metadata = fs::metadata(node)?;
         let permissions = metadata.permissions();
-
         if permissions.mode() & 0o666 != 0o666 {
             return Err(SetupError::Setup(format!(
                 "Incorrect permissions on {node}"

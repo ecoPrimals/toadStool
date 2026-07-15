@@ -18,10 +18,13 @@
 //! | Cross-device | TCP | ⏳ Future |
 
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
 use std::path::PathBuf;
 
+#[cfg(any(unix, target_os = "linux"))]
 use toadstool_common::interned_strings::socket_env;
 
+#[cfg(unix)]
 pub mod unix;
 
 #[cfg(target_os = "linux")]
@@ -30,6 +33,7 @@ pub mod abstract_socket;
 pub mod tcp;
 
 // Re-exports for convenience
+#[cfg(unix)]
 pub use unix::{bind as bind_unix, connect as connect_unix};
 
 #[cfg(target_os = "linux")]
@@ -44,6 +48,7 @@ pub use tcp::{bind as bind_tcp, connect as connect_tcp};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Endpoint {
     /// Filesystem Unix socket (Linux, macOS)
+    #[cfg(unix)]
     Unix {
         /// Socket path on filesystem.
         path: PathBuf,
@@ -84,16 +89,34 @@ impl Endpoint {
             }
         }
 
-        // Default: domain-based Unix socket per Self-Knowledge v1.1
-        let runtime_dir = get_runtime_dir();
-        Self::Unix {
-            path: PathBuf::from(format!("{runtime_dir}/biomeos/compute.sock")),
+        #[cfg(unix)]
+        {
+            // Default: domain-based Unix socket per Self-Knowledge v1.1
+            let runtime_dir = get_runtime_dir();
+            Self::Unix {
+                path: PathBuf::from(format!("{runtime_dir}/biomeos/compute.sock")),
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            // Windows and other non-Unix platforms: TCP fallback
+            Self::Tcp {
+                host: toadstool_common::constants::network::LOCALHOST_IPV4.to_string(),
+                port: tcp::DEFAULT_PORT,
+            }
         }
     }
 
     /// Check if endpoint is Unix socket
+    #[cfg(unix)]
     pub const fn is_unix(&self) -> bool {
         matches!(self, Self::Unix { .. })
+    }
+
+    #[cfg(not(unix))]
+    /// Unix sockets are unavailable on this platform.
+    pub const fn is_unix(&self) -> bool {
+        false
     }
 
     /// Check if endpoint is Abstract socket
@@ -112,6 +135,7 @@ impl Endpoint {
     /// **Deep Debt**: Human-readable, safe for logging
     pub fn display(&self) -> String {
         match self {
+            #[cfg(unix)]
             Self::Unix { path } => format!("unix:{}", path.display()),
             #[cfg(target_os = "linux")]
             Self::Abstract { name } => format!("abstract:{name}"),
@@ -125,6 +149,7 @@ impl Endpoint {
     /// Tier 2: Fallback (TCP)
     pub const fn tier(&self) -> TransportTier {
         match self {
+            #[cfg(unix)]
             Self::Unix { .. } => TransportTier::Tier1,
             #[cfg(target_os = "linux")]
             Self::Abstract { .. } => TransportTier::Tier1,
@@ -162,10 +187,15 @@ pub async fn connect_transport(
 ) -> crate::ToadStoolResult<ConnectedTransport> {
     use toadstool_common::transport_endpoint::TransportEndpoint;
     match endpoint {
+        #[cfg(unix)]
         TransportEndpoint::Uds { path } => {
             let stream = connect_unix(path).await?;
             Ok(ConnectedTransport::Unix(stream))
         }
+        #[cfg(not(unix))]
+        TransportEndpoint::Uds { .. } => Err(crate::ToadStoolError::not_supported(
+            "Unix domain socket transport is unavailable on this platform",
+        )),
         TransportEndpoint::Tcp { host, port } => {
             let stream = connect_tcp(host, *port).await?;
             Ok(ConnectedTransport::Tcp(stream))
@@ -182,6 +212,7 @@ pub async fn connect_transport(
 /// A connected transport stream (result of `connect_transport`).
 pub enum ConnectedTransport {
     /// Connected Unix domain socket.
+    #[cfg(unix)]
     Unix(tokio::net::UnixStream),
     /// Connected TCP stream.
     Tcp(tokio::net::TcpStream),
@@ -215,16 +246,12 @@ fn is_android() -> bool {
 }
 
 /// Get `XDG_RUNTIME_DIR` or fallback.
-///
-/// Resolution order:
-/// 1. `XDG_RUNTIME_DIR` (standard)
-/// 2. `/run/user/{uid}` via pure-Rust UID detection
-/// 3. `BIOMEOS_RUNTIME_DIR` env override
-/// 4. `{temp_dir}/biomeos-runtime` (last resort)
+#[cfg(unix)]
 fn get_runtime_dir() -> String {
     if let Ok(dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         return dir;
     }
+    #[cfg(unix)]
     if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
         return format!("/run/user/{uid}");
     }
@@ -245,6 +272,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)]
     fn test_endpoint_creation() {
         let endpoint = Endpoint::Unix {
             path: PathBuf::from("/tmp/test.sock"),
@@ -283,19 +311,20 @@ mod tests {
         let endpoint = Endpoint::for_toadstool();
 
         // Should create appropriate endpoint for platform
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", unix))]
         {
             // Could be Unix or Abstract depending on Android detection
             assert!(endpoint.is_unix() || endpoint.is_abstract());
         }
 
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(all(target_os = "linux", unix)))]
         {
-            assert!(endpoint.is_unix());
+            assert!(endpoint.is_tcp());
         }
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_endpoint_serialization() {
         let endpoint = Endpoint::Unix {
             path: PathBuf::from("/tmp/test.sock"),

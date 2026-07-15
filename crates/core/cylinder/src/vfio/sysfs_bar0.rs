@@ -8,17 +8,19 @@ use crate::error::ChannelError;
 use crate::mmio_region::MmioRegion;
 use toadstool_hw_safe::DeviceMmap;
 
-/// Map [`DeviceMmapError`] to a `rustix` errno for [`ChannelError::Bar0Mmap`].
-pub(crate) fn device_mmap_err_to_errno(
+/// Map [`DeviceMmapError`] to an I/O error for [`ChannelError::Bar0Mmap`].
+pub(crate) fn device_mmap_err_to_io(
     e: toadstool_hw_safe::device_mmap::DeviceMmapError,
-) -> rustix::io::Errno {
+) -> std::io::Error {
     match e {
-        toadstool_hw_safe::device_mmap::DeviceMmapError::ZeroSize => rustix::io::Errno::INVAL,
-        toadstool_hw_safe::device_mmap::DeviceMmapError::MmapFailed(io) => io
-            .raw_os_error()
-            .map(rustix::io::Errno::from_raw_os_error)
-            .unwrap_or(rustix::io::Errno::IO),
-        toadstool_hw_safe::device_mmap::DeviceMmapError::NullPointer => rustix::io::Errno::NOMEM,
+        toadstool_hw_safe::device_mmap::DeviceMmapError::ZeroSize => {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "mmap size is zero")
+        }
+        toadstool_hw_safe::device_mmap::DeviceMmapError::MmapFailed(io) => io,
+        toadstool_hw_safe::device_mmap::DeviceMmapError::NullPointer => std::io::Error::new(
+            std::io::ErrorKind::OutOfMemory,
+            "mmap returned null pointer",
+        ),
     }
 }
 
@@ -64,7 +66,7 @@ impl SysfsBar0 {
         let mmap =
             DeviceMmap::map_shared_ro(&file, 0, size).map_err(|e| ChannelError::Bar0Mmap {
                 path: path.clone(),
-                source: device_mmap_err_to_errno(e),
+                source: device_mmap_err_to_io(e),
             })?;
 
         Ok(Self {
@@ -126,7 +128,7 @@ impl SysfsBar0Rw {
         let mmap =
             DeviceMmap::map_shared_rw(&file, 0, size).map_err(|e| ChannelError::Bar0Mmap {
                 path: path.clone(),
-                source: device_mmap_err_to_errno(e),
+                source: device_mmap_err_to_io(e),
             })?;
 
         Ok(Self {

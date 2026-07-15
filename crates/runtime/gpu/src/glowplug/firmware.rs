@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use toadstool_glowplug::firmware::{BootServiceEvidence, FirmwareInterface};
 
 /// Falcon engine register block offsets within BAR0.
+#[cfg(target_os = "linux")]
 mod regs {
     /// FECS (Front-End Context Switch) engine base.
     pub const FECS_BASE: u64 = 0x0040_9000;
@@ -129,6 +130,7 @@ impl GpuFirmwareAccess {
     }
 
     /// Read a single Falcon engine's state from BAR0.
+    #[cfg(target_os = "linux")]
     fn read_falcon(bar0: &nvpmu::Bar0Access, base: u64) -> Result<FalconState, GpuFirmwareError> {
         let cpuctl = bar0
             .read_u32(base + regs::FALCON_CPUCTL)
@@ -148,6 +150,7 @@ impl GpuFirmwareAccess {
     }
 }
 
+#[cfg(target_os = "linux")]
 impl FirmwareInterface for GpuFirmwareAccess {
     type Status = GpuFirmwareStatus;
     type Command = GpuFirmwareCommand;
@@ -278,6 +281,47 @@ impl FirmwareInterface for GpuFirmwareAccess {
         }
 
         Ok(evidence)
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+impl FirmwareInterface for GpuFirmwareAccess {
+    type Status = GpuFirmwareStatus;
+    type Command = GpuFirmwareCommand;
+    type Error = GpuFirmwareError;
+
+    fn probe_status(&self) -> Result<Self::Status, Self::Error> {
+        Err(GpuFirmwareError::Bar0Unavailable(
+            "GPU BAR0 MMIO is only available on Linux".into(),
+        ))
+    }
+
+    fn send_command(&self, _cmd: Self::Command) -> Result<(), Self::Error> {
+        Err(GpuFirmwareError::Bar0Unavailable(
+            "GPU BAR0 MMIO is only available on Linux".into(),
+        ))
+    }
+
+    fn firmware_version(&self) -> Option<String> {
+        None
+    }
+
+    fn is_responsive(&self) -> bool {
+        false
+    }
+
+    fn engine_name(&self) -> &str {
+        "gpu-falcon"
+    }
+
+    fn boot_services_complete(&self) -> bool {
+        false
+    }
+
+    fn exit_boot_services(&self) -> Result<BootServiceEvidence, Self::Error> {
+        Err(GpuFirmwareError::Bar0Unavailable(
+            "GPU BAR0 MMIO is only available on Linux".into(),
+        ))
     }
 }
 

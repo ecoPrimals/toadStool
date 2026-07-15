@@ -31,22 +31,27 @@
     reason = "research crate: components wired incrementally as experiments mature"
 )]
 
+#[cfg(unix)]
 pub mod ensemble;
 pub mod error;
 pub mod readout;
 pub mod reservoir;
+#[cfg(unix)]
 pub mod state_extraction;
 
+#[cfg(unix)]
 pub use ensemble::{DualChipEnsemble, EnsembleConfig};
 pub use error::{ReservoirError, Result as ReservoirResult};
 pub use readout::{ReadoutPredictor, ReadoutTrainer};
 pub use reservoir::{ReservoirConfig, ReservoirGenerator};
+#[cfg(unix)]
 pub use state_extraction::{LayerActivations, StateExtractor};
 
 /// Re-export commonly used types
 pub mod prelude {
+    #[cfg(unix)]
+    pub use crate::{DualChipEnsemble, EnsembleConfig, LayerActivations, StateExtractor};
     pub use crate::{
-        DualChipEnsemble, EnsembleConfig, LayerActivations, ReadoutPredictor, ReadoutTrainer,
-        ReservoirConfig, ReservoirGenerator, StateExtractor,
+        ReadoutPredictor, ReadoutTrainer, ReservoirConfig, ReservoirError, ReservoirGenerator,
     };
 }

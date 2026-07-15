@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service status, communication channels, and multi-protocol clients.
 
-#[cfg(feature = "networking")]
+#[cfg(all(feature = "networking", unix))]
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -70,16 +70,15 @@ pub struct ServiceChannel {
 #[derive(Debug, Clone)]
 pub enum ServiceClient {
     /// tarpc client (OPTIONAL - for performance-critical internal paths)
-    #[cfg(feature = "networking")]
+    #[cfg(all(feature = "networking", unix))]
     Tarpc(Arc<tokio::sync::Mutex<Option<TarpcClientWrapper>>>),
 
     /// JSON-RPC 2.0 over unix sockets (PRIMARY - wateringHole standard!)
-    #[cfg(feature = "networking")]
+    #[cfg(all(feature = "networking", unix))]
     UnixSocket(toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient),
 
-    /// No-op client when networking feature is disabled.
-    /// Intentional degraded-mode fallback for builds without networking.
-    #[cfg(not(feature = "networking"))]
+    /// No-op client when networking is disabled or Unix IPC is unavailable.
+    #[cfg(not(all(feature = "networking", unix)))]
     Disabled,
 }
 
@@ -88,13 +87,13 @@ pub enum ServiceClient {
 /// Per wateringHole `UNIVERSAL_IPC_STANDARD_V3.md`: tarpc is optional for
 /// high-performance internal paths. Until a binary tarpc transport is wired,
 /// this wrapper gracefully degrades to JSON-RPC over the same Unix socket.
-#[cfg(feature = "networking")]
+#[cfg(all(feature = "networking", unix))]
 #[derive(Debug, Clone)]
 pub struct TarpcClientWrapper {
     fallback: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
-#[cfg(feature = "networking")]
+#[cfg(all(feature = "networking", unix))]
 impl TarpcClientWrapper {
     pub const fn with_fallback(
         client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,

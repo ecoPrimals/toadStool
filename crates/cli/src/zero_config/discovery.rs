@@ -384,6 +384,7 @@ impl ZeroConfigDeployment {
         }
 
         // Fallback: try Unix socket capability-based discovery (biomeOS runtime)
+        #[cfg(unix)]
         if let Some(service) = self.try_unix_socket_discovery(capability_name).await? {
             return Ok(Some(service));
         }
@@ -418,6 +419,7 @@ impl ZeroConfigDeployment {
     /// Try Unix socket capability-based discovery (biomeOS runtime directory).
     ///
     /// Discovers primals by capability name using `get_socket_path_for_capability`.
+    #[cfg(unix)]
     async fn try_unix_socket_discovery(
         &self,
         capability_name: &str,
@@ -430,6 +432,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Check if a Unix socket endpoint is available (capability-based discovery)
+    #[cfg(unix)]
     async fn check_unix_socket_endpoint(
         &self,
         socket_path: &std::path::Path,
@@ -467,6 +470,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover ToadStool peers via Unix socket capability-based discovery
+    #[cfg(unix)]
     async fn discover_toadstool_peers(&self) -> Result<Vec<ServiceEndpoint>> {
         debug!("Discovering ToadStool peers");
 
@@ -479,5 +483,10 @@ impl ZeroConfigDeployment {
         }
 
         Ok(peers)
+    }
+
+    #[cfg(not(unix))]
+    async fn discover_toadstool_peers(&self) -> Result<Vec<ServiceEndpoint>> {
+        Ok(Vec::new())
     }
 }

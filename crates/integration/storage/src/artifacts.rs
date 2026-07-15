@@ -40,11 +40,7 @@ impl StorageClient {
             "data_base64": base64::engine::general_purpose::STANDARD.encode(data),
         });
 
-        match self
-            .rpc_client
-            .call("storage.artifact.store", payload)
-            .await
-        {
+        match self.rpc_call("storage.artifact.store", payload).await {
             Ok(_response) => {
                 debug!("Artifact {name} stored via storage service (id={id})");
                 Ok(StorageResult {
@@ -77,11 +73,7 @@ impl StorageClient {
     pub async fn retrieve_artifact(&self, id: Uuid) -> Result<Option<Vec<u8>>, StorageError> {
         let payload = serde_json::json!({ "artifact_id": id.to_string() });
 
-        match self
-            .rpc_client
-            .call("storage.artifact.retrieve", payload)
-            .await
-        {
+        match self.rpc_call("storage.artifact.retrieve", payload).await {
             Ok(response) => {
                 if let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str()) {
                     use base64::Engine;
@@ -111,13 +103,11 @@ impl StorageClient {
 
         // Modern async RPC call
         let metadata: ArtifactMetadata = self
-            .rpc_client
-            .call_typed(
+            .rpc_call_typed(
                 "storage.artifact.get_metadata",
                 serde_json::json!({ "artifact_id": artifact_id }),
             )
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
+            .await?;
 
         info!(
             "✅ Successfully retrieved metadata for artifact: {}",
@@ -140,13 +130,11 @@ impl StorageClient {
 
         // Modern async RPC call with optional filters
         let artifacts: Vec<ArtifactMetadata> = self
-            .rpc_client
-            .call_typed(
+            .rpc_call_typed(
                 "storage.artifact.list",
                 serde_json::json!({ "filters": filters }),
             )
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
+            .await?;
 
         info!("✅ Successfully listed {} artifacts", artifacts.len());
         Ok(artifacts)
@@ -161,13 +149,11 @@ impl StorageClient {
 
         // Modern async RPC call
         let _response: serde_json::Value = self
-            .rpc_client
-            .call(
+            .rpc_call(
                 "storage.artifact.delete",
                 serde_json::json!({ "artifact_id": artifact_id }),
             )
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
+            .await?;
 
         info!("✅ Successfully deleted artifact: {}", artifact_id);
         Ok(())

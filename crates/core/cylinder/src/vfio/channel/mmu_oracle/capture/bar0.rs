@@ -70,7 +70,7 @@ impl Bar0Rw {
         let mmap = DeviceMmap::map_shared_rw(&file, 0, DEFAULT_BAR0_SIZE).map_err(|e| {
             ChannelError::Bar0Mmap {
                 path: path.clone(),
-                source: sysfs_bar0::device_mmap_err_to_errno(e),
+                source: sysfs_bar0::device_mmap_err_to_io(e),
             }
         })?;
 

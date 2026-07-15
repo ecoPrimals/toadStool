@@ -3,33 +3,45 @@
 //!
 //! Local hardware transport discovery (display, capture, serial) without daemon.
 
+use crate::{CliError, Result};
+
+use super::definitions::TransportCommands;
+
+#[cfg(target_os = "linux")]
 use toadstool_core::{TransportInfo, TransportMedium};
+#[cfg(target_os = "linux")]
 use toadstool_display::{
     discover_capture_transports, discover_display_transports, discover_pcie_transports,
     serial_transport::discover_serial_transports,
 };
 
-use crate::{CliError, Result};
-
 /// Execute transport subcommands (local discovery, no daemon).
-pub async fn execute_transport_command(
-    action: &super::definitions::TransportCommands,
-) -> Result<()> {
-    match action {
-        super::definitions::TransportCommands::Discover { format } => {
-            run_discover(format).await?;
+pub async fn execute_transport_command(action: &TransportCommands) -> Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        match action {
+            TransportCommands::Discover { format } => {
+                run_discover(format).await?;
+            }
+            TransportCommands::List { format } => {
+                run_discover(format).await?;
+            }
+            TransportCommands::Status => {
+                run_status().await?;
+            }
         }
-        super::definitions::TransportCommands::List { format } => {
-            // Same as discover for now (local discovery)
-            run_discover(format).await?;
-        }
-        super::definitions::TransportCommands::Status => {
-            run_status().await?;
-        }
+        return Ok(());
     }
-    Ok(())
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = action;
+        eprintln!("This command requires Linux");
+        Err(CliError::Other("This command requires Linux".into()))
+    }
 }
 
+#[cfg(target_os = "linux")]
 async fn run_discover(format: &str) -> Result<()> {
     let transports = discover_all_transports();
 
@@ -58,6 +70,7 @@ async fn run_discover(format: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
 async fn run_status() -> Result<()> {
     let transports = discover_all_transports();
 
@@ -89,6 +102,7 @@ async fn run_status() -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
 fn discover_all_transports() -> Vec<TransportInfo> {
     let mut transports = Vec::new();
     transports.extend(discover_display_transports());
@@ -98,6 +112,7 @@ fn discover_all_transports() -> Vec<TransportInfo> {
     transports
 }
 
+#[cfg(target_os = "linux")]
 fn print_transports_table(transports: &[TransportInfo]) {
     println!("Hardware Transports");
     println!("═══════════════════════════════════════════════════");
@@ -136,7 +151,7 @@ fn print_transports_table(transports: &[TransportInfo]) {
     );
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
     use crate::commands::definitions::TransportCommands;

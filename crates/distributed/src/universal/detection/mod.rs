@@ -14,6 +14,7 @@ use super::types::{
     SpecializedArchitecture, TraditionalPlatform, UniversalSubstrateCapabilities,
 };
 use toadstool::ToadStoolResult;
+#[cfg(target_os = "linux")]
 use toadstool_common::constants::platform_paths::sysfs;
 
 impl UniversalSubstrateCapabilities {
@@ -86,7 +87,11 @@ impl UniversalSubstrateCapabilities {
 
     /// Detect neuromorphic computing platforms
     async fn detect_neuromorphic_platforms() -> ToadStoolResult<Vec<NeuromorphicPlatform>> {
+        #[cfg(target_os = "linux")]
         let mut platforms = Vec::new();
+
+        #[cfg(not(target_os = "linux"))]
+        let platforms = Vec::new();
 
         #[cfg(target_os = "linux")]
         {
@@ -130,7 +135,11 @@ impl UniversalSubstrateCapabilities {
 
     /// Detect edge/IoT platforms
     async fn detect_edge_iot_platforms() -> ToadStoolResult<Vec<EdgeIoTPlatform>> {
+        #[cfg(target_os = "linux")]
         let mut platforms = Vec::new();
+
+        #[cfg(not(target_os = "linux"))]
+        let platforms = Vec::new();
 
         #[cfg(target_os = "linux")]
         {

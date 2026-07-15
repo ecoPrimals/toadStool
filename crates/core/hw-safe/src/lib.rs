@@ -24,24 +24,43 @@
 //! minimum (~26 operations), then iterate each one toward pure Rust
 //! alternatives (e.g. `memmap2` for mmap, `aligned-vec` for allocation).
 
+#[cfg(target_os = "linux")]
 pub mod aligned_alloc;
+#[cfg(target_os = "linux")]
 mod contiguous;
+#[cfg(target_os = "linux")]
 pub mod device_mmap;
+#[cfg(target_os = "linux")]
 mod exclusive_ptr;
+#[cfg(target_os = "linux")]
 pub mod huge_page;
+#[cfg(target_os = "linux")]
 pub mod locked_memory;
+#[cfg(target_os = "linux")]
 pub mod safe_mmap;
+#[cfg(target_os = "linux")]
 pub mod vfio_dma;
+#[cfg(target_os = "linux")]
 pub mod vfio_setup;
+#[cfg(target_os = "linux")]
 pub mod volatile_mmio;
 
+#[cfg(target_os = "linux")]
 pub use aligned_alloc::AlignedAlloc;
+#[cfg(target_os = "linux")]
 pub use contiguous::ContiguousBytes;
+#[cfg(target_os = "linux")]
 pub use device_mmap::DeviceMmap;
+#[cfg(target_os = "linux")]
 pub use huge_page::HugePageMemory;
+#[cfg(target_os = "linux")]
 pub use locked_memory::LockedMemory;
+#[cfg(target_os = "linux")]
 pub use safe_mmap::SafeMmapRegion;
+#[cfg(target_os = "linux")]
 pub use volatile_mmio::MmioError;
+#[cfg(target_os = "linux")]
 pub use volatile_mmio::VolatileMmio;
 
+#[cfg(target_os = "linux")]
 pub(crate) use exclusive_ptr::ExclusivePtr;

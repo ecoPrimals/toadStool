@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Disk monitoring via `/proc/mounts` + `statvfs`.
 
-use crate::error::{Result, SysmonError};
+use crate::error::Result;
+#[cfg(target_os = "linux")]
+use crate::error::SysmonError;
 
 /// Information about a mounted filesystem.
 #[derive(Debug, Clone)]
@@ -16,6 +18,7 @@ pub struct DiskInfo {
     pub available_space: u64,
 }
 
+#[cfg(target_os = "linux")]
 const VIRTUAL_FILESYSTEMS: &[&str] = &[
     "tmpfs",
     "devtmpfs",
@@ -95,6 +98,7 @@ pub fn disk_usage() -> Result<Vec<DiskInfo>> {
     Ok(disks)
 }
 
+/// Non-Linux stub: returns an empty list (no `/proc/mounts` or `statvfs`).
 #[cfg(not(target_os = "linux"))]
 pub fn disk_usage() -> Result<Vec<DiskInfo>> {
     Ok(Vec::new())

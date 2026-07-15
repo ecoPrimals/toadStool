@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::error::{PrimalError, PrimalResult};
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+#[cfg(unix)]
 use tracing::debug;
 
 /// Client for interacting with primals via Unix socket JSON-RPC
 #[derive(Debug, Clone)]
 pub struct PrimalClient {
-    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    #[cfg(unix)]
+    rpc_client: UnixJsonRpcClient,
 }
 
 /// Request to a primal
@@ -25,12 +29,28 @@ pub struct PrimalResponse {
 }
 
 impl PrimalClient {
+    #[cfg(not(unix))]
+    fn unix_unavailable<T>() -> PrimalResult<T> {
+        Err(PrimalError::Integration {
+            primal: "primal-client".to_string(),
+            message: "Unix socket JSON-RPC client is unavailable on this platform".to_string(),
+        })
+    }
+
     /// Create a new primal client for the given Unix socket path
     ///
     /// The endpoint should be a path to a Unix domain socket (e.g. `/run/toadstool/socket`).
     pub fn new(endpoint: impl Into<std::path::PathBuf>) -> Self {
-        Self {
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(endpoint),
+        #[cfg(unix)]
+        {
+            Self {
+                rpc_client: UnixJsonRpcClient::new(endpoint),
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = endpoint;
+            Self {}
         }
     }
 
@@ -39,53 +59,64 @@ impl PrimalClient {
     /// Maps `PrimalRequest.action` to the JSON-RPC method and `payload` to params.
     /// Returns proper errors on connection failure, socket not found, or JSON-RPC errors.
     pub async fn send_request(&self, request: PrimalRequest) -> PrimalResult<PrimalResponse> {
-        debug!("Sending JSON-RPC request: method={}", request.action);
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            debug!("Sending JSON-RPC request: method={}", request.action);
 
-        let result = self
-            .rpc_client
-            .call(&request.action, request.payload)
-            .await
-            .map_err(|e| {
-                let msg = e.to_string();
-                if msg.contains("connect") || msg.contains("Connection refused") {
-                    PrimalError::Network {
-                        endpoint: self.rpc_client.socket_path().to_string_lossy().to_string(),
-                        reason: msg,
+            let result = self
+                .rpc_client
+                .call(&request.action, request.payload)
+                .await
+                .map_err(|e| {
+                    let msg = e.to_string();
+                    if msg.contains("connect") || msg.contains("Connection refused") {
+                        PrimalError::Network {
+                            endpoint: self.rpc_client.socket_path().to_string_lossy().to_string(),
+                            reason: msg,
+                        }
+                    } else if msg.contains("No such file") || msg.contains("not found") {
+                        PrimalError::ServiceUnavailable {
+                            service: format!(
+                                "primal at {}",
+                                self.rpc_client.socket_path().display()
+                            ),
+                        }
+                    } else {
+                        PrimalError::Integration {
+                            primal: "unknown".to_string(),
+                            message: msg,
+                        }
                     }
-                } else if msg.contains("No such file") || msg.contains("not found") {
-                    PrimalError::ServiceUnavailable {
-                        service: format!("primal at {}", self.rpc_client.socket_path().display()),
-                    }
-                } else {
-                    PrimalError::Integration {
-                        primal: "unknown".to_string(),
-                        message: msg,
-                    }
+                })?;
+
+            // Parse result into PrimalResponse if it's an object with success/data/error
+            let response = if let Some(obj) = result.as_object() {
+                PrimalResponse {
+                    success: obj
+                        .get("success")
+                        .and_then(serde_json::Value::as_bool)
+                        .unwrap_or(true),
+                    data: obj.get("data").cloned().unwrap_or(serde_json::Value::Null),
+                    error: obj
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .map(std::string::ToString::to_string),
                 }
-            })?;
+            } else {
+                PrimalResponse {
+                    success: true,
+                    data: result,
+                    error: None,
+                }
+            };
 
-        // Parse result into PrimalResponse if it's an object with success/data/error
-        let response = if let Some(obj) = result.as_object() {
-            PrimalResponse {
-                success: obj
-                    .get("success")
-                    .and_then(serde_json::Value::as_bool)
-                    .unwrap_or(true),
-                data: obj.get("data").cloned().unwrap_or(serde_json::Value::Null),
-                error: obj
-                    .get("error")
-                    .and_then(|v| v.as_str())
-                    .map(std::string::ToString::to_string),
-            }
-        } else {
-            PrimalResponse {
-                success: true,
-                data: result,
-                error: None,
-            }
-        };
-
-        Ok(response)
+            Ok(response)
+        }
     }
 
     /// Perform a health check by calling `health.check` JSON-RPC method
@@ -116,6 +147,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)]
     fn primal_client_new_stores_path() {
         let client = PrimalClient::new("/tmp/test.sock");
         assert_eq!(
@@ -150,6 +182,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(unix)]
     async fn send_request_to_nonexistent_socket_returns_error() {
         let client = PrimalClient::new("/tmp/__no_such_socket_primal_test__.sock");
         let req = PrimalRequest {
@@ -165,6 +198,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(unix)]
     async fn health_check_to_nonexistent_socket_returns_error() {
         let client = PrimalClient::new("/tmp/__no_such_socket_health_test__.sock");
         assert!(client.health_check().await.is_err());

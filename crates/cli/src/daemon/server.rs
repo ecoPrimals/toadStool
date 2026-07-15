@@ -109,14 +109,24 @@ impl DaemonServer {
             info!("🔌 TRANSPORT_ENDPOINT injected: {te}");
             match te {
                 TransportEndpoint::Uds { path } => {
-                    let manager = Arc::clone(&self.workload_manager);
-                    let socket = path.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = jsonrpc_server::start_jsonrpc_server(&socket, manager).await
-                        {
-                            warn!("⚠️  JSON-RPC server stopped: {e}");
-                        }
-                    });
+                    #[cfg(unix)]
+                    {
+                        let manager = Arc::clone(&self.workload_manager);
+                        let socket = path.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) =
+                                jsonrpc_server::start_jsonrpc_server(&socket, manager).await
+                            {
+                                warn!("⚠️  JSON-RPC server stopped: {e}");
+                            }
+                        });
+                    }
+                    #[cfg(not(unix))]
+                    {
+                        warn!(
+                            "Unix domain socket transport (UDS) is not available on this platform; use TCP instead"
+                        );
+                    }
                 }
                 TransportEndpoint::Tcp { host: _, port } => {
                     let manager = Arc::clone(&self.workload_manager);
@@ -136,6 +146,7 @@ impl DaemonServer {
             info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
 
             // Start JSON-RPC Unix socket server
+            #[cfg(unix)]
             {
                 let socket = self.socket_path.clone();
                 let manager = Arc::clone(&self.workload_manager);
@@ -145,6 +156,10 @@ impl DaemonServer {
                         warn!("⚠️  JSON-RPC server stopped: {e}");
                     }
                 });
+            }
+            #[cfg(not(unix))]
+            {
+                warn!("Unix socket JSON-RPC is not available on this platform; use --port for TCP");
             }
 
             // Start TCP JSON-RPC if --port was specified (Tier 5 fallback: debug/standalone only)

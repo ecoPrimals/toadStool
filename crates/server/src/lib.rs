@@ -114,7 +114,12 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 
 // Test-only mocks (see also `toadstool_testing::mocks` for integration test helpers)
 
+#[cfg(target_os = "linux")]
 pub mod glowplug_client;
+#[cfg(not(target_os = "linux"))]
+#[path = "glowplug_client_stub.rs"]
+pub mod glowplug_client;
+#[cfg(target_os = "linux")]
 pub(crate) mod glowplug_discovery;
 pub mod glowplug_types;
 pub(crate) mod visualization_client; // Shader / GPU-dispatch helper client (capability-discovered)
@@ -138,7 +143,9 @@ pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
 
-pub use runtime_engine_dispatch::{GpuRuntimeEngine, RuntimeEngineDispatch};
+#[cfg(target_os = "linux")]
+pub use runtime_engine_dispatch::GpuRuntimeEngine;
+pub use runtime_engine_dispatch::RuntimeEngineDispatch;
 
 // Re-export background services for tests
 pub use background::start_background_services;

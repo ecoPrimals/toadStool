@@ -34,21 +34,28 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
     };
 
     let npu_detected = Path::new("/dev/akida0").exists() || {
-        let pci_devices_path = toadstool_cylinder::linux_paths::sysfs_pci_devices();
-        let pci_devices = std::path::Path::new(&pci_devices_path);
-        let mut found = false;
-        if let Ok(mut entries) = tokio::fs::read_dir(pci_devices).await {
-            while let Ok(Some(entry)) = entries.next_entry().await {
-                let vendor_path = entry.path().join("vendor");
-                if let Ok(v) = tokio::fs::read_to_string(&vendor_path).await {
-                    if v.trim() == "0x1e7c" {
-                        found = true;
-                        break;
+        #[cfg(target_os = "linux")]
+        {
+            let pci_devices_path = toadstool_cylinder::linux_paths::sysfs_pci_devices();
+            let pci_devices = std::path::Path::new(&pci_devices_path);
+            let mut found = false;
+            if let Ok(mut entries) = tokio::fs::read_dir(pci_devices).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let vendor_path = entry.path().join("vendor");
+                    if let Ok(v) = tokio::fs::read_to_string(&vendor_path).await {
+                        if v.trim() == "0x1e7c" {
+                            found = true;
+                            break;
+                        }
                     }
                 }
             }
+            found
         }
-        found
+        #[cfg(not(target_os = "linux"))]
+        {
+            false
+        }
     };
 
     let npu_info = if npu_detected {
@@ -134,7 +141,14 @@ pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
         let socket_path = biomeos_dir.join(format!("{primal}.sock"));
         let socket_exists = socket_path.exists();
         let reachable = if socket_exists {
-            tokio::net::UnixStream::connect(&socket_path).await.is_ok()
+            #[cfg(unix)]
+            {
+                tokio::net::UnixStream::connect(&socket_path).await.is_ok()
+            }
+            #[cfg(not(unix))]
+            {
+                false
+            }
         } else {
             false
         };

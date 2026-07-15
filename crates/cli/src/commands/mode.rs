@@ -4,23 +4,25 @@
 //! Switches between gaming mode (nvidia/nouveau for display) and science
 //! mode (vfio-pci for sovereign compute dispatch).
 
-use std::path::PathBuf;
-
-use nvpmu::vfio_bind::BindingState;
-use toadstool_common::pci_discovery::{PciFilter, discover_pci_devices};
-
 use crate::Result;
 
 use super::definitions::ModeCommand;
 
-/// Path for persisting original driver when switching to science mode.
-/// Used when switching back to gaming mode so we know which driver to restore.
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
+
+#[cfg(target_os = "linux")]
+use nvpmu::vfio_bind::BindingState;
+#[cfg(target_os = "linux")]
+use toadstool_common::pci_discovery::{PciFilter, discover_pci_devices};
+
+#[cfg(target_os = "linux")]
 fn gpu_mode_state_path(bdf: &str) -> PathBuf {
     let sanitized = bdf.replace(':', "-");
     std::env::temp_dir().join(format!("toadstool-gpu-mode-{sanitized}"))
 }
 
-/// Auto-detect the first NVIDIA GPU if no BDF specified.
+#[cfg(target_os = "linux")]
 fn resolve_bdf(bdf: Option<String>) -> Result<String> {
     if let Some(bdf) = bdf {
         return Ok(bdf);
@@ -37,6 +39,7 @@ fn resolve_bdf(bdf: Option<String>) -> Result<String> {
     Ok(gpu.bdf.clone())
 }
 
+#[cfg(target_os = "linux")]
 fn binding_state_driver_name(state: &BindingState) -> &str {
     match state {
         BindingState::VfioPci => "vfio-pci",
@@ -46,6 +49,7 @@ fn binding_state_driver_name(state: &BindingState) -> &str {
 }
 
 /// Execute mode switching command.
+#[cfg(target_os = "linux")]
 pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) -> Result<()> {
     match cmd {
         ModeCommand::Science { bdf } => {
@@ -148,7 +152,13 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(not(target_os = "linux"))]
+pub async fn execute_mode_command(_ctx: &crate::CliContext, _cmd: ModeCommand) -> Result<()> {
+    eprintln!("This command requires Linux");
+    Err(crate::CliError::Other("This command requires Linux".into()))
+}
+
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
 

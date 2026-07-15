@@ -10,78 +10,36 @@ keywords = ["gpu", "compute", "webgpu", "vulkan", "hardware"]
 categories = ["hardware-support", "science"]
 
 [dependencies]
-# Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
 toadstool-glowplug = { path = "../../core/glowplug" }
 toadstool-ember = { path = "../../core/ember" }
-toadstool-hw-safe = { path = "../../core/hw-safe" }
-nvpmu = { path = "../../core/nvpmu" }
-
-# Async runtime
 tokio = { workspace = true }
 futures = { workspace = true }
-
-# Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml_ng = { workspace = true }
-
-# HTTP client for distributed execution
-
-# Zero-copy data handling (Bytes = Arc<[u8]>, clone is O(1) refcount bump)
 bytes = { workspace = true }
-
-# Utilities
 uuid = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
-# Concurrency primitives (for unified memory)
-# dashmap removed: evolved to std::sync::RwLock<HashMap>
 parking_lot = "0.12"
-
-# System integration and monitoring
 toadstool-sysmon = { workspace = true }
 rayon = "1.8"
-
-# Universal GPU compute frameworks (all optional for universal support)
-# AGNOSTIC DESIGN: Each framework is truly optional and mutually exclusive in features
-
-# WebGPU support (universal, future-ready) - Feature-gated to avoid conflicts
-# MUST use same version as workspace to prevent duplicate symbol errors
 wgpu = { workspace = true, optional = true, features = ["wgsl"] }
-
-# Vulkan compute support (universal) - Only enabled explicitly
 vulkano = { version = "0.34", optional = true }
 ash = { version = "0.37", optional = true }
 
-# S206: spirv, cranelift-jit, wasmtime removed — features never wired in source.
-# SPIR-V is handled by wgpu naga internally; JIT compilation is not used.
+[target.'cfg(target_os = "linux")'.dependencies]
+toadstool-hw-safe = { path = "../../core/hw-safe" }
+nvpmu = { path = "../../core/nvpmu" }
 
 [features]
-# SOVEREIGN + PRAGMATIC DESIGN:
-# Default: Pure Rust WebGPU (self-sovereign, universal)
-# Optional: Vendor backends for optimization (CUDA for AI/ML)
 default = ["webgpu"]
-
-# PRIMARY: Pure Rust, self-contained, universal (like NestGate's internal ZFS)
 webgpu = ["wgpu"]
-
-# OPTIMIZATION: Vendor-specific backends (pragmatic, opt-in)
-vulkan = ["vulkano", "ash"] # Direct Vulkan for advanced use cases
-
-# AI/ML CONVENIENCE: WebGPU (CUDA now via barraCuda IPC)
+vulkan = ["vulkano", "ash"]
 ai-ml = ["webgpu"]
-
-# MAXIMUM COMPATIBILITY: All Rust-native backends
 all-backends = ["webgpu", "vulkan"]
-
-# EVOLUTION PATH:
-# S197: cudarc removed — CUDA dispatch delegated to barraCuda/coralReef via IPC
-# S198: ocl removed — OpenCL dispatch delegated to barraCuda/coralReef via IPC
-# ToadStool embeds WebGPU (wgpu) and Vulkan (ash/vulkano) only; vendor/OpenCL-class paths live in primals
-
-# `cargo-fuzz` / `toadstool-fuzz` enables this to call internal CPU slice construction paths.
 fuzz = []
 
 [dev-dependencies]
@@ -91,15 +49,10 @@ proptest = { workspace = true }
 criterion = { workspace = true }
 tracing-subscriber = { workspace = true }
 
-# Dev dependencies don't share features - each test runs in isolation
-
 [[example]]
 name = "universal_compute_demo"
 path = "examples/universal_compute_demo.rs"
-required-features = [] # Can run with just detection, no actual GPU needed
-
-# Bench configuration removed - benches directory not yet implemented
+required-features = []
 
 [lints]
 workspace = true
-

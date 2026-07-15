@@ -5,12 +5,14 @@
 //! invoke the same sysfs / glowplug operations as the JSON-RPC
 //! `device.*` handlers.
 
-use toadstool_common::pci_discovery::{PciFilter, discover_pci_devices};
-
 use crate::Result;
 
 use super::definitions::DeviceCommand;
 
+#[cfg(target_os = "linux")]
+use toadstool_common::pci_discovery::{PciFilter, discover_pci_devices};
+
+#[cfg(target_os = "linux")]
 fn is_gpu_or_npu_class(class: u32) -> bool {
     let masked = class & 0x00FF_FF00;
     masked == 0x0003_0000 // VGA
@@ -18,6 +20,7 @@ fn is_gpu_or_npu_class(class: u32) -> bool {
         || masked == 0x0012_0000 // Processing accelerator (NPU)
 }
 
+#[cfg(target_os = "linux")]
 fn read_current_driver(bdf: &str) -> String {
     let link = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver");
     std::fs::read_link(&link)
@@ -26,6 +29,7 @@ fn read_current_driver(bdf: &str) -> String {
         .unwrap_or_else(|| "unbound".into())
 }
 
+#[cfg(target_os = "linux")]
 fn read_power_state(bdf: &str) -> String {
     let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "power_state");
     std::fs::read_to_string(path)
@@ -34,6 +38,7 @@ fn read_power_state(bdf: &str) -> String {
         .unwrap_or_else(|| "unknown".into())
 }
 
+#[cfg(target_os = "linux")]
 pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
     match cmd {
         DeviceCommand::Swap {
@@ -194,7 +199,13 @@ pub async fn execute_device_command(cmd: DeviceCommand) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(not(target_os = "linux"))]
+pub async fn execute_device_command(_cmd: DeviceCommand) -> Result<()> {
+    eprintln!("This command requires Linux");
+    Err(crate::CliError::Other("This command requires Linux".into()))
+}
+
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
 

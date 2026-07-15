@@ -87,6 +87,15 @@ impl DispatchHandler {
         let vfio_count = vfio_gpus.len();
         let gpu_count = gpus.len();
 
+        #[cfg(target_os = "linux")]
+        let held_devices = self.held_device_count().await;
+        #[cfg(not(target_os = "linux"))]
+        let held_devices = 0;
+        #[cfg(target_os = "linux")]
+        let local_dispatch = self.local_device_factory.is_some();
+        #[cfg(not(target_os = "linux"))]
+        let local_dispatch = false;
+
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "capabilities",
@@ -116,9 +125,9 @@ impl DispatchHandler {
                 "drm_gpus": drm_gpus,
                 "total_dispatch_count": self.dispatch_count.load(Ordering::Relaxed),
                 "ember": {
-                    "held_devices": self.held_device_count().await,
+                    "held_devices": held_devices,
                     "phase": "D",
-                    "local_dispatch": self.local_device_factory.is_some(),
+                    "local_dispatch": local_dispatch,
                 },
                 "glowplug": {
                     "orchestrator": "SwapOrchestrator<SysfsSwapExecutor>",

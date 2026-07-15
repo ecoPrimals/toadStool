@@ -375,7 +375,7 @@ async fn measure_windows_network_stats(
         .output()
         .map_err(|_| ResourceMonitorError::NetworkMonitoringNotAvailable)?;
 
-    let output_str = String::from_utf8(output.stdout)
+    let _output_str = String::from_utf8(output.stdout)
         .map_err(|e| ResourceMonitorError::ParseError(e.to_string()))?;
 
     // Simplified parsing - would need more robust implementation

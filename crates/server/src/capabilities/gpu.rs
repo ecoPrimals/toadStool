@@ -72,7 +72,11 @@ fn infer_gpu_model_from_ids(vendor_id: u32, device_id: u32) -> String {
 ///
 /// Vendor-agnostic, graceful degradation if no GPUs found.
 pub(super) fn query_gpu_devices() -> Vec<GpuDevice> {
-    let mut devices = Vec::new();
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let mut devices: Vec<GpuDevice> = Vec::new();
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    let devices: Vec<GpuDevice> = Vec::new();
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut device_id = 0;
 
     #[cfg(target_os = "linux")]

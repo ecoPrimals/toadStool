@@ -16,17 +16,57 @@
 //!     └─────[register]───────────┘
 //! ```
 
+#[cfg(unix)]
 mod connection;
+#[cfg(unix)]
 mod framing;
 
 use crate::semantic_methods::SemanticMethodRegistry;
 use std::sync::OnceLock;
 use tracing::debug;
 
+#[cfg(unix)]
 pub use connection::{
     find_by_capability, get_default_coordination_socket, register_with_discovery,
     self_announce_to_biomeos,
 };
+
+#[cfg(not(unix))]
+use crate::{ToadStoolError, ToadStoolResult};
+
+/// Register with the coordination discovery service (non-Unix stub)
+#[cfg(not(unix))]
+pub async fn register_with_discovery() -> ToadStoolResult<()> {
+    Err(ToadStoolError::configuration(
+        "Unix IPC discovery is unavailable on this platform",
+    ))
+}
+
+/// Find services by capability (non-Unix stub)
+#[cfg(not(unix))]
+pub async fn find_by_capability(_capability: &str) -> ToadStoolResult<Vec<String>> {
+    Err(ToadStoolError::configuration(
+        "Unix IPC discovery is unavailable on this platform",
+    ))
+}
+
+/// Default coordination socket path (non-Unix stub)
+#[cfg(not(unix))]
+#[must_use]
+pub fn get_default_coordination_socket() -> std::path::PathBuf {
+    std::path::PathBuf::new()
+}
+
+/// Announce capabilities to biomeOS (non-Unix stub)
+#[cfg(not(unix))]
+pub async fn self_announce_to_biomeos(
+    _methods: &[&str],
+    _socket_path: &str,
+) -> ToadStoolResult<()> {
+    Err(ToadStoolError::configuration(
+        "Unix IPC discovery is unavailable on this platform",
+    ))
+}
 
 /// Global semantic method registry (initialized once)
 static SEMANTIC_REGISTRY: OnceLock<SemanticMethodRegistry> = OnceLock::new();

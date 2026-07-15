@@ -186,8 +186,23 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
             tokio::time::sleep(Duration::from_millis(1)).await;
             return format!("timeout_ms={} (non-PCI, yield only)", timeout.as_millis());
         };
-        let bdf = bdf.as_str();
 
+        #[cfg(target_os = "linux")]
+        {
+            return Self::quiesce_device_linux(bdf.as_str(), timeout).await;
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = bdf;
+            tokio::time::sleep(Duration::from_millis(1)).await;
+            format!("timeout_ms={} (non-Linux, yield only)", timeout.as_millis())
+        }
+    }
+
+    /// Linux sysfs quiescence: poll DRM `gpu_busy_percent` and PCI power state.
+    #[cfg(target_os = "linux")]
+    async fn quiesce_device_linux(bdf: &str, timeout: Duration) -> String {
         let power_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "power_state");
         let power = std::fs::read_to_string(&power_path)
             .ok()
@@ -218,6 +233,7 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
     }
 
     /// Read gpu_busy_percent from the first DRM card node for this BDF.
+    #[cfg(target_os = "linux")]
     fn read_gpu_busy_percent(bdf: &str) -> Option<u32> {
         let drm_dir = std::path::PathBuf::from(
             toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "drm"),

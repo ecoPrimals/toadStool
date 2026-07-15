@@ -27,10 +27,12 @@ mod connection;
 mod handler;
 mod types;
 
+#[cfg(unix)]
 pub use connection::{
-    prebind_unix_listener, process_request, serve_tcp, serve_unix, serve_unix_prebound,
-    spawn_early_health_responder,
+    prebind_unix_listener, serve_unix, serve_unix_prebound, spawn_early_health_responder,
 };
+pub use connection::{process_request, serve_tcp};
+#[cfg(target_os = "linux")]
 pub use handler::HwLearnHandler;
 pub use handler::JsonRpcHandler;
 pub use types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JsonWorkloadSubmission};

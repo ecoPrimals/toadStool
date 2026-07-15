@@ -5,29 +5,37 @@
 //! NO reqwest/hyper/ring/openssl. Real-time events via JSON-RPC polling (no `WebSocket`).
 
 use std::collections::HashMap;
+#[cfg(unix)]
 use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(unix)]
 use std::time::Duration;
 
+#[cfg(unix)]
 use serde_json::Value;
 use tokio::sync::{RwLock, mpsc};
+#[cfg(unix)]
 use tracing::{debug, info};
 use url::Url;
 use uuid::Uuid;
 
+#[cfg(unix)]
 use toadstool_common::interned_strings::socket_env;
+#[cfg(unix)]
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 
 use super::config::ClientConfig;
 use super::error::{ClientError, ClientResult};
+#[cfg(unix)]
+use super::types::ExecutionStatus;
 use super::types::{
-    ClusterStatus, EventHandlers, ExecutionInfo, ExecutionStatus, ToadStoolEvent,
-    WorkloadSubmission, WorkloadType,
+    ClusterStatus, EventHandlers, ExecutionInfo, ToadStoolEvent, WorkloadSubmission, WorkloadType,
 };
 
 /// Resolve socket path from config.
 /// - If `base_url` is "unix:" or starts with "unix://", extract path
 /// - Else use `TOADSTOOL_SOCKET` env or `platform_paths` for local
+#[cfg(unix)]
 pub(crate) fn resolve_socket_path(base_url: &str) -> PathBuf {
     // Support unix:///path/to/socket or unix:path
     if base_url.starts_with("unix://") {
@@ -69,6 +77,7 @@ pub fn execution_submit_method(workload_type: &WorkloadType) -> &'static str {
     }
 }
 
+#[cfg(unix)]
 fn workload_submission_params(workload: &WorkloadSubmission) -> Value {
     serde_json::json!({
         "workload_type": workload.workload_type,
@@ -81,6 +90,7 @@ fn workload_submission_params(workload: &WorkloadSubmission) -> Value {
     })
 }
 
+#[cfg(unix)]
 fn parse_execution_id(value: &Value) -> Option<Uuid> {
     let id = value
         .get("execution_id")
@@ -93,6 +103,7 @@ fn parse_execution_id(value: &Value) -> Option<Uuid> {
     None
 }
 
+#[cfg(unix)]
 fn execution_info_from_submit_response(
     value: &Value,
     submitted_at: std::time::SystemTime,
@@ -125,6 +136,7 @@ fn execution_info_from_submit_response(
     })
 }
 
+#[cfg(unix)]
 fn execution_info_from_status_response(value: &Value, execution_id: Uuid) -> ExecutionInfo {
     let status_str = value
         .get("status")
@@ -158,6 +170,7 @@ fn execution_info_from_status_response(value: &Value, execution_id: Uuid) -> Exe
     }
 }
 
+#[cfg(unix)]
 fn map_execution_status_str(s: &str) -> ExecutionStatus {
     match s.to_lowercase().as_str() {
         "completed" | "success" | "succeeded" | "done" => ExecutionStatus::Completed,
@@ -175,13 +188,22 @@ fn map_execution_status_str(s: &str) -> ExecutionStatus {
 ///
 /// Uses Unix JSON-RPC (local) per biomeOS networking policy.
 pub struct ToadStoolClient {
+    #[cfg(unix)]
     config: ClientConfig,
+    #[cfg(unix)]
     rpc_client: UnixJsonRpcClient,
     active_executions: Arc<RwLock<HashMap<Uuid, ExecutionInfo>>>,
     event_handlers: Arc<RwLock<EventHandlers>>,
 }
 
 impl ToadStoolClient {
+    #[cfg(not(unix))]
+    fn unix_unavailable<T>() -> ClientResult<T> {
+        Err(ClientError::Configuration(
+            "Unix socket JSON-RPC client is unavailable on this platform".to_string(),
+        ))
+    }
+
     /// Create a new ToadStool client
     ///
     /// # Errors
@@ -207,28 +229,36 @@ impl ToadStoolClient {
             let _ = Url::parse(&config.base_url)?;
         }
 
-        let socket_path = resolve_socket_path(&config.base_url);
-        let rpc_client = UnixJsonRpcClient::new(socket_path);
+        #[cfg(unix)]
+        {
+            let socket_path = resolve_socket_path(&config.base_url);
+            let rpc_client = UnixJsonRpcClient::new(socket_path);
 
-        let client = Self {
-            config,
-            rpc_client,
-            active_executions: Arc::new(RwLock::new(HashMap::new())),
-            event_handlers: Arc::new(RwLock::new(Vec::new())),
-        };
+            let client = Self {
+                config,
+                rpc_client,
+                active_executions: Arc::new(RwLock::new(HashMap::new())),
+                event_handlers: Arc::new(RwLock::new(Vec::new())),
+            };
 
-        // Auth/custom headers: stored but not used for Unix JSON-RPC
-        // (auth can be added to JSON-RPC params when server supports it)
-        if client.config.auth.is_some() || !client.config.custom_headers.is_empty() {
-            debug!("Auth/custom headers configured (JSON-RPC server may not use them yet)");
+            // Auth/custom headers: stored but not used for Unix JSON-RPC
+            // (auth can be added to JSON-RPC params when server supports it)
+            if client.config.auth.is_some() || !client.config.custom_headers.is_empty() {
+                debug!("Auth/custom headers configured (JSON-RPC server may not use them yet)");
+            }
+
+            // Test connection
+            client.health_check().await?;
+
+            info!("ToadStool client connected via Unix JSON-RPC");
+
+            Ok(client)
         }
-
-        // Test connection
-        client.health_check().await?;
-
-        info!("ToadStool client connected via Unix JSON-RPC");
-
-        Ok(client)
+        #[cfg(not(unix))]
+        {
+            let _ = config;
+            Self::unix_unavailable()
+        }
     }
 
     /// Submit a workload for execution
@@ -240,20 +270,28 @@ impl ToadStoolClient {
         &self,
         workload: WorkloadSubmission,
     ) -> ClientResult<ExecutionInfo> {
-        let method = execution_submit_method(&workload.workload_type);
-        let params = workload_submission_params(&workload);
-        let submitted_at = std::time::SystemTime::now();
-        let result = self
-            .rpc_client
-            .call(method, params)
-            .await
-            .map_err(|e| ClientError::Server(format!("{method}: {e}")))?;
-        let info = execution_info_from_submit_response(&result, submitted_at)?;
-        self.active_executions
-            .write()
-            .await
-            .insert(info.execution_id, info.clone());
-        Ok(info)
+        #[cfg(not(unix))]
+        {
+            let _ = workload;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let method = execution_submit_method(&workload.workload_type);
+            let params = workload_submission_params(&workload);
+            let submitted_at = std::time::SystemTime::now();
+            let result = self
+                .rpc_client
+                .call(method, params)
+                .await
+                .map_err(|e| ClientError::Server(format!("{method}: {e}")))?;
+            let info = execution_info_from_submit_response(&result, submitted_at)?;
+            self.active_executions
+                .write()
+                .await
+                .insert(info.execution_id, info.clone());
+            Ok(info)
+        }
     }
 
     /// Get execution status for a workload execution
@@ -261,109 +299,133 @@ impl ToadStoolClient {
     /// Calls `execution.status` with the workload/execution id. GPU jobs continue to use
     /// `compute.status` via [`Self::wait_for_completion`].
     pub async fn get_execution_status(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
-        let params = serde_json::json!({
-            "workload_id": execution_id.to_string(),
-            "execution_id": execution_id.to_string(),
-        });
-        let result = self
-            .rpc_client
-            .call("execution.status", params)
-            .await
-            .map_err(|e| ClientError::Server(format!("execution.status: {e}")))?;
-        let info = execution_info_from_status_response(&result, execution_id);
-        self.active_executions
-            .write()
-            .await
-            .insert(execution_id, info.clone());
-        Ok(info)
+        #[cfg(not(unix))]
+        {
+            let _ = execution_id;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::json!({
+                "workload_id": execution_id.to_string(),
+                "execution_id": execution_id.to_string(),
+            });
+            let result = self
+                .rpc_client
+                .call("execution.status", params)
+                .await
+                .map_err(|e| ClientError::Server(format!("execution.status: {e}")))?;
+            let info = execution_info_from_status_response(&result, execution_id);
+            self.active_executions
+                .write()
+                .await
+                .insert(execution_id, info.clone());
+            Ok(info)
+        }
     }
 
     /// Cancel an execution
     ///
     /// Uses `compute.cancel` JSON-RPC for GPU jobs. Maps `execution_id` → `job_id`.
     pub async fn cancel_execution(&self, execution_id: Uuid) -> ClientResult<()> {
-        debug!("Cancelling execution: {}", execution_id);
+        #[cfg(not(unix))]
+        {
+            let _ = execution_id;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            debug!("Cancelling execution: {}", execution_id);
 
-        let params = serde_json::json!({ "job_id": execution_id.to_string() });
-        let _ = self
-            .rpc_client
-            .call("compute.cancel", params)
-            .await
-            .map_err(|e| ClientError::Server(format!("compute.cancel failed: {e}")))?;
+            let params = serde_json::json!({ "job_id": execution_id.to_string() });
+            let _ = self
+                .rpc_client
+                .call("compute.cancel", params)
+                .await
+                .map_err(|e| ClientError::Server(format!("compute.cancel failed: {e}")))?;
 
-        info!("Execution cancelled successfully: {}", execution_id);
-        Ok(())
+            info!("Execution cancelled successfully: {}", execution_id);
+            Ok(())
+        }
     }
 
     /// Wait for execution completion via JSON-RPC polling (`compute.status` method).
     pub async fn wait_for_completion(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
-        const MAX_WAIT_SECS: u64 = 300;
-        const POLL_INTERVAL_MS: u64 = 500;
+        #[cfg(not(unix))]
+        {
+            let _ = execution_id;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            const MAX_WAIT_SECS: u64 = 300;
+            const POLL_INTERVAL_MS: u64 = 500;
 
-        debug!(
-            "Waiting for execution completion via polling: {}",
-            execution_id
-        );
-        let max_wait = Duration::from_secs(MAX_WAIT_SECS);
-        let poll_interval = Duration::from_millis(POLL_INTERVAL_MS);
-        let mut interval = tokio::time::interval(poll_interval);
-        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-        let start = std::time::Instant::now();
+            debug!(
+                "Waiting for execution completion via polling: {}",
+                execution_id
+            );
+            let max_wait = Duration::from_secs(MAX_WAIT_SECS);
+            let poll_interval = Duration::from_millis(POLL_INTERVAL_MS);
+            let mut interval = tokio::time::interval(poll_interval);
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            let start = std::time::Instant::now();
 
-        while start.elapsed() < max_wait {
-            interval.tick().await;
+            while start.elapsed() < max_wait {
+                interval.tick().await;
 
-            let status_result = self
-                .rpc_client
-                .call(
-                    "compute.status",
-                    serde_json::json!({ "job_id": execution_id.to_string() }),
-                )
-                .await;
+                let status_result = self
+                    .rpc_client
+                    .call(
+                        "compute.status",
+                        serde_json::json!({ "job_id": execution_id.to_string() }),
+                    )
+                    .await;
 
-            match status_result {
-                Ok(status) => {
-                    let status_str = status
-                        .get("status")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_lowercase();
-                    if matches!(status_str.as_str(), "completed" | "failed" | "cancelled") {
-                        info!(
-                            "Execution {} completed with status: {}",
-                            execution_id, status_str
-                        );
-                        let exec_status = match status_str.as_str() {
-                            "completed" => ExecutionStatus::Completed,
-                            "cancelled" => ExecutionStatus::Cancelled,
-                            _ => ExecutionStatus::Failed,
-                        };
-                        return Ok(ExecutionInfo {
-                            execution_id,
-                            status: exec_status,
-                            submitted_at: std::time::SystemTime::now(),
-                            started_at: None,
-                            completed_at: Some(std::time::SystemTime::now()),
-                            runtime_type: None,
-                            error_message: status
-                                .get("error")
-                                .and_then(|v| v.as_str())
-                                .map(String::from),
-                            output: None,
-                            metrics: None,
-                        });
+                match status_result {
+                    Ok(status) => {
+                        let status_str = status
+                            .get("status")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_lowercase();
+                        if matches!(status_str.as_str(), "completed" | "failed" | "cancelled") {
+                            info!(
+                                "Execution {} completed with status: {}",
+                                execution_id, status_str
+                            );
+                            let exec_status = match status_str.as_str() {
+                                "completed" => ExecutionStatus::Completed,
+                                "cancelled" => ExecutionStatus::Cancelled,
+                                _ => ExecutionStatus::Failed,
+                            };
+                            return Ok(ExecutionInfo {
+                                execution_id,
+                                status: exec_status,
+                                submitted_at: std::time::SystemTime::now(),
+                                started_at: None,
+                                completed_at: Some(std::time::SystemTime::now()),
+                                runtime_type: None,
+                                error_message: status
+                                    .get("error")
+                                    .and_then(|v| v.as_str())
+                                    .map(String::from),
+                                output: None,
+                                metrics: None,
+                            });
+                        }
+                    }
+                    Err(_) => {
+                        // compute.status may not exist or job not found - workload executions use different path
+                        break;
                     }
                 }
-                Err(_) => {
-                    // compute.status may not exist or job not found - workload executions use different path
-                    break;
-                }
             }
-        }
 
-        Err(ClientError::Http(
+            Err(ClientError::Http(
             "wait_for_completion: use compute.status polling for GPU jobs; workload executions not exposed via JSON-RPC".to_string(),
         ))
+        }
     }
 
     /// Get cluster status
@@ -374,65 +436,79 @@ impl ToadStoolClient {
         reason = "cluster load for display; u64 count fits f64 for typical values"
     )]
     pub async fn get_cluster_status(&self) -> ClientResult<ClusterStatus> {
-        debug!("Getting cluster status");
+        #[cfg(not(unix))]
+        {
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            debug!("Getting cluster status");
 
-        let health: serde_json::Value = self
-            .rpc_client
-            .call("toadstool.health", serde_json::json!({}))
-            .await
-            .map_err(|e| ClientError::Server(format!("toadstool.health failed: {e}")))?;
+            let health: serde_json::Value = self
+                .rpc_client
+                .call("toadstool.health", serde_json::json!({}))
+                .await
+                .map_err(|e| ClientError::Server(format!("toadstool.health failed: {e}")))?;
 
-        let jobs: serde_json::Value = self
-            .rpc_client
-            .call("compute.list", serde_json::json!({}))
-            .await
-            .unwrap_or_else(|_| serde_json::json!({"jobs": [], "counts": {}}));
+            let jobs: serde_json::Value = self
+                .rpc_client
+                .call("compute.list", serde_json::json!({}))
+                .await
+                .unwrap_or_else(|_| serde_json::json!({"jobs": [], "counts": {}}));
 
-        let counts = jobs.get("counts").and_then(|c| c.as_object());
-        let pending = counts
-            .and_then(|m| m.get("pending"))
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0);
-        let running = counts
-            .and_then(|m| m.get("running"))
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0);
-        let _completed = counts
-            .and_then(|m| m.get("completed"))
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0);
+            let counts = jobs.get("counts").and_then(|c| c.as_object());
+            let pending = counts
+                .and_then(|m| m.get("pending"))
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let running = counts
+                .and_then(|m| m.get("running"))
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            let _completed = counts
+                .and_then(|m| m.get("completed"))
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
 
-        let healthy = health
-            .get("healthy")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(true);
+            let healthy = health
+                .get("healthy")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(true);
 
-        Ok(ClusterStatus {
-            total_nodes: 1,
-            healthy_nodes: u32::from(healthy),
-            cluster_load: (pending + running) as f64,
-            active_executions: u32::try_from(pending + running).unwrap_or(u32::MAX),
-            available_runtimes: vec!["native".to_string(), "wasm".to_string()],
-        })
+            Ok(ClusterStatus {
+                total_nodes: 1,
+                healthy_nodes: u32::from(healthy),
+                cluster_load: (pending + running) as f64,
+                active_executions: u32::try_from(pending + running).unwrap_or(u32::MAX),
+                available_runtimes: vec!["native".to_string(), "wasm".to_string()],
+            })
+        }
     }
 
     /// Health check
     pub async fn health_check(&self) -> ClientResult<()> {
-        let result = self
-            .rpc_client
-            .call("toadstool.health", serde_json::json!({}))
-            .await
-            .map_err(|e| ClientError::Server(format!("Health check failed: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let result = self
+                .rpc_client
+                .call("toadstool.health", serde_json::json!({}))
+                .await
+                .map_err(|e| ClientError::Server(format!("Health check failed: {e}")))?;
 
-        let healthy = result
-            .get("healthy")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
+            let healthy = result
+                .get("healthy")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
 
-        if healthy {
-            Ok(())
-        } else {
-            Err(ClientError::Server("Server reported unhealthy".to_string()))
+            if healthy {
+                Ok(())
+            } else {
+                Err(ClientError::Server("Server reported unhealthy".to_string()))
+            }
         }
     }
 
@@ -475,6 +551,7 @@ impl ToadStoolClient {
 
     /// Test-only constructor that skips health check (no real network).
     #[doc(hidden)]
+    #[cfg(unix)]
     pub fn new_for_testing(config: ClientConfig) -> ClientResult<Self> {
         if !config.base_url.starts_with("unix:") {
             let _ = Url::parse(&config.base_url)?;

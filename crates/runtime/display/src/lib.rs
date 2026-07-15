@@ -81,34 +81,58 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 #![warn(rust_2018_idioms)]
 
-// Public modules
+pub mod window_id;
+pub use window_id::WindowId;
+
+// All display/input modules require Linux kernel APIs (DRM/KMS, evdev, V4L2).
+#[cfg(target_os = "linux")]
 pub mod capabilities;
+#[cfg(target_os = "linux")]
 pub mod capture_transport;
+#[cfg(target_os = "linux")]
 pub mod drm;
+#[cfg(target_os = "linux")]
 pub mod hardware_transport_dispatch;
+#[cfg(target_os = "linux")]
 pub mod input;
+#[cfg(target_os = "linux")]
 pub mod ipc;
+#[cfg(target_os = "linux")]
 pub mod pcie_transport;
+#[cfg(target_os = "linux")]
 pub mod serial_transport;
+#[cfg(target_os = "linux")]
 pub mod transport;
+#[cfg(target_os = "linux")]
 pub mod transport_router;
+#[cfg(target_os = "linux")]
 pub mod v4l2;
+#[cfg(target_os = "linux")]
 pub mod window;
 
-// Re-exports
+#[cfg(target_os = "linux")]
 pub use capabilities::DisplayCapabilities;
+#[cfg(target_os = "linux")]
 pub use capture_transport::{CaptureTransport, discover_capture_transports};
+#[cfg(target_os = "linux")]
 pub use drm::DrmBackend;
+#[cfg(target_os = "linux")]
 pub use hardware_transport_dispatch::HardwareTransportDispatch;
-#[cfg(any(test, feature = "test-mocks"))]
+#[cfg(all(target_os = "linux", any(test, feature = "test-mocks")))]
 #[doc(hidden)]
 pub use hardware_transport_dispatch::{TestHighBandwidthTransport, TestLoopbackTransport};
+#[cfg(target_os = "linux")]
 pub use input::{InputEvent, InputManager};
+#[cfg(target_os = "linux")]
 pub use ipc::{DisplayClient, DisplayServer};
+#[cfg(target_os = "linux")]
 pub use pcie_transport::{PcieTransport, discover_pcie_transports};
+#[cfg(target_os = "linux")]
 pub use transport::{DisplayTransport, discover_display_transports};
+#[cfg(target_os = "linux")]
 pub use transport_router::{TransportFilter, TransportRouter};
-pub use window::{Window, WindowId, WindowManager};
+#[cfg(target_os = "linux")]
+pub use window::{Window, WindowManager};
 
 /// Display backend errors
 #[derive(Debug, thiserror::Error)]

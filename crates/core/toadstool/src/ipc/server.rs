@@ -44,6 +44,7 @@ impl IpcServer {
         }
 
         // Unix socket (Linux desktop, macOS)
+        #[cfg(unix)]
         endpoints.push(Endpoint::for_toadstool());
 
         // Tier 2: TCP (universal fallback)
@@ -72,11 +73,12 @@ impl IpcServer {
             });
         }
 
-        // Unix socket (ecoBin v2.0 compliant)
-        let socket_path = toadstool_common::platform_paths::biomeos_runtime_dir()
-            .join(format!("{}.sock", primal_name.to_lowercase()));
-
-        endpoints.push(Endpoint::Unix { path: socket_path });
+        #[cfg(unix)]
+        {
+            let socket_path = toadstool_common::platform_paths::biomeos_runtime_dir()
+                .join(format!("{}.sock", primal_name.to_lowercase()));
+            endpoints.push(Endpoint::Unix { path: socket_path });
+        }
 
         // TCP with environment-based port allocation (Deep Debt: no hardcoded primal ports)
         // Self-knowledge: ToadStool knows its own default port.
@@ -151,6 +153,7 @@ impl IpcServer {
     /// Try to bind specific endpoint
     async fn try_bind(&self, endpoint: &Endpoint) -> ToadStoolResult<()> {
         match endpoint {
+            #[cfg(unix)]
             Endpoint::Unix { path } => {
                 let _ = platform::unix::bind(path).await?;
                 Ok(())
@@ -190,6 +193,7 @@ impl IpcServer {
 impl Drop for IpcServer {
     fn drop(&mut self) {
         // Clean up Unix sockets on drop
+        #[cfg(unix)]
         for endpoint in &self.endpoints {
             if let Endpoint::Unix { path } = endpoint {
                 if path.exists() {
@@ -235,6 +239,7 @@ mod tests {
         assert!(endpoints.iter().any(|e| matches!(e, Endpoint::Tcp { .. })));
 
         // Should have Unix socket endpoint containing primal name
+        #[cfg(unix)]
         assert!(endpoints.iter().any(|e| {
             matches!(e, Endpoint::Unix { path } if path.to_string_lossy().contains("songbird"))
         }));
@@ -252,6 +257,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(unix)]
     async fn test_bind_cleanup() {
         // Create server with test socket (platform-agnostic temp dir)
         let test_path = std::env::temp_dir().join("toadstool_test_server.sock");

@@ -48,6 +48,7 @@ pub mod factory;
 pub mod provider;
 pub mod tcp_provider;
 pub mod types;
+#[cfg(unix)]
 pub mod unix_socket_provider;
 
 // In-process fallback providers for dev/CI only.

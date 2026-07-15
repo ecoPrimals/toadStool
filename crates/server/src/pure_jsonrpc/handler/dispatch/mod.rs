@@ -10,6 +10,7 @@
 
 mod capabilities;
 mod dag;
+#[cfg(target_os = "linux")]
 mod device;
 mod fan_out;
 mod forward;
@@ -17,6 +18,7 @@ mod pipeline;
 mod queries;
 mod routing;
 mod shader_dispatch;
+#[cfg(target_os = "linux")]
 mod sovereign;
 mod state;
 mod submit;
@@ -33,19 +35,21 @@ use crate::visualization_client::SharedVisualizationClient;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+#[cfg(target_os = "linux")]
 use toadstool_ember::VfioAnchor;
+#[cfg(target_os = "linux")]
 use toadstool_ember::held_resource::HeldResource;
+#[cfg(target_os = "linux")]
 use toadstool_ember::vfio_handle::VfioResourceHandle;
 use tokio::sync::RwLock;
 use types::{DispatchJob, PipelineJob};
 
 /// Shared collection of VFIO warm-keepalive anchors.
-///
-/// Each anchor holds dup'd VFIO fds for a GPU. On SIGTERM, all anchors
-/// are leaked to prevent bus resets during daemon restart.
+#[cfg(target_os = "linux")]
 pub type AnchorStore = Arc<tokio::sync::Mutex<HashMap<String, VfioAnchor>>>;
 
 /// Factory that produces a local `ComputeDevice` from a PCI BDF string.
+#[cfg(target_os = "linux")]
 pub(super) type LocalDeviceFactory =
     Arc<dyn Fn(&str) -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> + Send + Sync>;
 
@@ -68,18 +72,19 @@ pub struct DispatchHandler {
     pipelines: Arc<RwLock<HashMap<String, PipelineJob>>>,
     dispatch_count: AtomicU64,
     /// Device pool — ember-managed VFIO handles keyed by BDF.
-    /// Acquired before dispatch, released after completion.
+    #[cfg(target_os = "linux")]
     device_pool: Arc<RwLock<HashMap<String, HeldResource<VfioResourceHandle>>>>,
     /// Local compute device factory — produces ComputeDevice from BDF when
     /// cylinder can dispatch locally (Phase D). None = fall through to coral_client.
+    #[cfg(target_os = "linux")]
     local_device_factory: Option<LocalDeviceFactory>,
     /// Persistent cache of opened VFIO compute devices keyed by BDF.
-    /// Devices hold iommufd/VFIO FDs and DMA mappings — dropping them
-    /// triggers GPU reset. Cached to survive across multiple RPC calls.
+    #[cfg(target_os = "linux")]
     cached_devices:
         Arc<tokio::sync::Mutex<HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>>,
     /// Warm-keepalive anchors — dup'd VFIO fds that persist independently
     /// of cached_devices. On SIGTERM, these are leaked to prevent bus reset.
+    #[cfg(target_os = "linux")]
     anchor_store: AnchorStore,
     /// Multi-tenant GPU resource orchestrator (`None` = LocalDirect, zero overhead).
     resource_orchestrator: Option<Arc<toadstool_runtime_orchestration::ResourceOrchestrator>>,
@@ -90,10 +95,5 @@ pub struct DispatchHandler {
 /// Create a local device factory for Phase D sovereign dispatch.
 #[cfg(target_os = "linux")]
 pub(super) fn create_cylinder_device_factory() -> LocalDeviceFactory {
-    device::create_cylinder_device_factory()
-}
-
-#[cfg(not(target_os = "linux"))]
-pub(super) fn create_cylinder_device_factory() -> Option<LocalDeviceFactory> {
     device::create_cylinder_device_factory()
 }

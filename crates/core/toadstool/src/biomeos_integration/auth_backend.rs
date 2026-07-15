@@ -134,19 +134,33 @@ pub trait AuthBackend: Send + Sync {
 /// Dispatch enum for authentication backends (replaces `Arc<dyn AuthBackend>`).
 pub enum AuthBackendDispatch {
     /// Production security-service backend (Unix socket JSON-RPC)
+    #[cfg(unix)]
     Security(SecurityBackend),
     /// In-memory test backend (no external dependencies)
     #[cfg(any(test, feature = "test-mocks"))]
     InMemory(InMemoryAuthBackend),
+    /// Unix IPC unavailable on this platform.
+    #[cfg(not(unix))]
+    UnixUnavailable,
 }
 
+/// Unix IPC backends are only available on Unix platforms.
+#[cfg(not(unix))]
+fn unix_auth_backend_unavailable() -> ToadStoolError {
+    ToadStoolError::configuration("Unix socket auth backends are unavailable on this platform")
+}
+
+#[cfg_attr(not(unix), allow(unused_variables))]
 impl AuthBackend for AuthBackendDispatch {
     fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Security(b) => b.initialize().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.initialize().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_auth_backend_unavailable()),
             }
         }
     }
@@ -157,9 +171,12 @@ impl AuthBackend for AuthBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Security(b) => b.request_token(request).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.request_token(request).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_auth_backend_unavailable()),
             }
         }
     }
@@ -170,9 +187,12 @@ impl AuthBackend for AuthBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Security(b) => b.refresh_token(request).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.refresh_token(request).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_auth_backend_unavailable()),
             }
         }
     }
@@ -183,9 +203,12 @@ impl AuthBackend for AuthBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Security(b) => b.sign_payload(payload).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.sign_payload(payload).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_auth_backend_unavailable()),
             }
         }
     }
@@ -193,9 +216,12 @@ impl AuthBackend for AuthBackendDispatch {
     fn public_key(&self) -> impl Future<Output = Option<String>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Security(b) => b.public_key().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.public_key().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => None,
             }
         }
     }
@@ -204,10 +230,12 @@ impl AuthBackend for AuthBackendDispatch {
 /// Production implementation using the security / crypto service Unix socket API (Pure Rust!)
 ///
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
+#[cfg(unix)]
 pub struct SecurityBackend {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
+#[cfg(unix)]
 impl SecurityBackend {
     /// Create crypto auth backend with capability-based discovery (RECOMMENDED)
     ///
@@ -235,6 +263,7 @@ impl SecurityBackend {
     }
 }
 
+#[cfg(unix)]
 impl AuthBackend for SecurityBackend {
     fn sign_payload<'a>(
         &'a self,

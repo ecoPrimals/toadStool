@@ -4,11 +4,18 @@
 use std::path::Path;
 use std::time::Duration;
 
+#[cfg(unix)]
 use base64::Engine;
+#[cfg(unix)]
 use toadstool_common::constants::timeouts;
 use toadstool_common::primal_identity::{Capability, CryptoCapability, ServiceEndpoint};
 use toadstool_common::service_discovery::DiscoveredService;
+#[cfg(unix)]
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+#[cfg(unix)]
 use toadstool_common::{NetworkError, ToadStoolError, ToadStoolResult};
+#[cfg(not(unix))]
+use toadstool_common::{ToadStoolError, ToadStoolResult};
 
 use crate::crypto_integration::types::{
     CryptoRequest, CryptoResponse, KeyManagementRequest, KeyManagementResponse,
@@ -18,7 +25,8 @@ use crate::crypto_integration::types::{
 ///
 /// **Design**: Works with ANY crypto provider via unix sockets (pure Rust!)
 pub struct CryptoServiceClient {
-    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    #[cfg(unix)]
+    rpc_client: UnixJsonRpcClient,
     /// Service endpoint information (stored for diagnostics and future use)
     _service_endpoint: ServiceEndpoint,
     /// Request timeout for RPC calls
@@ -26,44 +34,61 @@ pub struct CryptoServiceClient {
 }
 
 impl CryptoServiceClient {
+    #[cfg(not(unix))]
+    fn unix_unavailable<T>() -> ToadStoolResult<T> {
+        Err(ToadStoolError::configuration(
+            "Unix socket crypto client is unavailable on this platform",
+        ))
+    }
+
     /// Create client for a discovered service with unix socket transport
     ///
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     ///
     /// **EVOLVED**: Uses the discovered service's actual endpoint, not hardcoded name.
     pub fn new(service: &DiscoveredService) -> ToadStoolResult<Self> {
-        let endpoint = service.endpoints.first().ok_or_else(|| {
-            ToadStoolError::Network(NetworkError::ConnectionFailed {
-                endpoint: service.name.clone(),
-                reason: "No endpoints available".to_string(),
+        #[cfg(unix)]
+        {
+            let endpoint = service.endpoints.first().ok_or_else(|| {
+                ToadStoolError::Network(NetworkError::ConnectionFailed {
+                    endpoint: service.name.clone(),
+                    reason: "No endpoints available".to_string(),
+                })
+            })?;
+
+            // CAPABILITY-BASED: Use the discovered service's actual socket path
+            // Extract Unix socket path from endpoint (supports unix:// protocol)
+            let socket_path = if endpoint.protocol == "unix" {
+                // Use endpoint address directly (it's the socket path)
+                std::path::PathBuf::from(&endpoint.address)
+            } else if let Some(path) = endpoint.metadata.get("socket_path") {
+                // Or from metadata
+                std::path::PathBuf::from(path)
+            } else {
+                // Fallback: Use generic socket path for discovered service name
+                // This allows ANY crypto service to work (Security, HSM, cloud KMS)
+                toadstool_common::primal_sockets::resolve_socket_path_for_service(
+                    &service.name,
+                    &toadstool_common::primal_sockets::SocketPathEnv::from_env(),
+                    None,
+                )
+            };
+
+            let rpc_client = UnixJsonRpcClient::new(socket_path);
+
+            Ok(Self {
+                rpc_client,
+                _service_endpoint: endpoint.clone(),
+                timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
             })
-        })?;
-
-        // CAPABILITY-BASED: Use the discovered service's actual socket path
-        // Extract Unix socket path from endpoint (supports unix:// protocol)
-        let socket_path = if endpoint.protocol == "unix" {
-            // Use endpoint address directly (it's the socket path)
-            std::path::PathBuf::from(&endpoint.address)
-        } else if let Some(path) = endpoint.metadata.get("socket_path") {
-            // Or from metadata
-            std::path::PathBuf::from(path)
-        } else {
-            // Fallback: Use generic socket path for discovered service name
-            // This allows ANY crypto service to work (Security, HSM, cloud KMS)
-            toadstool_common::primal_sockets::resolve_socket_path_for_service(
-                &service.name,
-                &toadstool_common::primal_sockets::SocketPathEnv::from_env(),
-                None,
-            )
-        };
-
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
-
-        Ok(Self {
-            rpc_client,
-            _service_endpoint: endpoint.clone(),
-            timeout: timeouts::DEFAULT_REQUEST_TIMEOUT,
-        })
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = service;
+            Err(ToadStoolError::configuration(
+                "Unix socket crypto client is unavailable on this platform",
+            ))
+        }
     }
 
     /// Create client with custom timeout
@@ -99,54 +124,70 @@ impl CryptoServiceClient {
     ///
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn encrypt(&self, request: CryptoRequest) -> ToadStoolResult<CryptoResponse> {
-        let params = serde_json::to_value(&request).map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Failed to serialize request: {e}"),
-            })
-        })?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Failed to serialize request: {e}"),
+                })
+            })?;
 
-        tokio::time::timeout(
-            self.timeout,
-            self.rpc_client.call_typed("crypto.encrypt", params),
-        )
-        .await
-        .map_err(|_| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Crypto encrypt timed out after {:?}", self.timeout),
+            tokio::time::timeout(
+                self.timeout,
+                self.rpc_client.call_typed("crypto.encrypt", params),
+            )
+            .await
+            .map_err(|_| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Crypto encrypt timed out after {:?}", self.timeout),
+                })
+            })?
+            .map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Crypto encrypt failed: {e}"),
+                })
             })
-        })?
-        .map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Crypto encrypt failed: {e}"),
-            })
-        })
+        }
     }
 
     /// Decrypt data via unix socket
     ///
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn decrypt(&self, request: CryptoRequest) -> ToadStoolResult<CryptoResponse> {
-        let params = serde_json::to_value(&request).map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Failed to serialize request: {e}"),
-            })
-        })?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Failed to serialize request: {e}"),
+                })
+            })?;
 
-        tokio::time::timeout(
-            self.timeout,
-            self.rpc_client.call_typed("crypto.decrypt", params),
-        )
-        .await
-        .map_err(|_| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Crypto decrypt timed out after {:?}", self.timeout),
+            tokio::time::timeout(
+                self.timeout,
+                self.rpc_client.call_typed("crypto.decrypt", params),
+            )
+            .await
+            .map_err(|_| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Crypto decrypt timed out after {:?}", self.timeout),
+                })
+            })?
+            .map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Crypto decrypt failed: {e}"),
+                })
             })
-        })?
-        .map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Crypto decrypt failed: {e}"),
-            })
-        })
+        }
     }
 
     /// Manage keys (generate, rotate, delete) via unix socket
@@ -156,27 +197,35 @@ impl CryptoServiceClient {
         &self,
         request: KeyManagementRequest,
     ) -> ToadStoolResult<KeyManagementResponse> {
-        let params = serde_json::to_value(&request).map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Failed to serialize request: {e}"),
-            })
-        })?;
+        #[cfg(not(unix))]
+        {
+            let _ = request;
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Failed to serialize request: {e}"),
+                })
+            })?;
 
-        tokio::time::timeout(
-            self.timeout,
-            self.rpc_client.call_typed("crypto.manage_key", params),
-        )
-        .await
-        .map_err(|_| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Key management timed out after {:?}", self.timeout),
+            tokio::time::timeout(
+                self.timeout,
+                self.rpc_client.call_typed("crypto.manage_key", params),
+            )
+            .await
+            .map_err(|_| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Key management timed out after {:?}", self.timeout),
+                })
+            })?
+            .map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Key management failed: {e}"),
+                })
             })
-        })?
-        .map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Key management failed: {e}"),
-            })
-        })
+        }
     }
 
     /// Retrieve a purpose key from BearDog secrets store.
@@ -188,8 +237,14 @@ impl CryptoServiceClient {
         purpose: &str,
         family: Option<&str>,
     ) -> ToadStoolResult<toadstool::encryption::EncryptionKey> {
-        let family_id =
-            match family {
+        #[cfg(not(unix))]
+        {
+            let _ = (purpose, family);
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let family_id = match family {
                 Some(f) => f.to_string(),
                 None => std::env::var(
                     toadstool_common::interned_strings::socket_env::TOADSTOOL_FAMILY_ID,
@@ -207,72 +262,80 @@ impl CryptoServiceClient {
                 })?,
             };
 
-        let key_name = format!("nucleus:{family_id}:purpose:{purpose}");
+            let key_name = format!("nucleus:{family_id}:purpose:{purpose}");
 
-        let params = serde_json::json!({ "name": key_name });
-        let response: serde_json::Value = self
-            .rpc_client
-            .call_typed("secrets.retrieve", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: format!("secrets.retrieve(\"{key_name}\") failed: {e}"),
-                })
-            })?;
+            let params = serde_json::json!({ "name": key_name });
+            let response: serde_json::Value = self
+                .rpc_client
+                .call_typed("secrets.retrieve", params)
+                .await
+                .map_err(|e| {
+                    ToadStoolError::Network(NetworkError::IoError {
+                        reason: format!("secrets.retrieve(\"{key_name}\") failed: {e}"),
+                    })
+                })?;
 
-        let key_material_b64 = response["key"]
-            .as_str()
-            .or_else(|| response["value"].as_str())
-            .or_else(|| response.as_str())
-            .ok_or_else(|| {
-                ToadStoolError::runtime(format!(
-                    "secrets.retrieve(\"{key_name}\") returned no key material"
-                ))
-            })?;
+            let key_material_b64 = response["key"]
+                .as_str()
+                .or_else(|| response["value"].as_str())
+                .or_else(|| response.as_str())
+                .ok_or_else(|| {
+                    ToadStoolError::runtime(format!(
+                        "secrets.retrieve(\"{key_name}\") returned no key material"
+                    ))
+                })?;
 
-        let key_material = base64::engine::general_purpose::STANDARD
-            .decode(key_material_b64)
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("purpose key base64 decode failed: {e}"))
-            })?;
+            let key_material = base64::engine::general_purpose::STANDARD
+                .decode(key_material_b64)
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("purpose key base64 decode failed: {e}"))
+                })?;
 
-        let algorithm = response["algorithm"]
-            .as_str()
-            .unwrap_or("chacha20-poly1305")
-            .to_string();
+            let algorithm = response["algorithm"]
+                .as_str()
+                .unwrap_or("chacha20-poly1305")
+                .to_string();
 
-        Ok(toadstool::encryption::EncryptionKey::new(
-            key_name,
-            key_material,
-            algorithm,
-            toadstool::encryption::SecurityLevel::Enhanced,
-        ))
+            Ok(toadstool::encryption::EncryptionKey::new(
+                key_name,
+                key_material,
+                algorithm,
+                toadstool::encryption::SecurityLevel::Enhanced,
+            ))
+        }
     }
 
     /// Health check via unix socket
     ///
     /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn health_check(&self) -> ToadStoolResult<bool> {
-        let result: serde_json::Value = tokio::time::timeout(
-            self.timeout,
-            self.rpc_client.call("crypto.health", serde_json::json!({})),
-        )
-        .await
-        .map_err(|_| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Health check timed out after {:?}", self.timeout),
-            })
-        })?
-        .map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Health check failed: {e}"),
-            })
-        })?;
+        #[cfg(not(unix))]
+        {
+            return Self::unix_unavailable();
+        }
+        #[cfg(unix)]
+        {
+            let result: serde_json::Value = tokio::time::timeout(
+                self.timeout,
+                self.rpc_client.call("crypto.health", serde_json::json!({})),
+            )
+            .await
+            .map_err(|_| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Health check timed out after {:?}", self.timeout),
+                })
+            })?
+            .map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Health check failed: {e}"),
+                })
+            })?;
 
-        Ok(result
-            .get("healthy")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or_default())
+            Ok(result
+                .get("healthy")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or_default())
+        }
     }
 }
 

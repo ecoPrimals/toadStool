@@ -56,6 +56,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+#[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{error, info, warn};
 
@@ -143,6 +144,7 @@ async fn dispatch_or_parse_error(raw: &[u8], state: &ServerState) -> JsonRpcResp
 /// # Errors
 ///
 /// Returns error if socket binding fails or server crashes
+#[cfg(unix)]
 pub async fn start_jsonrpc_server(
     socket_path: &Path,
     workload_manager: Arc<WorkloadManager>,
@@ -201,6 +203,16 @@ pub async fn start_jsonrpc_server(
             }
         }
     }
+}
+
+#[cfg(not(unix))]
+pub async fn start_jsonrpc_server(
+    _socket_path: &Path,
+    _workload_manager: Arc<WorkloadManager>,
+) -> crate::Result<()> {
+    Err(crate::CliError::Other(
+        "Unix socket JSON-RPC server is not available on this platform".into(),
+    ))
 }
 
 /// Start JSON-RPC API server over TCP (cross-host access via `--port`).
@@ -273,7 +285,7 @@ async fn handle_tcp_connection(
 }
 
 /// BTSP production path: handshake then length-prefixed JSON-RPC frames (see `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md`).
-#[cfg(feature = "btsp")]
+#[cfg(all(unix, feature = "btsp"))]
 async fn handle_btsp_daemon_connection(
     mut stream: UnixStream,
     state: ServerState,
@@ -427,7 +439,7 @@ async fn handle_btsp_daemon_connection(
 /// without the feature we cannot handshake. Logs at target `btsp`, shuts down the stream, and
 /// returns (same policy as the server crate tarpc BTSP gate). Unset family ID env vars for
 /// development NDJSON on this socket.
-#[cfg(not(feature = "btsp"))]
+#[cfg(all(unix, not(feature = "btsp")))]
 async fn handle_btsp_daemon_connection(
     mut stream: UnixStream,
     _state: ServerState,
@@ -443,7 +455,7 @@ async fn handle_btsp_daemon_connection(
 }
 
 /// Resolve family seed for BTSP (`FAMILY_SEED` or `.family.seed` in biomeOS dir).
-#[cfg(feature = "btsp")]
+#[cfg(all(unix, feature = "btsp"))]
 fn resolve_daemon_family_seed() -> crate::Result<Vec<u8>> {
     if let Ok(seed) = std::env::var(socket_env::FAMILY_SEED) {
         return Ok(seed.into_bytes());
@@ -461,7 +473,7 @@ fn resolve_daemon_family_seed() -> crate::Result<Vec<u8>> {
 }
 
 /// Daemon loop over BTSP Phase 3 encrypted frames.
-#[cfg(feature = "btsp")]
+#[cfg(all(unix, feature = "btsp"))]
 async fn daemon_encrypted_loop(
     reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
     writer: &mut tokio::net::unix::OwnedWriteHalf,
@@ -496,6 +508,7 @@ async fn daemon_encrypted_loop(
 }
 
 /// Handle a single client connection
+#[cfg(unix)]
 async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);

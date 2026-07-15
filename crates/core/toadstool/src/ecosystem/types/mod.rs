@@ -8,7 +8,7 @@ mod connection;
 mod messaging;
 
 pub use config::{DiscoveryMethodConfig, EcosystemConfig, EcosystemConfigBuilder, ServiceInstance};
-#[cfg(feature = "networking")]
+#[cfg(all(feature = "networking", unix))]
 pub use connection::TarpcClientWrapper;
 pub use connection::{ServiceChannel, ServiceClient, ServiceStatus};
 pub use messaging::{EcosystemMessage, EcosystemMessageType};

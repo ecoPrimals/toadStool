@@ -33,12 +33,16 @@
 use std::future::Future;
 
 use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
+#[cfg(not(unix))]
+use crate::ToadStoolError;
 use crate::ToadStoolResult;
 
 mod inmemory;
+#[cfg(unix)]
 mod storage;
 
 pub use inmemory::InMemoryBackend;
+#[cfg(unix)]
 pub use storage::SocketStorageBackend;
 
 #[cfg(test)]
@@ -134,22 +138,36 @@ pub trait StorageBackend: Send + Sync {
     fn list_volumes(&self) -> impl Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_;
 }
 
+/// Unix IPC backends are only available on Unix platforms.
+#[cfg(not(unix))]
+fn unix_storage_backend_unavailable() -> ToadStoolError {
+    ToadStoolError::configuration("Unix socket storage backends are unavailable on this platform")
+}
+
 /// Dispatch enum for storage backends (replaces `Arc<dyn StorageBackend>`).
 pub enum StorageBackendDispatch {
     /// Production backend — Unix socket JSON-RPC to the storage service.
+    #[cfg(unix)]
     Socket(SocketStorageBackend),
     /// In-memory backend for tests and lightweight in-process use.
     #[cfg(any(test, feature = "test-mocks"))]
     InMemory(InMemoryBackend),
+    /// Unix IPC unavailable on this platform.
+    #[cfg(not(unix))]
+    UnixUnavailable,
 }
 
+#[cfg_attr(not(unix), allow(unused_variables))]
 impl StorageBackend for StorageBackendDispatch {
     fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.initialize().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.initialize().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -160,9 +178,12 @@ impl StorageBackend for StorageBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.provision_volume(config).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.provision_volume(config).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -173,9 +194,12 @@ impl StorageBackend for StorageBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.provision_persistent_volume(config).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.provision_persistent_volume(config).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -188,9 +212,12 @@ impl StorageBackend for StorageBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.mount_volume(volume_name, service_name, mount_path).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.mount_volume(volume_name, service_name, mount_path).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -202,9 +229,12 @@ impl StorageBackend for StorageBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.unmount_volume(volume_name, service_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.unmount_volume(volume_name, service_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -215,9 +245,12 @@ impl StorageBackend for StorageBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.delete_volume(volume_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.delete_volume(volume_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -228,9 +261,12 @@ impl StorageBackend for StorageBackendDispatch {
     ) -> impl Future<Output = ToadStoolResult<VolumeStatus>> + Send + 'a {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.get_volume_status(volume_name).await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.get_volume_status(volume_name).await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }
@@ -238,9 +274,12 @@ impl StorageBackend for StorageBackendDispatch {
     fn list_volumes(&self) -> impl Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_ {
         async move {
             match self {
+                #[cfg(unix)]
                 Self::Socket(b) => b.list_volumes().await,
                 #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.list_volumes().await,
+                #[cfg(not(unix))]
+                Self::UnixUnavailable => Err(unix_storage_backend_unavailable()),
             }
         }
     }

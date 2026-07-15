@@ -4,7 +4,9 @@
 use futures::StreamExt;
 use tarpc::server::{BaseChannel, Channel};
 use tokio_serde::formats::Json;
-use tracing::{error, info, warn};
+use tracing::info;
+#[cfg(unix)]
+use tracing::{error, warn};
 
 use crate::errors::{ServerError, ServerResult};
 use toadstool_integration_protocols::tarpc_service::ToadStoolComputeRpc;
@@ -12,6 +14,7 @@ use toadstool_integration_protocols::tarpc_service::ToadStoolComputeRpc;
 use super::ToadStoolTarpcServer;
 
 /// Run tarpc on an already-connected byte stream (length-delimited JSON).
+#[cfg(unix)]
 pub(super) async fn serve_on_tarpc_channel<S>(server: ToadStoolTarpcServer, stream: S)
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin + 'static,
@@ -62,6 +65,7 @@ pub(super) async fn serve_on_tarpc_channel_with_idle_timeout<S>(
 }
 
 /// When `FAMILY_ID` is set, run BTSP before exposing tarpc length-delimited framing (BTSP Phase 2).
+#[cfg(unix)]
 pub(super) async fn unix_maybe_btsp_before_tarpc(
     mut stream: tokio::net::UnixStream,
     btsp_required: bool,
@@ -178,7 +182,7 @@ pub(super) async fn unix_maybe_btsp_before_tarpc(
     }
 }
 
-#[cfg(feature = "btsp")]
+#[cfg(all(unix, feature = "btsp"))]
 fn resolve_family_seed_for_tarpc() -> ServerResult<Vec<u8>> {
     if let Ok(seed) = std::env::var(toadstool_common::interned_strings::socket_env::FAMILY_SEED) {
         return Ok(seed.into_bytes());

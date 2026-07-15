@@ -22,63 +22,102 @@
     clippy::collapsible_if
 )]
 
+#[cfg(target_os = "linux")]
 use std::io;
+#[cfg(target_os = "linux")]
 use std::os::fd::AsFd;
+#[cfg(target_os = "linux")]
 use std::path::Path;
+#[cfg(target_os = "linux")]
 use std::process::ExitCode;
+#[cfg(target_os = "linux")]
 use std::sync::atomic::{Ordering, fence};
+#[cfg(target_os = "linux")]
 use std::thread;
+#[cfg(target_os = "linux")]
 use std::time::Duration;
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::nv::registers::{falcon, pbus, pfb, pgraph, pmc, pramin};
 
+#[cfg(target_os = "linux")]
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
 
 /* PMU falcon (base 0x10A000) — non-standard offset layout for ACR descriptor PIO */
+#[cfg(target_os = "linux")]
 const PMU_BASE: u32 = falcon::PMU_BASE;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_IRQMASK: u32 = PMU_BASE + 0x014;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_IRQDEST: u32 = PMU_BASE + 0x01C;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_IRQEN: u32 = PMU_BASE + 0x010;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_MAILBOX0: u32 = PMU_BASE + 0x040;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_MAILBOX1: u32 = PMU_BASE + 0x044;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_ITFEN: u32 = PMU_BASE + 0x050;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_CPUCTL: u32 = PMU_BASE + 0x100;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_IMEMC: u32 = PMU_BASE + 0x104;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_IMEMD: u32 = PMU_BASE + 0x108;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_BOOTVEC: u32 = PMU_BASE + 0x110;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_HWCFG: u32 = PMU_BASE + 0x11C;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_DMACTL: u32 = PMU_BASE + 0x148;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_OS: u32 = PMU_BASE + 0x180;
+#[cfg(target_os = "linux")]
 const PMU_FALCON_SCTL: u32 = PMU_BASE + 0x240;
 
+#[cfg(target_os = "linux")]
 const fn PMU_FALCON_DMEMC(p: u32) -> u32 {
     PMU_BASE + 0x1C0 + p * 8
 }
+#[cfg(target_os = "linux")]
 const fn PMU_FALCON_DMEMD(p: u32) -> u32 {
     PMU_BASE + 0x1C4 + p * 8
 }
 
 /* FECS falcon */
+#[cfg(target_os = "linux")]
 const FECS_BASE: u32 = falcon::FECS_BASE;
+#[cfg(target_os = "linux")]
 const FECS_FALCON_CPUCTL: u32 = FECS_BASE + falcon::CPUCTL;
+#[cfg(target_os = "linux")]
 const FECS_FALCON_MAILBOX0: u32 = FECS_BASE + falcon::MAILBOX0;
+#[cfg(target_os = "linux")]
 const FECS_FALCON_MAILBOX1: u32 = FECS_BASE + falcon::MAILBOX1;
+#[cfg(target_os = "linux")]
 const FECS_FALCON_SCTL: u32 = FECS_BASE + falcon::SCTL;
+#[cfg(target_os = "linux")]
 const FECS_FALCON_OS: u32 = FECS_BASE + falcon::OS;
 
 /* GPCCS falcon */
+#[cfg(target_os = "linux")]
 const GPCCS_BASE: u32 = falcon::GPCCS_BASE;
+#[cfg(target_os = "linux")]
 const GPCCS_FALCON_CPUCTL: u32 = GPCCS_BASE + falcon::CPUCTL;
+#[cfg(target_os = "linux")]
 const GPCCS_FALCON_MAILBOX0: u32 = GPCCS_BASE + falcon::MAILBOX0;
 
 /* VRAM address where we stage firmware (arbitrary, within first 64 MB) */
+#[cfg(target_os = "linux")]
 const FW_STAGING_VRAM_BASE: u64 = 0x01000000; /* 16 MB into VRAM */
 
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::bin_helpers::Bar0;
 
+#[cfg(target_os = "linux")]
 fn load_file(path: &Path) -> Option<Vec<u8>> {
     std::fs::read(path).ok()
 }
 
+#[cfg(target_os = "linux")]
 fn cpuctl_state(cpuctl: u32) -> &'static str {
     if cpuctl & 0x20 != 0 {
         "RUNNING"
@@ -89,6 +128,7 @@ fn cpuctl_state(cpuctl: u32) -> &'static str {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn stage_to_vram(bar0: &Bar0, data: &[u8], vram_addr: u64, dry_run: bool) -> io::Result<()> {
     let len = data.len();
     let mut offset = 0usize;
@@ -132,6 +172,7 @@ fn stage_to_vram(bar0: &Bar0, data: &[u8], vram_addr: u64, dry_run: bool) -> io:
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
 fn write_pmu_dmem(bar0: &Bar0, dmem_offset: u32, data: &[u32], dry_run: bool) {
     if dry_run {
         return;
@@ -142,11 +183,13 @@ fn write_pmu_dmem(bar0: &Bar0, dmem_offset: u32, data: &[u32], dry_run: bool) {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn read_pmu_dmem(bar0: &Bar0, dmem_offset: u32) -> u32 {
     bar0.w32(PMU_FALCON_DMEMC(0), dmem_offset & 0xFFFF);
     bar0.r32(PMU_FALCON_DMEMD(0))
 }
 
+#[cfg(target_os = "linux")]
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
@@ -574,4 +617,10 @@ fn main() -> ExitCode {
     drop(gpccs_blob);
 
     ExitCode::SUCCESS
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("This tool requires Linux");
+    std::process::exit(1);
 }

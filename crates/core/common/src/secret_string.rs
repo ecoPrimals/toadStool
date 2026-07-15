@@ -171,6 +171,7 @@ pub async fn resolve_credential(name: &str) -> Result<SecretString, CredentialEr
 
     // 3. Security provider delegation — discovers the `crypto` capability
     //    socket and calls `secret.resolve` over JSON-RPC.
+    #[cfg(unix)]
     if let Some(val) = probe_security_provider(name).await {
         tracing::debug!(
             credential = name,
@@ -247,6 +248,7 @@ fn probe_keyring(name: &str) -> Option<SecretString> {
 /// resolution over JSON-RPC (`secret.resolve`).
 ///
 /// Returns `None` when the provider socket is absent or the call fails.
+#[cfg(unix)]
 async fn probe_security_provider(name: &str) -> Option<SecretString> {
     let socket = crate::primal_sockets::get_socket_path_for_capability("crypto");
     if !socket.exists() {

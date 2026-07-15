@@ -47,8 +47,12 @@ pub mod resource_handle;
 pub mod ring_meta;
 pub mod sysfs;
 pub mod vendor_lifecycle;
+
+#[cfg(target_os = "linux")]
 pub mod vfio_anchor;
+#[cfg(target_os = "linux")]
 pub mod vfio_handle;
+#[cfg(target_os = "linux")]
 pub mod warm_keepalive;
 
 pub use error::{SwapError, SysfsError};
@@ -69,6 +73,9 @@ pub use ring_meta::{MailboxMeta, RingMeta, RingMetaEntry};
 pub use vendor_lifecycle::{
     RebindStrategy, ResetMethod, VendorLifecycle, detect_lifecycle, detect_lifecycle_for_target,
 };
+#[cfg(target_os = "linux")]
 pub use vfio_anchor::{AnchorBackendRef, VfioAnchor};
+#[cfg(target_os = "linux")]
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};
+#[cfg(target_os = "linux")]
 pub use warm_keepalive::{DmaSpec, KeepaliveStore, WarmKeepalive, WarmKeepaliveRef};

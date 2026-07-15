@@ -6,6 +6,7 @@
 //! before proceeding to the next, and the applicator can bail out
 //! at any point without leaving the GPU in an undefined state.
 
+#[cfg(target_os = "linux")]
 pub mod nouveau_drm;
 pub mod verify;
 
@@ -255,7 +256,21 @@ impl<R: RegisterAccess> RecipeApplicator<'_, R> {
                 )
             }
             InitStep::IoctlCall { ioctl_nr, args } => {
-                nouveau_drm::execute_ioctl(index, card_path, *ioctl_nr, args)
+                #[cfg(target_os = "linux")]
+                {
+                    nouveau_drm::execute_ioctl(index, card_path, *ioctl_nr, args)
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    let _ = args;
+                    StepResult {
+                        step_index: index,
+                        success: false,
+                        detail: format!(
+                            "ioctl 0x{ioctl_nr:x}: DRM ioctl path unavailable on this platform"
+                        ),
+                    }
+                }
             }
             InitStep::FirmwareLoad { engine, path } => StepResult {
                 step_index: index,

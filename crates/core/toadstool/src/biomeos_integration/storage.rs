@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use super::storage_backend::{StorageBackend, StorageBackendDispatch, VolumeStatus};
 use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
+#[cfg(not(unix))]
+use crate::ToadStoolError;
 use crate::ToadStoolResult;
 
 /// Storage provisioning manager for the storage service.
@@ -76,17 +78,25 @@ impl StorageProvisioningManager {
     /// # Errors
     ///
     /// Returns an error if storage service discovery fails or the backend cannot be initialized.
+    #[cfg_attr(not(unix), allow(unused_variables))]
     pub async fn with_storage_service(config: StorageProvisioningConfig) -> ToadStoolResult<Self> {
-        let backend = super::storage_backend::SocketStorageBackend::new_async(
-            config.storage_tier.clone(),
-            config.replication_enabled,
-            config.replication_factor,
-        )
-        .await?;
-        Ok(Self {
-            config,
-            backend: Arc::new(StorageBackendDispatch::Socket(backend)),
-        })
+        #[cfg(unix)]
+        {
+            let backend = super::storage_backend::SocketStorageBackend::new_async(
+                config.storage_tier.clone(),
+                config.replication_enabled,
+                config.replication_factor,
+            )
+            .await?;
+            return Ok(Self {
+                config,
+                backend: Arc::new(StorageBackendDispatch::Socket(backend)),
+            });
+        }
+        #[cfg(not(unix))]
+        Err(ToadStoolError::configuration(
+            "Unix socket storage backends are unavailable on this platform",
+        ))
     }
 
     /// Create a new manager with in-memory test backend

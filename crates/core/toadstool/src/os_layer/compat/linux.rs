@@ -15,6 +15,7 @@ use toadstool_common::error::SystemError;
 use super::CompatibilityLayer;
 
 /// Normalize `uname -a` output or `/proc/version` text to a short kernel release string.
+#[cfg(target_os = "linux")]
 fn parse_kernel_version(uname_or_proc_version: &str) -> String {
     let s = uname_or_proc_version.trim();
     if s.is_empty() {
@@ -187,7 +188,7 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::parse_kernel_version;
 

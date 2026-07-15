@@ -7,13 +7,16 @@
 //! Supports riboCipher transport signal detection per
 //! `ecoPrimals/infra/wateringHole/RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`.
 
+#[cfg(unix)]
 mod btsp_unix;
 mod tcp;
 #[cfg(test)]
 mod tests;
+#[cfg(unix)]
 mod unix;
 
 pub use tcp::serve_tcp;
+#[cfg(unix)]
 pub use unix::{
     prebind_unix_listener, serve_unix, serve_unix_prebound, spawn_early_health_responder,
 };

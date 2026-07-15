@@ -23,10 +23,14 @@
 //! client.store_artifact("model.bin", data).await?;
 //! ```
 
-use tracing::{debug, info};
+use tracing::debug;
+#[cfg(unix)]
+use tracing::info;
 
+#[cfg(unix)]
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::primal_identity::{Capability, StorageCapability};
+#[cfg(unix)]
 use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
 
 use crate::config::StorageConfig;
@@ -50,10 +54,23 @@ use crate::types::{StorageError, StorageServiceResult};
 /// - AWS S3 (via adapter)
 /// - Google Cloud Storage (via adapter)
 /// - Any service advertising `storage:artifact` capability
+#[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct StorageClient {
     /// RPC client for JSON-RPC over unix socket (crate-visible for impl in artifacts/pipelines)
     pub(crate) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    /// Client configuration (crate-visible for impl in utils)
+    pub(crate) config: StorageConfig,
+    /// Discovered service name (for diagnostics)
+    _service_name: String,
+}
+
+/// Storage client stub for non-Unix targets (Windows, WASM, etc.)
+///
+/// Unix socket discovery is unavailable on these platforms.
+#[cfg(not(unix))]
+#[derive(Debug, Clone)]
+pub struct StorageClient {
     /// Client configuration (crate-visible for impl in utils)
     pub(crate) config: StorageConfig,
     /// Discovered service name (for diagnostics)
@@ -99,38 +116,48 @@ impl StorageClient {
     /// # Errors
     /// Returns an error if no service is found or connection fails
     pub async fn discover_with_capability(capability: Capability) -> StorageServiceResult<Self> {
-        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto)
-            .await
-            .map_err(|e| StorageError::Connection(format!("Discovery failed: {e}")))?;
+        #[cfg(not(unix))]
+        {
+            let _ = capability;
+            return Err(StorageError::Connection(
+                "Unix socket storage discovery is unavailable on this platform".into(),
+            ));
+        }
 
-        let service = discovery
-            .find_service_by_capability(capability)
-            .await
-            .map_err(|e| StorageError::Connection(format!("No storage service found: {e}")))?;
+        #[cfg(unix)]
+        {
+            let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto)
+                .await
+                .map_err(|e| StorageError::Connection(format!("Discovery failed: {e}")))?;
 
-        let service_name = service.name.clone();
+            let service = discovery
+                .find_service_by_capability(capability)
+                .await
+                .map_err(|e| StorageError::Connection(format!("No storage service found: {e}")))?;
 
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
+            let service_name = service.name.clone();
 
-        info!(
-            "✅ Discovered storage service: {} (capability-based discovery)",
-            service_name
-        );
+            let socket_path =
+                toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
 
-        // Create client with discovered service
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+            info!(
+                "✅ Discovered storage service: {} (capability-based discovery)",
+                service_name
+            );
 
-        let client = Self {
-            rpc_client,
-            config: StorageConfig::default(),
-            _service_name: service_name,
-        };
+            let rpc_client =
+                toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
-        // Verify connectivity
-        client.health_check().await?;
+            let client = Self {
+                rpc_client,
+                config: StorageConfig::default(),
+                _service_name: service_name,
+            };
 
-        Ok(client)
+            client.health_check().await?;
+
+            Ok(client)
+        }
     }
 
     /// Connect to storage server by service name
@@ -144,12 +171,24 @@ impl StorageClient {
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails
     pub async fn connect(service_name: &str) -> StorageServiceResult<Self> {
-        let socket = toadstool_common::primal_sockets::get_socket_path_for_capability(service_name);
-        let config = StorageConfig {
-            endpoint: format!("unix://{}", socket.display()),
-            ..Default::default()
-        };
-        Self::with_config(config, Some(service_name.to_string())).await
+        #[cfg(not(unix))]
+        {
+            let _ = service_name;
+            return Err(StorageError::Connection(
+                "Unix socket storage connections are unavailable on this platform".into(),
+            ));
+        }
+
+        #[cfg(unix)]
+        {
+            let socket =
+                toadstool_common::primal_sockets::get_socket_path_for_capability(service_name);
+            let config = StorageConfig {
+                endpoint: format!("unix://{}", socket.display()),
+                ..Default::default()
+            };
+            Self::with_config(config, Some(service_name.to_string())).await
+        }
     }
 
     /// Create client with custom configuration
@@ -166,27 +205,33 @@ impl StorageClient {
         config: StorageConfig,
         service_name: Option<String>,
     ) -> StorageServiceResult<Self> {
-        // Use discovered service name or capability default
-        let service_name = service_name.unwrap_or_else(|| {
-            // Fallback for backward compatibility
-            // In production, prefer using discover() which provides the service name
-            capabilities::STORAGE.to_string()
-        });
+        #[cfg(not(unix))]
+        {
+            let _ = (config, service_name);
+            return Err(StorageError::Connection(
+                "Unix socket storage connections are unavailable on this platform".into(),
+            ));
+        }
 
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+        #[cfg(unix)]
+        {
+            let service_name = service_name.unwrap_or_else(|| capabilities::STORAGE.to_string());
 
-        let client = Self {
-            rpc_client,
-            config,
-            _service_name: service_name,
-        };
+            let socket_path =
+                toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
+            let rpc_client =
+                toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
-        // Perform initial health check
-        client.health_check().await?;
+            let client = Self {
+                rpc_client,
+                config,
+                _service_name: service_name,
+            };
 
-        Ok(client)
+            client.health_check().await?;
+
+            Ok(client)
+        }
     }
 
     /// Check `Storage` server health via unix socket
@@ -196,13 +241,8 @@ impl StorageClient {
     /// # Errors
     /// Returns an error if the health check request fails or server is unhealthy
     pub async fn health_check(&self) -> StorageServiceResult<()> {
-        // Modern async RPC pattern
-        let _response: serde_json::Value = self
-            .rpc_client
-            .call("storage.health", serde_json::json!({}))
-            .await
-            .map_err(|e| StorageError::Network(e.to_string()))?;
-
+        self.rpc_call("storage.health", serde_json::json!({}))
+            .await?;
         debug!("Storage service health check passed via unix socket");
         Ok(())
     }
@@ -214,13 +254,71 @@ impl StorageClient {
     #[doc(hidden)]
     #[must_use]
     pub fn new_for_testing(config: StorageConfig, service_name: String) -> Self {
-        let socket_path =
-            toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
-        Self {
-            rpc_client,
-            config,
-            _service_name: service_name,
+        #[cfg(unix)]
+        {
+            let socket_path =
+                toadstool_common::primal_sockets::get_socket_path_for_capability(&service_name);
+            let rpc_client =
+                toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+            Self {
+                rpc_client,
+                config,
+                _service_name: service_name,
+            }
+        }
+
+        #[cfg(not(unix))]
+        {
+            Self {
+                config,
+                _service_name: service_name,
+            }
+        }
+    }
+
+    /// JSON-RPC call helper used by artifact and pipeline operations.
+    pub(crate) async fn rpc_call(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, StorageError> {
+        #[cfg(unix)]
+        {
+            self.rpc_client
+                .call(method, params)
+                .await
+                .map_err(|e| StorageError::Network(e.to_string()))
+        }
+
+        #[cfg(not(unix))]
+        {
+            let _ = (method, params);
+            Err(StorageError::Connection(
+                "Unix socket storage RPC is unavailable on this platform".into(),
+            ))
+        }
+    }
+
+    /// Typed JSON-RPC call helper used by artifact and pipeline operations.
+    pub(crate) async fn rpc_call_typed<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<T, StorageError> {
+        #[cfg(unix)]
+        {
+            self.rpc_client
+                .call_typed(method, params)
+                .await
+                .map_err(|e| StorageError::Network(e.to_string()))
+        }
+
+        #[cfg(not(unix))]
+        {
+            let _ = (method, params);
+            Err(StorageError::Connection(
+                "Unix socket storage RPC is unavailable on this platform".into(),
+            ))
         }
     }
 }

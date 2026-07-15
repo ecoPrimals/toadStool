@@ -59,6 +59,7 @@ pub mod health;
 pub mod personality;
 pub mod plx;
 pub mod swap;
+#[cfg(target_os = "linux")]
 pub mod sysfs_executor;
 pub mod warm_init;
 
@@ -75,6 +76,7 @@ pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
 pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
 pub use swap::{ExitBootServicesFn, SwapExecutor, SwapObservation, SwapOrchestrator};
+#[cfg(target_os = "linux")]
 pub use sysfs_executor::SysfsSwapExecutor;
 pub use warm_init::{
     DiffSummary, DriverLabExecutor, DriverLabPlan, DriverTrial, LabExecutionResult, ModuleSource,

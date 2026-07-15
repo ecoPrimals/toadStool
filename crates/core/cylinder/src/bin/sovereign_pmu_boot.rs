@@ -21,22 +21,33 @@
     clippy::unnecessary_unwrap
 )]
 
+#[cfg(target_os = "linux")]
 use std::os::fd::AsFd;
+#[cfg(target_os = "linux")]
 use std::process::ExitCode;
+#[cfg(target_os = "linux")]
 use std::thread;
+#[cfg(target_os = "linux")]
 use std::time::{Duration, Instant};
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::nv::registers::{falcon, gpc, pbus, pgraph, pmc, pmu, pramin};
 
+#[cfg(target_os = "linux")]
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
 
 /// Legacy SEC2 base (pre-GV100 topology).
+#[cfg(target_os = "linux")]
 const SEC2_BASE_LEGACY: u32 = 0x840000;
 /// WPR2 shadow registers (distinct from PFB WPR2_ADDR_*).
+#[cfg(target_os = "linux")]
 const WPR2_LO: u32 = 0x1FA824;
+#[cfg(target_os = "linux")]
 const WPR2_HI: u32 = 0x1FA828;
 
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::bin_helpers::Bar0;
 
+#[cfg(target_os = "linux")]
 fn le_word(data: &[u8], i: usize) -> u32 {
     u32::from_le_bytes([
         data[i * 4],
@@ -46,6 +57,7 @@ fn le_word(data: &[u8], i: usize) -> u32 {
     ])
 }
 
+#[cfg(target_os = "linux")]
 fn print_falcon(bar0: &Bar0, name: &str, base: u32) {
     let ctrl = bar0.r32(base + 0x100);
     let pc = bar0.r32(base + 0x030);
@@ -62,6 +74,7 @@ fn print_falcon(bar0: &Bar0, name: &str, base: u32) {
     println!("  {name:<6}: cpuctl=0x{ctrl:08x} pc=0x{pc:08x} sctl=0x{sctl:08x} [{state}]");
 }
 
+#[cfg(target_os = "linux")]
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
@@ -369,6 +382,7 @@ fn main() -> ExitCode {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn print_summary(booted: bool, dry_run: bool, dmatrf_ok: u32, dmatrf_total: u32) {
     let result = serde_json::json!({
         "tool": "sovereign_pmu_boot",
@@ -382,4 +396,10 @@ fn print_summary(booted: bool, dry_run: bool, dmatrf_ok: u32, dmatrf_total: u32)
         "{}",
         serde_json::to_string_pretty(&result).unwrap_or_default()
     );
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("This tool requires Linux");
+    std::process::exit(1);
 }

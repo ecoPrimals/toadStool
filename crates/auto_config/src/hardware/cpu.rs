@@ -70,25 +70,25 @@ pub struct CpuFeatures {
 
 /// Detect CPU capabilities and characteristics
 pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo> {
-    let mut cpu_info = if cfg!(target_os = "linux")
-        && let Ok(cpuinfo) = tokio::fs::read_to_string(procfs::CPUINFO).await
-    {
-        parse_linux_cpuinfo(&cpuinfo)
-    } else {
-        CpuInfo::default()
+    #[cfg(target_os = "linux")]
+    let mut cpu_info = {
+        let mut info = CpuInfo::default();
+        if let Ok(cpuinfo) = tokio::fs::read_to_string(procfs::CPUINFO).await {
+            info = parse_linux_cpuinfo(&cpuinfo);
+        }
+        info
     };
 
     // Try to get CPU info from sysctl on macOS
     #[cfg(target_os = "macos")]
-    {
-        cpu_info = detect_macos_cpu().await?;
-    }
+    let mut cpu_info = detect_macos_cpu().await?;
 
     // Try to get CPU info from WMI on Windows
     #[cfg(target_os = "windows")]
-    {
-        cpu_info = detect_windows_cpu().await?;
-    }
+    let mut cpu_info = detect_windows_cpu().await?;
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    let mut cpu_info = CpuInfo::default();
 
     // Fallback: use std::thread::available_parallelism
     if cpu_info.physical_cores == 0 {
@@ -110,6 +110,7 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
 }
 
 /// Parse Linux /proc/cpuinfo
+#[cfg(target_os = "linux")]
 fn parse_linux_cpuinfo(cpuinfo: &str) -> CpuInfo {
     let mut parsed = CpuInfo {
         model_name: String::new(),

@@ -102,45 +102,55 @@ impl HttpTransport {
         message: &ProtocolMessage,
         endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        use toadstool_common::primal_sockets::get_socket_path_for_capability;
-        use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-
-        let socket = get_socket_path_for_capability("coordination");
-        if !socket.exists() {
-            tracing::debug!(
-                "No coordination primal socket at {}, HTTP transport unavailable",
-                socket.display(),
-            );
+        #[cfg(not(unix))]
+        {
+            let _ = (message, endpoint);
             return Err(ProtocolError::HttpTransportNotAvailable);
         }
+        #[cfg(unix)]
+        {
+            use toadstool_common::primal_sockets::get_socket_path_for_capability;
+            use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 
-        let client = UnixJsonRpcClient::new(socket);
+            let socket = get_socket_path_for_capability("coordination");
+            if !socket.exists() {
+                tracing::debug!(
+                    "No coordination primal socket at {}, HTTP transport unavailable",
+                    socket.display(),
+                );
+                return Err(ProtocolError::HttpTransportNotAvailable);
+            }
 
-        let url = if let Some(ref path) = endpoint.path {
-            format!("http://{}:{}{path}", endpoint.address, endpoint.port)
-        } else {
-            format!("http://{}:{}", endpoint.address, endpoint.port)
-        };
+            let client = UnixJsonRpcClient::new(socket);
 
-        let params = serde_json::json!({
-            "url": url,
-            "method": "POST",
-            "body": serde_json::to_value(message)
-                .map_err(|e| ProtocolError::Transport(format!("serialization: {e}")))?,
-            "headers": {
-                "Content-Type": "application/json",
-            },
-        });
+            let url = if let Some(ref path) = endpoint.path {
+                format!("http://{}:{}{path}", endpoint.address, endpoint.port)
+            } else {
+                format!("http://{}:{}", endpoint.address, endpoint.port)
+            };
 
-        let response = client
-            .call("comms.http_forward", params)
-            .await
-            .map_err(|e| {
-                ProtocolError::Transport(format!("coordination service comms.http_forward: {e}"))
-            })?;
+            let params = serde_json::json!({
+                "url": url,
+                "method": "POST",
+                "body": serde_json::to_value(message)
+                    .map_err(|e| ProtocolError::Transport(format!("serialization: {e}")))?,
+                "headers": {
+                    "Content-Type": "application/json",
+                },
+            });
 
-        serde_json::from_value(response)
-            .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))
+            let response = client
+                .call("comms.http_forward", params)
+                .await
+                .map_err(|e| {
+                    ProtocolError::Transport(format!(
+                        "coordination service comms.http_forward: {e}"
+                    ))
+                })?;
+
+            serde_json::from_value(response)
+                .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))
+        }
     }
 
     /// Check if endpoint uses HTTP transport
@@ -191,38 +201,46 @@ impl TRpcTransport {
         message: &ProtocolMessage,
         endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        use std::path::PathBuf;
-        use toadstool_common::primal_sockets::get_socket_path_for_capability;
-        use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-
-        let socket = if let Some(ref path) = endpoint.path {
-            PathBuf::from(path)
-        } else {
-            get_socket_path_for_capability(&endpoint.address)
-        };
-
-        if !socket.exists() {
-            tracing::debug!(
-                socket = %socket.display(),
-                address = %endpoint.address,
-                "tRPC target socket not found — primal may not be running",
-            );
+        #[cfg(not(unix))]
+        {
+            let _ = (message, endpoint);
             return Err(ProtocolError::TRpcTransportNotAvailable);
         }
+        #[cfg(unix)]
+        {
+            use std::path::PathBuf;
+            use toadstool_common::primal_sockets::get_socket_path_for_capability;
+            use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 
-        let client = UnixJsonRpcClient::new(socket);
+            let socket = if let Some(ref path) = endpoint.path {
+                PathBuf::from(path)
+            } else {
+                get_socket_path_for_capability(&endpoint.address)
+            };
 
-        let params = serde_json::to_value(message)
-            .map_err(|e| ProtocolError::Transport(format!("message serialization: {e}")))?;
+            if !socket.exists() {
+                tracing::debug!(
+                    socket = %socket.display(),
+                    address = %endpoint.address,
+                    "tRPC target socket not found — primal may not be running",
+                );
+                return Err(ProtocolError::TRpcTransportNotAvailable);
+            }
 
-        let method = format!("protocol.forward.{}", message.message_type);
+            let client = UnixJsonRpcClient::new(socket);
 
-        let response = client.call(&method, params).await.map_err(|e| {
-            ProtocolError::Transport(format!("Unix JSON-RPC to {}: {e}", endpoint.address))
-        })?;
+            let params = serde_json::to_value(message)
+                .map_err(|e| ProtocolError::Transport(format!("message serialization: {e}")))?;
 
-        serde_json::from_value(response)
-            .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))
+            let method = format!("protocol.forward.{}", message.message_type);
+
+            let response = client.call(&method, params).await.map_err(|e| {
+                ProtocolError::Transport(format!("Unix JSON-RPC to {}: {e}", endpoint.address))
+            })?;
+
+            serde_json::from_value(response)
+                .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))
+        }
     }
 
     /// Check if endpoint uses tRPC transport.

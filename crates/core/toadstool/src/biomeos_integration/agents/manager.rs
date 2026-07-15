@@ -101,17 +101,25 @@ impl AgentDeploymentManager {
     /// # Errors
     ///
     /// Returns an error if ML service discovery fails or the backend cannot be initialized.
+    #[cfg_attr(not(unix), allow(unused_variables))]
     pub async fn with_ml_service(config: AgentDeploymentConfig) -> crate::ToadStoolResult<Self> {
-        let backend = super::super::agent_backend::IntelligenceBackend::new_async(
-            config.model_registry.clone(),
-            config.agent_runtime.clone(),
-            config.mcp_enabled,
-        )
-        .await?;
-        Ok(Self {
-            _config: config,
-            backend: Arc::new(AgentBackendDispatch::Intelligence(backend)),
-        })
+        #[cfg(unix)]
+        {
+            let backend = super::super::agent_backend::IntelligenceBackend::new_async(
+                config.model_registry.clone(),
+                config.agent_runtime.clone(),
+                config.mcp_enabled,
+            )
+            .await?;
+            return Ok(Self {
+                _config: config,
+                backend: Arc::new(AgentBackendDispatch::Intelligence(backend)),
+            });
+        }
+        #[cfg(not(unix))]
+        Err(crate::ToadStoolError::configuration(
+            "Unix socket agent backends are unavailable on this platform",
+        ))
     }
 
     /// Create a new manager with in-memory test backend

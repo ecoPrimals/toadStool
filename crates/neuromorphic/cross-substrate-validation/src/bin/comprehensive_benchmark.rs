@@ -6,17 +6,28 @@
 //! - What does it struggle with?
 //! - Is it a GPU replacement or complementary?
 
+#[cfg(not(unix))]
+fn main() {
+    eprintln!("cross-substrate-comprehensive requires Unix (Akida hardware)");
+    std::process::exit(1);
+}
+
+#[cfg(unix)]
 use akida_driver::DeviceManager;
+#[cfg(unix)]
 use cross_substrate_validation::{print_results_summary, run_comprehensive_benchmark};
+#[cfg(unix)]
 use toadstool_runtime_universal::{ComputeUnit, UniversalRuntime};
 
 /// Typed error for comprehensive benchmark.
+#[cfg(unix)]
 #[derive(Debug, thiserror::Error)]
 enum BenchError {
     #[error("compute: {0}")]
     Compute(#[from] toadstool_runtime_universal::ComputeError),
 }
 
+#[cfg(unix)]
 #[tokio::main]
 async fn main() -> Result<(), BenchError> {
     // Initialize logging

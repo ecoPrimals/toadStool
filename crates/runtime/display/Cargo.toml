@@ -10,13 +10,8 @@ keywords = ["display", "input", "drm", "evdev", "pure-rust"]
 categories = ["gui", "graphics", "hardware-support"]
 
 [dependencies]
-# Display management (Pure Rust! ARM64 compatible!)
-drm = "0.14"                # Safe DRM/KMS bindings (Pure Rust, no linux-unsafe!)
-drm-fourcc = "2.2"          # Pixel format definitions (Pure Rust!)
-rustix = { workspace = true, features = ["fs", "all-apis"] }  # Safe system calls (Pure Rust!) — evolved from 0.38 to 1.x Ioctl trait pattern (S203)
-
-# Input handling (Pure Rust!)
-evdev = "0.13"              # Pure Rust evdev (NO libevdev!)
+# Pixel format definitions (Pure Rust, cross-platform!)
+drm-fourcc = "2.2"
 
 # Serial transport (wraps edge crate's serialport capability)
 # default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
@@ -47,14 +42,17 @@ toadstool-common = { path = "../../core/common" }
 # Cold-start port defaults (shared registry; see `toadstool_config::defaults::ports`)
 toadstool-config = { path = "../../core/config" }
 
-# Safe hardware primitives (DeviceMmap for V4L2 buffer mapping)
-toadstool-hw-safe = { path = "../../core/hw-safe" }
-
 # Core hardware transport traits
 toadstool-core = { path = "../../toadstool-core" }
 
 # System monitoring (GPU discovery, PCIe topology)
 toadstool-sysmon = { path = "../../core/sysmon" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+drm = "0.14"
+rustix = { workspace = true, features = ["fs", "all-apis"] }
+evdev = "0.13"
+toadstool-hw-safe = { path = "../../core/hw-safe" }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

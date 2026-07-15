@@ -128,14 +128,17 @@ impl std::fmt::Debug for WebGpuAllocation {
 
 /// CPU allocation details.
 ///
-/// Backed by [`toadstool_hw_safe::AlignedAlloc`] for RAII-managed aligned
-/// allocation. No unsafe needed — slice access delegates to `AlignedAlloc`.
+/// On Linux, backed by [`toadstool_hw_safe::AlignedAlloc`] for RAII-managed aligned
+/// allocation. On other platforms, uses a heap `Vec` with cache-line padding.
 #[derive(Debug)]
 pub struct CpuAllocation {
-    /// RAII aligned allocation (zero-initialized, cache-line aligned).
+    #[cfg(target_os = "linux")]
     pub alloc: toadstool_hw_safe::AlignedAlloc,
+    #[cfg(not(target_os = "linux"))]
+    data: Vec<u8>,
 }
 
+#[cfg(target_os = "linux")]
 impl CpuAllocation {
     /// Return a mutable slice over the allocation.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
@@ -155,6 +158,33 @@ impl CpuAllocation {
     /// Allocation size in bytes.
     pub fn size(&self) -> usize {
         self.alloc.size()
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+impl CpuAllocation {
+    pub(crate) fn from_heap(data: Vec<u8>) -> Self {
+        Self { data }
+    }
+
+    /// Return a mutable slice over the allocation.
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.data
+    }
+
+    /// Return an immutable slice over the allocation.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// Raw pointer for GPU interop.
+    pub fn ptr(&self) -> *mut u8 {
+        self.data.as_ptr() as *mut u8
+    }
+
+    /// Allocation size in bytes.
+    pub fn size(&self) -> usize {
+        self.data.len()
     }
 }
 

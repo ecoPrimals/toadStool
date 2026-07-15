@@ -3,11 +3,15 @@
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
 
+#[cfg(unix)]
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::interned_strings::socket_env;
 // No longer using reqwest - using unix sockets (pure Rust!)
+#[cfg(unix)]
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 
 use super::registry::Capability;
 use crate::error::DistributedError;
@@ -84,8 +88,11 @@ pub trait PrimalAdapter: Send + Sync {
 /// Implements the Coordination Federation API for capability registration
 pub struct CoordinationAdapter {
     endpoint: String,
-    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    #[cfg(unix)]
+    rpc_client: UnixJsonRpcClient,
+    #[cfg(unix)]
     toadstool_endpoint: String,
+    #[cfg(unix)]
     workload_execute_path: String,
 }
 
@@ -95,18 +102,32 @@ impl CoordinationAdapter {
         toadstool_endpoint: String,
         workload_execute_path: String,
     ) -> Result<Self, DistributedError> {
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
-            capabilities::COORDINATION,
-        );
+        #[cfg(unix)]
+        {
+            let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
+                capabilities::COORDINATION,
+            );
 
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+            let rpc_client = UnixJsonRpcClient::new(socket_path);
 
-        Ok(Self {
-            endpoint: coordination_endpoint,
-            rpc_client,
-            toadstool_endpoint,
-            workload_execute_path,
-        })
+            Ok(Self {
+                endpoint: coordination_endpoint,
+                rpc_client,
+                toadstool_endpoint,
+                workload_execute_path,
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = (
+                coordination_endpoint,
+                toadstool_endpoint,
+                workload_execute_path,
+            );
+            Err(DistributedError::CoordinationRegistration(
+                "Unix socket coordination adapter is unavailable on this platform".to_string(),
+            ))
+        }
     }
 
     /// Create a new Coordination adapter with runtime discovery
@@ -165,70 +186,87 @@ impl PrimalAdapter for CoordinationAdapter {
         &self,
         capabilities: Vec<Capability>,
     ) -> Result<(), DistributedError> {
-        // Coordination Federation API via JSON-RPC over unix socket
-        let registration = CoordinationRegistrationRequest {
-            service_id: PRIMAL_NAME.to_string(),
-            service_endpoint: self.toadstool_endpoint.clone(),
-            capabilities: capabilities
-                .iter()
-                .map(|c| CoordinationCapability {
-                    capability_id: c.id.clone(),
-                    capability_name: c.name.clone(),
-                    description: c.description.clone(),
-                    tags: c.tags.clone(),
-                    resource_requirements: CoordinationResourceRequirements {
-                        min_cpu_cores: c.resource_requirements.min_cpu_cores,
-                        min_memory_mb: c.resource_requirements.min_memory_mb,
-                        gpu_required: c.resource_requirements.gpu_required,
-                        gpu_memory_mb: c.resource_requirements.gpu_memory_mb,
-                    },
-                    available: c.available,
-                    confidence: c.confidence,
-                })
-                .collect(),
-            workload_endpoint: format!(
-                "{}{}",
-                self.toadstool_endpoint.trim_end_matches('/'),
-                self.workload_execute_path
-            ),
-        };
+        #[cfg(not(unix))]
+        {
+            let _ = capabilities;
+            return Err(DistributedError::CoordinationRegistration(
+                "Unix socket coordination adapter is unavailable on this platform".to_string(),
+            ));
+        }
+        #[cfg(unix)]
+        {
+            // Coordination Federation API via JSON-RPC over unix socket
+            let registration = CoordinationRegistrationRequest {
+                service_id: PRIMAL_NAME.to_string(),
+                service_endpoint: self.toadstool_endpoint.clone(),
+                capabilities: capabilities
+                    .iter()
+                    .map(|c| CoordinationCapability {
+                        capability_id: c.id.clone(),
+                        capability_name: c.name.clone(),
+                        description: c.description.clone(),
+                        tags: c.tags.clone(),
+                        resource_requirements: CoordinationResourceRequirements {
+                            min_cpu_cores: c.resource_requirements.min_cpu_cores,
+                            min_memory_mb: c.resource_requirements.min_memory_mb,
+                            gpu_required: c.resource_requirements.gpu_required,
+                            gpu_memory_mb: c.resource_requirements.gpu_memory_mb,
+                        },
+                        available: c.available,
+                        confidence: c.confidence,
+                    })
+                    .collect(),
+                workload_endpoint: format!(
+                    "{}{}",
+                    self.toadstool_endpoint.trim_end_matches('/'),
+                    self.workload_execute_path
+                ),
+            };
 
-        let params = serde_json::to_value(&registration)?;
+            let params = serde_json::to_value(&registration)?;
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("coordination.register_capabilities", params)
-            .await
-            .map_err(|e| DistributedError::CoordinationRegistration(e.to_string()))?;
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("coordination.register_capabilities", params)
+                .await
+                .map_err(|e| DistributedError::CoordinationRegistration(e.to_string()))?;
 
-        tracing::info!(
-            "Successfully registered {} capabilities with coordination service via unix socket",
-            capabilities.len()
-        );
+            tracing::info!(
+                "Successfully registered {} capabilities with coordination service via unix socket",
+                capabilities.len()
+            );
 
-        Ok(())
+            Ok(())
+        }
     }
 
     async fn send_heartbeat(&self) -> Result<(), DistributedError> {
-        // Coordination Federation API via JSON-RPC over unix socket
-        let heartbeat = CoordinationHeartbeat {
-            service_id: PRIMAL_NAME.to_string(),
-            timestamp: std::time::SystemTime::now(),
-            status: "healthy".to_string(),
-        };
+        #[cfg(not(unix))]
+        {
+            return Ok(());
+        }
+        #[cfg(unix)]
+        {
+            // Coordination Federation API via JSON-RPC over unix socket
+            let heartbeat = CoordinationHeartbeat {
+                service_id: PRIMAL_NAME.to_string(),
+                timestamp: std::time::SystemTime::now(),
+                status: "healthy".to_string(),
+            };
 
-        let params = serde_json::to_value(&heartbeat)?;
+            let params = serde_json::to_value(&heartbeat)?;
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("coordination.heartbeat", params)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::warn!("Heartbeat to coordination service failed: {e}");
-                serde_json::json!({})
-            });
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("coordination.heartbeat", params)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!("Heartbeat to coordination service failed: {e}");
+                    serde_json::json!({})
+                });
 
-        Ok(())
+            Ok(())
+        }
     }
 
     async fn notify_capability_change(
@@ -236,53 +274,69 @@ impl PrimalAdapter for CoordinationAdapter {
         capability: &Capability,
         available: bool,
     ) -> Result<(), DistributedError> {
-        // Coordination Federation API via JSON-RPC over unix socket
-        let update = CoordinationCapabilityUpdate {
-            service_id: PRIMAL_NAME.to_string(),
-            capability_id: capability.id.clone(),
-            available,
-            timestamp: std::time::SystemTime::now(),
-        };
+        #[cfg(not(unix))]
+        {
+            let _ = (capability, available);
+            return Ok(());
+        }
+        #[cfg(unix)]
+        {
+            // Coordination Federation API via JSON-RPC over unix socket
+            let update = CoordinationCapabilityUpdate {
+                service_id: PRIMAL_NAME.to_string(),
+                capability_id: capability.id.clone(),
+                available,
+                timestamp: std::time::SystemTime::now(),
+            };
 
-        let params = serde_json::to_value(&update)?;
+            let params = serde_json::to_value(&update)?;
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("coordination.capability_update", params)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::warn!("Capability update to coordination service failed: {e}");
-                serde_json::json!({})
-            });
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("coordination.capability_update", params)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!("Capability update to coordination service failed: {e}");
+                    serde_json::json!({})
+                });
 
-        Ok(())
+            Ok(())
+        }
     }
 
     async fn deregister(&self) -> Result<(), DistributedError> {
-        // Coordination Federation API via JSON-RPC over unix socket
-        let request = CoordinationDeregisterRequest {
-            service_id: PRIMAL_NAME.to_string(),
-        };
+        #[cfg(not(unix))]
+        {
+            return Ok(());
+        }
+        #[cfg(unix)]
+        {
+            // Coordination Federation API via JSON-RPC over unix socket
+            let request = CoordinationDeregisterRequest {
+                service_id: PRIMAL_NAME.to_string(),
+            };
 
-        let params = serde_json::to_value(&request)?;
+            let params = serde_json::to_value(&request)?;
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("coordination.deregister", params)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::warn!("Deregistration from coordination service failed: {e}");
-                serde_json::json!({})
-            });
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("coordination.deregister", params)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!("Deregistration from coordination service failed: {e}");
+                    serde_json::json!({})
+                });
 
-        tracing::info!("Successfully deregistered from coordination service via unix socket");
+            tracing::info!("Successfully deregistered from coordination service via unix socket");
 
-        Ok(())
+            Ok(())
+        }
     }
 }
 
 // Coordination-specific types (based on Coordination's Federation API)
 
+#[cfg(unix)]
 #[derive(Debug, Serialize, Deserialize)]
 struct CoordinationRegistrationRequest {
     service_id: String,
@@ -291,6 +345,7 @@ struct CoordinationRegistrationRequest {
     workload_endpoint: String,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Serialize, Deserialize)]
 struct CoordinationCapability {
     capability_id: String,
@@ -302,6 +357,7 @@ struct CoordinationCapability {
     confidence: f64,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Serialize, Deserialize)]
 struct CoordinationResourceRequirements {
     min_cpu_cores: u32,
@@ -310,6 +366,7 @@ struct CoordinationResourceRequirements {
     gpu_memory_mb: Option<u64>,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Serialize, Deserialize)]
 struct CoordinationHeartbeat {
     service_id: String,
@@ -318,6 +375,7 @@ struct CoordinationHeartbeat {
     status: String,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Serialize, Deserialize)]
 struct CoordinationCapabilityUpdate {
     service_id: String,
@@ -327,6 +385,7 @@ struct CoordinationCapabilityUpdate {
     timestamp: std::time::SystemTime,
 }
 
+#[cfg(unix)]
 #[derive(Debug, Serialize, Deserialize)]
 struct CoordinationDeregisterRequest {
     service_id: String,

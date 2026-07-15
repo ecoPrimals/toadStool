@@ -10,7 +10,6 @@ keywords = ["neuromorphic", "reservoir", "akida", "research"]
 categories = ["science", "hardware-support"]
 
 [dependencies]
-akida-driver = { path = "../akida-driver" }
 akida-models = { path = "../akida-models" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
@@ -19,6 +18,9 @@ tracing-subscriber = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rand_distr = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+akida-driver = { path = "../akida-driver" }
 
 [lib]
 name = "akida_reservoir_research"

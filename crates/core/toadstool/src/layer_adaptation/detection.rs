@@ -11,6 +11,7 @@ use std::fs;
 use toadstool_common::constants::platform_paths::{procfs, sysfs};
 
 /// Parses `MemTotal` from `/proc/meminfo`-style text; returns kB.
+#[cfg(target_os = "linux")]
 pub(crate) fn parse_meminfo_kb(contents: &str) -> Option<u64> {
     for line in contents.lines() {
         if line.starts_with("MemTotal:") {
@@ -22,6 +23,7 @@ pub(crate) fn parse_meminfo_kb(contents: &str) -> Option<u64> {
 }
 
 /// Returns read-bandwidth estimate in bytes/sec (`is_rotational`: `true` = HDD).
+#[cfg(target_os = "linux")]
 pub(crate) fn estimate_storage_bandwidth(is_rotational: bool) -> u64 {
     if is_rotational {
         150_000_000 // 150 MB/s for HDD
@@ -31,11 +33,13 @@ pub(crate) fn estimate_storage_bandwidth(is_rotational: bool) -> u64 {
 }
 
 /// Parses sysfs `speed` file contents (Mbps as decimal text).
+#[cfg(target_os = "linux")]
 pub(crate) fn parse_net_speed_mbps(speed_str: &str) -> Option<u64> {
     speed_str.trim().parse::<u64>().ok()
 }
 
 /// Converts megabits per second to bytes per second (decimal M = 1_000_000 bits).
+#[cfg(target_os = "linux")]
 pub(crate) fn mbps_to_bytes_per_sec(mbps: u64) -> u64 {
     (mbps * 1_000_000) / 8
 }
@@ -161,7 +165,7 @@ pub fn detect_network_bandwidth() -> Option<u64> {
     Some(125_000_000)
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::{
         estimate_storage_bandwidth, mbps_to_bytes_per_sec, parse_meminfo_kb, parse_net_speed_mbps,

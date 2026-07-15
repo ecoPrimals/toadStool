@@ -12,7 +12,6 @@ categories = ["cryptography", "no-std"]
 [dependencies]
 # Core ToadStool
 toadstool-common = { path = "../../core/common" }
-toadstool-hw-safe = { path = "../../core/hw-safe" }
 
 # Async runtime
 tokio = { workspace = true }
@@ -42,9 +41,8 @@ tracing-subscriber = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 
-# Memory management - Pure Rust Evolution (Feb 12, 2026)
-# OLD: libc = "0.2" (raw C bindings)
-# NEW: rustix provides safe Rust wrappers around syscalls
+[target.'cfg(target_os = "linux")'.dependencies]
+toadstool-hw-safe = { path = "../../core/hw-safe" }
 rustix = { workspace = true, features = ["mm"] }
 
 [dev-dependencies]
@@ -57,4 +55,3 @@ default = []
 
 [lints]
 workspace = true
-

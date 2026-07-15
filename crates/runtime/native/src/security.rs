@@ -2,7 +2,9 @@
 
 use std::path::Path;
 use tokio::process::Command as TokioCommand;
-use tracing::{debug, info, warn};
+#[cfg(any(unix, target_os = "linux"))]
+use tracing::info;
+use tracing::{debug, warn};
 
 use toadstool::security::{IsolationLevel, SecurityContext};
 

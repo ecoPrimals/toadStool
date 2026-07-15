@@ -25,6 +25,26 @@ pub mod manager;
 pub mod traits;
 pub mod types;
 
+/// Sandbox operation errors
+#[derive(Debug)]
+pub enum SandboxError {
+    /// Platform does not support the requested sandbox feature
+    PlatformNotSupported(String),
+}
+
+impl std::fmt::Display for SandboxError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PlatformNotSupported(msg) => write!(f, "platform not supported: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for SandboxError {}
+
+/// Sandbox operation result
+pub type SandboxResult<T> = std::result::Result<T, SandboxError>;
+
 // Platform-specific implementations
 #[cfg(target_os = "linux")]
 pub mod linux;

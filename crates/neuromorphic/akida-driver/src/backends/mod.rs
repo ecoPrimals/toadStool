@@ -11,19 +11,27 @@
 //! - Comprehensive error handling
 //! - Graceful fallbacks
 
+#[cfg(unix)]
 pub mod kernel;
+#[cfg(unix)]
 pub mod mmap;
+#[cfg(unix)]
 pub mod userspace;
+#[cfg(target_os = "linux")]
 pub mod vfio;
 
+#[cfg(unix)]
 pub use kernel::KernelBackend;
+#[cfg(unix)]
 pub use userspace::UserspaceBackend;
+#[cfg(target_os = "linux")]
 pub use vfio::{DmaBuffer, VfioBackend};
 
 /// Read NPU power consumption from hwmon sysfs (pure Rust, no `glob` crate).
 ///
 /// Enumerates `/sys/bus/pci/devices/{addr}/hwmon/hwmon*/power1_average`
 /// using `std::fs::read_dir` instead of the `glob` external dependency.
+#[cfg(unix)]
 pub(crate) fn read_hwmon_power(pcie_address: &str) -> Option<f32> {
     let hwmon_dir = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
     for entry in std::fs::read_dir(&hwmon_dir).ok()?.flatten() {
@@ -42,7 +50,7 @@ pub(crate) fn read_hwmon_power(pcie_address: &str) -> Option<f32> {
     None
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

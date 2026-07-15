@@ -5,18 +5,25 @@
 //! relay flow (parse ClientHello → BearDog `btsp.session.create` →
 //! ServerHello → ChallengeResponse → `btsp.session.verify` → complete).
 
+#[cfg(unix)]
 use base64::Engine;
+#[cfg(unix)]
 use serde::Deserialize;
+#[cfg(unix)]
 use serde_json::Value;
+#[cfg(unix)]
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
+#[cfg(unix)]
 use crate::unix_jsonrpc::ConnectedJsonRpcClient;
 
+#[cfg(unix)]
 use super::json_line::{
     BtspJsonLineError, BtspSessionInfo, handshake_timeout, parse_negotiated_cipher, require_str,
     require_str_line, rpc_timeout, send_error_line,
 };
 
+#[cfg(unix)]
 #[derive(Deserialize)]
 struct JsonLineClientHello {
     protocol: String,
@@ -24,6 +31,7 @@ struct JsonLineClientHello {
     client_ephemeral_pub: String,
 }
 
+#[cfg(unix)]
 #[derive(Deserialize)]
 struct JsonLineChallengeResponse {
     response: String,
@@ -44,6 +52,7 @@ struct JsonLineChallengeResponse {
 /// `BTSP_RPC_TIMEOUT_SECS`).
 ///
 /// On error at any step, sends an error JSON line and returns `Err`.
+#[cfg(unix)]
 pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     stream: &mut S,
     first_line: &str,
@@ -65,6 +74,7 @@ pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     result
 }
 
+#[cfg(unix)]
 async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
     stream: &mut S,
     first_line: &str,

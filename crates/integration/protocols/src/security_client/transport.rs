@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use serde::Serialize;
+#[cfg(unix)]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(unix)]
 use tokio::net::UnixStream;
+#[cfg(unix)]
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
+#[cfg(unix)]
 pub async fn make_jsonrpc_request<T: Serialize + Sync>(
     socket_path: &str,
     method: &str,
@@ -51,4 +55,16 @@ pub async fn make_jsonrpc_request<T: Serialize + Sync>(
         .get("result")
         .cloned()
         .ok_or_else(|| ToadStoolError::security("No result in response"))
+}
+
+#[cfg(not(unix))]
+pub async fn make_jsonrpc_request<T: Serialize + Sync>(
+    socket_path: &str,
+    method: &str,
+    params: &T,
+) -> ToadStoolResult<serde_json::Value> {
+    let _ = (socket_path, method, params);
+    Err(ToadStoolError::security(
+        "Unix socket transport is unavailable on this platform",
+    ))
 }
