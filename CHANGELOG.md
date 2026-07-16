@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 16, 2026 (Sessions 43-332+)
+## [Unreleased] - Jul 16, 2026 (Sessions 43-333+)
+
+### Session S333 (Jul 16, 2026) — Structural Debt: Test Extraction + Hardcoded Name Cleanup
+
+Extracted inline test modules from 7 large production files (−2,188 production lines) and replaced hardcoded primal names in BTSP relay with capability-based terms.
+
+- **Test extraction** — 7 files refactored below 500L by extracting `#[cfg(test)] mod tests` blocks into sibling `_tests.rs` files: `coordination/discovery/core.rs` (744→325, −56%), `network/load_balancer.rs` (517→141, −73%), `display/ipc/dispatch.rs` (582→193, −67%), `primal_sockets/paths.rs` (592→284, −52%), `background/kernel_sentinel.rs` (556→327, −41%), `background/catalyst_watchdog.rs` (691→474, −31%), `handler/ember.rs` (502→308, −39%).
+- **Hardcoded primal name cleanup** — `btsp/relay.rs`: replaced "BearDog" with "crypto provider" in all log messages, error strings, and doc comments. `btsp/family_seed.rs`: same for error messages and documentation.
+- **StubRuntimeEngine audit** — confirmed proper diagnostics and fail-fast behavior (probes WGPU/VFIO/WASM, names available backends in error messages, directs to `compute.engine.register`).
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S332 (Jul 16, 2026) — Phase 2 Silicon Atheism: Abstraction Over Gating
 

@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S330+ | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S333+ | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,206+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,232+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
@@ -278,7 +278,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (9,206+ lib default; +1,289 legacy-coordination) |
+| Workspace tests | **23,000+**, 0 failures (9,232+ lib default; +1,289 legacy-coordination) |
 | Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -301,7 +301,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,206+ lib); ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,232+ lib); ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
@@ -340,7 +340,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,206+ lib); ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,232+ lib); ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -383,7 +383,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jul 15, 2026 — S330+. **23,000+** workspace tests, 0 failures (9,206+ lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L**. **Zero clippy warnings** (S330). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
+**Last Updated**: Jul 16, 2026 — S333+. **23,000+** workspace tests, 0 failures (9,232+ lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L**. **Zero clippy warnings** (S333). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). Phase 2 GPU backends: `WgpuGpuDiscovery`, `PortableSwapExecutor`, `PortableResourceHandle` (S332). S333: 7 large files refactored via test extraction (−2,188 production lines), hardcoded primal names → capability terms in BTSP relay. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
 
 ---
 
