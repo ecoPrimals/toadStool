@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,175+ lib tests, 23,000+ workspace tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 44 unsafe (all SAFETY-documented), 100% env centralized, BIOMEOS_SOCKET_DIR compliant, auto-register hardware, GRPC deleted"
-date = 2026-06-13
+description = "Sovereign compute hardware primal — 9,232+ lib tests, 23,000+ workspace tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 44 unsafe (all SAFETY-documented), 100% env centralized, cross-platform GPU backends (WgpuGpuDiscovery, PortableSwapExecutor, PortableResourceHandle), cfg-gated cross-arch"
+date = 2026-07-16
 
 [taxonomies]
 primals = ["toadstool"]
@@ -10,9 +10,9 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S328, Jul 6, 2026)
-- **Lib tests**: 9,175+ (0 failures, unlimited parallelism)
-- **Workspace tests**: 23,000+ (0 failures, ~221 hardware-gated ignores; 9,175+ lib-only)
+- **Version**: 0.2.0 (Session S333+, Jul 16, 2026)
+- **Lib tests**: 9,232+ (0 failures, unlimited parallelism)
+- **Workspace tests**: 23,000+ (0 failures, ~221 hardware-gated ignores; 9,232+ lib-only)
 - **JSON-RPC methods**: 112 (direct) + semantic registry aliases
 - **Workspace crates**: 47
 - **Clippy**: 0 warnings (`-D warnings`)
