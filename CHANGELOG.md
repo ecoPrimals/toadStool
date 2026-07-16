@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 15, 2026 (Sessions 43-331+)
+## [Unreleased] - Jul 16, 2026 (Sessions 43-332+)
+
+### Session S332 (Jul 16, 2026) — Phase 2 Silicon Atheism: Abstraction Over Gating
+
+Cross-platform GPU backends for glowplug and ember — every platform is first-class, not just cfg-gated. Implements Wave 142b Phase 2 toadStool tasks.
+
+- **`WgpuGpuDiscovery`** — `runtime/gpu`: cross-platform `DeviceDiscovery` implementation using `wgpu::Instance::enumerate_adapters()`. Works on Linux (Vulkan), Windows (DX12/Vulkan), Android (Vulkan), macOS (Metal). Adapters identified as `DeviceId::Platform("wgpu:<backend>:<vendor>:<device>:<name>")`. Gated behind `webgpu` feature (default-on). +7 tests.
+- **`PortableSwapExecutor`** — `glowplug`: platform-agnostic `SwapExecutor` for platforms without kernel driver swap (sysfs). Tracks personality as logical state (`compute`, `graphics`, `low-power`, `unbound`). Available unconditionally alongside Linux-only `SysfsSwapExecutor`. +7 tests.
+- **`PortableResourceHandle`** — `ember`: cross-platform `ResourceHandle` implementation without VFIO file descriptors. `GpuBackend` enum (Vulkan/Metal/DX12/WebGPU/Software) with atomic liveness tracking. Works in `HeldResource<PortableResourceHandle>` alongside existing `HeldResource<VfioResourceHandle>`. +12 tests.
+- **Quality gates** — 9,232 lib tests (+26), 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S331 (Jul 15, 2026) — Borrowed Deserialization Sweep + Test Race Fix
 

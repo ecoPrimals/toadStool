@@ -58,6 +58,7 @@ pub mod firmware;
 pub mod health;
 pub mod personality;
 pub mod plx;
+pub mod portable_executor;
 pub mod swap;
 #[cfg(target_os = "linux")]
 pub mod sysfs_executor;
@@ -75,6 +76,7 @@ pub use firmware::{BootServiceEvidence, FirmwareInterface};
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
 pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
+pub use portable_executor::PortableSwapExecutor;
 pub use swap::{ExitBootServicesFn, SwapExecutor, SwapObservation, SwapOrchestrator};
 #[cfg(target_os = "linux")]
 pub use sysfs_executor::SysfsSwapExecutor;

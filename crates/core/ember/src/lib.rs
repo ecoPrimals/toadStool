@@ -42,6 +42,7 @@ pub mod lend_reclaim;
 pub mod metadata;
 pub mod observation;
 pub mod plx_keepalive;
+pub mod portable_handle;
 pub mod pri_ring_anchor;
 pub mod resource_handle;
 pub mod ring_meta;
@@ -65,6 +66,7 @@ pub use plx_keepalive::{
     ActivityTracker, KeepaliveHandle, PLX_VENDOR_ID, PcieBridgeKeepalive, PlxKeepalive,
     detect_pcie_bridges, detect_plx_bridge, is_pci_bdf,
 };
+pub use portable_handle::{GpuBackend, PortableHandleError, PortableResourceHandle};
 pub use pri_ring_anchor::{
     BootServiceEvidence as EmberBootServiceEvidence, PriRingAnchor, PriRingHealth,
 };

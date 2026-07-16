@@ -26,7 +26,11 @@
 pub mod discovery;
 pub mod firmware;
 pub mod personality;
+#[cfg(feature = "webgpu")]
+pub mod wgpu_discovery;
 
 pub use discovery::GpuDiscovery;
 pub use firmware::GpuFirmwareAccess;
 pub use personality::{GpuPersonality, GpuPersonalityRegistry};
+#[cfg(feature = "webgpu")]
+pub use wgpu_discovery::WgpuGpuDiscovery;
