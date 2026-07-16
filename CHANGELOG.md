@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 16, 2026 (Sessions 43-334+)
+## [Unreleased] - Jul 16, 2026 (Sessions 43-335+)
+
+### Session S335 (Jul 16, 2026) — Doc-Comment Primal Cleanup + Test Extraction Waves 4-5 + Dead Code Elimination
+
+Replaced hardcoded primal names in doc comments across 9 server/distributed files, extracted tests from 10 more production files (−1,103 production lines), and eliminated dead `DispatchJob.id` field revealed by S334 clone optimization.
+
+- **Doc-comment primal name sweep** — 22 replacements across 9 production files: BearDog → crypto provider, songBird → communication provider, coralReef → shader compiler / compilation provider. All in doc comments only; serde aliases and env constants preserved.
+- **Test extraction wave 4** — 5 files (−628L): `cylinder/hardware.rs` (508→356), `cylinder/vfio/amd_metal.rs` (613→496), `cylinder/nv/pushbuf.rs` (612→502), `neuromorphic/comprehensive_benchmark.rs` (516→382), `display/drm/buffer.rs` (514→394).
+- **Test extraction wave 5** — 5 files (−475L): `cylinder/nv/hardware_guard.rs` (598→508), `server/background/pcie_keepalive.rs` (636→548), `cylinder/vfio/sovereign_strategy.rs` (589→503), `common/error_codes.rs` (512→412), `gpu/unified_memory/types.rs` (524→418).
+- **Dead code elimination** — removed `DispatchJob.id` field (dead after S334 clone optimization) and both initializer sites in `submit.rs`/`shader_dispatch.rs`. Eliminated one more `job_id.clone()` per dispatch path.
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff. Workspace check clean.
 
 ### Session S334 (Jul 16, 2026) — Test Extraction Waves 2-3 + Hot-Path Clone Polish
 

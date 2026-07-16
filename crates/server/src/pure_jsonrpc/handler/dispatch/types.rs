@@ -2,7 +2,6 @@
 
 #[derive(Debug, Clone)]
 pub(super) struct DispatchJob {
-    pub(super) id: String,
     pub(super) bdf: String,
     pub(super) status: DispatchStatus,
     pub(super) submitted_at: std::time::Instant,

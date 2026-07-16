@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! songBird `ipc.watch` background poller.
+//! Communication provider `ipc.watch` background poller.
 //!
-//! Polls songBird's `ipc.watch` method for `shader` capability registration events.
-//! When a new shader provider registers (e.g. coralReef coming online), invalidates
+//! Polls the communication provider's `ipc.watch` method for `shader` capability registration events.
+//! When a new shader provider registers (e.g. the shader compiler coming online), invalidates
 //! the [`VisualizationClient`] cache so the dispatch handler re-discovers the provider
 //! on its next call.
 //!
 //! This resolves GAP-HS-119: toadStool's dispatch path previously cached the first
-//! discovery result permanently via `OnceCell`. If coralReef wasn't running at
+//! discovery result permanently via `OnceCell`. If the shader compiler wasn't running at
 //! toadStool startup, shader dispatch was permanently broken until restart.
 
 use crate::visualization_client::SharedVisualizationClient;

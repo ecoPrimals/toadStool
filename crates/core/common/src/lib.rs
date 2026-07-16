@@ -28,6 +28,8 @@ pub mod constants; // Ecosystem constants: JSON-RPC codes, timeouts, network def
 pub mod discovery_defaults; // NEW: Fallback defaults for service discovery (infant pattern)
 pub mod error;
 pub mod error_codes;
+#[cfg(test)]
+mod error_codes_tests;
 pub mod infant_discovery;
 pub mod interned_strings; // NEW: Zero-allocation string constants
 pub mod modern_utils;

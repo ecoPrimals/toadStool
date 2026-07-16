@@ -10,6 +10,9 @@
 
 #[cfg(feature = "amd")]
 pub mod amd_metal;
+
+#[cfg(all(test, feature = "amd"))]
+mod amd_metal_tests;
 pub mod bar_cartography;
 pub mod boot_state;
 pub mod cache_ops;
@@ -50,6 +53,8 @@ pub mod sovereign_profile;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_stages;
 pub mod sovereign_strategy;
+#[cfg(test)]
+mod sovereign_strategy_tests;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_tiers;
 pub mod sovereign_types;

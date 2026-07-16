@@ -32,6 +32,8 @@ pub(crate) mod kernel_sentinel;
 mod kernel_sentinel_tests;
 #[cfg(target_os = "linux")]
 pub(crate) mod pcie_keepalive;
+#[cfg(all(test, target_os = "linux"))]
+mod pcie_keepalive_tests;
 mod resource;
 mod statistics;
 

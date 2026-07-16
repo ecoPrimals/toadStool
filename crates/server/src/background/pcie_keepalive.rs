@@ -34,15 +34,15 @@ use tracing::{debug, info, warn};
 
 use toadstool_ember::plx_keepalive::{ActivityTracker, PLX_VENDOR_ID, is_pci_bdf};
 
-const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(3);
+pub(crate) const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(3);
 
-const BURST_INTERVAL: Duration = Duration::from_millis(10);
+pub(crate) const BURST_INTERVAL: Duration = Duration::from_millis(10);
 
 const DISCOVERY_RETRIES: usize = 3;
 const DISCOVERY_RETRY_DELAY: Duration = Duration::from_secs(1);
 
 /// Global swap-guard refcount. When >0, keepalive runs at burst frequency.
-static SWAP_GUARD_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SWAP_GUARD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// BDFs excluded from config-space reads during driver transitions.
 /// A config read to a device undergoing SBR can hold the global `pci_lock`
@@ -137,7 +137,7 @@ fn is_excluded(bdf: &str) -> bool {
         .contains(bdf)
 }
 
-fn current_interval() -> Duration {
+pub(crate) fn current_interval() -> Duration {
     if SWAP_GUARD_COUNT.load(Ordering::Relaxed) > 0 {
         BURST_INTERVAL
     } else {
@@ -146,19 +146,19 @@ fn current_interval() -> Duration {
 }
 
 /// PCI base class + subclass for PCI-to-PCI bridge.
-const PCI_CLASS_BRIDGE_PCI: u16 = 0x0604;
+pub(crate) const PCI_CLASS_BRIDGE_PCI: u16 = 0x0604;
 /// PCI base class + subclass for VGA-compatible controller.
-const PCI_CLASS_VGA: u16 = 0x0300;
+pub(crate) const PCI_CLASS_VGA: u16 = 0x0300;
 /// PCI base class + subclass for 3D controller (non-VGA GPU).
-const PCI_CLASS_3D: u16 = 0x0302;
+pub(crate) const PCI_CLASS_3D: u16 = 0x0302;
 
 /// Extract `base_class:subclass` (16-bit) from the raw 32-bit PCI
 /// class register at config offset 0x08.
-fn pci_base_subclass(class_reg: u32) -> u16 {
+pub(crate) fn pci_base_subclass(class_reg: u32) -> u16 {
     ((class_reg >> 16) & 0xFFFF) as u16
 }
 
-fn read_config_u16(bdf: &str, offset: u64) -> Option<u16> {
+pub(crate) fn read_config_u16(bdf: &str, offset: u64) -> Option<u16> {
     let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
     let mut f = std::fs::File::open(&path).ok()?;
     f.seek(SeekFrom::Start(offset)).ok()?;
@@ -167,7 +167,7 @@ fn read_config_u16(bdf: &str, offset: u64) -> Option<u16> {
     Some(u16::from_le_bytes(buf))
 }
 
-fn read_config_u32(bdf: &str, offset: u64) -> Option<u32> {
+pub(crate) fn read_config_u32(bdf: &str, offset: u64) -> Option<u32> {
     let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "config");
     let mut f = std::fs::File::open(&path).ok()?;
     f.seek(SeekFrom::Start(offset)).ok()?;
@@ -176,7 +176,7 @@ fn read_config_u32(bdf: &str, offset: u64) -> Option<u32> {
     Some(u32::from_le_bytes(buf))
 }
 
-fn discover_plx_bridges() -> Vec<String> {
+pub(crate) fn discover_plx_bridges() -> Vec<String> {
     let mut bridges = Vec::new();
     let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
     else {
@@ -207,7 +207,7 @@ fn discover_plx_bridges() -> Vec<String> {
 /// Walk each GPU's sysfs ancestry to find PLX bridges that class-based
 /// scanning might miss (e.g., if the bridge's config space was temporarily
 /// returning 0xFFFF during early boot).
-fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
+pub(crate) fn discover_plx_bridges_via_gpu_ancestry() -> Vec<String> {
     let mut bridges = Vec::new();
     let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
     else {
@@ -326,7 +326,7 @@ fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
     gpus
 }
 
-fn discover_gpu_bridges() -> Vec<String> {
+pub(crate) fn discover_gpu_bridges() -> Vec<String> {
     let mut bridges = Vec::new();
     let Ok(entries) = std::fs::read_dir(toadstool_cylinder::linux_paths::sysfs_pci_devices())
     else {
@@ -544,93 +544,5 @@ pub(crate) async fn run() {
             }
             consecutive_failures = 0;
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn pci_base_subclass_bridge() {
-        // PLX PEX 8747: class register 0x060400ca
-        assert_eq!(pci_base_subclass(0x0604_00ca), PCI_CLASS_BRIDGE_PCI);
-    }
-
-    #[test]
-    fn pci_base_subclass_3d_controller() {
-        // Tesla K80 GK210: class register 0x030200a1
-        assert_eq!(pci_base_subclass(0x0302_00a1), PCI_CLASS_3D);
-    }
-
-    #[test]
-    fn pci_base_subclass_vga() {
-        // RTX 5060: class register 0x030000a1
-        assert_eq!(pci_base_subclass(0x0300_00a1), PCI_CLASS_VGA);
-    }
-
-    #[test]
-    fn pci_base_subclass_dead_device() {
-        assert_eq!(pci_base_subclass(0xFFFF_FFFF), 0xFFFF);
-    }
-
-    #[test]
-    fn read_config_u16_nonexistent() {
-        assert!(read_config_u16("9999:99:99.9", 0x00).is_none());
-    }
-
-    #[test]
-    fn read_config_u32_nonexistent() {
-        assert!(read_config_u32("9999:99:99.9", 0x08).is_none());
-    }
-
-    #[test]
-    fn discover_plx_bridges_runs_without_panic() {
-        let bridges = discover_plx_bridges();
-        for bdf in &bridges {
-            assert!(is_pci_bdf(bdf), "invalid BDF in PLX bridges: {bdf}");
-        }
-    }
-
-    #[test]
-    fn discover_gpu_bridges_runs_without_panic() {
-        let bridges = discover_gpu_bridges();
-        for bdf in &bridges {
-            assert!(is_pci_bdf(bdf), "invalid BDF in GPU bridges: {bdf}");
-        }
-    }
-
-    #[test]
-    fn discover_ancestry_runs_without_panic() {
-        let bridges = discover_plx_bridges_via_gpu_ancestry();
-        for bdf in &bridges {
-            assert!(is_pci_bdf(bdf), "invalid BDF from ancestry walk: {bdf}");
-        }
-    }
-
-    #[test]
-    fn activity_tracker_integration() {
-        let tracker = activity_tracker();
-        // Initially no activity
-        assert!(tracker.ms_since_last() > 1_000_000 || tracker.ms_since_last() == u64::MAX);
-
-        tracker.record();
-        assert!(tracker.ms_since_last() < 1000);
-    }
-
-    #[test]
-    fn swap_guard_refcount() {
-        assert_eq!(SWAP_GUARD_COUNT.load(Ordering::Relaxed), 0);
-        let guard = SwapGuard::enter();
-        assert_eq!(SWAP_GUARD_COUNT.load(Ordering::Relaxed), 1);
-        assert_eq!(current_interval(), BURST_INTERVAL);
-        drop(guard);
-        assert_eq!(SWAP_GUARD_COUNT.load(Ordering::Relaxed), 0);
-        assert_eq!(current_interval(), KEEPALIVE_INTERVAL);
-    }
-
-    #[test]
-    fn current_interval_normal() {
-        assert_eq!(current_interval(), KEEPALIVE_INTERVAL);
     }
 }

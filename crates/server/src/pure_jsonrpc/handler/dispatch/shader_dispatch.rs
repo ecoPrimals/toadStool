@@ -111,7 +111,6 @@ impl DispatchHandler {
         let submit_instant = std::time::Instant::now();
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {
-            id: job_id.clone(),
             bdf: bdf.clone(),
             status: DispatchStatus::Submitted,
             submitted_at: submit_instant,

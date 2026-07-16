@@ -39,8 +39,8 @@ const SMC_IND_INDEX_11: usize = 0x01AC;
 const SMC_IND_DATA_11: usize = 0x01AD;
 
 // GRBM (Graphics Request Broker Manager)
-const GRBM_STATUS: usize = 0x8010;
-const GRBM_STATUS2: usize = 0x8008;
+pub(crate) const GRBM_STATUS: usize = 0x8010;
+pub(crate) const GRBM_STATUS2: usize = 0x8008;
 const GRBM_SOFT_RESET: usize = 0x8020;
 
 // GFX / GC (Graphics Core) — memory config
@@ -51,7 +51,7 @@ const MC_VM_FB_LOCATION_BASE: usize = 0x2023;
 const MC_VM_FB_LOCATION_TOP: usize = 0x2024;
 
 // SRBM, CP, SDMA, RLC, MMHUB
-const SRBM_STATUS: usize = 0x0E50;
+pub(crate) const SRBM_STATUS: usize = 0x0E50;
 const CP_STAT: usize = 0x8680;
 const SDMA0_BASE: usize = 0x4D00;
 const SDMA1_BASE: usize = 0x5900;
@@ -62,7 +62,7 @@ const MI50_HBM2_SIZE: u64 = 16 * 1024 * 1024 * 1024;
 const MI50_HBM2_STACKS: u32 = 4;
 const MI50_L2_SIZE: u64 = 4 * 1024 * 1024;
 const MI50_L2_SLICES: u32 = 16;
-const BUSY_BIT_MASK: u32 = 0x8000_0000;
+pub(crate) const BUSY_BIT_MASK: u32 = 0x8000_0000;
 
 /// AMD Vega 20 (MI50) identity.
 #[derive(Debug, Clone)]
@@ -387,7 +387,7 @@ pub struct VegaInitResult {
 #[derive(Debug)]
 pub struct VegaInit {
     #[expect(dead_code, reason = "BDF stored for future AMD metal init pipeline")]
-    bdf: Option<String>,
+    pub(crate) bdf: Option<String>,
 }
 
 impl Default for VegaInit {
@@ -492,122 +492,5 @@ impl BootPipeline for VegaInit {
         let gfx_idle = (grbm & BUSY_BIT_MASK) == 0;
         let sys_idle = (srbm & BUSY_BIT_MASK) == 0;
         Ok(gfx_idle && sys_idle && grbm != 0xFFFF_FFFF)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::vfio::device::ApplyError;
-
-    struct FakeBar {
-        grbm: u32,
-        grbm2: u32,
-        srbm: u32,
-    }
-
-    impl RegisterAccess for FakeBar {
-        fn read_u32(&self, offset: u32) -> Result<u32, ApplyError> {
-            match offset as usize {
-                GRBM_STATUS => Ok(self.grbm),
-                GRBM_STATUS2 => Ok(self.grbm2),
-                SRBM_STATUS => Ok(self.srbm),
-                _ => Ok(0),
-            }
-        }
-
-        fn write_u32(&mut self, _offset: u32, _value: u32) -> Result<(), ApplyError> {
-            Ok(())
-        }
-    }
-
-    #[test]
-    fn vega_probe_warm_detection() {
-        let bar = FakeBar {
-            grbm: 0x0000_3000,
-            grbm2: 0x0000_0100,
-            srbm: 0x0000_0000,
-        };
-        let vega = VegaInit::new();
-        let probe = BootPipeline::probe(&vega, &bar).unwrap();
-        assert!(vega.is_warm(&probe));
-        assert_eq!(probe.grbm_status, 0x0000_3000);
-
-        let summary = vega.probe_summary(&probe);
-        assert_eq!(summary.vendor, Vendor::Amd);
-        assert_eq!(summary.family, "Vega 20");
-        assert!(summary.warm);
-    }
-
-    #[test]
-    fn vega_probe_cold_detection() {
-        let bar = FakeBar {
-            grbm: 0xFFFF_FFFF,
-            grbm2: 0xFFFF_FFFF,
-            srbm: 0xFFFF_FFFF,
-        };
-        let vega = VegaInit::new();
-        let probe = BootPipeline::probe(&vega, &bar).unwrap();
-        assert!(!vega.is_warm(&probe));
-    }
-
-    #[test]
-    fn vega_warm_devinit_succeeds() {
-        let bar = FakeBar {
-            grbm: 0x0000_3000,
-            grbm2: 0,
-            srbm: 0,
-        };
-        let vega = VegaInit::new();
-        let probe = BootPipeline::probe(&vega, &bar).unwrap();
-        let init = BootPipeline::devinit(&vega, &bar, &probe).unwrap();
-        assert!(init.memory_alive);
-        assert_eq!(init.method, "warm-skip");
-    }
-
-    #[test]
-    fn vega_cold_devinit_unsupported() {
-        let bar = FakeBar {
-            grbm: 0xFFFF_FFFF,
-            grbm2: 0xFFFF_FFFF,
-            srbm: 0xFFFF_FFFF,
-        };
-        let vega = VegaInit::new();
-        let probe = BootPipeline::probe(&vega, &bar).unwrap();
-        assert!(BootPipeline::devinit(&vega, &bar, &probe).is_err());
-    }
-
-    #[test]
-    fn vega_verify_idle() {
-        let bar = FakeBar {
-            grbm: 0x0000_3000,
-            grbm2: 0,
-            srbm: 0,
-        };
-        let vega = VegaInit::new();
-        assert!(BootPipeline::verify(&vega, &bar).unwrap());
-    }
-
-    #[test]
-    fn vega_verify_busy() {
-        let bar = FakeBar {
-            grbm: BUSY_BIT_MASK | 0x100,
-            grbm2: 0,
-            srbm: 0,
-        };
-        let vega = VegaInit::new();
-        assert!(!BootPipeline::verify(&vega, &bar).unwrap());
-    }
-
-    #[test]
-    fn vega_device_family() {
-        let vega = VegaInit::new();
-        assert_eq!(vega.device_family(), "Vega 20");
-    }
-
-    #[test]
-    fn vega_with_bdf() {
-        let vega = VegaInit::with_bdf("0000:03:00.0");
-        assert_eq!(vega.bdf.as_deref(), Some("0000:03:00.0"));
     }
 }

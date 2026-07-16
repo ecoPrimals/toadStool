@@ -127,9 +127,9 @@ impl JsonRpcHandler {
 
         let coral_client = crate::visualization_client::create_visualization_client();
 
-        // Spawn ipc.watch background poller — watches songBird for shader
+        // Spawn ipc.watch background poller — watches the communication provider for shader
         // capability registrations and invalidates the visualization client
-        // cache so dispatch can discover coralReef at any time (GAP-HS-119).
+        // cache so dispatch can discover the shader compiler at any time (GAP-HS-119).
         #[cfg(unix)]
         {
             let watch_client = Arc::clone(&coral_client);
@@ -214,8 +214,8 @@ impl JsonRpcHandler {
         self.anchor_store.clone()
     }
 
-    /// Attempt to connect to the Tower crypto client (BearDog) for crypto
-    /// delegation. Returns `None` in standalone mode (no crypto capability socket).
+    /// Attempt to connect to the crypto provider for crypto delegation.
+    /// Returns `None` in standalone mode (no crypto capability socket).
     fn try_connect_crypto_client()
     -> Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>> {
         let socket = toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
@@ -305,7 +305,7 @@ impl JsonRpcHandler {
 ///
 /// Defaults to anonymous. Unix connections without BTSP get
 /// [`DispatchTrustLevel::LocalTransport`]. Completed BTSP handshakes set
-/// [`DispatchTrustLevel::BtspVerified`] (BearDog JH-1 will add mutual auth).
+/// [`DispatchTrustLevel::BtspVerified`] (crypto provider JH-1 will add mutual auth).
 pub(super) fn extract_caller_context(conn: ConnectionTrustHints) -> CallerContext {
     let mut ctx = CallerContext::anonymous();
     if conn.mutually_authenticated {

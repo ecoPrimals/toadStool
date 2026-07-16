@@ -16,6 +16,8 @@ pub mod generation;
 pub mod gr_init;
 pub mod gsp_bridge;
 pub mod hardware_guard;
+#[cfg(test)]
+mod hardware_guard_tests;
 pub mod identity;
 pub mod ioctl;
 pub mod iova;
@@ -24,6 +26,9 @@ pub mod pmu_init;
 pub mod pri;
 #[expect(missing_docs, reason = "NV pushbuf — docs tracked as D-DOC")]
 pub mod pushbuf;
+
+#[cfg(test)]
+mod pushbuf_tests;
 pub mod qmd;
 pub mod registers;
 pub mod rm_abi;

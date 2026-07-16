@@ -387,7 +387,7 @@ impl SecurityClient {
         }
     }
 
-    /// Retrieve a purpose key from BearDog secrets store.
+    /// Retrieve a purpose key from the crypto provider secrets store.
     ///
     /// The key name follows the NUCLEUS Two-Tier Crypto Model convention:
     /// `"nucleus:{family}:purpose:{purpose}"` (e.g. `"nucleus:abc123:purpose:compute"`).

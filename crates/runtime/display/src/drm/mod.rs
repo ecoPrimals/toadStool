@@ -7,6 +7,9 @@
 //! Uses `linux-drm` for 100% Pure Rust implementation.
 
 pub mod buffer;
+
+#[cfg(test)]
+mod buffer_tests;
 pub mod connector;
 pub mod device;
 pub mod modesetting;

@@ -16,7 +16,7 @@ use toadstool_distributed::crypto_integration::{
 };
 
 impl DispatchHandler {
-    /// Lazily fetch and cache the `compute` purpose key from BearDog secrets.
+    /// Lazily fetch and cache the `compute` purpose key from the crypto provider secrets store.
     ///
     /// Returns `Arc<EncryptionKey>` — cache hits cost a pointer bump, not a
     /// full key-material clone.
@@ -206,7 +206,6 @@ impl DispatchHandler {
         let submit_instant = std::time::Instant::now();
         let binary_size = binary_bytes.len();
         let job = DispatchJob {
-            id: job_id.clone(),
             bdf: bdf.clone(),
             status: DispatchStatus::Submitted,
             submitted_at: submit_instant,

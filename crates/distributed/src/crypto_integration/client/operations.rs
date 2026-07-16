@@ -228,7 +228,7 @@ impl CryptoServiceClient {
         }
     }
 
-    /// Retrieve a purpose key from BearDog secrets store.
+    /// Retrieve a purpose key from the crypto provider secrets store.
     ///
     /// Key name: `"nucleus:{family}:purpose:{purpose}"`. When `family` is `None`,
     /// reads `TOADSTOOL_FAMILY_ID` (or related env vars).

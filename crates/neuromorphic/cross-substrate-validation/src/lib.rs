@@ -12,4 +12,7 @@
 
 pub mod comprehensive_benchmark;
 
+#[cfg(test)]
+mod comprehensive_benchmark_tests;
+
 pub use comprehensive_benchmark::*;

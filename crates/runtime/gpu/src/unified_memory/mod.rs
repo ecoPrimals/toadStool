@@ -96,6 +96,8 @@ pub mod backend_dispatch;
 pub mod buffer;
 pub mod manager;
 pub mod types;
+#[cfg(test)]
+mod types_tests;
 
 // Backend implementations
 pub mod backends;

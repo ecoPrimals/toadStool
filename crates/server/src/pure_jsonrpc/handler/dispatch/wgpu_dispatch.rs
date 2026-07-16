@@ -180,7 +180,7 @@ fn run_wgpu_dispatch(
     buffer_descs: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     // Validate SPIR-V magic (0x07230203 LE) before using passthrough.
-    // coralReef may return its internal binary format instead of SPIR-V;
+    // The shader compiler may return its internal binary format instead of SPIR-V;
     // feeding non-SPIR-V to the Vulkan driver causes immediate device loss.
     let is_valid_spirv = binary.len() >= 4 && {
         let magic = u32::from_le_bytes([binary[0], binary[1], binary[2], binary[3]]);
@@ -198,7 +198,7 @@ fn run_wgpu_dispatch(
             "wgpu dispatch: SPIR-V passthrough"
         );
         #[expect(unsafe_code, reason = "spirv shader module creation requires unsafe")]
-        // SAFETY: SPIR-V magic validated; compiled by coralReef (trusted primal).
+        // SAFETY: SPIR-V magic validated; compiled by the shader compiler (trusted provider).
         unsafe {
             ctx.device
                 .create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {

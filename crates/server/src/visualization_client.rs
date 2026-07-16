@@ -7,11 +7,11 @@
 //!
 //! ## Live re-discovery via `ipc.watch`
 //!
-//! When songBird reports a new `shader` capability registration via `ipc.watch`,
+//! When the communication provider reports a new `shader` capability registration via `ipc.watch`,
 //! the background watcher calls [`VisualizationClient::invalidate`] to trigger
 //! re-discovery on the next `is_available()` / `client_ref()` call. This replaces
 //! the previous `OnceCell`-based permanent cache that could never recover if
-//! coralReef registered after toadStool startup.
+//! the shader compiler registered after toadStool startup.
 //!
 //! Discovery tiers (per `wateringHole/CAPABILITY_BASED_DISCOVERY_STANDARD.md`):
 //! - **Tier 0:** `TOADSTOOL_SHADER_COMPILER_ADDR` (explicit override; evaluated in the blocking fallback after Tier 1 does not yield a usable socket).
@@ -29,7 +29,7 @@ use tracing::{debug, warn};
 
 /// Client for the native shader compilation pipeline (discovered via the `shader` capability).
 ///
-/// Uses capability-based discovery with live invalidation support. When songBird's
+/// Uses capability-based discovery with live invalidation support. When the communication provider's
 /// `ipc.watch` reports a new shader provider, `invalidate()` clears the cache so
 /// the next call triggers fresh discovery.
 pub struct VisualizationClient {
@@ -70,8 +70,8 @@ impl VisualizationClient {
 
     /// Invalidate the cached client, forcing re-discovery on next access.
     ///
-    /// Called by the `ipc.watch` background watcher when songBird reports a new
-    /// shader capability registration (e.g. coralReef coming online after toadStool).
+    /// Called by the `ipc.watch` background watcher when the communication provider reports a new
+    /// shader capability registration (e.g. the shader compiler coming online after toadStool).
     pub async fn invalidate(&self) {
         let mut cache = self.inner.write().await;
         if cache.initialized {

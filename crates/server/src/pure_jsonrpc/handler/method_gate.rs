@@ -82,7 +82,7 @@ pub enum DispatchTrustLevel {
 pub struct ConnectionTrustHints {
     pub transport: ConnectionTransport,
     pub btsp_verified: bool,
-    /// Completed mutual BTSP handshake (BearDog JH-1).
+    /// Completed mutual BTSP handshake (crypto provider JH-1).
     pub mutually_authenticated: bool,
 }
 
