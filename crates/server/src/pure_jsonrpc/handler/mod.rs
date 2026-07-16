@@ -11,6 +11,8 @@ mod core;
 mod dispatch;
 #[cfg(target_os = "linux")]
 mod ember;
+#[cfg(all(test, target_os = "linux"))]
+mod ember_tests;
 #[cfg(target_os = "linux")]
 mod hw_learn;
 mod job;

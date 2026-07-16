@@ -3,6 +3,8 @@
 pub mod distributor;
 /// Load balancer and circuit breaker for fault tolerance.
 pub mod load_balancer;
+#[cfg(test)]
+mod load_balancer_tests;
 /// Network request/response metrics.
 pub mod metrics;
 

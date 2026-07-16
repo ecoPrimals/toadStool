@@ -20,12 +20,16 @@
 mod capability;
 #[cfg(target_os = "linux")]
 pub(crate) mod catalyst_watchdog;
+#[cfg(all(test, target_os = "linux"))]
+mod catalyst_watchdog_tests;
 mod cleanup;
 mod health;
 #[cfg(unix)]
 pub(crate) mod ipc_watch;
 #[cfg(target_os = "linux")]
 pub(crate) mod kernel_sentinel;
+#[cfg(all(test, target_os = "linux"))]
+mod kernel_sentinel_tests;
 #[cfg(target_os = "linux")]
 pub(crate) mod pcie_keepalive;
 mod resource;

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! 4-step JSON-line BTSP handshake relay via BearDog JSON-RPC.
+//! 4-step JSON-line BTSP handshake relay via crypto provider JSON-RPC.
 //!
 //! Extracted from `json_line.rs` for cohesion: this module owns the full
-//! relay flow (parse ClientHello → BearDog `btsp.session.create` →
-//! ServerHello → ChallengeResponse → `btsp.session.verify` → complete).
+//! relay flow (parse `ClientHello` → crypto `btsp.session.create` →
+//! `ServerHello` → `ChallengeResponse` → `btsp.session.verify` → complete).
 
 #[cfg(unix)]
 use base64::Engine;
@@ -39,15 +39,15 @@ struct JsonLineChallengeResponse {
 }
 
 /// 4-step JSON-line BTSP handshake relay:
-/// 1. Parse ClientHello from the first line (already read)
-/// 2. Call BearDog `btsp.session.create` with `family_seed` (base64-encoded)
-/// 3. Send ServerHello as JSON line (challenge FROM BearDog, not self-generated)
-/// 4. Read ChallengeResponse JSON line from client
-/// 5. Call BearDog `btsp.session.verify` with session_token, response, client_ephemeral_pub, preferred_cipher
-/// 6. Send HandshakeComplete JSON line
+/// 1. Parse `ClientHello` from the first line (already read)
+/// 2. Call crypto provider `btsp.session.create` with `family_seed` (base64-encoded)
+/// 3. Send `ServerHello` as JSON line (challenge from crypto provider, not self-generated)
+/// 4. Read `ChallengeResponse` JSON line from client
+/// 5. Call crypto provider `btsp.session.verify` with session_token, response, client_ephemeral_pub, preferred_cipher
+/// 6. Send `HandshakeComplete` JSON line
 ///
 /// The entire handshake is bounded by `BTSP_HANDSHAKE_TIMEOUT` (default 5s,
-/// override via `BTSP_HANDSHAKE_TIMEOUT_SECS`). Each BearDog RPC call is
+/// override via `BTSP_HANDSHAKE_TIMEOUT_SECS`). Each crypto RPC call is
 /// individually bounded by `BTSP_RPC_TIMEOUT` (default 3s, override via
 /// `BTSP_RPC_TIMEOUT_SECS`).
 ///
@@ -108,17 +108,17 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
         return Err(BtspJsonLineError::Protocol(msg));
     }
 
-    // Single BearDog connection for both RPCs (SOURDOUGH_BTSP_RELAY_PATTERN §Part 2).
+    // Single crypto provider connection for both RPCs (SOURDOUGH_BTSP_RELAY_PATTERN §Part 2).
     let t_connect = std::time::Instant::now();
     let mut rpc = ConnectedJsonRpcClient::connect(security_socket)
         .await
         .map_err(|e| {
-            BtspJsonLineError::Rpc(format!("BearDog connect to {security_socket}: {e}"))
+            BtspJsonLineError::Rpc(format!("crypto provider connect to {security_socket}: {e}"))
         })?;
     tracing::debug!(
         target: "btsp",
         elapsed_ms = t_connect.elapsed().as_millis() as u64,
-        "BearDog connected"
+        "crypto provider connected"
     );
 
     tracing::info!(target: "btsp", "JSON-line BTSP: calling btsp.session.create");

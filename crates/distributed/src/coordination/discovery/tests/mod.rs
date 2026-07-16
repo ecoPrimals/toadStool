@@ -2,6 +2,7 @@
 //! Discovery module tests
 
 mod client_tests;
+mod core_tests;
 mod discovery_tests;
 mod registry_tests;
 

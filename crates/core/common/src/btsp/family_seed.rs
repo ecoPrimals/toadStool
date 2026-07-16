@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Load and normalize the BTSP family seed for BearDog JSON-line handshake.
+//! Load and normalize the BTSP family seed for crypto provider JSON-line handshake.
 
 use std::path::PathBuf;
 
@@ -15,9 +15,7 @@ pub enum BtspFamilySeedError {
     Io(#[from] std::io::Error),
 
     /// No seed found in environment or standard paths.
-    #[error(
-        "BTSP family seed not found (set FAMILY_SEED / BEARDOG_FAMILY_SEED or install .family.seed)"
-    )]
+    #[error("BTSP family seed not found (set FAMILY_SEED or install .family.seed)")]
     NotFound,
 }
 
@@ -50,12 +48,12 @@ fn config_family_seed_path() -> PathBuf {
 ///
 /// Resolution order:
 /// 1. `FAMILY_SEED` env var
-/// 2. `BEARDOG_FAMILY_SEED` env var
+/// 2. `BEARDOG_FAMILY_SEED` env var (deprecated legacy fallback)
 /// 3. File: `$BIOMEOS_SOCKET_DIR/.family.seed` or `~/.config/biomeos/.family.seed`
 ///
-/// Returns the seed as a **raw string** — passed directly to BearDog's
-/// `btsp.session.create` without hex-decoding or base64 re-encoding.
-/// BearDog owns the encoding interpretation.
+/// Returns the seed as a **raw string** — passed directly to the crypto
+/// provider's `btsp.session.create` without hex-decoding or base64
+/// re-encoding. The crypto provider owns the encoding interpretation.
 pub fn load_family_seed_for_btsp() -> Result<String, BtspFamilySeedError> {
     if let Ok(v) = std::env::var(socket_env::FAMILY_SEED) {
         let trimmed = v.trim().to_string();

@@ -21,6 +21,8 @@ mod discovery;
 mod env;
 mod paths;
 #[cfg(test)]
+mod paths_tests;
+#[cfg(test)]
 mod tests;
 
 pub use api::{

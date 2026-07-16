@@ -61,6 +61,8 @@
 
 pub mod client;
 mod dispatch;
+#[cfg(test)]
+mod dispatch_tests;
 pub mod health;
 mod platform;
 pub mod server;
