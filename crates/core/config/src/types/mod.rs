@@ -300,7 +300,7 @@ impl ToadStoolConfig {
     {
         self.overrides
             .get(key)
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .and_then(|v| T::deserialize(v).ok())
             .unwrap_or(default)
     }
 }

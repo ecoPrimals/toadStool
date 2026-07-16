@@ -11,12 +11,19 @@ use std::time::Duration;
 #[expect(clippy::await_holding_lock)]
 async fn test_discovery_with_fallback() {
     let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-    let mut config = DiscoveryConfig::default();
-    config.fallbacks.insert(
-        "orchestration".to_string(),
-        "http://localhost:9999".to_string(),
-    );
-    config.enable_mdns = false;
+    let config = DiscoveryConfig {
+        enable_mdns: false,
+        require_mdns: false,
+        fallbacks: {
+            let mut m = std::collections::HashMap::new();
+            m.insert(
+                "orchestration".to_string(),
+                "http://localhost:9999".to_string(),
+            );
+            m
+        },
+        ..DiscoveryConfig::default()
+    };
 
     let engine = PrimalDiscoveryEngine::without_client(config).expect("Failed to create engine");
 

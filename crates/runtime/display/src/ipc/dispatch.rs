@@ -4,6 +4,7 @@
 //! Handles parsing, routing, and execution of display.* JSON-RPC methods.
 
 use base64::Engine;
+use serde::Deserialize;
 
 use super::platform;
 use super::types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
@@ -51,7 +52,7 @@ async fn dispatch_method(
             let params: CreateWindowRequest = request
                 .params
                 .as_ref()
-                .and_then(|p| serde_json::from_value(p.clone()).ok())
+                .and_then(|p| CreateWindowRequest::deserialize(p).ok())
                 .unwrap_or_default();
 
             let window_id = manager.write().await.create_window(params)?;

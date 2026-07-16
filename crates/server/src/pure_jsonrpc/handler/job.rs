@@ -219,7 +219,7 @@ impl JobHandler {
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
-        let gate_info: crate::cross_gate::GateGpuInfo = serde_json::from_value(params.clone())
+        let gate_info: crate::cross_gate::GateGpuInfo = serde::Deserialize::deserialize(params)
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid gate info: {e}")))?;
         let gate_id = std::sync::Arc::clone(&gate_info.gate_id);
         if gate_info.is_owner {

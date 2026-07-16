@@ -38,7 +38,7 @@ impl SiliconHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("missing params"))?;
 
-        let measurement: PerformanceMeasurement = serde_json::from_value(params.clone())
+        let measurement: PerformanceMeasurement = serde::Deserialize::deserialize(params)
             .map_err(|e| JsonRpcError::invalid_params(format!("invalid measurement: {e}")))?;
 
         let unit_name = measurement.silicon_unit.as_str().to_string();

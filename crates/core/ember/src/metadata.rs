@@ -104,7 +104,7 @@ impl MetadataStore {
     ///
     /// Returns an error if the snapshot is not a valid `MetadataStore`.
     pub fn restore(snapshot: &serde_json::Value) -> Result<Self, serde_json::Error> {
-        serde_json::from_value(snapshot.clone())
+        Self::deserialize(snapshot)
     }
 }
 

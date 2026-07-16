@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 15, 2026 (Sessions 43-330+)
+## [Unreleased] - Jul 15, 2026 (Sessions 43-331+)
+
+### Session S331 (Jul 15, 2026) — Borrowed Deserialization Sweep + Test Race Fix
+
+Eliminated `serde_json::from_value(v.clone())` anti-pattern across 6 production files by switching to borrowed `Deserialize::deserialize(&Value)`, and fixed a latent test environment race.
+
+- **Handler clone elimination** — `job.rs`: `gate_update` now deserializes `GateGpuInfo` from `&Value` via `serde::Deserialize::deserialize(params)` instead of `from_value(params.clone())`. `silicon.rs`: same for `PerformanceMeasurement`. `sovereign/init.rs`: same for `SovereignInitOptions`.
+- **Core crate clones** — `config/types/mod.rs`: `get_override` uses `T::deserialize(v)` instead of `from_value(v.clone())`. `ember/metadata.rs`: `MetadataStore::restore` uses `Self::deserialize(snapshot)`. `display/ipc/dispatch.rs`: `CreateWindowRequest::deserialize(p)` instead of `from_value(p.clone())`.
+- **Test race fix** — `discovery_fallback.rs`: `test_discovery_with_fallback` now explicitly sets `require_mdns: false` in the config struct instead of relying on `DiscoveryConfig::default()` which reads from environment. This eliminates a race condition where concurrent test `cache_config` sets `TOADSTOOL_MDNS_REQUIRE=true` via `temp_env::with_vars`, causing spurious failures.
+- **Quality gates** — 9,206 lib tests, 0 failures. Zero clippy warnings, zero fmt diff. Compile clean.
 
 ### Session S330 (Jul 15, 2026) — Deep Debt: Clone Elimination + Test Coverage + Clippy Zero
 

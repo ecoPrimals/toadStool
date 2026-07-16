@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::pure_jsonrpc::types::JsonRpcError;
+use serde::Deserialize;
 use serde_json::Value;
 use toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions;
 use tracing::{debug, info};
@@ -94,7 +95,7 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     };
 
     let mut opts: SovereignInitOptions = if let Some(p) = params {
-        serde_json::from_value(p.clone()).unwrap_or_default()
+        SovereignInitOptions::deserialize(p).unwrap_or_default()
     } else {
         SovereignInitOptions::default()
     };
