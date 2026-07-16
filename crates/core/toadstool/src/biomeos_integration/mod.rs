@@ -49,6 +49,8 @@ pub mod auth_backend;
 /// Capability-based auth backend (recommended)
 #[cfg(test)]
 pub mod auth_backend_evolved;
+#[cfg(test)]
+mod auth_backend_tests;
 /// Storage provisioning manager
 pub mod storage;
 /// Legacy storage backends (trait-based)

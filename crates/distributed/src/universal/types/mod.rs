@@ -42,6 +42,8 @@ mod biological;
 mod container;
 mod edge_iot;
 mod language;
+#[cfg(test)]
+mod language_tests;
 mod neuromorphic;
 mod operating_system;
 mod quantum;

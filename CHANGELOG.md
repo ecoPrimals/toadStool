@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 16, 2026 (Sessions 43-335+)
+## [Unreleased] - Jul 16, 2026 (Sessions 43-336+)
+
+### Session S336 (Jul 16, 2026) — Security Migration + Dead Feature Removal + Test Extraction Wave 6
+
+Migrated `security_impl` from deprecated `crate::security` to `crate::crypto_integration`, removed the dead `channels` feature from distributed, and extracted 2 more inline test modules.
+
+- **security_impl migration** — rewired `DistributedSecurityProvider` from deprecated `crate::security` API to `crate::crypto_integration`: `SecurityClient` → `CryptoServiceClient`, `SecurityConfig` → `CryptoServiceConfig`, `SecurityDiscovery` → `CryptoServiceDiscovery`. Added missing sign/verify/permission methods to `CryptoServiceClient`. Removed `#![expect(deprecated)]` from `security_impl/mod.rs`. Fixed 3 test assertions that checked for legacy error message format.
+- **Dead feature removal** — removed the never-enabled `channels` feature from `toadstool-distributed`: 12 `#[cfg(feature = "channels")]` blocks deleted across 11 files, `reply_channel` field removed from `CoordinationConnection`.
+- **Test extraction wave 6** — 2 files (−173L): `distributed/universal/types/language.rs` (509→418), `toadstool/biomeos_integration/auth_backend.rs` (555→473).
+- **Feature flag audit** — confirmed `test-mocks` is correctly separated (dev-deps only), `gpu-ai` is a no-op alias, `component-model` is Phase 2 placeholder, `sandbox` is unwired pass-through. No production mock leak.
+- **Deprecated env-var audit** — 8+ `#[expect(deprecated)]` sites audited: env-var fallbacks (socket_env LEGACY_*) are KEEP for deployed-system backward compat. `security_impl` migration was the only immediately actionable site (now completed). `EcosystemService` → `ServiceType` migration is P1 for future sessions.
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S335 (Jul 16, 2026) — Doc-Comment Primal Cleanup + Test Extraction Waves 4-5 + Dead Code Elimination
 

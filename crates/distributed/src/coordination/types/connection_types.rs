@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Connection types for Coordination integration
 
-#[cfg(feature = "channels")]
-use std::sync::Arc;
-
-#[cfg(feature = "channels")]
-use super::job_types::CoordinationJobResponse;
 use super::protocols::ProtocolConfig;
 
 // ============================================================================
@@ -38,7 +33,4 @@ pub struct CoordinationConnection {
     pub health_status: ConnectionHealth,
     /// Wire protocol and framing configuration.
     pub protocol_config: ProtocolConfig,
-    /// Optional channel for async job replies when `channels` is enabled.
-    #[cfg(feature = "channels")]
-    pub reply_channel: Option<Arc<tokio::sync::mpsc::UnboundedSender<CoordinationJobResponse>>>,
 }

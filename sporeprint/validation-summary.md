@@ -10,7 +10,8 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S335+, Jul 16, 2026)
+- **Version**: 0.2.0 (Session S336+, Jul 16, 2026)
+- **S336**: security_impl migrated to crypto_integration (#![expect(deprecated)] removed), dead channels feature removed (12 cfg blocks), test extraction wave 6 (2 files, -173L)
 - **Lib tests**: 9,232+ (0 failures, unlimited parallelism)
 - **Workspace tests**: 23,000+ (0 failures, ~221 hardware-gated ignores; 9,232+ lib-only)
 - **JSON-RPC methods**: 112 (direct) + semantic registry aliases

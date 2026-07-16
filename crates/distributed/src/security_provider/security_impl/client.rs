@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security SecurityProvider Implementation
 //!
-//! Implements the generic SecurityProvider trait using Security primal.
+//! Implements the generic SecurityProvider trait using the crypto integration client.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -11,6 +11,11 @@ use tokio::sync::RwLock;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::interned_strings::capabilities;
 
+use crate::crypto_integration::{
+    CryptoServiceClient, CryptoServiceConfig, CryptoServiceDiscovery,
+    encryption_algorithm_from_wire,
+    types::{CryptoOperation, CryptoRequest, SecurityLevel},
+};
 use crate::security_provider::{
     EncryptionOptions, SigningOptions,
     provider::{PermissionValidationResult, ProviderHealth, SecurityCapability, SecurityProvider},
@@ -21,18 +26,16 @@ use crate::security_provider::{
     },
 };
 
-use crate::security::{SecurityClient, SecurityConfig, SecurityDiscovery};
-
 /// Security implementation of SecurityProvider
 ///
-/// This wraps the existing SecurityClient and adapts it to the SecurityProvider trait.
-/// This allows Security to be used interchangeably with other security providers.
+/// This wraps the crypto integration client and adapts it to the SecurityProvider trait.
+/// This allows the distributed crypto provider to be used interchangeably with other security providers.
 pub struct DistributedSecurityProvider {
-    /// Underlying Security client (wrapped in Arc for sharing)
-    client: Arc<RwLock<Option<Arc<SecurityClient>>>>,
+    /// Underlying crypto client (wrapped in Arc for sharing)
+    client: Arc<RwLock<Option<Arc<CryptoServiceClient>>>>,
 
-    /// Discovery mechanism (for future reconnection logic)
-    _discovery: SecurityDiscovery,
+    /// Discovery configuration (for future reconnection logic)
+    _config: CryptoServiceConfig,
 
     /// Provider metadata
     metadata: ProviderMetadata,
@@ -42,25 +45,19 @@ pub struct DistributedSecurityProvider {
 }
 
 impl DistributedSecurityProvider {
-    /// Create a new Security security provider
+    /// Create a new distributed crypto security provider
     ///
-    /// This performs runtime discovery to find security service.
+    /// This performs runtime discovery to find a crypto service.
     /// If not found, the provider will operate in degraded mode.
     pub async fn new() -> ToadStoolResult<Self> {
-        Self::with_config(SecurityConfig::default()).await
+        Self::with_config(CryptoServiceConfig::default()).await
     }
 
     /// Create with custom configuration
-    pub async fn with_config(config: SecurityConfig) -> ToadStoolResult<Self> {
-        let discovery = SecurityDiscovery::new(config.clone());
+    pub async fn with_config(config: CryptoServiceConfig) -> ToadStoolResult<Self> {
+        let _discovery = CryptoServiceDiscovery::new(config.clone()).await?;
 
-        let client = match SecurityClient::new_async(config.clone()).await {
-            Ok(client) => match client.discover().await {
-                Ok(endpoints) if !endpoints.is_empty() => Some(Arc::new(client)),
-                _ => None,
-            },
-            Err(_) => None,
-        };
+        let client = Self::connect_client(&config).await.ok();
 
         let metadata = ProviderMetadata {
             provider_id: uuid::Uuid::new_v4().to_string(),
@@ -85,14 +82,37 @@ impl DistributedSecurityProvider {
 
         Ok(Self {
             client: Arc::new(RwLock::new(client)),
-            _discovery: discovery,
+            _config: config,
             metadata,
             capabilities,
         })
     }
 
+    async fn connect_client(
+        config: &CryptoServiceConfig,
+    ) -> ToadStoolResult<Arc<CryptoServiceClient>> {
+        #[cfg(unix)]
+        {
+            if let Ok(socket_path) =
+                toadstool_common::primal_sockets::discover_crypto_socket().await
+            {
+                return CryptoServiceClient::from_local_socket(&socket_path).map(Arc::new);
+            }
+        }
+
+        let discovery = CryptoServiceDiscovery::new(config.clone()).await?;
+        let services = discovery.discover().await?;
+        let service = services.first().ok_or_else(|| {
+            ToadStoolError::not_found(
+                "crypto service not found - security provider unavailable".to_string(),
+            )
+        })?;
+
+        CryptoServiceClient::new(service).map(Arc::new)
+    }
+
     /// Get or create client connection
-    async fn get_client(&self) -> ToadStoolResult<Arc<SecurityClient>> {
+    async fn get_client(&self) -> ToadStoolResult<Arc<CryptoServiceClient>> {
         let client_lock = self.client.read().await;
 
         if let Some(client) = &*client_lock {
@@ -101,22 +121,7 @@ impl DistributedSecurityProvider {
 
         drop(client_lock);
 
-        let client = Arc::new(
-            SecurityClient::new_async(SecurityConfig::default())
-                .await
-                .map_err(|e| {
-                    ToadStoolError::not_found(format!(
-                        "security service not found - security provider unavailable: {e}"
-                    ))
-                })?,
-        );
-
-        let endpoints = client.discover().await?;
-        if endpoints.is_empty() {
-            return Err(ToadStoolError::not_found(
-                "security service not found - security provider unavailable".to_string(),
-            ));
-        }
+        let client = Self::connect_client(&self._config).await?;
 
         {
             let mut client_lock = self.client.write().await;
@@ -148,16 +153,14 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to encrypt
-            use crate::security::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
-
-            let request = EncryptionRequest {
+            let request = CryptoRequest {
                 request_id: uuid::Uuid::new_v4(),
-                operation: EncryptionOperation::Encrypt,
+                operation: CryptoOperation::Encrypt,
                 data: data.to_vec(),
                 key_id: None,
-                algorithm: Some("AES-256-GCM".to_string()),
+                algorithm: Some(encryption_algorithm_from_wire("AES-256-GCM")),
                 security_level: SecurityLevel::Standard,
+                metadata: serde_json::Value::Null,
             };
 
             let response = client.encrypt(request).await?;
@@ -203,16 +206,14 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to decrypt
-            use crate::security::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
-
-            let request = EncryptionRequest {
+            let request = CryptoRequest {
                 request_id: uuid::Uuid::new_v4(),
-                operation: EncryptionOperation::Decrypt,
+                operation: CryptoOperation::Decrypt,
                 data: ciphertext.to_vec(),
                 key_id: Some(metadata.key_id.clone()),
-                algorithm: Some(metadata.algorithm.clone()),
+                algorithm: Some(encryption_algorithm_from_wire(&metadata.algorithm)),
                 security_level: SecurityLevel::Standard,
+                metadata: serde_json::Value::Null,
             };
 
             let response = client.decrypt(request).await?;
@@ -235,12 +236,11 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to sign
             let response = client.sign(data).await?;
 
             Ok(SignatureResult {
                 signature: response.signature,
-                algorithm: SignatureAlgorithm::EcdsaP256, // Security default
+                algorithm: SignatureAlgorithm::EcdsaP256,
                 key_id: response.key_id,
                 signed_at: std::time::SystemTime::now(),
             })
@@ -256,7 +256,6 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to verify
             let is_valid = client.verify(data, signature, public_key_id).await?;
 
             Ok(if is_valid {
@@ -274,7 +273,6 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to create permission
             let response = client.create_permission(&request).await?;
 
             let now = std::time::SystemTime::now();
@@ -289,7 +287,7 @@ impl SecurityProvider for DistributedSecurityProvider {
                 proof: SecurityProof {
                     signature: response.proof,
                     algorithm: SignatureAlgorithm::EcdsaP256,
-                    public_key_id: "security-permission-key".to_string(),
+                    public_key_id: "crypto-permission-key".to_string(),
                     signed_at: now,
                 },
                 provider_metadata: self.metadata.clone(),
@@ -304,7 +302,6 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to validate
             let is_valid = client.validate_permission(permission).await?;
 
             Ok(if is_valid {
@@ -323,7 +320,6 @@ impl SecurityProvider for DistributedSecurityProvider {
         async move {
             let client = self.get_client().await?;
 
-            // Use Security client to revoke
             client.revoke_permission(permission_id, reason).await
         }
     }
@@ -337,10 +333,9 @@ impl SecurityProvider for DistributedSecurityProvider {
             };
             drop(client_opt);
 
-            // Call Security health_check to verify client is responsive
             match client.health_check().await {
-                Ok(endpoints) if !endpoints.is_empty() => Ok(ProviderHealth::Healthy),
-                Ok(_) => Ok(ProviderHealth::Degraded),
+                Ok(true) => Ok(ProviderHealth::Healthy),
+                Ok(false) => Ok(ProviderHealth::Degraded),
                 Err(_) => Ok(ProviderHealth::Unhealthy),
             }
         }
@@ -353,10 +348,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_provider_creation() {
-        // This may fail if Security is not running, which is expected
+        // This may fail if crypto service is not running, which is expected
         let result = DistributedSecurityProvider::new().await;
 
-        // Provider creation should succeed even if Security is not available
+        // Provider creation should succeed even if crypto service is not available
         // (it will operate in degraded mode)
         assert!(result.is_ok());
     }

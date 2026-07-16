@@ -35,8 +35,6 @@ fn test_connection() -> CoordinationConnection {
                 routing_key: "compute".to_string(),
             },
         },
-        #[cfg(feature = "channels")]
-        reply_channel: None,
     }
 }
 

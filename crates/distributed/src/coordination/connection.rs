@@ -52,8 +52,6 @@ impl CoordinationConnection {
             auth_token,
             health_status,
             protocol_config: config.protocol_config,
-            #[cfg(feature = "channels")]
-            reply_channel: None,
         })
     }
 

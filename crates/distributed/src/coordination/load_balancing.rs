@@ -155,8 +155,6 @@ mod tests {
                     routing_key: "default".to_string(),
                 },
             },
-            #[cfg(feature = "channels")]
-            reply_channel: None,
         }
     }
 

@@ -11,7 +11,6 @@ categories = ["asynchronous", "network-programming"]
 
 [features]
 default = []
-channels = []
 testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
 dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
 # Stub for `security_provider` mock gates (`MockSecurityProvider`); cloud `test_mocks` uses `#[cfg(test)]` only

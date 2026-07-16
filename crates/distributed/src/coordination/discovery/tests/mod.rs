@@ -44,8 +44,6 @@ fn make_coordination_connection() -> CoordinationConnection {
         auth_token: None,
         health_status: ConnectionHealth::Healthy,
         protocol_config: make_protocol_config(),
-        #[cfg(feature = "channels")]
-        reply_channel: None,
     }
 }
 

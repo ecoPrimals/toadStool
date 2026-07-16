@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Type Adapters for Security Integration
 //!
-//! Converts between generic SecurityProvider types and Security-specific types.
-//! This allows Security to work with the generic SecurityProvider interface.
+//! Converts between generic SecurityProvider types and crypto service types.
+//! This allows the distributed crypto provider to work with the generic SecurityProvider interface.
 
 use toadstool::error::ToadStoolResult;
 use toadstool_common::interned_strings::capabilities;
 
-use crate::security::types::{
-    EncryptionOperation, EncryptionRequest, EncryptionResponse, KeyManagementRequest,
-    KeyManagementResponse, KeyOperation, SecurityLevel,
+use crate::crypto_integration::types::{
+    CryptoOperation, CryptoRequest, CryptoResponse, EncryptionAlgorithm, KeyManagementRequest,
+    KeyManagementResponse, KeyOperation, KeyType, SecurityLevel,
 };
 use crate::security_provider::EncryptionOptions;
 use crate::security_provider::types::{
@@ -17,20 +17,21 @@ use crate::security_provider::types::{
     SecurityProof, SignatureAlgorithm,
 };
 
-/// Convert generic PermissionRequest to Security-specific request
+/// Convert generic PermissionRequest to crypto service key-management request
 pub fn to_security_permission_request(_request: &PermissionRequest) -> KeyManagementRequest {
-    // Pending: Full conversion when security KeyManagementRequest supports
+    // Pending: Full conversion when KeyManagementRequest supports
     // PermissionRequest fields (target, scope, operations). Currently KeyOperation::Generate
     // and SecurityLevel are the only mappable parts.
     KeyManagementRequest {
         request_id: uuid::Uuid::new_v4(),
-        operation: KeyOperation::Generate,
-        key_id: None,
-        security_level: Some(SecurityLevel::Enhanced),
+        operation: KeyOperation::Generate {
+            key_type: KeyType::Symmetric { bits: 256 },
+        },
+        metadata: serde_json::json!({ "security_level": "high" }),
     }
 }
 
-/// Convert Security permission response to generic SecurityPermission
+/// Convert crypto permission response to generic SecurityPermission
 pub fn from_security_permission(
     _response: &KeyManagementResponse,
     request: &PermissionRequest,
@@ -60,23 +61,24 @@ pub fn from_security_permission(
     })
 }
 
-/// Convert generic EncryptionOptions to Security-specific request
+/// Convert generic EncryptionOptions to crypto service request
 pub fn to_security_encryption_request(
     data: &[u8],
     _options: Option<EncryptionOptions>,
-) -> EncryptionRequest {
-    EncryptionRequest {
+) -> CryptoRequest {
+    CryptoRequest {
         request_id: uuid::Uuid::new_v4(),
-        operation: EncryptionOperation::Encrypt,
+        operation: CryptoOperation::Encrypt,
         data: data.to_vec(),
         key_id: None,
-        algorithm: Some("AES-256-GCM".to_string()),
+        algorithm: Some(EncryptionAlgorithm::Aes256Gcm),
         security_level: SecurityLevel::Standard,
+        metadata: serde_json::Value::Null,
     }
 }
 
-/// Convert Security encryption response to generic EncryptionResult
-pub fn from_security_encryption_response(response: EncryptionResponse) -> EncryptionResult {
+/// Convert crypto encryption response to generic EncryptionResult
+pub fn from_security_encryption_response(response: CryptoResponse) -> EncryptionResult {
     // Extract IV and auth tag from metadata if present
     let metadata_obj = response.metadata.as_object();
     let iv = metadata_obj
@@ -119,12 +121,12 @@ mod tests {
         let request = to_security_encryption_request(data, None);
 
         assert_eq!(request.data, data);
-        assert_eq!(request.algorithm, Some("AES-256-GCM".to_string()));
+        assert_eq!(request.algorithm, Some(EncryptionAlgorithm::Aes256Gcm));
     }
 
     #[test]
     fn test_encryption_response_conversion() {
-        let response = EncryptionResponse {
+        let response = CryptoResponse {
             request_id: uuid::Uuid::new_v4(),
             data: vec![1, 2, 3, 4],
             key_id: "test-key".to_string(),

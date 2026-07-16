@@ -1,12 +1,15 @@
 # Active Technical Debt Register
 
-**Date**: July 16, 2026 — S335+
+**Date**: July 16, 2026 — S336+
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S336 (security_impl Migration + Dead Channels Removal + Test Extraction Wave 6)**:
+security_impl migrated to crypto_integration (#![expect(deprecated)] removed), dead channels feature removed (12 cfg blocks), test extraction wave 6 (2 files, -173L).
 
 **S288 (Deep Debt VIII: Panic Elimination + Naming + Feature Gates + Safety Docs)**:
 Comprehensive deep debt pass. Evolved Akida MMIO to error-returning APIs

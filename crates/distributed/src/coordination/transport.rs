@@ -134,8 +134,6 @@ mod tests {
                     routing_key: "compute".to_string(),
                 },
             },
-            #[cfg(feature = "channels")]
-            reply_channel: None,
         }
     }
 

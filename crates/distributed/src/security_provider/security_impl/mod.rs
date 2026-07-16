@@ -18,9 +18,6 @@
 //! - ✅ Self-knowledge (Security knows itself, not what others need)
 //! - ✅ Pluggable (can swap for HSM/KMS/etc.)
 
-// Allow deprecated during migration - security will be evolved
-#![expect(deprecated, reason = "security provider migration in progress")]
-
 pub mod adapters;
 pub mod client;
 

@@ -218,8 +218,6 @@ mod tests {
             auth_token: None,
             health_status: ConnectionHealth::Healthy,
             protocol_config: protocol,
-            #[cfg(feature = "channels")]
-            reply_channel: None,
         });
         super::DiscoveryClient::for_test(
             conn,
