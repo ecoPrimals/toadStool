@@ -28,6 +28,11 @@ pub mod qmd;
 pub mod registers;
 pub mod rm_abi;
 
+#[cfg(all(test, target_os = "linux"))]
+mod gr_init_tests;
+#[cfg(all(test, target_os = "linux"))]
+mod pmu_init_tests;
+
 /// Start of the kernel-managed VA region passed to `VM_INIT`.
 ///
 /// `VM_INIT` reserves `[kernel_managed_addr, kernel_managed_addr + size)` for

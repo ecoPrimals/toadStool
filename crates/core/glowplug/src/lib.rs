@@ -62,6 +62,8 @@ pub mod portable_executor;
 pub mod swap;
 #[cfg(target_os = "linux")]
 pub mod sysfs_executor;
+#[cfg(all(test, target_os = "linux"))]
+mod sysfs_executor_tests;
 pub mod warm_init;
 
 // Re-export ember as the holder subsystem

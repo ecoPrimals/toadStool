@@ -81,17 +81,17 @@ impl ActivityTracker {
 #[derive(Debug)]
 pub struct PcieBridgeKeepalive {
     /// PCI BDF of the device behind the PCIe bridge.
-    bdf: String,
+    pub(crate) bdf: String,
 
     /// How often to perform the keepalive read.
-    interval: Duration,
+    pub(crate) interval: Duration,
 
     /// All BDFs in the bridge hierarchy (device + ancestors).
     /// Populated by [`detect_bridge_chain`].
-    bridge_chain: Vec<String>,
+    pub(crate) bridge_chain: Vec<String>,
 
     /// Optional activity tracker for backpressure.
-    activity: Option<ActivityTracker>,
+    pub(crate) activity: Option<ActivityTracker>,
 }
 
 /// Backward-compatible alias. Prefer [`PcieBridgeKeepalive`].
@@ -100,9 +100,9 @@ pub type PlxKeepalive = PcieBridgeKeepalive;
 /// Handle to a running keepalive task.
 #[derive(Debug, Clone)]
 pub struct KeepaliveHandle {
-    running: Arc<AtomicBool>,
-    heartbeats: Arc<AtomicU64>,
-    bdf: String,
+    pub(crate) running: Arc<AtomicBool>,
+    pub(crate) heartbeats: Arc<AtomicU64>,
+    pub(crate) bdf: String,
 }
 
 impl KeepaliveHandle {
@@ -290,7 +290,7 @@ impl PcieBridgeKeepalive {
 ///
 /// Returns `true` if the read succeeded and didn't return `0xFFFFFFFF`
 /// (which indicates the device is in D3cold or the link is down).
-fn config_read_heartbeat(bdf: &str) -> bool {
+pub(crate) fn config_read_heartbeat(bdf: &str) -> bool {
     let config_path = toadstool_common::sysfs_paths::sysfs_pci_device_file(bdf, "config");
     let path = Path::new(&config_path);
 
@@ -321,7 +321,7 @@ pub fn is_pci_bdf(name: &str) -> bool {
 ///
 /// Returns a vec starting with the device BDF, followed by each upstream
 /// bridge BDF in order (nearest first). Stops at the first non-PCI parent.
-fn detect_bridge_chain(bdf: &str) -> Vec<String> {
+pub(crate) fn detect_bridge_chain(bdf: &str) -> Vec<String> {
     let mut chain = vec![bdf.to_string()];
 
     let device_link = PathBuf::from(toadstool_common::sysfs_paths::sysfs_pci_device_path(bdf));
@@ -384,135 +384,4 @@ pub fn detect_plx_bridge(bdf: &str) -> Option<String> {
         .into_iter()
         .next()
         .filter(|b| crate::sysfs::read_pci_id(b, "vendor") == PLX_VENDOR_ID)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn detect_bridge_chain_includes_device() {
-        let chain = detect_bridge_chain("9999:99:99.9");
-        assert_eq!(chain, vec!["9999:99:99.9"]);
-    }
-
-    #[test]
-    fn config_read_nonexistent_returns_false() {
-        assert!(!config_read_heartbeat("9999:99:99.9"));
-    }
-
-    #[test]
-    fn keepalive_new_nonexistent_device() {
-        let ka = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5));
-        assert_eq!(ka.bdf, "9999:99:99.9");
-        assert_eq!(ka.bridge_chain.len(), 1);
-        assert!(!ka.has_bridges());
-        assert!(ka.activity.is_none());
-    }
-
-    #[test]
-    fn keepalive_with_secs() {
-        let ka = PcieBridgeKeepalive::with_secs("9999:99:99.9", 3);
-        assert_eq!(ka.interval, Duration::from_secs(3));
-    }
-
-    #[test]
-    fn keepalive_with_activity_tracker() {
-        let tracker = ActivityTracker::new();
-        let ka = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5))
-            .with_activity_tracker(tracker);
-        assert!(ka.activity.is_some());
-    }
-
-    #[test]
-    fn plx_alias_works() {
-        let _ka: PlxKeepalive = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5));
-    }
-
-    #[test]
-    fn activity_tracker_initial_state() {
-        let tracker = ActivityTracker::new();
-        assert_eq!(tracker.ms_since_last(), u64::MAX);
-    }
-
-    #[test]
-    fn activity_tracker_record_and_check() {
-        let tracker = ActivityTracker::new();
-        tracker.record();
-        assert!(tracker.ms_since_last() < 1000);
-    }
-
-    #[test]
-    fn activity_tracker_clone_shares_state() {
-        let tracker = ActivityTracker::new();
-        let clone = tracker.clone();
-        tracker.record();
-        assert!(clone.ms_since_last() < 1000);
-    }
-
-    #[test]
-    fn heartbeat_once_nonexistent() {
-        let ka = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5));
-        assert!(!ka.heartbeat_once());
-    }
-
-    #[test]
-    fn detect_pcie_bridges_nonexistent() {
-        let bridges = detect_pcie_bridges("9999:99:99.9");
-        assert!(bridges.is_empty());
-    }
-
-    #[test]
-    fn is_pci_bdf_valid() {
-        assert!(is_pci_bdf("0000:49:00.0"));
-        assert!(is_pci_bdf("0000:4a:08.0"));
-        assert!(is_pci_bdf("0001:00:00.0"));
-    }
-
-    #[test]
-    fn is_pci_bdf_rejects_domain_root() {
-        assert!(!is_pci_bdf("pci0000:40"));
-        assert!(!is_pci_bdf("pci0000:00"));
-    }
-
-    #[test]
-    fn is_pci_bdf_rejects_garbage() {
-        assert!(!is_pci_bdf(""));
-        assert!(!is_pci_bdf("not-a-bdf"));
-        assert!(!is_pci_bdf("pci0000"));
-    }
-
-    #[test]
-    fn detect_plx_bridge_nonexistent() {
-        assert!(detect_plx_bridge("9999:99:99.9").is_none());
-    }
-
-    #[test]
-    fn keepalive_handle_initial_state() {
-        let running = Arc::new(AtomicBool::new(true));
-        let heartbeats = Arc::new(AtomicU64::new(0));
-        let handle = KeepaliveHandle {
-            running,
-            heartbeats,
-            bdf: "0000:4b:00.0".into(),
-        };
-        assert!(handle.is_running());
-        assert_eq!(handle.heartbeat_count(), 0);
-        assert_eq!(handle.bdf(), "0000:4b:00.0");
-    }
-
-    #[test]
-    fn keepalive_handle_stop() {
-        let running = Arc::new(AtomicBool::new(true));
-        let heartbeats = Arc::new(AtomicU64::new(42));
-        let handle = KeepaliveHandle {
-            running,
-            heartbeats,
-            bdf: "0000:4b:00.0".into(),
-        };
-        assert!(handle.is_running());
-        handle.stop();
-        assert!(!handle.is_running());
-        assert_eq!(handle.heartbeat_count(), 42);
-    }
 }

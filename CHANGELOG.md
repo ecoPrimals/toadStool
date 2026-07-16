@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 16, 2026 (Sessions 43-333+)
+## [Unreleased] - Jul 16, 2026 (Sessions 43-334+)
+
+### Session S334 (Jul 16, 2026) — Test Extraction Waves 2-3 + Hot-Path Clone Polish
+
+Extracted inline test modules from 11 production files across 3 extraction waves (−1,888 production lines total), cleared the last 750L gate violation, and polished dispatch hot-path clones.
+
+- **750L gate cleared** — `connection/unix.rs` (776→649): extracted 12 tests into `unix_tests.rs`, 6 items made `pub(crate)` for sibling access.
+- **Cylinder extraction wave 2** — 5 files (−1,042L): `nv/gr_init.rs` (600→355), `vfio/warm_capture.rs` (589→377), `nv/generation/mod.rs` (548→341), `drm.rs` (614→412), `nv/pmu_init.rs` (607→431). DRM constants made `pub(crate)`.
+- **Extraction wave 3** — 5 files (−719L): `glowplug/sysfs_executor.rs` (594→396), `universal_adapter/discovery_engine/mod.rs` (711→591), `distributed/adapters.rs` (519→396), `ember/plx_keepalive.rs` (518→387), `cylinder/nv/ioctl/mod.rs` (656→509).
+- **Dispatch clone polish** — `submit.rs`: eliminated redundant `job.id.clone()` (use `job_id` directly). `pipeline.rs`: moved `error_msg` and `failed_stage` to avoid double-clone in error path.
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff. Workspace check clean.
 
 ### Session S333 (Jul 16, 2026) — Structural Debt: Test Extraction + Hardcoded Name Cleanup
 

@@ -42,6 +42,8 @@ pub mod lend_reclaim;
 pub mod metadata;
 pub mod observation;
 pub mod plx_keepalive;
+#[cfg(all(test, target_os = "linux"))]
+mod plx_keepalive_tests;
 pub mod portable_handle;
 pub mod pri_ring_anchor;
 pub mod resource_handle;

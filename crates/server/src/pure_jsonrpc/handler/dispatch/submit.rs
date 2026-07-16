@@ -216,7 +216,7 @@ impl DispatchHandler {
 
         {
             let mut jobs = self.jobs.write().await;
-            jobs.insert(job.id.clone(), job);
+            jobs.insert(job_id.clone(), job);
         }
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);

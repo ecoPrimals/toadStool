@@ -36,7 +36,7 @@ use std::os::unix::io::RawFd;
     clippy::cast_possible_truncation,
     reason = "asserted in bounds; kernel ioctl structs are always < 4 GiB"
 )]
-const fn size_of_u32<T>() -> u32 {
+pub(crate) const fn size_of_u32<T>() -> u32 {
     assert!(std::mem::size_of::<T>() <= u32::MAX as usize);
     std::mem::size_of::<T>() as u32
 }
@@ -46,26 +46,26 @@ const DRM_COMMAND_BASE: u32 = 0x40;
 // Legacy UAPI — channel management (present in all kernel versions).
 // Offsets from kernel nouveau_drm.h: GETPARAM=0x00, SETPARAM=0x01,
 // CHANNEL_ALLOC=0x02, CHANNEL_FREE=0x03.
-const DRM_NOUVEAU_CHANNEL_ALLOC: u32 = DRM_COMMAND_BASE + 0x02;
-const DRM_NOUVEAU_CHANNEL_FREE: u32 = DRM_COMMAND_BASE + 0x03;
+pub(crate) const DRM_NOUVEAU_CHANNEL_ALLOC: u32 = DRM_COMMAND_BASE + 0x02;
+pub(crate) const DRM_NOUVEAU_CHANNEL_FREE: u32 = DRM_COMMAND_BASE + 0x03;
 const DRM_NOUVEAU_NVIF: u32 = DRM_COMMAND_BASE + 0x07;
-const DRM_NOUVEAU_GEM_NEW: u32 = DRM_COMMAND_BASE + 0x40;
-const DRM_NOUVEAU_GEM_PUSHBUF: u32 = DRM_COMMAND_BASE + 0x41;
-const DRM_NOUVEAU_GEM_CPU_PREP: u32 = DRM_COMMAND_BASE + 0x42;
-const _DRM_NOUVEAU_GEM_CPU_FINI: u32 = DRM_COMMAND_BASE + 0x43;
+pub(crate) const DRM_NOUVEAU_GEM_NEW: u32 = DRM_COMMAND_BASE + 0x40;
+pub(crate) const DRM_NOUVEAU_GEM_PUSHBUF: u32 = DRM_COMMAND_BASE + 0x41;
+pub(crate) const DRM_NOUVEAU_GEM_CPU_PREP: u32 = DRM_COMMAND_BASE + 0x42;
+pub(crate) const _DRM_NOUVEAU_GEM_CPU_FINI: u32 = DRM_COMMAND_BASE + 0x43;
 
 // New UAPI (kernel 6.6+) — required for Volta+ dispatch on modern kernels.
 // NVK (Mesa 25.1+) uses this path: VM_INIT → GEM_NEW → VM_BIND → EXEC.
 // Ecosystem Exp-051 confirmed: legacy CHANNEL_ALLOC → EINVAL on GV100 kernel 6.17.
 // See: /usr/include/drm/nouveau_drm.h (drm_nouveau_vm_init, vm_bind, exec)
-const DRM_NOUVEAU_VM_INIT: u32 = DRM_COMMAND_BASE + 0x10;
-const DRM_NOUVEAU_VM_BIND: u32 = DRM_COMMAND_BASE + 0x11;
-const DRM_NOUVEAU_EXEC: u32 = DRM_COMMAND_BASE + 0x12;
+pub(crate) const DRM_NOUVEAU_VM_INIT: u32 = DRM_COMMAND_BASE + 0x10;
+pub(crate) const DRM_NOUVEAU_VM_BIND: u32 = DRM_COMMAND_BASE + 0x11;
+pub(crate) const DRM_NOUVEAU_EXEC: u32 = DRM_COMMAND_BASE + 0x12;
 
-const _NOUVEAU_GEM_DOMAIN_CPU: u32 = 1 << 0;
-const NOUVEAU_GEM_DOMAIN_VRAM: u32 = 1 << 1;
-const NOUVEAU_GEM_DOMAIN_GART: u32 = 1 << 2;
-const NOUVEAU_GEM_DOMAIN_MAPPABLE: u32 = 1 << 3;
+pub(crate) const _NOUVEAU_GEM_DOMAIN_CPU: u32 = 1 << 0;
+pub(crate) const NOUVEAU_GEM_DOMAIN_VRAM: u32 = 1 << 1;
+pub(crate) const NOUVEAU_GEM_DOMAIN_GART: u32 = 1 << 2;
+pub(crate) const NOUVEAU_GEM_DOMAIN_MAPPABLE: u32 = 1 << 3;
 
 // ---------------------------------------------------------------------------
 // NVIF constants — aligned to Mesa `nvif/ioctl.h`
@@ -127,7 +127,7 @@ pub struct SubchanSpec {
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct NouveauChannelAlloc {
+pub(crate) struct NouveauChannelAlloc {
     fb_ctxdma_handle: u32,
     tt_ctxdma_handle: u32,
     channel: i32,
@@ -139,14 +139,14 @@ struct NouveauChannelAlloc {
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct NouveauSubchan {
+pub(crate) struct NouveauSubchan {
     handle: u32,
     grclass: u32,
 }
 
 #[repr(C)]
 #[derive(Default)]
-struct NouveauChannelFree {
+pub(crate) struct NouveauChannelFree {
     channel: i32,
 }
 
@@ -506,151 +506,4 @@ pub fn create_channel_nvk_style(fd: RawFd) -> DriverResult<(u32, u32, u32)> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ioctl_numbers_match_kernel_header() {
-        assert_eq!(
-            DRM_NOUVEAU_CHANNEL_ALLOC, 0x42,
-            "CHANNEL_ALLOC = DRM_COMMAND_BASE + 0x02"
-        );
-        assert_eq!(
-            DRM_NOUVEAU_CHANNEL_FREE, 0x43,
-            "CHANNEL_FREE = DRM_COMMAND_BASE + 0x03"
-        );
-        assert_eq!(
-            DRM_NOUVEAU_GEM_NEW, 0x80,
-            "GEM_NEW = DRM_COMMAND_BASE + 0x40"
-        );
-        assert_eq!(
-            DRM_NOUVEAU_GEM_PUSHBUF, 0x81,
-            "GEM_PUSHBUF = DRM_COMMAND_BASE + 0x41"
-        );
-        assert_eq!(
-            DRM_NOUVEAU_GEM_CPU_PREP, 0x82,
-            "GEM_CPU_PREP = DRM_COMMAND_BASE + 0x42"
-        );
-        assert_eq!(
-            DRM_NOUVEAU_VM_INIT, 0x50,
-            "VM_INIT = DRM_COMMAND_BASE + 0x10"
-        );
-        assert_eq!(
-            DRM_NOUVEAU_VM_BIND, 0x51,
-            "VM_BIND = DRM_COMMAND_BASE + 0x11"
-        );
-        assert_eq!(DRM_NOUVEAU_EXEC, 0x52, "EXEC = DRM_COMMAND_BASE + 0x12");
-    }
-
-    #[test]
-    fn gem_domain_flags() {
-        assert_eq!(_NOUVEAU_GEM_DOMAIN_CPU, 1);
-        assert_eq!(NOUVEAU_GEM_DOMAIN_VRAM, 2);
-        assert_eq!(NOUVEAU_GEM_DOMAIN_GART, 4);
-        assert_eq!(
-            NOUVEAU_GEM_DOMAIN_MAPPABLE, 8,
-            "MAPPABLE = (1 << 3) per kernel header"
-        );
-    }
-
-    #[test]
-    fn struct_sizes_are_reasonable() {
-        assert!(std::mem::size_of::<NouveauChannelAlloc>() > 0);
-    }
-
-    #[test]
-    fn nvif_constants_match_mesa() {
-        assert_eq!(NVIF_ROUTE_NVIF, 0x00);
-        assert_eq!(NVIF_ROUTE_HIDDEN, 0xFF);
-        assert_eq!(NVIF_OWNER_NVIF, 0x00);
-        assert_eq!(NVIF_OWNER_ANY, 0xFF);
-    }
-
-    #[test]
-    fn nvif_compute_class_definitions() {
-        assert_eq!(NVIF_CLASS_FERMI_TWOD_A, 0x902D);
-        assert_eq!(NVIF_CLASS_KEPLER_INLINE_TO_MEMORY_B, 0xA0B5);
-        assert_eq!(NVIF_CLASS_VOLTA_COMPUTE_A, 0xC3C0);
-        assert_eq!(NVIF_CLASS_TURING_COMPUTE_A, 0xC5C0);
-        assert_eq!(NVIF_CLASS_AMPERE_COMPUTE_A, 0xC6C0);
-    }
-
-    #[test]
-    fn subchan_spec_layout() {
-        let s = SubchanSpec {
-            handle: 1,
-            grclass: NVIF_CLASS_VOLTA_COMPUTE_A,
-        };
-        assert_eq!(s.handle, 1);
-        assert_eq!(s.grclass, 0xC3C0);
-    }
-
-    #[test]
-    fn channel_alloc_struct_has_subchan_array() {
-        let alloc = NouveauChannelAlloc::default();
-        assert_eq!(alloc.subchan.len(), 8);
-    }
-
-    #[test]
-    fn channel_alloc_struct_size_matches_kernel_abi() {
-        // NouveauChannelAlloc (kernel drm_nouveau_channel_alloc):
-        //   fb_ctxdma_handle: u32 (4)
-        //   tt_ctxdma_handle: u32 (4)
-        //   channel: i32 (4)
-        //   pushbuf_domains: u32 (4)
-        //   notifier_handle: u32 (4)
-        //   subchan: [NouveauSubchan; 8] = 8 * 8 = 64
-        //   nr_subchan: u32 (4)
-        //   Total: 88 bytes (20 header + 64 subchan + 4 trailer)
-        assert_eq!(
-            std::mem::size_of::<NouveauChannelAlloc>(),
-            88,
-            "NouveauChannelAlloc must match kernel drm_nouveau_channel_alloc (88 bytes)"
-        );
-    }
-
-    #[test]
-    fn channel_free_struct_size() {
-        assert_eq!(
-            std::mem::size_of::<NouveauChannelFree>(),
-            4,
-            "NouveauChannelFree must match kernel drm_nouveau_channel_free (4 bytes)"
-        );
-    }
-
-    #[test]
-    fn nouveau_subchan_struct_size() {
-        assert_eq!(
-            std::mem::size_of::<NouveauSubchan>(),
-            8,
-            "NouveauSubchan must be 8 bytes (handle + grclass)"
-        );
-    }
-
-    #[test]
-    fn dump_channel_alloc_hex_is_nonempty() {
-        let hex = dump_channel_alloc_hex(NVIF_CLASS_VOLTA_COMPUTE_A);
-        assert!(hex.contains("NouveauChannelAlloc"));
-        assert!(hex.contains("bytes"));
-    }
-
-    #[test]
-    fn ioctl_uses_drm_iowr_pub() {
-        use crate::drm;
-        let nr = drm::drm_iowr_pub(
-            DRM_NOUVEAU_CHANNEL_ALLOC,
-            size_of_u32::<NouveauChannelAlloc>(),
-        );
-        assert!(nr > 0);
-        assert_eq!(nr & 0xFF, 0x42, "encoded NR field = CHANNEL_ALLOC = 0x42");
-    }
-
-    #[test]
-    #[expect(clippy::cast_possible_truncation, reason = "test structs are small")]
-    fn size_of_u32_matches_struct_sizes() {
-        assert_eq!(
-            size_of_u32::<NouveauChannelAlloc>(),
-            std::mem::size_of::<NouveauChannelAlloc>() as u32
-        );
-    }
-}
+mod tests;

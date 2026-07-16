@@ -57,6 +57,9 @@ pub mod sysfs_bar0;
 pub mod types;
 pub mod warm_capture;
 
+#[cfg(all(test, target_os = "linux"))]
+mod warm_capture_tests;
+
 pub use boot_state::{BootCapability, ColdBootReason, SovereignBootState, probe_boot_state};
 pub use device::{DmaBackend, DupAnchorFds, ReceivedVfioFds, VfioBackendKind, VfioDevice};
 pub use dma::DmaBuffer;

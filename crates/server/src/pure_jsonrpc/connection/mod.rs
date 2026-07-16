@@ -14,6 +14,8 @@ mod tcp;
 mod tests;
 #[cfg(unix)]
 mod unix;
+#[cfg(test)]
+mod unix_tests;
 
 pub use tcp::serve_tcp;
 #[cfg(unix)]

@@ -99,6 +99,9 @@ pub(crate) mod mmio_region;
 #[cfg(target_os = "linux")]
 pub mod drm;
 
+#[cfg(all(test, target_os = "linux"))]
+mod drm_tests;
+
 #[cfg(target_os = "linux")]
 pub mod amd;
 

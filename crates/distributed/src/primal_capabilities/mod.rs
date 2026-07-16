@@ -55,6 +55,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub mod adapters;
+#[cfg(test)]
+mod adapters_tests;
 pub mod registry;
 pub mod workload;
 
