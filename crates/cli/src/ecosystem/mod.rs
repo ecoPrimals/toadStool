@@ -12,7 +12,6 @@
 //! - `adapters/`: Capability-based service adapters (crypto, coordination, storage)
 //! - `capabilities/`: Capability resolution and discovery
 //! - `discovery`: Service discovery and scanning logic
-//! - `connection`: Connection management
 //! - `integrator_impl`: Core EcosystemIntegrator implementation
 
 // Public modules
@@ -24,7 +23,6 @@ pub mod service_type;
 pub mod types;
 
 // Internal modules
-mod connection;
 pub mod discovery;
 
 // Public re-exports

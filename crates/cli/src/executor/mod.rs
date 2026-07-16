@@ -14,7 +14,6 @@
 //! - `display`: UI and pretty-printing
 //! - `resources`: Resource cleanup and PID management
 //! - `signals`: Unix signal handling
-//! - `lifecycle`: Biome start/stop operations
 //! - `workload`: Direct workload execution
 //! - `executor_impl`: BiomeExecutor implementation (all orchestration logic)
 
@@ -23,7 +22,6 @@ mod types;
 
 // Refactored domain modules
 mod display;
-mod lifecycle;
 mod resources;
 mod signals;
 
