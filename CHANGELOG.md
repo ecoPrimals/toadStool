@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 16, 2026 (Sessions 43-336+)
+## [Unreleased] - Jul 18, 2026 (Sessions 43-337+)
+
+### Session S337 (Jul 18, 2026) — Hot-Path Allocation Elimination + Structural Splits
+
+Eliminated per-submit heap allocations in dispatch routing, and structurally refactored the two largest remaining production files into modular architectures.
+
+- **Hot-path `Cow<str>`** — `detect_dispatch_mode` now returns `Cow<'a, str>` instead of `String`: user-supplied modes borrow from the JSON `Value`; auto-detected `"vfio"`/`"drm"` borrow from `'static`. Eliminates 2–3 heap allocations per `compute.dispatch.submit` call. Callers updated to use `&*dispatch_mode` for match patterns.
+- **`warm.rs` structural split** — GPU warm-boot path refactored from monolithic 681L file into `warm/mod.rs` (110L, orchestration) + `warm/warm_steps.rs` (584L, 8 step functions: d3hot→d0, pmc_enable, pfifo_reset, pri_health, clock_gating, digital_pmu, vram_strategies, bar2).
+- **`operations.rs` structural split** — Crypto integration client refactored from 654L into `operations/mod.rs` (251L, constructors + health) + `encryption_ops.rs` (83L) + `key_ops.rs` (130L) + `permission_ops.rs` (229L). Fields made `pub(super)` for cross-file `impl` blocks.
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S336 (Jul 16, 2026) — Security Migration + Dead Feature Removal + Test Extraction Wave 6
 

@@ -227,7 +227,7 @@ impl DispatchHandler {
             }
         }
 
-        let needs_coral = matches!(dispatch_mode.as_str(), "vfio" | "drm");
+        let needs_coral = matches!(&*dispatch_mode, "vfio" | "drm");
 
         // Phase D: try local dispatch via cylinder before coral_client IPC.
         #[cfg(target_os = "linux")]

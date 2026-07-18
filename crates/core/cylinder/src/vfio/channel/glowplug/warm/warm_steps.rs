@@ -1,116 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Full warm-up sequence — bring the GPU from any state to Warm.
+//! Individual warm-up sequence steps for [`GlowPlug`](super::super::GlowPlug).
 
 use crate::error::DevinitError;
 
-use super::super::bar2_init;
-use super::super::devinit;
-use super::super::diagnostic::interpreter::memory_probe;
-use super::super::hbm2_training;
-use super::super::oracle::{DigitalPmu, OracleState};
-use super::super::registers::{cg, misc, pri};
-use super::GlowPlug;
-use super::constants::is_dangerous_register;
-use super::types::{GpuThermalState, StepSnapshot, WarmResult};
+use super::super::super::bar2_init;
+use super::super::super::devinit;
+use super::super::super::diagnostic::interpreter::memory_probe;
+use super::super::super::hbm2_training;
+use super::super::super::oracle::{DigitalPmu, OracleState};
+use super::super::super::registers::{cg, misc, pri};
+use super::super::GlowPlug;
+use super::super::constants::is_dangerous_register;
+use super::super::types::{GpuThermalState, StepSnapshot};
 
-impl GlowPlug<'_> {
-    /// Full warm-up sequence — bring the GPU from any state to Warm.
-    pub fn warm(&self) -> WarmResult {
-        let mut log = Vec::new();
-        let mut step_snapshots = Vec::new();
-        let initial_state = self.check_state();
-        log.push(format!("initial state: {initial_state:?}"));
-
-        if initial_state == GpuThermalState::Warm {
-            return WarmResult {
-                initial_state,
-                final_state: GpuThermalState::Warm,
-                success: true,
-                memory: None,
-                log,
-                step_snapshots,
-            };
-        }
-
-        // Step 0: D3hot → D0
-        if initial_state == GpuThermalState::D3Hot {
-            run_step_d3hot_to_d0(self, &mut log, &mut step_snapshots);
-            if self.check_state() == GpuThermalState::D3Hot {
-                return WarmResult {
-                    initial_state,
-                    final_state: GpuThermalState::D3Hot,
-                    success: false,
-                    memory: None,
-                    log,
-                    step_snapshots,
-                };
-            }
-        }
-
-        // Step 1: PMC_ENABLE — clock all engines
-        if matches!(
-            initial_state,
-            GpuThermalState::ColdGated | GpuThermalState::EnginesClocked
-        ) {
-            run_step_pmc_enable(self, &mut log, &mut step_snapshots);
-        }
-
-        // Step 2: PFIFO reset cycle (bit 8)
-        let state_after_pmc = self.check_state();
-        if matches!(
-            state_after_pmc,
-            GpuThermalState::ColdGated | GpuThermalState::EnginesClocked
-        ) {
-            run_step_pfifo_reset(self, &mut log, &mut step_snapshots);
-        }
-
-        // Step 2.5: PRI bus health check
-        run_step_pri_health(self, &mut log, &mut step_snapshots);
-
-        // Step 2.75: Clock gating sweep
-        run_step_clock_gating(self, &mut log, &mut step_snapshots);
-
-        // Step 2.9: Digital PMU emulation
-        run_step_digital_pmu(self, &mut log, &mut step_snapshots);
-
-        // Step 3: VRAM strategies (if dead)
-        let state_after_pfifo = self.check_state();
-        if state_after_pfifo == GpuThermalState::PfifoAliveVramDead {
-            run_step_vram_strategies(self, &mut log, &mut step_snapshots);
-        }
-
-        // Step 4: BAR2 page tables (requires VRAM)
-        let state_after_fb = self.check_state();
-        if matches!(
-            state_after_fb,
-            GpuThermalState::VramAliveBar2Dead | GpuThermalState::Warm
-        ) && state_after_fb == GpuThermalState::VramAliveBar2Dead
-        {
-            run_step_bar2(self, &mut log);
-        }
-
-        // Step 5: Verify final state with full memory topology
-        let final_state = self.check_state();
-        let memory = Some(memory_probe::discover_memory_topology(
-            self.bar0,
-            self.container.clone(),
-        ));
-
-        let success = final_state == GpuThermalState::Warm;
-        log.push(format!("final state: {final_state:?} success={success}"));
-
-        WarmResult {
-            initial_state,
-            final_state,
-            success,
-            memory,
-            log,
-            step_snapshots,
-        }
-    }
-}
-
-fn run_step_d3hot_to_d0(
+pub(crate) fn run_step_d3hot_to_d0(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     step_snapshots: &mut Vec<StepSnapshot>,
@@ -140,7 +43,7 @@ fn run_step_d3hot_to_d0(
     }
 }
 
-fn run_step_pmc_enable(
+pub(crate) fn run_step_pmc_enable(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     step_snapshots: &mut Vec<StepSnapshot>,
@@ -192,7 +95,7 @@ fn run_step_pmc_enable(
     }
 }
 
-fn run_step_pfifo_reset(
+pub(crate) fn run_step_pfifo_reset(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     step_snapshots: &mut Vec<StepSnapshot>,
@@ -219,7 +122,7 @@ fn run_step_pfifo_reset(
     }
 }
 
-fn run_step_pri_health(
+pub(crate) fn run_step_pri_health(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     step_snapshots: &mut Vec<StepSnapshot>,
@@ -233,7 +136,7 @@ fn run_step_pri_health(
     });
 }
 
-fn run_step_clock_gating(
+pub(crate) fn run_step_clock_gating(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     step_snapshots: &mut Vec<StepSnapshot>,
@@ -346,7 +249,7 @@ fn run_step_clock_gating(
     log.extend(cg_log);
 }
 
-fn run_step_digital_pmu(
+pub(crate) fn run_step_digital_pmu(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     step_snapshots: &mut Vec<StepSnapshot>,
@@ -419,7 +322,7 @@ fn run_step_digital_pmu(
     }
 }
 
-fn run_step_vram_strategies(
+pub(crate) fn run_step_vram_strategies(
     gp: &GlowPlug<'_>,
     log: &mut Vec<String>,
     _step_snapshots: &mut Vec<StepSnapshot>,
@@ -666,7 +569,7 @@ fn run_step_vram_strategies(
     log.push(format!("  NV_PFB registers readable: {}", pfb_regs.len()));
 }
 
-fn run_step_bar2(gp: &GlowPlug<'_>, log: &mut Vec<String>) {
+pub(crate) fn run_step_bar2(gp: &GlowPlug<'_>, log: &mut Vec<String>) {
     log.push("step 4: Setting up BAR2 page tables in VRAM".into());
     match bar2_init::setup_bar2_page_table(gp.bar0) {
         Ok(()) => {

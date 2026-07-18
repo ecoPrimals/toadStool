@@ -125,7 +125,7 @@ impl DispatchHandler {
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);
 
-        let needs_shader_service = matches!(dispatch_mode.as_str(), "vfio" | "drm");
+        let needs_shader_service = matches!(&*dispatch_mode, "vfio" | "drm");
 
         // Phase D: try local dispatch via cylinder before coral_client IPC.
         #[cfg(target_os = "linux")]

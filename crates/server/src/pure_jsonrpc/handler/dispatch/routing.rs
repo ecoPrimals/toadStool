@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::borrow::Cow;
+
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 pub(super) fn resolve_dispatch_bdf(params: &serde_json::Value) -> Result<String, JsonRpcError> {
@@ -16,12 +18,12 @@ pub(super) fn resolve_dispatch_bdf(params: &serde_json::Value) -> Result<String,
         .ok_or_else(|| JsonRpcError::internal_error("No GPUs found for dispatch"))
 }
 
-pub(super) fn detect_dispatch_mode(params: &serde_json::Value, bdf: &str) -> String {
+pub(super) fn detect_dispatch_mode<'a>(params: &'a serde_json::Value, bdf: &str) -> Cow<'a, str> {
     if let Some(mode) = params
         .get("dispatch_mode")
         .and_then(serde_json::Value::as_str)
     {
-        return mode.to_string();
+        return Cow::Borrowed(mode);
     }
 
     let gpus = toadstool_sysmon::discover_gpus();
@@ -29,8 +31,8 @@ pub(super) fn detect_dispatch_mode(params: &serde_json::Value, bdf: &str) -> Str
         .iter()
         .any(|g| g.pci_slot == bdf && g.driver == "vfio-pci")
     {
-        "vfio".to_string()
+        Cow::Borrowed("vfio")
     } else {
-        "drm".to_string()
+        Cow::Borrowed("drm")
     }
 }
