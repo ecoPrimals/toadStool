@@ -30,6 +30,8 @@
 )]
 
 #[cfg(target_os = "linux")]
+mod channel_tree;
+#[cfg(target_os = "linux")]
 mod rm_ioctl;
 #[cfg(target_os = "linux")]
 mod rm_object_tree;

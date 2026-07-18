@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 18, 2026 (Sessions 43-337+)
+## [Unreleased] - Jul 18, 2026 (Sessions 43-338+)
+
+### Session S338 (Jul 18, 2026) — Deep Structural Refactoring: 3 Large File Splits
+
+Structurally refactored the 3 largest remaining production files — all cylinder/VFIO code with natural module boundaries — into modular architectures.
+
+- **`rm_object_tree.rs` split** (738→349L) — Extracted Phase 2-4 compute channel allocation pipeline into `channel_tree.rs` (403L). Root/device/diagnostics stay in `rm_object_tree.rs`.
+- **`pmu_investigate/mod.rs` split** (664→331L) — Extracted Phase A falcon liveness probe into `phase_a.rs` (126L) and all 5 ungating strategies into `ungating.rs` (276L). Types, register constants, helpers, and orchestrator stay in `mod.rs`.
+- **`opcodes.rs` split** (658→62L) — VBIOS script interpreter opcodes split into 5 family modules: `opcodes_control.rs` (198L), `opcodes_register.rs` (142L), `opcodes_clock.rs` (144L), `opcodes_io.rs` (62L), `opcodes_extended.rs` (112L). `opcodes.rs` is now a thin dispatcher.
+- **`// Pending:` audit** — All 4 production `// Pending:` markers verified as legitimate active blockers (not stale): workload_manager (BLOCKED on biome-executor API), adapters (KeyManagementRequest API gap), display capabilities (DRM wiring gap), reservoir (eigenvalue decomposition research).
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S337 (Jul 18, 2026) — Hot-Path Allocation Elimination + Structural Splits
 
