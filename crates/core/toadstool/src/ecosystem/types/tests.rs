@@ -6,7 +6,7 @@ use super::*;
 fn test_config_builder() {
     let config = EcosystemConfig::builder()
         .auto_discovery(true)
-        .discovery_timeout(std::time::Duration::from_secs(60))
+        .discovery_timeout(std::time::Duration::from_mins(1))
         .build();
 
     assert!(config.auto_discovery);
@@ -67,7 +67,7 @@ fn test_config_builder_with_all_options() {
 
     let config = EcosystemConfig::builder()
         .auto_discovery(false)
-        .discovery_timeout(std::time::Duration::from_secs(120))
+        .discovery_timeout(std::time::Duration::from_mins(2))
         .discovery_method(DiscoveryMethodConfig::Mdns)
         .require_capability(Capability::Compute(ComputeCapability::NativeExecution))
         .optional_capability(Capability::Compute(ComputeCapability::GpuCompute))

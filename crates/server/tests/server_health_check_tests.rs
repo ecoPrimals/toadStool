@@ -24,13 +24,13 @@ fn test_health_check_config_default() {
 #[test]
 fn test_health_check_config_custom_interval() {
     let config = HealthCheckConfig {
-        interval: Duration::from_secs(60),
+        interval: Duration::from_mins(1),
         check_runtime_engines: true,
         check_resources: true,
         memory_threshold_percent: 90.0,
         cpu_threshold_percent: 95.0,
     };
-    assert_eq!(config.interval, Duration::from_secs(60));
+    assert_eq!(config.interval, Duration::from_mins(1));
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn test_health_check_config_strict_thresholds() {
 #[test]
 fn test_health_check_config_lenient_thresholds() {
     let config = HealthCheckConfig {
-        interval: Duration::from_secs(60),
+        interval: Duration::from_mins(1),
         check_runtime_engines: true,
         check_resources: true,
         memory_threshold_percent: 98.0,
@@ -122,13 +122,13 @@ fn test_health_check_config_very_short_interval() {
 #[test]
 fn test_health_check_config_very_long_interval() {
     let config = HealthCheckConfig {
-        interval: Duration::from_secs(3600),
+        interval: Duration::from_hours(1),
         check_runtime_engines: true,
         check_resources: true,
         memory_threshold_percent: 90.0,
         cpu_threshold_percent: 95.0,
     };
-    assert_eq!(config.interval, Duration::from_secs(3600));
+    assert_eq!(config.interval, Duration::from_hours(1));
 }
 
 #[test]

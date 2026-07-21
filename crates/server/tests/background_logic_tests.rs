@@ -21,7 +21,7 @@ fn test_monitoring_interval_validation() {
         Duration::from_secs(5),
         Duration::from_secs(10),
         Duration::from_secs(30),
-        Duration::from_secs(60),
+        Duration::from_mins(1),
     ];
 
     for interval in intervals {
@@ -135,7 +135,7 @@ fn test_cleanup_candidate_identification() {
     let old_timestamp = now - Duration::from_secs(48 * 3600);
     let recent_timestamp = now - Duration::from_secs(12 * 3600);
 
-    let age_threshold = Duration::from_secs(24 * 3600);
+    let age_threshold = Duration::from_hours(24);
 
     let is_old = now.duration_since(old_timestamp).unwrap_or_default() > age_threshold;
     let is_recent = now.duration_since(recent_timestamp).unwrap_or_default() < age_threshold;
@@ -148,8 +148,8 @@ fn test_cleanup_candidate_identification() {
 fn test_statistics_collection_interval() {
     // Test statistics collection interval
     let collection_intervals = vec![
-        Duration::from_secs(60),  // 1 minute
-        Duration::from_secs(300), // 5 minutes
+        Duration::from_mins(1),  // 1 minute
+        Duration::from_mins(5), // 5 minutes
         Duration::from_secs(900), // 15 minutes
     ];
 
@@ -200,8 +200,7 @@ fn test_metrics_aggregation() {
     assert!(snapshots.iter().all(|s| {
         s.timestamp
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs() > 0)
-            .unwrap_or(false)
+            .is_ok_and(|d| d.as_secs() > 0)
     }));
 }
 
@@ -448,7 +447,7 @@ fn test_rate_limiting_for_alerts() {
     use std::time::Instant;
 
     let last_alert_time = Instant::now();
-    let min_interval = Duration::from_secs(60);
+    let min_interval = Duration::from_mins(1);
 
     // Check if enough time has passed
     let can_send_alert = last_alert_time.elapsed() >= min_interval;
@@ -530,8 +529,7 @@ fn test_background_service_health() {
         health
             .last_run
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs() > 0)
-            .unwrap_or(false)
+            .is_ok_and(|d| d.as_secs() > 0)
     );
 }
 

@@ -168,8 +168,8 @@ async fn test_circuit_breaker_opens_after_threshold() {
     let config = CircuitBreakerConfig {
         failure_threshold: 3,
         success_threshold: 2,
-        timeout: Duration::from_secs(60),
-        rolling_window: Duration::from_secs(60),
+        timeout: Duration::from_mins(1),
+        rolling_window: Duration::from_mins(1),
         half_open_max_requests: 2,
     };
     let breaker = Arc::new(CircuitBreaker::new("threshold-test".to_string(), config));
@@ -225,7 +225,7 @@ async fn test_circuit_breaker_recovery_scenario() {
         failure_threshold: 2,
         success_threshold: 2,
         timeout: Duration::from_millis(100),
-        rolling_window: Duration::from_secs(60),
+        rolling_window: Duration::from_mins(1),
         half_open_max_requests: 2,
     };
     let breaker = Arc::new(CircuitBreaker::new("recovery-test".to_string(), config));

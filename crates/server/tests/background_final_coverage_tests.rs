@@ -111,7 +111,7 @@ async fn test_health_check_exactly_at_max_executions() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),
@@ -153,7 +153,7 @@ async fn test_cleanup_sends_completion_event() {
                 execution_id,
                 runtime_type: toadstool::RuntimeType::Native,
                 started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400),
-                timeout: Duration::from_secs(300),
+                timeout: Duration::from_mins(5),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: ClientInfo {
                     user_agent: Some("test".to_string()),
@@ -312,7 +312,7 @@ async fn test_cleanup_logs_when_executions_cleaned() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),
@@ -368,7 +368,7 @@ async fn test_statistics_collection_with_runtime_engines() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),

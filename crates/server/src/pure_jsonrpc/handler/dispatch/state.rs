@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::os::fd::AsFd;
 use std::sync::Arc;
 
-const DEFAULT_ESTIMATED_DURATION: std::time::Duration = std::time::Duration::from_mins(1);
+const DEFAULT_ESTIMATED_DURATION: std::time::Duration = std::time::Duration::from_secs(60);
 
 impl DispatchHandler {
     pub fn new(

@@ -123,7 +123,7 @@ fn test_monitoring_config_default() {
     assert!(matches!(config.threshold_action, ThresholdAction::Log));
 
     // Metrics retention should be 1 hour
-    assert_eq!(config.metrics_retention, Duration::from_secs(3600));
+    assert_eq!(config.metrics_retention, Duration::from_hours(1));
 }
 
 #[test]
@@ -184,11 +184,11 @@ fn test_monitoring_config_terminate_action() {
 #[test]
 fn test_monitoring_config_custom_retention() {
     let config = MonitoringConfig {
-        metrics_retention: Duration::from_secs(7200), // 2 hours
+        metrics_retention: Duration::from_hours(2), // 2 hours
         ..Default::default()
     };
 
-    assert_eq!(config.metrics_retention, Duration::from_secs(7200));
+    assert_eq!(config.metrics_retention, Duration::from_hours(2));
 }
 
 #[test]
@@ -485,8 +485,8 @@ fn test_custom_granularity_zero() {
 
 #[test]
 fn test_custom_granularity_large() {
-    let gran = MonitoringGranularity::Custom(Duration::from_secs(3600));
-    assert_eq!(gran.to_duration(), Duration::from_secs(3600));
+    let gran = MonitoringGranularity::Custom(Duration::from_hours(1));
+    assert_eq!(gran.to_duration(), Duration::from_hours(1));
 }
 
 // ============================================================================

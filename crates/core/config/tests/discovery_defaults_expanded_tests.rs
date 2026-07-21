@@ -14,7 +14,7 @@ fn test_discovery_defaults_values() {
 
     assert_eq!(defaults.discovery_timeout, Duration::from_secs(5));
     assert_eq!(defaults.refresh_interval, Duration::from_secs(30));
-    assert_eq!(defaults.cache_ttl, Duration::from_secs(300));
+    assert_eq!(defaults.cache_ttl, Duration::from_mins(5));
     assert_eq!(defaults.max_retries, 3);
     assert_eq!(defaults.retry_delay, Duration::from_secs(1));
 }
@@ -99,7 +99,7 @@ fn test_discovery_timeout_reasonable() {
     assert!(defaults.discovery_timeout >= Duration::from_secs(1));
 
     // Should be less than 1 minute
-    assert!(defaults.discovery_timeout <= Duration::from_secs(60));
+    assert!(defaults.discovery_timeout <= Duration::from_mins(1));
 }
 
 /// Test refresh interval is reasonable
@@ -111,7 +111,7 @@ fn test_refresh_interval_reasonable() {
     assert!(defaults.refresh_interval >= Duration::from_secs(10));
 
     // Should be less than 5 minutes
-    assert!(defaults.refresh_interval <= Duration::from_secs(300));
+    assert!(defaults.refresh_interval <= Duration::from_mins(5));
 }
 
 /// Test cache TTL is reasonable
@@ -120,10 +120,10 @@ fn test_cache_ttl_reasonable() {
     let defaults = DiscoveryDefaults::default();
 
     // Should be at least 1 minute
-    assert!(defaults.cache_ttl >= Duration::from_secs(60));
+    assert!(defaults.cache_ttl >= Duration::from_mins(1));
 
     // Should be less than 1 hour
-    assert!(defaults.cache_ttl <= Duration::from_secs(3600));
+    assert!(defaults.cache_ttl <= Duration::from_hours(1));
 }
 
 /// Test max retries is reasonable
@@ -237,8 +237,8 @@ fn test_fallback_endpoints_clone() {
 fn test_custom_discovery_defaults() {
     let custom = DiscoveryDefaults {
         discovery_timeout: Duration::from_secs(10),
-        refresh_interval: Duration::from_secs(60),
-        cache_ttl: Duration::from_secs(600),
+        refresh_interval: Duration::from_mins(1),
+        cache_ttl: Duration::from_mins(10),
         max_retries: 5,
         retry_delay: Duration::from_secs(2),
     };

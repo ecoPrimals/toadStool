@@ -206,7 +206,7 @@ async fn test_start_background_services_completes_without_panic() {
             check_runtime_engines: false,
             ..HealthCheckConfig::default()
         },
-        resource_monitoring_interval: Duration::from_secs(3600),
+        resource_monitoring_interval: Duration::from_hours(1),
         ..ServerConfig::default()
     };
     let state = create_test_state(config);
@@ -223,7 +223,7 @@ async fn test_start_background_services_with_capability_provider() {
             check_runtime_engines: false,
             ..HealthCheckConfig::default()
         },
-        resource_monitoring_interval: Duration::from_secs(3600),
+        resource_monitoring_interval: Duration::from_hours(1),
         ..ServerConfig::default()
     };
     let state = ServerState::<crate::runtime_engine_dispatch::RuntimeEngineDispatch> {
@@ -523,7 +523,7 @@ fn test_find_timed_out_execution_ids_none_expired() {
     let mut active = HashMap::new();
     active.insert(
         id,
-        sample_active_execution(id, now, Duration::from_secs(60)),
+        sample_active_execution(id, now, Duration::from_mins(1)),
     );
 
     let timed_out = find_timed_out_execution_ids(&active, now);
@@ -535,7 +535,7 @@ fn test_find_timed_out_execution_ids_detects_expired() {
     let id = Uuid::new_v4();
     let now = std::time::SystemTime::now();
     let started_at = now
-        .checked_sub(Duration::from_secs(120))
+        .checked_sub(Duration::from_mins(2))
         .expect("valid past time");
     let mut active = HashMap::new();
     active.insert(

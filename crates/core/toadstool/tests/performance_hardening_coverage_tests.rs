@@ -85,7 +85,7 @@ fn types_memory_pool_config_default() {
 fn types_caching_config_default() {
     let config = CachingConfig::default();
     assert_eq!(config.max_size, 1000);
-    assert_eq!(config.cleanup_interval, Duration::from_secs(60));
+    assert_eq!(config.cleanup_interval, Duration::from_mins(1));
     assert!((config.hit_rate_threshold - 0.8).abs() < 1e-10);
 }
 
@@ -104,8 +104,8 @@ fn types_performance_connection_pool_config_default() {
     assert_eq!(config.initial_size, 10);
     assert_eq!(config.max_size, 100);
     assert_eq!(config.connection_timeout, Duration::from_secs(30));
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
-    assert_eq!(config.health_check_interval, Duration::from_secs(60));
+    assert_eq!(config.idle_timeout, Duration::from_mins(5));
+    assert_eq!(config.health_check_interval, Duration::from_mins(1));
 }
 
 #[test]
@@ -227,7 +227,7 @@ async fn caching_put_with_ttl() {
     let config = CachingConfig::default();
     let cache = IntelligentCache::new(config);
     let _ = cache
-        .put_with_ttl("key".to_string(), 100, Duration::from_secs(60))
+        .put_with_ttl("key".to_string(), 100, Duration::from_mins(1))
         .await;
     assert_eq!(cache.get(&"key".to_string()).await, Some(100));
 }

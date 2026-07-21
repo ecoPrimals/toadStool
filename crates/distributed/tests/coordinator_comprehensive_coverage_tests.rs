@@ -107,7 +107,7 @@ fn create_execution_request() -> ExecutionRequest {
         runtime_hint: None,
         resources: UniversalResourceRequirements::default(),
         security_context: SecurityContext::default(),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
@@ -542,7 +542,7 @@ fn test_default_implementations() {
     assert!(config.coordination.is_none());
 
     let request = ExecutionRequest::default();
-    assert_eq!(request.timeout, Some(Duration::from_secs(300)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(5)));
     assert!(request.environment.is_empty());
 }
 

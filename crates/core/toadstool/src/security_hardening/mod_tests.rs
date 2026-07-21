@@ -154,7 +154,7 @@ async fn test_rate_limiter_multiple_clients_independent() {
         max_requests_per_minute: 2,
         max_requests_per_hour: 100,
         max_requests_per_day: 1000,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 1,
     };
     let limiter = RateLimiter::new(config);

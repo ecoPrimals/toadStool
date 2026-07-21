@@ -307,7 +307,7 @@ fn test_print_summary_with_database() {
             database_type: "sqlite".to_string(),
             max_connections: 10,
             connection_timeout: std::time::Duration::from_secs(30),
-            query_timeout: std::time::Duration::from_secs(60),
+            query_timeout: std::time::Duration::from_mins(1),
             enable_migrations: false,
             migration_dir: "migrations".to_string(),
         }),

@@ -66,7 +66,7 @@ mod tests {
             max_processes: Some(10),
             max_disk_bytes: Some(10 * 1024 * 1024 * 1024), // 10GB
             max_network_bps: Some(100 * 1024 * 1024),      // 100 MB/s
-            max_execution_time: Some(Duration::from_secs(300)),
+            max_execution_time: Some(Duration::from_mins(5)),
         };
         assert_eq!(limits.max_memory_bytes, Some(2 * 1024 * 1024 * 1024));
         assert_eq!(limits.max_cpu_percent, Some(75.0));
@@ -121,10 +121,10 @@ mod tests {
     #[test]
     fn test_sandbox_lifetime_persistent() {
         let lifetime = SandboxLifetime::Persistent {
-            ttl: Duration::from_secs(300),
+            ttl: Duration::from_mins(5),
         };
         match lifetime {
-            SandboxLifetime::Persistent { ttl } => assert_eq!(ttl, Duration::from_secs(300)),
+            SandboxLifetime::Persistent { ttl } => assert_eq!(ttl, Duration::from_mins(5)),
             _ => panic!("Expected Persistent variant"),
         }
     }

@@ -123,7 +123,7 @@ impl Default for ResourceLimits {
             max_processes: Some(100),
             max_disk_bytes: Some(1024 * 1024 * 1024), // 1GB
             max_network_bps: Some(10 * 1024 * 1024),  // 10MB/s
-            max_execution_time: Some(Duration::from_mins(5)), // 5 minutes
+            max_execution_time: Some(Duration::from_secs(300)), // 5 minutes
         }
     }
 }

@@ -410,7 +410,7 @@ fn create_container_request() -> Result<ExecutionRequest, Box<dyn std::error::Er
             gpu: None,
         },
         security_context: SecurityContext::for_isolation_level(IsolationLevel::Enhanced),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,

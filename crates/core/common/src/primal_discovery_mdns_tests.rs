@@ -170,7 +170,7 @@ fn test_mdns_adapter_config_accessor() {
         let adapter_config = adapter.config();
         assert_eq!(
             adapter_config.cache_ttl,
-            std::time::Duration::from_secs(300)
+            std::time::Duration::from_mins(5)
         );
         assert!(adapter_config.enable_mdns);
     }

@@ -326,8 +326,7 @@ async fn test_concurrent_session_creation() -> ToadStoolResult<()> {
         .iter()
         .filter(|r| {
             r.as_ref()
-                .map(|res| res.as_ref().map(|r| r.success).unwrap_or(false))
-                .unwrap_or(false)
+                .is_ok_and(|res| res.as_ref().is_ok_and(|r| r.success))
         })
         .count();
 
@@ -369,8 +368,7 @@ async fn test_concurrent_status_requests() -> ToadStoolResult<()> {
         .iter()
         .filter(|r| {
             r.as_ref()
-                .map(|res| res.as_ref().map(|r| r.success).unwrap_or(false))
-                .unwrap_or(false)
+                .is_ok_and(|res| res.as_ref().is_ok_and(|r| r.success))
         })
         .count();
 

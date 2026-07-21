@@ -47,7 +47,7 @@ fn test_property_test_config_builder_pattern() {
         test_name: "builder_test".to_string(),
         test_cases: 200,
         shrink_attempts: 50,
-        timeout: Duration::from_secs(120),
+        timeout: Duration::from_mins(2),
         verbose: false,
         seed: None,
     };
@@ -314,7 +314,7 @@ fn test_property_test_runner_custom_config() {
         test_name: "custom_runner".to_string(),
         test_cases: 200,
         shrink_attempts: 50,
-        timeout: Duration::from_secs(120),
+        timeout: Duration::from_mins(2),
         verbose: true,
         seed: None,
     };
@@ -552,7 +552,7 @@ fn test_property_test_result_long_duration() {
         success: true,
         test_cases_run: 10000,
         failures: Vec::new(),
-        duration: Duration::from_secs(3600), // 1 hour
+        duration: Duration::from_hours(1), // 1 hour
         statistics: TestStatistics {
             input_distribution: HashMap::new(),
             execution_times: Vec::new(),
@@ -560,7 +560,7 @@ fn test_property_test_result_long_duration() {
         },
     };
 
-    assert_eq!(result.duration, Duration::from_secs(3600));
+    assert_eq!(result.duration, Duration::from_hours(1));
     assert_eq!(result.test_cases_run, 10000);
 }
 

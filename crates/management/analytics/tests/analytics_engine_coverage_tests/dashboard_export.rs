@@ -56,11 +56,11 @@ async fn test_dashboard_with_panels() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // First, add some metrics data
-    let base_time = SystemTime::now() - Duration::from_secs(2 * 3600);
+    let base_time = SystemTime::now() - Duration::from_hours(2);
     for i in 0..5 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::from_secs((i * 15) as u64 * 60),
+            timestamp: base_time + Duration::from_mins((i * 15) as u64),
             metric_name: "dashboard_metric".to_string(),
             value: f64::from(i).mul_add(10.0, 50.0),
             runtime_type: Some(RuntimeType::Native),
@@ -128,7 +128,7 @@ async fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::Gauge,
         metrics: vec!["cpu".to_string()],
         time_range: TimeRange {
-            from: SystemTime::now() - Duration::from_secs(3600),
+            from: SystemTime::now() - Duration::from_hours(1),
             to: SystemTime::now(),
             refresh_interval_secs: 30,
         },
@@ -146,7 +146,7 @@ async fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::BarChart,
         metrics: vec!["memory".to_string()],
         time_range: TimeRange {
-            from: SystemTime::now() - Duration::from_secs(3600),
+            from: SystemTime::now() - Duration::from_hours(1),
             to: SystemTime::now(),
             refresh_interval_secs: 30,
         },
@@ -390,7 +390,7 @@ fn test_panel_types() {
 
 #[test]
 fn test_time_range_creation() {
-    let from = SystemTime::now() - Duration::from_secs(24 * 3600);
+    let from = SystemTime::now() - Duration::from_hours(24);
     let to = SystemTime::now();
     let time_range = TimeRange {
         from,

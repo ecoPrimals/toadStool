@@ -61,7 +61,7 @@ fn activate_sets_active_and_guard_drop_clears() {
 fn activate_stores_bdf_and_module_name() {
     let _lock = reset_watchdog();
 
-    let _guard = activate(
+    let guard = activate(
         "0000:82:00.0",
         InterruptProfile::VOLTA_PLUS,
         None,
@@ -69,7 +69,7 @@ fn activate_stores_bdf_and_module_name() {
     );
     assert_eq!(bdf_display(), "0000:82:00.0");
     assert_eq!(module_name_display(), "nvidia_uvm");
-    drop(_guard);
+    drop(guard);
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn guard_heartbeat_method_updates_timestamp() {
 fn enter_and_exit_module_cleanup_transitions_phase() {
     let _lock = reset_watchdog();
 
-    let _guard = activate("0:0:0.0", InterruptProfile::VOLTA_PLUS, None, "test");
+    let guard = activate("0:0:0.0", InterruptProfile::VOLTA_PLUS, None, "test");
     assert_eq!(current_phase(), Phase::PipelineActive);
 
     enter_module_cleanup("nvidia");
@@ -115,7 +115,7 @@ fn enter_and_exit_module_cleanup_transitions_phase() {
 
     exit_module_cleanup();
     assert_eq!(current_phase(), Phase::PipelineActive);
-    drop(_guard);
+    drop(guard);
 }
 
 #[test]
@@ -147,28 +147,28 @@ fn defense_status_idle_shape() {
 fn defense_status_active_shape() {
     let _lock = reset_watchdog();
 
-    let _guard = activate("0000:01:00.0", InterruptProfile::VOLTA_PLUS, None, "nvidia");
+    let guard = activate("0000:01:00.0", InterruptProfile::VOLTA_PLUS, None, "nvidia");
     let status = defense_status();
     assert_eq!(status["phase"], "PipelineActive");
     assert_eq!(status["bdf"], "0000:01:00.0");
     assert_eq!(status["mechanisms"]["interrupt_quench"], true);
     assert_eq!(status["mechanisms"]["exclusion_guard"], true);
     assert_eq!(status["mechanisms"]["fire_and_poll_unbind"], false);
-    drop(_guard);
+    drop(guard);
 }
 
 #[test]
 fn defense_status_module_cleanup_shape() {
     let _lock = reset_watchdog();
 
-    let _guard = activate("0:0:0.0", InterruptProfile::VOLTA_PLUS, None, "test");
+    let guard = activate("0:0:0.0", InterruptProfile::VOLTA_PLUS, None, "test");
     enter_module_cleanup("nvidia");
     let status = defense_status();
     assert_eq!(status["phase"], "ModuleCleanup");
     assert_eq!(status["mechanisms"]["fire_and_poll_unbind"], true);
     assert_eq!(status["mechanisms"]["exclusion_guard"], true);
     exit_module_cleanup();
-    drop(_guard);
+    drop(guard);
 }
 
 #[test]
@@ -190,27 +190,27 @@ fn watchdog_status_shape() {
 fn watchdog_status_active_reflects_custom_timeout() {
     let _lock = reset_watchdog();
 
-    let _guard = activate(
+    let guard = activate(
         "0:0:0.0",
         InterruptProfile::VOLTA_PLUS,
-        Some(Duration::from_secs(60)),
+        Some(Duration::from_mins(1)),
         "nvidia_drm",
     );
     let status = watchdog_status();
     assert_eq!(status["timeout_s"], 60);
     assert_eq!(status["phase"], "PipelineActive");
     assert_eq!(status["module_name"], "nvidia_drm");
-    drop(_guard);
+    drop(guard);
 }
 
 #[test]
 fn activate_default_timeout_is_two_minutes() {
     let _lock = reset_watchdog();
 
-    let _guard = activate("0:0:0.0", InterruptProfile::VOLTA_PLUS, None, "test");
+    let guard = activate("0:0:0.0", InterruptProfile::VOLTA_PLUS, None, "test");
     let stored = WATCHDOG.timeout_ms.load(Ordering::Acquire);
     assert_eq!(stored, 120_000);
-    drop(_guard);
+    drop(guard);
 }
 
 #[test]

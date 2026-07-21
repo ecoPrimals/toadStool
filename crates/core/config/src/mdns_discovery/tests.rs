@@ -20,7 +20,7 @@ async fn test_mdns_client_creation() {
 
 #[tokio::test]
 async fn test_mdns_client_with_ttl() {
-    let client = MdnsDiscoveryClient::with_ttl(Duration::from_secs(60));
+    let client = MdnsDiscoveryClient::with_ttl(Duration::from_mins(1));
     assert!(client.is_ok());
 }
 

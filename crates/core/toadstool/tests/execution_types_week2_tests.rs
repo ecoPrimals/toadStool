@@ -300,7 +300,7 @@ fn test_execution_request_default() {
     let request = ExecutionRequest::default();
 
     assert!(request.runtime_hint.is_none());
-    assert_eq!(request.timeout, Some(Duration::from_secs(300)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(5)));
     assert!(request.environment.is_empty());
     assert!(request.callback_config.is_none());
 }
@@ -308,11 +308,11 @@ fn test_execution_request_default() {
 #[test]
 fn test_execution_request_with_timeout() {
     let request = ExecutionRequest {
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         ..Default::default()
     };
 
-    assert_eq!(request.timeout, Some(Duration::from_secs(60)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(1)));
 }
 
 #[test]

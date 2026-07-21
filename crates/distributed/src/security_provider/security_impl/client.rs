@@ -35,7 +35,7 @@ pub struct DistributedSecurityProvider {
     client: Arc<RwLock<Option<Arc<CryptoServiceClient>>>>,
 
     /// Discovery configuration (for future reconnection logic)
-    _config: CryptoServiceConfig,
+    config: CryptoServiceConfig,
 
     /// Provider metadata
     metadata: ProviderMetadata,
@@ -82,7 +82,7 @@ impl DistributedSecurityProvider {
 
         Ok(Self {
             client: Arc::new(RwLock::new(client)),
-            _config: config,
+            config,
             metadata,
             capabilities,
         })
@@ -121,7 +121,7 @@ impl DistributedSecurityProvider {
 
         drop(client_lock);
 
-        let client = Self::connect_client(&self._config).await?;
+        let client = Self::connect_client(&self.config).await?;
 
         {
             let mut client_lock = self.client.write().await;

@@ -15,14 +15,20 @@ pub mod ioctls {
         VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
     };
 
-    #[expect(
-        dead_code,
-        reason = "VFIO ABI constant for DMA mapping when hardware backend is wired"
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "VFIO ABI constant for DMA mapping when hardware backend is wired"
+        )
     )]
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
-    #[expect(
-        dead_code,
-        reason = "VFIO ABI constant for DMA mapping when hardware backend is wired"
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "VFIO ABI constant for DMA mapping when hardware backend is wired"
+        )
     )]
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
@@ -39,14 +45,20 @@ pub struct PollConfig<'a> {
     pub error_msg: &'a str,
 }
 
-#[expect(
-    unused_imports,
-    reason = "re-exported for VFIO backend consumers when hardware is wired"
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "re-exported for VFIO backend consumers when hardware is wired"
+    )
 )]
 pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
-#[expect(
-    unused_imports,
-    reason = "re-exported for VFIO backend consumers when hardware is wired"
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "re-exported for VFIO backend consumers when hardware is wired"
+    )
 )]
 pub use toadstool_hw_safe::vfio_setup::{VfioDeviceInfo, VfioGroupStatus, VfioRegionInfo};
 

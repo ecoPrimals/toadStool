@@ -264,7 +264,7 @@ async fn test_timeout_duration_handling() {
 
     // Test various timeout durations
     let timeout_30s = Duration::from_secs(30);
-    let timeout_60s = Duration::from_secs(60);
+    let timeout_60s = Duration::from_mins(1);
 
     assert_eq!(timeout_30s.as_secs(), 30);
     assert_eq!(timeout_60s.as_secs(), 60);

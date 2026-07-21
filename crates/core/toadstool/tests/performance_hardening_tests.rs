@@ -109,7 +109,7 @@ fn test_optimized_monitoring_config_custom() {
         high_load_multiplier: 0.25,
         low_load_multiplier: 3.0,
         batch_size: 20,
-        aggregation_window: Duration::from_secs(120),
+        aggregation_window: Duration::from_mins(2),
     };
     assert_eq!(config.base_sampling_interval, Duration::from_millis(200));
     assert!(!config.adaptive_sampling);
@@ -180,7 +180,7 @@ fn test_memory_pool_config_serialization() {
 fn test_caching_config_default() {
     let config = CachingConfig::default();
     assert_eq!(config.max_size, 1000);
-    assert_eq!(config.default_ttl, Duration::from_secs(300));
+    assert_eq!(config.default_ttl, Duration::from_mins(5));
     assert_eq!(config.hit_rate_threshold, 0.8);
 }
 
@@ -188,8 +188,8 @@ fn test_caching_config_default() {
 fn test_caching_config_custom() {
     let config = CachingConfig {
         max_size: 2000,
-        default_ttl: Duration::from_secs(600),
-        cleanup_interval: Duration::from_secs(120),
+        default_ttl: Duration::from_mins(10),
+        cleanup_interval: Duration::from_mins(2),
         hit_rate_threshold: 0.9,
     };
     assert_eq!(config.max_size, 2000);
@@ -271,8 +271,8 @@ fn test_connection_pool_config_custom() {
         enabled: true,
         max_connections_per_host: 20,
         max_idle_connections: 100,
-        idle_timeout: Duration::from_secs(600),
-        connection_lifetime: Duration::from_secs(3600),
+        idle_timeout: Duration::from_mins(10),
+        connection_lifetime: Duration::from_hours(1),
     };
     assert_eq!(config.max_connections_per_host, 20);
     assert_eq!(config.max_idle_connections, 100);
@@ -356,7 +356,7 @@ async fn test_memory_pool_get_object() {
         max_size: 10,
         growth_factor: 1.5,
         shrink_threshold: 0.3,
-        cleanup_interval: Duration::from_secs(60),
+        cleanup_interval: Duration::from_mins(1),
     };
     let pool: MemoryPool<Vec<u8>> = MemoryPool::new(config, || Vec::with_capacity(1024));
 
@@ -371,7 +371,7 @@ async fn test_memory_pool_get_multiple_objects() {
         max_size: 10,
         growth_factor: 1.5,
         shrink_threshold: 0.3,
-        cleanup_interval: Duration::from_secs(60),
+        cleanup_interval: Duration::from_mins(1),
     };
     let pool: Arc<MemoryPool<Vec<u8>>> =
         Arc::new(MemoryPool::new(config, || Vec::with_capacity(1024)));
@@ -392,7 +392,7 @@ async fn test_memory_pool_stats() {
         max_size: 100,
         growth_factor: 1.5,
         shrink_threshold: 0.3,
-        cleanup_interval: Duration::from_secs(60),
+        cleanup_interval: Duration::from_mins(1),
     };
     let pool: MemoryPool<Vec<u8>> = MemoryPool::new(config, || Vec::with_capacity(1024));
 
@@ -438,7 +438,7 @@ fn test_intelligent_cache_new() {
 fn test_intelligent_cache_with_custom_config() {
     let config = CachingConfig {
         max_size: 500,
-        default_ttl: Duration::from_secs(600),
+        default_ttl: Duration::from_mins(10),
         cleanup_interval: Duration::from_secs(30),
         hit_rate_threshold: 0.9,
     };
@@ -532,8 +532,8 @@ async fn test_intelligent_cache_get_stats() {
 async fn test_intelligent_cache_lru_eviction() {
     let config = CachingConfig {
         max_size: 3,
-        default_ttl: Duration::from_secs(300),
-        cleanup_interval: Duration::from_secs(60),
+        default_ttl: Duration::from_mins(5),
+        cleanup_interval: Duration::from_mins(1),
         hit_rate_threshold: 0.8,
     };
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);

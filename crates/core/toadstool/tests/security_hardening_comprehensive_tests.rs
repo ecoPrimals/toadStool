@@ -91,7 +91,7 @@ fn test_rate_limiting_config_default() {
     assert_eq!(config.max_requests_per_minute, 60);
     assert_eq!(config.max_requests_per_hour, 3600);
     assert_eq!(config.max_requests_per_day, 86400);
-    assert_eq!(config.sliding_window, Duration::from_secs(60));
+    assert_eq!(config.sliding_window, Duration::from_mins(1));
     assert_eq!(config.burst_allowance, 10);
 }
 
@@ -115,7 +115,7 @@ fn test_rate_limiting_config_permissive() {
         max_requests_per_minute: 1000,
         max_requests_per_hour: 60000,
         max_requests_per_day: 1_000_000,
-        sliding_window: Duration::from_secs(120),
+        sliding_window: Duration::from_mins(2),
         burst_allowance: 100,
     };
 
@@ -127,9 +127,9 @@ fn test_rate_limiting_config_permissive() {
 fn test_rate_limiting_config_different_windows() {
     let windows = vec![
         Duration::from_secs(30),
-        Duration::from_secs(60),
-        Duration::from_secs(120),
-        Duration::from_secs(300),
+        Duration::from_mins(1),
+        Duration::from_mins(2),
+        Duration::from_mins(5),
     ];
 
     for window in windows {
@@ -254,9 +254,9 @@ fn test_intrusion_detection_config_default() {
     let config = IntrusionDetectionConfig::default();
 
     assert_eq!(config.anomaly_threshold, 0.8);
-    assert_eq!(config.activity_window, Duration::from_secs(300));
+    assert_eq!(config.activity_window, Duration::from_mins(5));
     assert_eq!(config.auto_ban_threshold, 10);
-    assert_eq!(config.ban_duration, Duration::from_secs(3600));
+    assert_eq!(config.ban_duration, Duration::from_hours(1));
     assert_eq!(config.allowed_ips.len(), 2);
     assert!(config.allowed_ips.contains(&"127.0.0.1".to_string()));
 }
@@ -269,9 +269,9 @@ fn test_intrusion_detection_config_default() {
 fn test_intrusion_detection_config_strict() {
     let config = IntrusionDetectionConfig {
         anomaly_threshold: 0.5,
-        activity_window: Duration::from_secs(60),
+        activity_window: Duration::from_mins(1),
         auto_ban_threshold: 3,
-        ban_duration: Duration::from_secs(7200),
+        ban_duration: Duration::from_hours(2),
         allowed_ips: vec![],
     };
 
@@ -288,9 +288,9 @@ fn test_intrusion_detection_config_strict() {
 fn test_intrusion_detection_config_permissive() {
     let config = IntrusionDetectionConfig {
         anomaly_threshold: 0.95,
-        activity_window: Duration::from_secs(600),
+        activity_window: Duration::from_mins(10),
         auto_ban_threshold: 50,
-        ban_duration: Duration::from_secs(300),
+        ban_duration: Duration::from_mins(5),
         allowed_ips: vec![
             "127.0.0.1".to_string(),
             "::1".to_string(),
@@ -314,9 +314,9 @@ fn test_intrusion_detection_config_different_thresholds() {
     for threshold in thresholds {
         let config = IntrusionDetectionConfig {
             anomaly_threshold: threshold,
-            activity_window: Duration::from_secs(300),
+            activity_window: Duration::from_mins(5),
             auto_ban_threshold: 10,
-            ban_duration: Duration::from_secs(3600),
+            ban_duration: Duration::from_hours(1),
             allowed_ips: vec![],
         };
         assert_eq!(config.anomaly_threshold, threshold);
@@ -658,7 +658,7 @@ async fn test_intrusion_detection_record_suspicious_pattern() {
 async fn test_intrusion_detection_ban_client() {
     let config = IntrusionDetectionConfig::default();
     let ids = IntrusionDetectionSystem::new(config);
-    ids.ban_client("bad-client", Duration::from_secs(3600), "Manual ban")
+    ids.ban_client("bad-client", Duration::from_hours(1), "Manual ban")
         .await;
     assert!(ids.is_banned("bad-client").await);
 }
@@ -686,7 +686,7 @@ async fn test_intrusion_detection_auto_ban_threshold() {
     let config = IntrusionDetectionConfig {
         auto_ban_threshold: 3,
         anomaly_threshold: 10.0,
-        ban_duration: Duration::from_secs(60),
+        ban_duration: Duration::from_mins(1),
         ..IntrusionDetectionConfig::default()
     };
     let ids = IntrusionDetectionSystem::new(config);
@@ -702,7 +702,7 @@ async fn test_intrusion_detection_anomaly_threshold_triggers_ban() {
     let config = IntrusionDetectionConfig {
         anomaly_threshold: 0.5,
         auto_ban_threshold: 100,
-        ban_duration: Duration::from_secs(60),
+        ban_duration: Duration::from_mins(1),
         ..IntrusionDetectionConfig::default()
     };
     let ids = IntrusionDetectionSystem::new(config);

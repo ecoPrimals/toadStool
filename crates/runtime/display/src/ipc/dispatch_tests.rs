@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 
 use super::dispatch::handle_request;
 use crate::input::InputManager;
-use crate::window::{WindowId, WindowManager};
+use crate::window::WindowManager;
 
 async fn test_manager() -> Option<Arc<RwLock<WindowManager>>> {
     WindowManager::new()

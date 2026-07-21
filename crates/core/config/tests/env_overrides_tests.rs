@@ -269,10 +269,10 @@ fn test_env_override_timeouts() {
         || {
             let mut config = ToadStoolConfig::default();
             config.apply_env_overrides().unwrap();
-            assert_eq!(config.runtime.execution_timeout, Duration::from_secs(300));
+            assert_eq!(config.runtime.execution_timeout, Duration::from_mins(5));
             assert_eq!(
                 config.network.connection.request_timeout,
-                Duration::from_secs(60)
+                Duration::from_mins(1)
             );
         },
     );
@@ -481,12 +481,12 @@ fn test_env_override_jwt_config() {
             );
             assert_eq!(
                 config.security.auth.session_timeout,
-                Duration::from_secs(7200)
+                Duration::from_hours(2)
             );
             assert_eq!(config.security.auth.max_login_attempts, 5);
             assert_eq!(
                 config.security.auth.lockout_duration,
-                Duration::from_secs(1800)
+                Duration::from_mins(30)
             );
         },
     );

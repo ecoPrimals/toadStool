@@ -335,7 +335,7 @@ async fn test_real_world_chaos_scenario() {
                 Err("System did not maintain health under real-world chaos".to_string())
             }
         })
-        .with_timeout(Duration::from_secs(60));
+        .with_timeout(Duration::from_mins(1));
 
     let result = scenario.run().await;
     assert!(
@@ -452,7 +452,7 @@ async fn test_long_duration_chaos() {
             consumption_percent: 60,
             duration_ms: 10000, // 10 seconds
         })
-        .with_timeout(Duration::from_secs(60));
+        .with_timeout(Duration::from_mins(1));
 
     let result = scenario.run().await;
     assert!(result.is_ok(), "System should handle long-duration chaos");

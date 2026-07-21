@@ -45,7 +45,7 @@ fn create_test_request() -> ExecutionRequest {
         runtime_hint: None,
         resources: ResourceRequirements::default(),
         security_context: SecurityContext::default(),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,

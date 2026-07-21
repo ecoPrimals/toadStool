@@ -11,12 +11,12 @@ fn test_sandbox_lifetime_ephemeral() {
 
 #[test]
 fn test_sandbox_lifetime_persistent() {
-    let ttl = Duration::from_secs(3600); // 1 hour
+    let ttl = Duration::from_hours(1); // 1 hour
     let lifetime = SandboxLifetime::Persistent { ttl };
 
     match lifetime {
         SandboxLifetime::Persistent { ttl } => {
-            assert_eq!(ttl, Duration::from_secs(3600));
+            assert_eq!(ttl, Duration::from_hours(1));
         }
         _ => panic!("Expected Persistent variant"),
     }
@@ -25,12 +25,12 @@ fn test_sandbox_lifetime_persistent() {
 #[test]
 fn test_sandbox_lifetime_persistent_short() {
     let lifetime = SandboxLifetime::Persistent {
-        ttl: Duration::from_secs(60), // 1 minute
+        ttl: Duration::from_mins(1), // 1 minute
     };
 
     match lifetime {
         SandboxLifetime::Persistent { ttl } => {
-            assert!(ttl < Duration::from_secs(120));
+            assert!(ttl < Duration::from_mins(2));
         }
         _ => panic!("Expected Persistent"),
     }
@@ -39,12 +39,12 @@ fn test_sandbox_lifetime_persistent_short() {
 #[test]
 fn test_sandbox_lifetime_persistent_long() {
     let lifetime = SandboxLifetime::Persistent {
-        ttl: Duration::from_secs(86400), // 24 hours
+        ttl: Duration::from_hours(24), // 24 hours
     };
 
     match lifetime {
         SandboxLifetime::Persistent { ttl } => {
-            assert!(ttl > Duration::from_secs(3600));
+            assert!(ttl > Duration::from_hours(1));
         }
         _ => panic!("Expected Persistent"),
     }
@@ -66,11 +66,11 @@ fn test_sandbox_lifetime_clone() {
 #[test]
 fn test_sandbox_lifetime_persistent_with_ttl() {
     let lifetime = SandboxLifetime::Persistent {
-        ttl: Duration::from_secs(300),
+        ttl: Duration::from_mins(5),
     };
 
     if let SandboxLifetime::Persistent { ttl } = lifetime {
-        assert_eq!(ttl, Duration::from_secs(300));
+        assert_eq!(ttl, Duration::from_mins(5));
     } else {
         panic!("Expected Persistent lifetime");
     }
@@ -92,7 +92,7 @@ fn test_sandbox_lifetime_persistent_short_ttl() {
 #[test]
 fn test_sandbox_lifetime_persistent_long_ttl() {
     let lifetime = SandboxLifetime::Persistent {
-        ttl: Duration::from_secs(3600),
+        ttl: Duration::from_hours(1),
     };
 
     if let SandboxLifetime::Persistent { ttl } = lifetime {

@@ -82,7 +82,7 @@ async fn test_discovery_fallback() {
 async fn test_builder_pattern() {
     let engine = DiscoveryEngineBuilder::new()
         .timeout(Duration::from_secs(10))
-        .cache_ttl(Duration::from_secs(60))
+        .cache_ttl(Duration::from_mins(1))
         .with_source(Arc::new(MockSource {
             name: "test".to_string(),
             endpoint: Some("http://test:8080".to_string()),
@@ -91,7 +91,7 @@ async fn test_builder_pattern() {
         .await;
 
     assert_eq!(engine.config.default_timeout, Duration::from_secs(10));
-    assert_eq!(engine.config.cache_ttl, Duration::from_secs(60));
+    assert_eq!(engine.config.cache_ttl, Duration::from_mins(1));
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn test_discovery_config_default() {
     let config = ServiceDiscoveryConfig::default();
 
     assert!(config.enable_cache);
-    assert_eq!(config.cache_ttl, Duration::from_secs(300));
+    assert_eq!(config.cache_ttl, Duration::from_mins(5));
     assert_eq!(config.default_timeout, Duration::from_secs(30));
     assert_eq!(config.retry_attempts, 3);
     assert_eq!(config.retry_delay, Duration::from_secs(1));
@@ -115,8 +115,8 @@ async fn test_discovery_engine_default() {
 async fn test_discovery_engine_with_config() {
     let config = ServiceDiscoveryConfig {
         enable_cache: false,
-        cache_ttl: Duration::from_secs(600),
-        default_timeout: Duration::from_secs(60),
+        cache_ttl: Duration::from_mins(10),
+        default_timeout: Duration::from_mins(1),
         retry_attempts: 5,
         retry_delay: Duration::from_secs(2),
     };
@@ -124,8 +124,8 @@ async fn test_discovery_engine_with_config() {
     let engine = DiscoveryEngine::with_config(config);
 
     assert!(!engine.config.enable_cache);
-    assert_eq!(engine.config.cache_ttl, Duration::from_secs(600));
-    assert_eq!(engine.config.default_timeout, Duration::from_secs(60));
+    assert_eq!(engine.config.cache_ttl, Duration::from_mins(10));
+    assert_eq!(engine.config.default_timeout, Duration::from_mins(1));
     assert_eq!(engine.config.retry_attempts, 5);
 }
 
@@ -282,7 +282,7 @@ async fn test_discover_all() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_builder_fluent_api() {
     let engine = DiscoveryEngineBuilder::new()
-        .cache_ttl(Duration::from_secs(120))
+        .cache_ttl(Duration::from_mins(2))
         .timeout(Duration::from_secs(15))
         .disable_cache()
         .with_source(Arc::new(MockSource {
@@ -296,7 +296,7 @@ async fn test_builder_fluent_api() {
         .build()
         .await;
 
-    assert_eq!(engine.config.cache_ttl, Duration::from_secs(120));
+    assert_eq!(engine.config.cache_ttl, Duration::from_mins(2));
     assert_eq!(engine.config.default_timeout, Duration::from_secs(15));
     assert!(!engine.config.enable_cache);
 }

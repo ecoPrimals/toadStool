@@ -93,7 +93,7 @@ async fn test_scheduler_schedule_biome_os_job() {
         },
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };

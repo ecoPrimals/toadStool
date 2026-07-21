@@ -23,7 +23,7 @@ fn system_resource_monitor_with_config() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(120),
+        metrics_retention: Duration::from_mins(2),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     assert_eq!(
@@ -33,7 +33,7 @@ fn system_resource_monitor_with_config() {
     assert!(!monitor.config.enable_network_monitoring);
     assert!(monitor.config.enable_threshold_monitoring);
     assert_eq!(monitor.config.threshold_action, ThresholdAction::Alert);
-    assert_eq!(monitor.config.metrics_retention, Duration::from_secs(120));
+    assert_eq!(monitor.config.metrics_retention, Duration::from_mins(2));
 }
 
 #[test]
@@ -86,7 +86,7 @@ async fn update_config_when_not_monitoring() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(1800),
+        metrics_retention: Duration::from_mins(30),
     };
     let result = monitor.update_config(new_config.clone()).await;
     assert!(result.is_ok());
@@ -95,7 +95,7 @@ async fn update_config_when_not_monitoring() {
         MonitoringGranularity::LowFrequency
     );
     assert!(!monitor.config.enable_network_monitoring);
-    assert_eq!(monitor.config.metrics_retention, Duration::from_secs(1800));
+    assert_eq!(monitor.config.metrics_retention, Duration::from_mins(30));
 }
 
 #[tokio::test]
@@ -108,7 +108,7 @@ async fn update_config_while_monitoring() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     };
     let result = monitor.update_config(new_config.clone()).await;
     assert!(result.is_ok());
@@ -119,7 +119,7 @@ async fn update_config_while_monitoring() {
     assert!(monitor.config.enable_network_monitoring);
     assert!(monitor.config.enable_threshold_monitoring);
     assert_eq!(monitor.config.threshold_action, ThresholdAction::Alert);
-    assert_eq!(monitor.config.metrics_retention, Duration::from_secs(7200));
+    assert_eq!(monitor.config.metrics_retention, Duration::from_hours(2));
 
     monitor.stop_monitoring_loop().await.unwrap();
 }
@@ -267,7 +267,7 @@ async fn monitoring_loop_with_threshold_violation_log_action() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     let path = Path::new("test_exec");
@@ -317,7 +317,7 @@ async fn monitoring_loop_with_threshold_alert_action() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     let path = Path::new("test_exec");

@@ -15,7 +15,7 @@ fn test_protocol_message_creation() {
         format: MessageFormat::Json,
         correlation_id: Some(Uuid::new_v4()),
         reply_to: None,
-        ttl: Some(Duration::from_secs(300)),
+        ttl: Some(Duration::from_mins(5)),
         priority: MessagePriority::Normal,
     };
 
@@ -63,12 +63,12 @@ fn test_protocol_message_with_ttl() {
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
-        ttl: Some(Duration::from_secs(60)),
+        ttl: Some(Duration::from_mins(1)),
         priority: MessagePriority::High,
     };
 
     assert!(message.ttl.is_some());
-    assert_eq!(message.ttl.unwrap(), Duration::from_secs(60));
+    assert_eq!(message.ttl.unwrap(), Duration::from_mins(1));
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn test_protocol_message_reply_to() {
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: Some(Arc::from("client-queue")),
-        ttl: Some(Duration::from_secs(300)),
+        ttl: Some(Duration::from_mins(5)),
         priority: MessagePriority::Normal,
     };
 
@@ -200,7 +200,7 @@ fn test_protocol_message_complex_payload() {
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: Some(Arc::from("scheduler-queue")),
-        ttl: Some(Duration::from_secs(600)),
+        ttl: Some(Duration::from_mins(10)),
         priority: MessagePriority::Normal,
     };
 

@@ -266,7 +266,7 @@ impl ToadStoolCryptoLock {
 
         for (target, permission) in &self.active_permissions {
             if let Ok(time_until_expiry) = permission.valid_until.duration_since(SystemTime::now())
-                && time_until_expiry < Duration::from_hours(168)
+                && time_until_expiry < Duration::from_secs(168 * 3600)
             {
                 status.expiring_permissions.push(ExpiringPermission {
                     permission_id: permission.permission_id,

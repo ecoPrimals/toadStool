@@ -34,7 +34,7 @@ fn test_system_resource_monitor_with_sub_millisecond_config() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     assert!(std::mem::size_of_val(&monitor) > 0);
@@ -47,7 +47,7 @@ fn test_system_resource_monitor_with_high_frequency_config() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(1800),
+        metrics_retention: Duration::from_mins(30),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     assert!(std::mem::size_of_val(&monitor) > 0);
@@ -60,7 +60,7 @@ fn test_system_resource_monitor_with_low_frequency_config() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Terminate,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     assert!(std::mem::size_of_val(&monitor) > 0);
@@ -74,7 +74,7 @@ fn test_system_resource_monitor_with_custom_granularity() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
     let monitor = SystemResourceMonitor::with_config(config);
     assert!(std::mem::size_of_val(&monitor) > 0);
@@ -226,7 +226,7 @@ async fn test_update_config_succeeds() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(1800),
+        metrics_retention: Duration::from_mins(30),
     };
 
     let result = monitor.update_config(new_config).await;
@@ -240,7 +240,7 @@ async fn test_update_config_changes_granularity() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     });
 
     let new_config = MonitoringConfig {
@@ -248,7 +248,7 @@ async fn test_update_config_changes_granularity() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     assert!(monitor.update_config(new_config).await.is_ok());
@@ -263,7 +263,7 @@ async fn test_update_config_toggles_network_monitoring() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     assert!(monitor.update_config(config_disabled).await.is_ok());
@@ -283,7 +283,7 @@ async fn test_update_config_changes_threshold_action() {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: action.clone(),
-            metrics_retention: Duration::from_secs(3600),
+            metrics_retention: Duration::from_hours(1),
         };
 
         assert!(monitor.update_config(config).await.is_ok());
@@ -534,7 +534,7 @@ fn test_monitoring_config_default_values() {
     assert_eq!(config.granularity.to_duration(), Duration::from_millis(100));
     assert!(config.enable_network_monitoring);
     assert!(config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(3600));
+    assert_eq!(config.metrics_retention, Duration::from_hours(1));
 }
 
 #[test]
@@ -554,7 +554,7 @@ fn test_monitoring_config_with_various_granularities() {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(3600),
+            metrics_retention: Duration::from_hours(1),
         };
 
         // Verify config can be created
@@ -576,7 +576,7 @@ fn test_threshold_action_variants() {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: action,
-            metrics_retention: Duration::from_secs(3600),
+            metrics_retention: Duration::from_hours(1),
         };
 
         // Verify each action type works in config

@@ -400,7 +400,7 @@ fn test_load_balancer_config_weighted() {
     let config = LoadBalancerConfig {
         algorithm: LoadBalancingAlgorithm::WeightedRoundRobin,
         health_check_interval: Duration::from_secs(5),
-        failover_timeout: Duration::from_secs(60),
+        failover_timeout: Duration::from_mins(1),
     };
 
     assert!(matches!(

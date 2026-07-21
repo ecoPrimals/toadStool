@@ -44,7 +44,7 @@ async fn test_request_delegation_no_permission_fails() {
         geographic_subset: vec![],
     };
     let result = lock
-        .request_delegation(&from, &to, &target, scope, Duration::from_secs(3600))
+        .request_delegation(&from, &to, &target, scope, Duration::from_hours(1))
         .await;
     assert!(result.is_err());
 }
@@ -81,8 +81,8 @@ async fn test_install_crypto_permission_valid_succeeds() {
             geographic_limits: vec![],
             feature_restrictions: vec![],
         },
-        valid_from: now - Duration::from_secs(3600),
-        valid_until: now + Duration::from_secs(3600),
+        valid_from: now - Duration::from_hours(1),
+        valid_until: now + Duration::from_hours(1),
         crypto_proof: SecurityProof {
             signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
@@ -137,8 +137,8 @@ async fn test_check_external_access_with_valid_permission_granted() {
             geographic_limits: vec![],
             feature_restrictions: vec![],
         },
-        valid_from: now - Duration::from_secs(3600),
-        valid_until: now + Duration::from_secs(3600),
+        valid_from: now - Duration::from_hours(1),
+        valid_until: now + Duration::from_hours(1),
         crypto_proof: SecurityProof {
             signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
@@ -179,7 +179,7 @@ async fn test_check_external_access_with_valid_permission_granted() {
 async fn test_install_crypto_permission_invalid_rejects() {
     let mut lock = ToadStoolCryptoLock::new().await.unwrap();
     let mut perm = make_expired_permission(cloud_target());
-    perm.valid_until = SystemTime::now() + Duration::from_secs(3600);
+    perm.valid_until = SystemTime::now() + Duration::from_hours(1);
     perm.valid_from = SystemTime::now() + Duration::from_secs(1);
     let result = lock.install_crypto_permission(perm).await;
     assert!(result.is_err());
@@ -226,9 +226,9 @@ async fn test_request_delegation_succeeds_when_holder_matches() {
             geographic_limits: vec![],
             feature_restrictions: vec![],
         },
-        valid_from: now - Duration::from_secs(3600),
+        valid_from: now - Duration::from_hours(1),
         // Leave headroom so `now + delegation_duration` at request time stays within validity.
-        valid_until: now + Duration::from_secs(86400),
+        valid_until: now + Duration::from_hours(24),
         crypto_proof: SecurityProof {
             signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
@@ -266,7 +266,7 @@ async fn test_request_delegation_succeeds_when_holder_matches() {
         geographic_subset: vec![],
     };
     let result = lock
-        .request_delegation(&from, &to, &target, scope, Duration::from_secs(3600))
+        .request_delegation(&from, &to, &target, scope, Duration::from_hours(1))
         .await;
     assert!(result.is_ok());
 }
@@ -304,8 +304,8 @@ async fn test_request_delegation_fails_wrong_holder() {
             geographic_limits: vec![],
             feature_restrictions: vec![],
         },
-        valid_from: now - Duration::from_secs(3600),
-        valid_until: now + Duration::from_secs(86400),
+        valid_from: now - Duration::from_hours(1),
+        valid_until: now + Duration::from_hours(24),
         crypto_proof: SecurityProof {
             signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
@@ -343,7 +343,7 @@ async fn test_request_delegation_fails_wrong_holder() {
         geographic_subset: vec![],
     };
     let result = lock
-        .request_delegation(&wrong_from, &to, &target, scope, Duration::from_secs(3600))
+        .request_delegation(&wrong_from, &to, &target, scope, Duration::from_hours(1))
         .await;
     assert!(result.is_err());
 }

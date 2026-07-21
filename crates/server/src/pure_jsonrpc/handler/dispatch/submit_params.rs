@@ -103,7 +103,8 @@ pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_workgroup_size(
 /// Resolve buffer descriptors. Accepts trio-standard `buffers[]` with `data_b64`
 /// fields — decodes them to `data` (u8 arrays) for downstream consumption.
 ///
-/// Zero-clone: builds output maps field-by-field instead of cloning input values.
+/// Field-level clones are necessary since the input is borrowed (`&Value`);
+/// only buffers with `data_b64` are rebuilt (others pass through unchanged).
 pub(in crate::pure_jsonrpc::handler::dispatch) fn resolve_buffers(
     p: &serde_json::Value,
 ) -> serde_json::Value {

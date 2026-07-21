@@ -333,7 +333,7 @@ async fn test_engine_with_large_cache() {
     let config = WasmRuntimeConfig {
         cache: toadstool_common::config_bases::CacheConfig {
             max_entries: 1000,
-            ttl: std::time::Duration::from_secs(3600),
+            ttl: std::time::Duration::from_hours(1),
             ..Default::default()
         },
         ..Default::default()
@@ -348,7 +348,7 @@ async fn test_engine_with_small_cache() {
     let config = WasmRuntimeConfig {
         cache: toadstool_common::config_bases::CacheConfig {
             max_entries: 10,
-            ttl: std::time::Duration::from_secs(60),
+            ttl: std::time::Duration::from_mins(1),
             ..Default::default()
         },
         ..Default::default()

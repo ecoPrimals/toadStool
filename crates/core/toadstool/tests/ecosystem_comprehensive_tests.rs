@@ -115,14 +115,14 @@ fn test_ecosystem_config_custom() {
 
     let config = MockEcosystemConfig {
         auto_discovery: false,
-        discovery_timeout: Duration::from_secs(60),
+        discovery_timeout: Duration::from_mins(1),
         primal_endpoints: endpoints.clone(),
         required_primals: vec!["songbird".to_string()],
         optional_primals: vec![],
     };
 
     assert!(!config.auto_discovery);
-    assert_eq!(config.discovery_timeout, Duration::from_secs(60));
+    assert_eq!(config.discovery_timeout, Duration::from_mins(1));
     assert_eq!(config.primal_endpoints.len(), 1);
     assert_eq!(config.required_primals.len(), 1);
 }
@@ -662,10 +662,10 @@ async fn test_discovery_timeout_default() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_timeout_custom() {
     let mut coordinator = create_mock_coordinator().await.unwrap();
-    coordinator.config.discovery_timeout = Duration::from_secs(60);
+    coordinator.config.discovery_timeout = Duration::from_mins(1);
     assert_eq!(
         coordinator.config.discovery_timeout,
-        Duration::from_secs(60)
+        Duration::from_mins(1)
     );
 }
 

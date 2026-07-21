@@ -19,7 +19,7 @@ fn test_server_config_default() {
     assert!(config.enable_api);
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
-    assert_eq!(config.default_timeout, Duration::from_secs(300));
+    assert_eq!(config.default_timeout, Duration::from_mins(5));
     assert!(config.auth.is_none());
     assert!(config.rate_limiting.is_none());
 }
@@ -44,7 +44,7 @@ fn test_server_config_max_concurrent_executions() {
 
 #[test]
 fn test_server_config_default_timeout() {
-    let timeout = Duration::from_secs(600);
+    let timeout = Duration::from_mins(10);
     let config = ServerConfig::default().default_timeout(timeout);
     assert_eq!(config.default_timeout, timeout);
 }

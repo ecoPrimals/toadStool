@@ -661,7 +661,7 @@ fn test_execution_request_response_flow() {
     let request = ExecutionRequest {
         execution_id: request_id,
         runtime_hint: Some(RuntimeType::Wasm),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         ..Default::default()
     };
 

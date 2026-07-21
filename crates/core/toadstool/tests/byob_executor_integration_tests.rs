@@ -218,7 +218,7 @@ fn test_byob_executor_config_default() {
     assert_eq!(config.default_network_subnet, "10.0.0.0/24");
     assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
     assert_eq!(config.health_check_interval, Duration::from_secs(10));
-    assert_eq!(config.deployment_timeout, Duration::from_secs(600));
+    assert_eq!(config.deployment_timeout, Duration::from_mins(10));
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn test_byob_executor_config_custom() {
     let config = ByobExecutorConfig {
         max_concurrent_deployments: 100,
         default_network_subnet: "192.168.0.0/16".to_string(),
-        resource_monitoring_interval: Duration::from_secs(60),
+        resource_monitoring_interval: Duration::from_mins(1),
         health_check_interval: Duration::from_secs(20),
         deployment_timeout: Duration::from_secs(1200),
         default_host_port: 8080,
@@ -236,7 +236,7 @@ fn test_byob_executor_config_custom() {
 
     assert_eq!(config.max_concurrent_deployments, 100);
     assert_eq!(config.default_network_subnet, "192.168.0.0/16");
-    assert_eq!(config.resource_monitoring_interval, Duration::from_secs(60));
+    assert_eq!(config.resource_monitoring_interval, Duration::from_mins(1));
 }
 
 #[test]

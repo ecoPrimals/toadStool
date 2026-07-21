@@ -259,7 +259,7 @@ fn test_protocol_message_with_correlation() {
         format: MessageFormat::Json,
         correlation_id: Some(correlation),
         reply_to: Some(Arc::from("service-a")),
-        ttl: Some(Duration::from_secs(60)),
+        ttl: Some(Duration::from_mins(1)),
         priority: MessagePriority::High,
     };
 
@@ -280,7 +280,7 @@ fn test_protocol_message_with_ttl() {
         format: MessageFormat::MessagePack,
         correlation_id: None,
         reply_to: None,
-        ttl: Some(Duration::from_secs(300)),
+        ttl: Some(Duration::from_mins(5)),
         priority: MessagePriority::Low,
     };
 

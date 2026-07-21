@@ -40,8 +40,8 @@ async fn test_circuit_breaker_config_default() {
 
     assert_eq!(config.failure_threshold, 5);
     assert_eq!(config.success_threshold, 3);
-    assert_eq!(config.timeout, Duration::from_secs(60));
-    assert_eq!(config.rolling_window, Duration::from_secs(60));
+    assert_eq!(config.timeout, Duration::from_mins(1));
+    assert_eq!(config.rolling_window, Duration::from_mins(1));
     assert_eq!(config.half_open_max_requests, 3);
 }
 
@@ -154,7 +154,7 @@ async fn test_circuit_state_clone() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_leak_detector_creation() {
-    let _detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+    let _detector = ResourceLeakDetector::new(Duration::from_mins(1), Duration::from_secs(10));
 
     // Detector should be created successfully
     // (no way to directly inspect internal state, but creation shouldn't panic)
@@ -162,7 +162,7 @@ async fn test_resource_leak_detector_creation() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_allocation_tracking() {
-    let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+    let detector = ResourceLeakDetector::new(Duration::from_mins(1), Duration::from_secs(10));
 
     let allocation = ResourceAllocation {
         id: Uuid::new_v4(),
@@ -179,7 +179,7 @@ async fn test_resource_allocation_tracking() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_access_update() {
-    let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+    let detector = ResourceLeakDetector::new(Duration::from_mins(1), Duration::from_secs(10));
 
     let resource_id = Uuid::new_v4();
     let allocation = ResourceAllocation {
@@ -198,7 +198,7 @@ async fn test_resource_access_update() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_removal() {
-    let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+    let detector = ResourceLeakDetector::new(Duration::from_mins(1), Duration::from_secs(10));
 
     let resource_id = Uuid::new_v4();
     let allocation = ResourceAllocation {
@@ -217,7 +217,7 @@ async fn test_resource_removal() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_no_leaks_detected_for_fresh_resources() {
-    let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
+    let detector = ResourceLeakDetector::new(Duration::from_mins(1), Duration::from_secs(10));
 
     let allocation = ResourceAllocation {
         id: Uuid::new_v4(),
@@ -347,7 +347,7 @@ async fn test_production_hardening_config_default() {
     assert!(config.enable_circuit_breakers);
     assert!(config.enable_leak_detection);
     assert!(config.enable_memory_pressure);
-    assert_eq!(config.leak_detection_threshold, Duration::from_secs(300));
+    assert_eq!(config.leak_detection_threshold, Duration::from_mins(5));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -498,14 +498,14 @@ async fn test_custom_circuit_breaker_config() {
         failure_threshold: 10,
         success_threshold: 5,
         timeout: Duration::from_secs(30),
-        rolling_window: Duration::from_secs(120),
+        rolling_window: Duration::from_mins(2),
         half_open_max_requests: 2,
     };
 
     assert_eq!(config.failure_threshold, 10);
     assert_eq!(config.success_threshold, 5);
     assert_eq!(config.timeout, Duration::from_secs(30));
-    assert_eq!(config.rolling_window, Duration::from_secs(120));
+    assert_eq!(config.rolling_window, Duration::from_mins(2));
     assert_eq!(config.half_open_max_requests, 2);
 }
 
@@ -554,7 +554,7 @@ async fn test_disabled_features_config() {
         enable_memory_pressure: false,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig::default(),
-        leak_detection_threshold: Duration::from_secs(300),
+        leak_detection_threshold: Duration::from_mins(5),
         ..Default::default()
     };
 

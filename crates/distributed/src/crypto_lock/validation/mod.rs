@@ -167,7 +167,7 @@ impl SecurityPermissionValidator {
             .timestamp
             .elapsed()
             .unwrap_or(std::time::Duration::MAX);
-        const MAX_PROOF_AGE: std::time::Duration = std::time::Duration::from_hours(24);
+        const MAX_PROOF_AGE: std::time::Duration = std::time::Duration::from_secs(86400);
         if elapsed > MAX_PROOF_AGE {
             return Err(toadstool::error::ToadStoolError::validation(
                 "delegation proof expired (older than 24h)".to_string(),

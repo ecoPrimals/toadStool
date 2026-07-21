@@ -191,7 +191,7 @@ async fn test_coordination_connection_http_degraded() {
 async fn test_coordination_broadcaster_new() {
     let config = BroadcastConfig {
         channels: vec!["test-channel".to_string()],
-        message_retention: Duration::from_secs(60),
+        message_retention: Duration::from_mins(1),
     };
     let conn = Arc::new(
         CoordinationConnection::new(make_connection_config(

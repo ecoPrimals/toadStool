@@ -242,9 +242,9 @@ async fn test_python_to_gpu_interop() {
 async fn test_runtime_specific_timeout() {
     // Test runtime-specific timeout configurations
     let timeout_configs = vec![
-        (RuntimeType::Native, Duration::from_secs(60)),
+        (RuntimeType::Native, Duration::from_mins(1)),
         (RuntimeType::Wasm, Duration::from_secs(30)),
-        (RuntimeType::Container, Duration::from_secs(300)),
+        (RuntimeType::Container, Duration::from_mins(5)),
     ];
 
     for (runtime, timeout) in timeout_configs {

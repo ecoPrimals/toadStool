@@ -147,7 +147,7 @@ fn test_access_result_granted_with_expires_at() {
     let result = AccessResult::Granted {
         reason: "ok".to_string(),
         permission_level: PermissionLevel::Full,
-        expires_at: Some(SystemTime::now() + Duration::from_secs(3600)),
+        expires_at: Some(SystemTime::now() + Duration::from_hours(1)),
         restrictions: vec![],
     };
     match &result {
@@ -168,7 +168,7 @@ fn test_crypto_lock_status_with_external_permissions() {
                 public_key: "pk".to_string(),
                 verification_level: VerificationLevel::Unverified,
             },
-            valid_until: SystemTime::now() + Duration::from_secs(3600),
+            valid_until: SystemTime::now() + Duration::from_hours(1),
             scope: PermissionScope {
                 resource_limits: ResourceLimits {
                     max_cpu_cores: None,
@@ -207,7 +207,7 @@ fn test_expiring_permission_constructor() {
     let ep = ExpiringPermission {
         permission_id: Uuid::new_v4(),
         target: cloud_target(),
-        expires_in: Duration::from_secs(60),
+        expires_in: Duration::from_mins(1),
     };
     assert_eq!(ep.expires_in.as_secs(), 60);
 }

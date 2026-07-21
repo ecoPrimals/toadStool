@@ -74,8 +74,8 @@ fn test_circuit_breaker_config_default() {
 
     assert_eq!(config.failure_threshold, 5);
     assert_eq!(config.success_threshold, 3);
-    assert_eq!(config.timeout, Duration::from_secs(60));
-    assert_eq!(config.rolling_window, Duration::from_secs(60));
+    assert_eq!(config.timeout, Duration::from_mins(1));
+    assert_eq!(config.rolling_window, Duration::from_mins(1));
     assert_eq!(config.half_open_max_requests, 3);
 }
 
@@ -84,14 +84,14 @@ fn test_circuit_breaker_config_custom() {
     let config = CircuitBreakerConfig {
         failure_threshold: 10,
         success_threshold: 5,
-        timeout: Duration::from_secs(120),
-        rolling_window: Duration::from_secs(300),
+        timeout: Duration::from_mins(2),
+        rolling_window: Duration::from_mins(5),
         half_open_max_requests: 5,
     };
 
     assert_eq!(config.failure_threshold, 10);
     assert_eq!(config.success_threshold, 5);
-    assert_eq!(config.timeout, Duration::from_secs(120));
+    assert_eq!(config.timeout, Duration::from_mins(2));
 }
 
 #[test]
@@ -125,8 +125,8 @@ fn test_circuit_breaker_config_high_thresholds() {
     let config = CircuitBreakerConfig {
         failure_threshold: 100,
         success_threshold: 50,
-        timeout: Duration::from_secs(600),
-        rolling_window: Duration::from_secs(3600),
+        timeout: Duration::from_mins(10),
+        rolling_window: Duration::from_hours(1),
         half_open_max_requests: 10,
     };
 
@@ -166,7 +166,7 @@ fn test_circuit_breaker_new_with_custom_config() {
         failure_threshold: 10,
         success_threshold: 5,
         timeout: Duration::from_secs(30),
-        rolling_window: Duration::from_secs(60),
+        rolling_window: Duration::from_mins(1),
         half_open_max_requests: 2,
     };
 
@@ -300,7 +300,7 @@ fn test_production_hardening_config_custom() {
         enable_memory_pressure: true,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig::default(),
-        leak_detection_threshold: Duration::from_secs(1800),
+        leak_detection_threshold: Duration::from_mins(30),
         ..Default::default()
     };
 
@@ -403,7 +403,7 @@ fn test_circuit_breaker_config_zero_timeout() {
         failure_threshold: 5,
         success_threshold: 3,
         timeout: Duration::from_secs(0),
-        rolling_window: Duration::from_secs(60),
+        rolling_window: Duration::from_mins(1),
         half_open_max_requests: 3,
     };
 
@@ -431,7 +431,7 @@ fn test_production_hardening_config_all_disabled() {
         enable_memory_pressure: false,
         default_circuit_config: CircuitBreakerConfig::default(),
         memory_pressure_config: MemoryPressureConfig::default(),
-        leak_detection_threshold: Duration::from_secs(3600),
+        leak_detection_threshold: Duration::from_hours(1),
         ..Default::default()
     };
 

@@ -221,7 +221,7 @@ mod tests {
             max_processes: Some(50),
             max_disk_bytes: Some(500 * 1024 * 1024), // 500MB
             max_network_bps: Some(5 * 1024 * 1024),  // 5MB/s
-            max_execution_time: Some(Duration::from_secs(60)),
+            max_execution_time: Some(Duration::from_mins(1)),
         };
 
         let sandbox_id = manager.create_sandbox(spec).await.unwrap();
@@ -463,7 +463,7 @@ mod tests {
         assert_eq!(limits.max_processes, Some(100));
         assert_eq!(limits.max_disk_bytes, Some(1024 * 1024 * 1024)); // 1GB
         assert_eq!(limits.max_network_bps, Some(10 * 1024 * 1024)); // 10MB/s
-        assert_eq!(limits.max_execution_time, Some(Duration::from_secs(300))); // 5 minutes
+        assert_eq!(limits.max_execution_time, Some(Duration::from_mins(5))); // 5 minutes
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -542,7 +542,7 @@ mod tests {
         let lifetimes = vec![
             SandboxLifetime::Ephemeral,
             SandboxLifetime::Persistent {
-                ttl: Duration::from_secs(3600),
+                ttl: Duration::from_hours(1),
             },
             SandboxLifetime::Manual,
         ];

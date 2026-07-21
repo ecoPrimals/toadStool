@@ -19,7 +19,7 @@ fn test_toadstool_service_type_constant() {
 #[test]
 fn test_discovery_config_default() {
     let config = DiscoveryConfig::default();
-    assert_eq!(config.cache_ttl, Duration::from_secs(300));
+    assert_eq!(config.cache_ttl, Duration::from_mins(5));
     assert!(config.enable_mdns);
 }
 
@@ -32,7 +32,7 @@ fn test_mdns_adapter_new() {
     match &result {
         Ok(adapter) => {
             assert_eq!(adapter.timeout(), Duration::from_secs(3));
-            assert_eq!(adapter.config().cache_ttl, Duration::from_secs(300));
+            assert_eq!(adapter.config().cache_ttl, Duration::from_mins(5));
         }
         Err(e) => {
             eprintln!("MdnsAdapter::new failed (mDNS may be unavailable): {e}");
@@ -153,7 +153,7 @@ fn test_discovery_config_enable_mdns_default() {
 #[test]
 fn test_discovery_config_cache_ttl() {
     let config = DiscoveryConfig::default();
-    assert_eq!(config.cache_ttl, std::time::Duration::from_secs(300));
+    assert_eq!(config.cache_ttl, std::time::Duration::from_mins(5));
 }
 
 #[test]

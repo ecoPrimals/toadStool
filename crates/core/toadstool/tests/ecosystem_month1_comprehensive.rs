@@ -65,7 +65,7 @@ mod ecosystem_config_tests {
         // Test various timeout configurations
         let short_timeout = Duration::from_secs(5);
         let default_timeout = Duration::from_secs(30);
-        let long_timeout = Duration::from_secs(120);
+        let long_timeout = Duration::from_mins(2);
 
         assert!(short_timeout < default_timeout);
         assert!(default_timeout < long_timeout);
@@ -332,7 +332,7 @@ mod discovery_tests {
         // Test discovery timeout scenarios
         let timeout = Duration::from_secs(30);
         let short_timeout = Duration::from_secs(5);
-        let long_timeout = Duration::from_secs(120);
+        let long_timeout = Duration::from_mins(2);
 
         assert!(short_timeout < timeout);
         assert!(timeout < long_timeout);

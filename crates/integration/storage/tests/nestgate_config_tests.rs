@@ -32,11 +32,11 @@ fn test_storage_ext_config_custom_endpoint() {
 #[test]
 fn test_storage_ext_config_custom_timeout() {
     let config = StorageConfig {
-        timeout: Duration::from_secs(60),
+        timeout: Duration::from_mins(1),
         ..Default::default()
     };
 
-    assert_eq!(config.timeout, Duration::from_secs(60));
+    assert_eq!(config.timeout, Duration::from_mins(1));
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn test_cache_config_default() {
 
     assert!(cache.enabled);
     assert_eq!(cache.max_size, 1024 * 1024 * 1024); // 1GB
-    assert_eq!(cache.ttl, Duration::from_secs(3600)); // 1 hour
+    assert_eq!(cache.ttl, Duration::from_hours(1)); // 1 hour
     assert!(cache.cache_dir.is_none());
 }
 
@@ -146,11 +146,11 @@ fn test_cache_config_custom_size() {
 #[test]
 fn test_cache_config_custom_ttl() {
     let cache = CacheConfig {
-        ttl: Duration::from_secs(7200), // 2 hours
+        ttl: Duration::from_hours(2), // 2 hours
         ..Default::default()
     };
 
-    assert_eq!(cache.ttl, Duration::from_secs(7200));
+    assert_eq!(cache.ttl, Duration::from_hours(2));
 }
 
 #[test]
@@ -382,7 +382,7 @@ fn test_config_with_cache_enabled() {
             enabled: true,
             cache_dir: Some(PathBuf::from("/tmp/cache")),
             max_size: 512 * 1024 * 1024, // 512MB
-            ttl: Duration::from_secs(1800),
+            ttl: Duration::from_mins(30),
         }),
         ..Default::default()
     };
@@ -407,7 +407,7 @@ fn test_config_with_cache_disabled() {
 fn test_full_configuration_scenario() {
     let mut config = StorageConfig {
         endpoint: "http://production-storage:8080".to_string(),
-        timeout: Duration::from_secs(120),
+        timeout: Duration::from_mins(2),
         max_retries: 5,
         ..Default::default()
     };
@@ -416,11 +416,11 @@ fn test_full_configuration_scenario() {
         enabled: true,
         cache_dir: Some(PathBuf::from("/var/cache/storage")),
         max_size: 10 * 1024 * 1024 * 1024,  // 10GB
-        ttl: Duration::from_secs(3600 * 4), // 4 hours
+        ttl: Duration::from_hours(4), // 4 hours
     });
 
     assert_eq!(config.endpoint, "http://production-storage:8080");
-    assert_eq!(config.timeout, Duration::from_secs(120));
+    assert_eq!(config.timeout, Duration::from_mins(2));
     assert_eq!(config.max_retries, 5);
     assert!(config.auth.is_some());
     assert!(config.cache.is_some());
@@ -460,11 +460,11 @@ fn test_cache_config_zero_ttl() {
 #[test]
 fn test_cache_config_very_long_ttl() {
     let cache = CacheConfig {
-        ttl: Duration::from_secs(86400 * 365), // 1 year
+        ttl: Duration::from_hours(8760), // 1 year
         ..Default::default()
     };
 
-    assert_eq!(cache.ttl, Duration::from_secs(86400 * 365));
+    assert_eq!(cache.ttl, Duration::from_hours(8760));
 }
 
 #[test]
@@ -480,11 +480,11 @@ fn test_storage_preferences_many_regions() {
 #[test]
 fn test_config_extreme_timeout() {
     let config = StorageConfig {
-        timeout: Duration::from_secs(3600), // 1 hour
+        timeout: Duration::from_hours(1), // 1 hour
         ..Default::default()
     };
 
-    assert_eq!(config.timeout, Duration::from_secs(3600));
+    assert_eq!(config.timeout, Duration::from_hours(1));
 }
 
 #[test]

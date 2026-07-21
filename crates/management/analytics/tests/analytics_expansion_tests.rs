@@ -290,7 +290,7 @@ fn test_prediction_point_wide_interval() {
 
 #[test]
 fn test_prediction_point_future_timestamp() {
-    let future = SystemTime::now() + Duration::from_secs(24 * 3600);
+    let future = SystemTime::now() + Duration::from_hours(24);
     let prediction = PredictionPoint {
         timestamp: future,
         predicted_value: 100.0,
@@ -597,7 +597,7 @@ fn test_dashboard_panel_creation() {
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu_usage".to_string()],
         time_range: TimeRange {
-            from: now - Duration::from_secs(3600),
+            from: now - Duration::from_hours(1),
             to: now,
             refresh_interval_secs: 30,
         },

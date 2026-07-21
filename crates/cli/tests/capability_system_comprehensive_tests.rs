@@ -38,7 +38,7 @@ async fn test_registry_creation() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_with_ttl() {
-    let _registry = CapabilityRegistry::new().with_ttl(Duration::from_secs(60));
+    let _registry = CapabilityRegistry::new().with_ttl(Duration::from_mins(1));
     // Just verify it creates with TTL without panicking - success!
 }
 
@@ -46,7 +46,7 @@ async fn test_registry_with_ttl() {
 async fn test_registry_with_auto_cleanup() {
     let _registry = CapabilityRegistry::new()
         .with_auto_cleanup(false)
-        .with_ttl(Duration::from_secs(120));
+        .with_ttl(Duration::from_mins(2));
     // Just verify it creates with custom settings without panicking - success!
 }
 

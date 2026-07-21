@@ -137,7 +137,7 @@ async fn test_stale_endpoint_filtering() {
         latency_ms: 5,
     };
 
-    let ttl = Duration::from_secs(300); // 5 minutes
+    let ttl = Duration::from_mins(5); // 5 minutes
     assert!(fresh.is_fresh(ttl));
     assert!(!stale.is_fresh(ttl));
 }

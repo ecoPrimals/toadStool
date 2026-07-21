@@ -140,7 +140,7 @@ fn test_granularity_custom_zero() {
 
 #[test]
 fn test_granularity_custom_very_large() {
-    let large_duration = Duration::from_secs(3600 * 24); // 1 day
+    let large_duration = Duration::from_hours(24); // 1 day
     let granularity = MonitoringGranularity::Custom(large_duration);
     let duration = granularity.to_duration();
 
@@ -252,7 +252,7 @@ fn test_monitoring_config_default_values() {
     assert_eq!(config.granularity.to_duration(), Duration::from_millis(100));
     assert!(config.enable_network_monitoring);
     assert!(config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(3600));
+    assert_eq!(config.metrics_retention, Duration::from_hours(1));
 }
 
 #[test]
@@ -262,13 +262,13 @@ fn test_monitoring_config_custom() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Terminate,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     };
 
     assert_eq!(config.granularity.to_duration(), Duration::from_millis(10));
     assert!(!config.enable_network_monitoring);
     assert!(!config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(7200));
+    assert_eq!(config.metrics_retention, Duration::from_hours(2));
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn test_zero_metrics_retention() {
 
 #[test]
 fn test_very_long_metrics_retention() {
-    let long_duration = Duration::from_secs(365 * 24 * 3600); // 1 year
+    let long_duration = Duration::from_hours(8760); // 1 year
     let config = MonitoringConfig {
         metrics_retention: long_duration,
         ..Default::default()
@@ -428,14 +428,14 @@ async fn test_monitoring_config_variations() {
             enable_network_monitoring: false,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Alert,
-            metrics_retention: Duration::from_secs(1800),
+            metrics_retention: Duration::from_mins(30),
         },
         MonitoringConfig {
             granularity: MonitoringGranularity::LowFrequency,
             enable_network_monitoring: true,
             enable_threshold_monitoring: false,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(7200),
+            metrics_retention: Duration::from_hours(2),
         },
     ];
 
@@ -504,7 +504,7 @@ fn test_config_scenarios() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(300),
+        metrics_retention: Duration::from_mins(5),
     };
     assert_eq!(
         low_latency.granularity.to_duration(),
@@ -517,7 +517,7 @@ fn test_config_scenarios() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     };
     assert_eq!(background.granularity.to_duration(), Duration::from_secs(1));
 
@@ -527,7 +527,7 @@ fn test_config_scenarios() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Terminate,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
     assert_eq!(
         production.granularity.to_duration(),

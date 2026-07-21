@@ -185,18 +185,18 @@ fn test_token_propagation_status_serialization() {
 fn test_auth_manager_config_creation() {
     let config = AuthManagerConfig {
         security_endpoint: "https://security.example.com".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
     };
 
     assert_eq!(config.security_endpoint, "https://security.example.com");
-    assert_eq!(config.token_refresh_interval, Duration::from_secs(300));
+    assert_eq!(config.token_refresh_interval, Duration::from_mins(5));
     assert!(config.signature_validation);
-    assert_eq!(config.timestamp_window, Duration::from_secs(60));
+    assert_eq!(config.timestamp_window, Duration::from_mins(1));
     assert!(config.replay_protection);
 }
 
@@ -204,9 +204,9 @@ fn test_auth_manager_config_creation() {
 fn test_auth_manager_config_no_validation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(600),
+        token_refresh_interval: Duration::from_mins(10),
         signature_validation: false,
-        timestamp_window: Duration::from_secs(300),
+        timestamp_window: Duration::from_mins(5),
         replay_protection: false,
         signing_key_seed: None,
         ..Default::default()
@@ -220,9 +220,9 @@ fn test_auth_manager_config_no_validation() {
 fn test_auth_manager_config_clone() {
     let config1 = AuthManagerConfig {
         security_endpoint: "https://security.example.com".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
@@ -240,9 +240,9 @@ fn test_auth_manager_config_clone() {
 fn test_auth_manager_config_serialization() {
     let config = AuthManagerConfig {
         security_endpoint: "https://security.example.com".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
@@ -267,7 +267,7 @@ fn test_authentication_token_creation() {
         token_type: "Bearer".to_string(),
         token: "encrypted-token-data".to_string(),
         public_key: "public-key-data".to_string(),
-        expires_at: now + Duration::from_secs(3600),
+        expires_at: now + Duration::from_hours(1),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string(), "songbird".to_string()],
@@ -291,7 +291,7 @@ fn test_authentication_token_ed25519() {
         token_type: "Ed25519".to_string(),
         token: "ed25519-signature".to_string(),
         public_key: "ed25519-public-key".to_string(),
-        expires_at: now + Duration::from_secs(86400),
+        expires_at: now + Duration::from_hours(24),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["nestgate".to_string()],
@@ -312,7 +312,7 @@ fn test_authentication_token_clone() {
         token_type: "Bearer".to_string(),
         token: "token-data".to_string(),
         public_key: "public-key".to_string(),
-        expires_at: now + Duration::from_secs(3600),
+        expires_at: now + Duration::from_hours(1),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -334,7 +334,7 @@ fn test_authentication_token_serialization() {
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + Duration::from_secs(3600),
+        expires_at: now + Duration::from_hours(1),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -359,7 +359,7 @@ fn test_token_propagation_request_creation() {
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + Duration::from_secs(3600),
+        expires_at: now + Duration::from_hours(1),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec!["songbird".to_string()],
@@ -388,7 +388,7 @@ fn test_token_propagation_request_clone() {
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + Duration::from_secs(3600),
+        expires_at: now + Duration::from_hours(1),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec![],
@@ -417,7 +417,7 @@ fn test_token_propagation_request_serialization() {
         token_type: "Bearer".to_string(),
         token: "data".to_string(),
         public_key: "key".to_string(),
-        expires_at: now + Duration::from_secs(3600),
+        expires_at: now + Duration::from_hours(1),
         issued_at: now,
         issuer: "beardog".to_string(),
         audience: vec![],
@@ -492,7 +492,7 @@ fn test_token_verification_response_valid() {
 
     let response = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
-        expires_at: Some(now + Duration::from_secs(3600)),
+        expires_at: Some(now + Duration::from_hours(1)),
         details: Some("Token is valid and active".to_string()),
     };
 
@@ -630,9 +630,9 @@ fn test_propagation_result_serialization() {
 fn test_authentication_manager_creation() {
     let config = AuthManagerConfig {
         security_endpoint: "https://security.example.com".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
@@ -647,9 +647,9 @@ fn test_authentication_manager_creation() {
 fn test_authentication_manager_no_validation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(600),
+        token_refresh_interval: Duration::from_mins(10),
         signature_validation: false,
-        timestamp_window: Duration::from_secs(300),
+        timestamp_window: Duration::from_mins(5),
         replay_protection: false,
         signing_key_seed: None,
         ..Default::default()

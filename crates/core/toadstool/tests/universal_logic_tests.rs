@@ -141,7 +141,7 @@ mod universal_logic_tests {
             Duration::from_millis(100),
             Duration::from_secs(1),
             Duration::from_secs(30),
-            Duration::from_secs(300),
+            Duration::from_mins(5),
         ];
 
         for timeout in timeouts {
@@ -152,7 +152,7 @@ mod universal_logic_tests {
     #[test]
     fn test_timeout_comparison() {
         let short = Duration::from_secs(1);
-        let long = Duration::from_secs(60);
+        let long = Duration::from_mins(1);
 
         assert!(short < long);
         assert!(long > short);

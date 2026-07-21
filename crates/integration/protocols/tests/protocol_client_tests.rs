@@ -331,7 +331,7 @@ async fn test_client_with_short_timeout() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_client_with_long_timeout() {
     let mut config = create_test_config();
-    config.request_timeout = Duration::from_secs(300);
+    config.request_timeout = Duration::from_mins(5);
 
     let client = ProtocolClient::new(config).await;
     assert!(client.is_ok());

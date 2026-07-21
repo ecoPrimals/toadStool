@@ -683,7 +683,7 @@ fn test_workload_spec_conversion() {
     use std::time::Duration;
 
     // Validate workload spec parameters
-    let timeout = Duration::from_secs(300);
+    let timeout = Duration::from_mins(5);
     let cpu_limit = 2.0;
     let memory_mb = 1024_u64;
 

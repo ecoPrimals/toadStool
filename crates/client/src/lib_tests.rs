@@ -313,7 +313,7 @@ fn test_python_workload_requirements() {
 
 #[test]
 fn test_workload_timeout() {
-    let timeout = Duration::from_secs(300); // 5 minutes
+    let timeout = Duration::from_mins(5); // 5 minutes
 
     let workload = WorkloadSubmission::native()
         .executable("/bin/sleep")

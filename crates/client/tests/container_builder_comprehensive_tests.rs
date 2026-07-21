@@ -222,7 +222,7 @@ fn test_container_builder_with_timeout_short() {
 fn test_container_builder_with_timeout_long() {
     let _submission = WorkloadSubmission::container()
         .image("alpine:latest")
-        .timeout(Duration::from_secs(3600))
+        .timeout(Duration::from_hours(1))
         .build();
 }
 
@@ -355,7 +355,7 @@ fn test_container_builder_full_configuration() {
         .working_dir("/app")
         .environment(environment)
         .priority(JobPriority::High)
-        .timeout(Duration::from_secs(300))
+        .timeout(Duration::from_mins(5))
         .resources(resources)
         .metadata(metadata)
         .build();
@@ -374,7 +374,7 @@ fn test_container_builder_web_service() {
         .command(command)
         .working_dir("/usr/share/nginx/html")
         .priority(JobPriority::Normal)
-        .timeout(Duration::from_secs(3600))
+        .timeout(Duration::from_hours(1))
         .build();
 }
 
@@ -401,7 +401,7 @@ fn test_container_builder_batch_job() {
         .working_dir("/workspace")
         .resources(resources)
         .priority(JobPriority::Low)
-        .timeout(Duration::from_secs(7200))
+        .timeout(Duration::from_hours(2))
         .build();
 }
 
@@ -426,7 +426,7 @@ fn test_container_builder_ml_training() {
         .environment(environment)
         .resources(resources)
         .priority(JobPriority::High)
-        .timeout(Duration::from_secs(86400))
+        .timeout(Duration::from_hours(24))
         .build();
 }
 
@@ -438,7 +438,7 @@ fn test_container_builder_with_chained_methods() {
         .args(vec!["hello".to_string()])
         .working_dir("/tmp")
         .priority(JobPriority::Normal)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_mins(1))
         .build();
 }
 

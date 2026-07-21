@@ -42,9 +42,9 @@ fn test_native_working_directory() {
 
 #[test]
 fn test_native_process_timeout() {
-    let timeout = Duration::from_secs(300);
+    let timeout = Duration::from_mins(5);
     assert_eq!(timeout.as_secs(), 300);
-    assert!(timeout < Duration::from_secs(3600));
+    assert!(timeout < Duration::from_hours(1));
 }
 
 #[test]

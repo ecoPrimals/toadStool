@@ -187,7 +187,7 @@ mod monitoring_config_tests {
         assert_eq!(config.granularity.to_duration(), Duration::from_millis(100));
         assert!(config.enable_network_monitoring);
         assert!(config.enable_threshold_monitoring);
-        assert_eq!(config.metrics_retention, Duration::from_secs(3600));
+        assert_eq!(config.metrics_retention, Duration::from_hours(1));
     }
 
     #[test]
@@ -197,13 +197,13 @@ mod monitoring_config_tests {
             enable_network_monitoring: false,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Alert,
-            metrics_retention: Duration::from_secs(7200),
+            metrics_retention: Duration::from_hours(2),
         };
 
         assert_eq!(config.granularity.to_duration(), Duration::from_millis(10));
         assert!(!config.enable_network_monitoring);
         assert!(config.enable_threshold_monitoring);
-        assert_eq!(config.metrics_retention, Duration::from_secs(7200));
+        assert_eq!(config.metrics_retention, Duration::from_hours(2));
     }
 
     #[test]
@@ -228,7 +228,7 @@ mod monitoring_config_tests {
             enable_network_monitoring: false,
             enable_threshold_monitoring: false,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(60),
+            metrics_retention: Duration::from_mins(1),
         };
 
         assert!(!config.enable_network_monitoring);
@@ -238,9 +238,9 @@ mod monitoring_config_tests {
     #[test]
     fn test_monitoring_config_retention_values() {
         let retention_values = vec![
-            Duration::from_secs(300),   // 5 minutes
-            Duration::from_secs(3600),  // 1 hour
-            Duration::from_secs(86400), // 1 day
+            Duration::from_mins(5),   // 5 minutes
+            Duration::from_hours(1),  // 1 hour
+            Duration::from_hours(24), // 1 day
         ];
 
         for retention in retention_values {
@@ -289,7 +289,7 @@ mod use_case_tests {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Terminate,
-            metrics_retention: Duration::from_secs(300), // 5 minutes
+            metrics_retention: Duration::from_mins(5), // 5 minutes
         };
 
         assert_eq!(config.granularity.to_duration(), Duration::from_micros(100));
@@ -306,7 +306,7 @@ mod use_case_tests {
             enable_network_monitoring: false,
             enable_threshold_monitoring: false,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(86400), // 1 day
+            metrics_retention: Duration::from_hours(24), // 1 day
         };
 
         assert_eq!(config.granularity.to_duration(), Duration::from_secs(1));
@@ -320,7 +320,7 @@ mod use_case_tests {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Alert,
-            metrics_retention: Duration::from_secs(7200), // 2 hours
+            metrics_retention: Duration::from_hours(2), // 2 hours
         };
 
         assert_eq!(config.granularity.to_duration(), Duration::from_millis(10));

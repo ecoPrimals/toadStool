@@ -92,7 +92,7 @@ fn test_discovered_service_is_fresh() {
         last_seen: now,
         healthy: true,
     };
-    assert!(service.is_fresh(Duration::from_secs(60)));
+    assert!(service.is_fresh(Duration::from_mins(1)));
 }
 
 #[test]

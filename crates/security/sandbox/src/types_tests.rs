@@ -92,7 +92,7 @@ fn sandbox_lifetime_serde() {
     assert!(json.contains("Ephemeral"));
 
     let persistent = SandboxLifetime::Persistent {
-        ttl: Duration::from_secs(3600),
+        ttl: Duration::from_hours(1),
     };
     let json = serde_json::to_string(&persistent).unwrap();
     assert!(json.contains("Persistent"));

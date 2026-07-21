@@ -54,7 +54,7 @@ async fn test_optimized_monitoring_config_default() {
     assert_eq!(config.high_load_multiplier, 0.5);
     assert_eq!(config.low_load_multiplier, 2.0);
     assert_eq!(config.batch_size, 10);
-    assert_eq!(config.aggregation_window, Duration::from_secs(60));
+    assert_eq!(config.aggregation_window, Duration::from_mins(1));
 }
 
 #[expect(
@@ -69,7 +69,7 @@ async fn test_memory_pool_config_default() {
     assert_eq!(config.max_size, 1000);
     assert_eq!(config.growth_factor, 1.5);
     assert_eq!(config.shrink_threshold, 0.3);
-    assert_eq!(config.cleanup_interval, Duration::from_secs(60));
+    assert_eq!(config.cleanup_interval, Duration::from_mins(1));
 }
 
 #[expect(
@@ -81,8 +81,8 @@ async fn test_caching_config_default() {
     let config = CachingConfig::default();
 
     assert_eq!(config.max_size, 1000);
-    assert_eq!(config.default_ttl, Duration::from_secs(300));
-    assert_eq!(config.cleanup_interval, Duration::from_secs(60));
+    assert_eq!(config.default_ttl, Duration::from_mins(5));
+    assert_eq!(config.cleanup_interval, Duration::from_mins(1));
     assert_eq!(config.hit_rate_threshold, 0.8);
 }
 
@@ -103,8 +103,8 @@ async fn test_performance_connection_pool_config_default() {
     assert_eq!(config.initial_size, 10);
     assert_eq!(config.max_size, 100);
     assert_eq!(config.connection_timeout, Duration::from_secs(30));
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
-    assert_eq!(config.health_check_interval, Duration::from_secs(60));
+    assert_eq!(config.idle_timeout, Duration::from_mins(5));
+    assert_eq!(config.health_check_interval, Duration::from_mins(1));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -145,7 +145,7 @@ async fn test_custom_monitoring_config() {
         high_load_multiplier: 0.25,
         low_load_multiplier: 4.0,
         batch_size: 20,
-        aggregation_window: Duration::from_secs(120),
+        aggregation_window: Duration::from_mins(2),
     };
 
     assert_eq!(config.base_sampling_interval, Duration::from_millis(50));
@@ -172,13 +172,13 @@ async fn test_custom_memory_pool_config() {
 async fn test_custom_caching_config() {
     let config = CachingConfig {
         max_size: 5000,
-        default_ttl: Duration::from_secs(600),
-        cleanup_interval: Duration::from_secs(120),
+        default_ttl: Duration::from_mins(10),
+        cleanup_interval: Duration::from_mins(2),
         hit_rate_threshold: 0.9,
     };
 
     assert_eq!(config.max_size, 5000);
-    assert_eq!(config.default_ttl, Duration::from_secs(600));
+    assert_eq!(config.default_ttl, Duration::from_mins(10));
     assert_eq!(config.hit_rate_threshold, 0.9);
 }
 
@@ -254,7 +254,7 @@ async fn test_connection_pool_size_constraints() {
     assert!(config.initial_size <= config.max_size);
 
     // Idle timeout should be reasonable
-    assert!(config.idle_timeout >= Duration::from_secs(60));
+    assert!(config.idle_timeout >= Duration::from_mins(1));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -313,7 +313,7 @@ async fn test_extreme_monitoring_config() {
         high_load_multiplier: 0.1, // 10x faster under load
         low_load_multiplier: 10.0, // 10x slower under idle
         batch_size: 100,           // Large batches
-        aggregation_window: Duration::from_secs(600), // 10 minutes
+        aggregation_window: Duration::from_mins(10), // 10 minutes
     };
 
     assert_eq!(config.base_sampling_interval, Duration::from_millis(1));
@@ -343,8 +343,8 @@ async fn test_minimal_memory_pool_config() {
 async fn test_large_cache_config() {
     let config = CachingConfig {
         max_size: 100_000,                          // 100K entries
-        default_ttl: Duration::from_secs(3600),     // 1 hour
-        cleanup_interval: Duration::from_secs(300), // 5 minutes
+        default_ttl: Duration::from_hours(1),     // 1 hour
+        cleanup_interval: Duration::from_mins(5), // 5 minutes
         hit_rate_threshold: 0.95,                   // Very high target
     };
 
@@ -371,7 +371,7 @@ async fn test_connection_pool_minimal() {
         initial_size: 1,
         max_size: 5,
         connection_timeout: Duration::from_secs(5),
-        idle_timeout: Duration::from_secs(60),
+        idle_timeout: Duration::from_mins(1),
         health_check_interval: Duration::from_secs(30),
     };
 
@@ -386,8 +386,8 @@ async fn test_connection_pool_enterprise() {
         initial_size: 50,
         max_size: 500,
         connection_timeout: Duration::from_secs(10),
-        idle_timeout: Duration::from_secs(600), // 10 minutes
-        health_check_interval: Duration::from_secs(120), // 2 minutes
+        idle_timeout: Duration::from_mins(10), // 10 minutes
+        health_check_interval: Duration::from_mins(2), // 2 minutes
     };
 
     assert_eq!(config.initial_size, 50);

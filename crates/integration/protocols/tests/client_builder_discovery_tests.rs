@@ -29,7 +29,7 @@ fn test_protocol_config_builder_defaults() {
 fn test_connection_pool_defaults() {
     let config = ConnectionPoolConfig::default();
     assert_eq!(config.max_connections_per_service, 10);
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
+    assert_eq!(config.idle_timeout, Duration::from_mins(5));
     assert_eq!(config.max_concurrent_requests, 100);
 }
 
@@ -38,8 +38,8 @@ fn test_service_discovery_consul_default() {
     let config = ServiceDiscoveryConfig::consul_default();
     assert!(matches!(config.discovery_type, DiscoveryType::Consul));
     assert!(config.registry_endpoint.is_some());
-    assert_eq!(config.registration_ttl, Duration::from_secs(300));
-    assert_eq!(config.refresh_interval, Duration::from_secs(60));
+    assert_eq!(config.registration_ttl, Duration::from_mins(5));
+    assert_eq!(config.refresh_interval, Duration::from_mins(1));
     assert!(config.auto_register);
 }
 

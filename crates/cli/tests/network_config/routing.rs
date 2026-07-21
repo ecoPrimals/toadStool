@@ -58,7 +58,7 @@ fn test_rate_limit() {
     let limit = RateLimit {
         requests_per_second: 100,
         burst_size: 200,
-        window_size: Duration::from_secs(60),
+        window_size: Duration::from_mins(1),
     };
     assert_eq!(limit.requests_per_second, 100);
     assert_eq!(limit.burst_size, 200);
@@ -225,8 +225,8 @@ fn create_test_proxy_config() -> ProxyConfig {
         timeouts: TimeoutConfig {
             connection_timeout: Duration::from_secs(10),
             request_timeout: Duration::from_secs(30),
-            read_timeout: Duration::from_secs(60),
-            write_timeout: Duration::from_secs(60),
+            read_timeout: Duration::from_mins(1),
+            write_timeout: Duration::from_mins(1),
         },
     }
 }
@@ -247,7 +247,7 @@ fn create_test_mtls_config(enabled: bool) -> MutualTLSConfig {
         ca_cert: "/etc/certs/ca.crt".to_string(),
         service_cert: "/etc/certs/service.crt".to_string(),
         private_key: "/etc/certs/service.key".to_string(),
-        rotation_interval: Duration::from_secs(86400),
+        rotation_interval: Duration::from_hours(24),
         verification_mode: "strict".to_string(),
     }
 }
@@ -262,7 +262,7 @@ fn create_test_service_discovery_config() -> ServiceDiscoveryConfig {
             enabled: true,
         }],
         refresh_interval: Duration::from_secs(30),
-        cache_ttl: Duration::from_secs(300),
+        cache_ttl: Duration::from_mins(5),
         health_check_integration: true,
     }
 }
@@ -281,8 +281,8 @@ fn create_test_connection_pool_config() -> ConnectionPoolConfig {
         enabled: true,
         max_connections_per_host: 100,
         max_idle_connections: 10,
-        idle_timeout: Duration::from_secs(60),
-        connection_lifetime: Duration::from_secs(600),
+        idle_timeout: Duration::from_mins(1),
+        connection_lifetime: Duration::from_mins(10),
     }
 }
 
@@ -331,9 +331,9 @@ fn create_test_dns_cache_config(enabled: bool) -> DnsCacheConfig {
     DnsCacheConfig {
         base: CacheConfig {
             enabled,
-            ttl: Duration::from_secs(300),
+            ttl: Duration::from_mins(5),
             max_entries: 1000,
-            negative_ttl: Duration::from_secs(60),
+            negative_ttl: Duration::from_mins(1),
         },
     }
 }

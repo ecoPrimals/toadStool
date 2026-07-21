@@ -30,7 +30,7 @@ pub(super) fn create_test_execution_request() -> ExecutionRequest {
         runtime_hint: None,
         resources: toadstool::resources::ResourceRequirements::default(),
         security_context: toadstool::SecurityContext::default(),
-        timeout: Some(Duration::from_secs(300)),
+        timeout: Some(Duration::from_mins(5)),
         environment: HashMap::new(),
         input_data: toadstool::ExecutionInput::default(),
         callback_config: None,

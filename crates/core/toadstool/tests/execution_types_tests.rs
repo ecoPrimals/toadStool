@@ -15,7 +15,7 @@ fn execution_request_default_construction() {
     let req = ExecutionRequest::default();
     assert!(req.runtime_hint.is_none());
     assert_eq!(req.environment.len(), 0);
-    assert_eq!(req.timeout, Some(Duration::from_secs(300)));
+    assert_eq!(req.timeout, Some(Duration::from_mins(5)));
     assert!(req.callback_config.is_none());
     assert!(req.encryption_config.is_none());
 }
@@ -28,14 +28,14 @@ fn execution_request_field_access() {
     let req = ExecutionRequest {
         execution_id: id,
         runtime_hint: Some(RuntimeType::Wasm),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         environment,
         ..Default::default()
     };
 
     assert_eq!(req.execution_id, id);
     assert_eq!(req.runtime_hint, Some(RuntimeType::Wasm));
-    assert_eq!(req.timeout, Some(Duration::from_secs(60)));
+    assert_eq!(req.timeout, Some(Duration::from_mins(1)));
     assert_eq!(req.environment.get("FOO"), Some(&"bar".to_string()));
 }
 

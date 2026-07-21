@@ -91,7 +91,7 @@ fn test_legacy_job_creation_compilation() {
         communication_settings: CommunicationSettings::default(),
         priority: toadstool::JobPriority::Normal,
         created_at: std::time::SystemTime::now(),
-        timeout: Duration::from_secs(3600),
+        timeout: Duration::from_hours(1),
     };
     assert!(matches!(job.job_type, LegacyJobType::Compilation { .. }));
     assert!(matches!(job.source, LegacyJobSource::SourceCode { .. }));
@@ -116,7 +116,7 @@ fn test_legacy_job_serialization_roundtrip() {
         communication_settings: CommunicationSettings::default(),
         priority: toadstool::JobPriority::Normal,
         created_at: std::time::SystemTime::now(),
-        timeout: Duration::from_secs(300),
+        timeout: Duration::from_mins(5),
     };
     let json = serde_json::to_string(&job).unwrap();
     let deserialized: LegacyJob = serde_json::from_str(&json).unwrap();
@@ -307,7 +307,7 @@ fn test_legacy_job_jcl_source() {
         communication_settings: CommunicationSettings::default(),
         priority: toadstool::JobPriority::Normal,
         created_at: std::time::SystemTime::now(),
-        timeout: Duration::from_secs(600),
+        timeout: Duration::from_mins(10),
     };
     assert!(matches!(job.source, LegacyJobSource::JCL { .. }));
 }

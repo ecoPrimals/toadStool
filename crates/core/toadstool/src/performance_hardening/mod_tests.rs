@@ -141,7 +141,7 @@ async fn test_cache_put_get() {
 #[tokio::test]
 async fn test_cache_expiration() {
     let config = CachingConfig {
-        default_ttl: Duration::from_secs(300), // Normal TTL
+        default_ttl: Duration::from_mins(5), // Normal TTL
         ..Default::default()
     };
     let cache = IntelligentCache::new(config);

@@ -90,7 +90,7 @@ fn test_registry_config_default() {
     assert_eq!(config.default_registry, "docker.io");
     assert!(config.registries.is_empty());
     assert!(matches!(config.pull_policy, ImagePullPolicy::IfNotPresent));
-    assert_eq!(config.pull_timeout, Duration::from_secs(300));
+    assert_eq!(config.pull_timeout, Duration::from_mins(5));
 }
 
 #[test]
@@ -305,7 +305,7 @@ fn test_container_resource_limits_default() {
 
     assert_eq!(limits.max_memory_bytes, 512 * 1024 * 1024);
     assert_eq!(limits.max_cpu_millicores, 1000);
-    assert_eq!(limits.max_execution_time, Duration::from_secs(3600));
+    assert_eq!(limits.max_execution_time, Duration::from_hours(1));
     assert_eq!(limits.max_io_bps, 100 * 1024 * 1024);
 }
 
@@ -350,7 +350,7 @@ fn test_image_config_default() {
     assert!(config.cache_enabled);
     assert!(config.cache_dir.is_none());
     assert_eq!(config.max_cache_size_mb, 5120);
-    assert_eq!(config.cleanup_interval, Duration::from_secs(3600));
+    assert_eq!(config.cleanup_interval, Duration::from_hours(1));
 }
 
 #[test]
@@ -606,7 +606,7 @@ fn test_resource_constrained_config() {
 
     config.resource_limits.max_memory_bytes = 128 * 1024 * 1024; // 128 MB
     config.resource_limits.max_cpu_millicores = 250; // 0.25 cores
-    config.resource_limits.max_execution_time = Duration::from_secs(600);
+    config.resource_limits.max_execution_time = Duration::from_mins(10);
 
     assert_eq!(config.resource_limits.max_memory_bytes, 128 * 1024 * 1024);
     assert_eq!(config.resource_limits.max_cpu_millicores, 250);

@@ -146,7 +146,7 @@ fn test_active_execution_creation() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(300),
+        timeout: Duration::from_mins(5),
         status: ExecutionStatus::Pending,
         client_info: ClientInfo {
             ip_address: Some("127.0.0.1".to_string()),
@@ -169,7 +169,7 @@ fn test_active_execution_with_wasm_runtime() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Wasm,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(60),
+        timeout: Duration::from_mins(1),
         status: ExecutionStatus::Pending,
         client_info: ClientInfo {
             ip_address: None,
@@ -190,7 +190,7 @@ fn test_active_execution_clone() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(120),
+        timeout: Duration::from_mins(2),
         status: ExecutionStatus::Pending,
         client_info: ClientInfo {
             ip_address: None,
@@ -321,7 +321,7 @@ fn test_execution_with_client_tracking() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(300),
+        timeout: Duration::from_mins(5),
         status: ExecutionStatus::Pending,
         client_info: client,
     };

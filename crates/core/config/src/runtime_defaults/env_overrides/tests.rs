@@ -145,7 +145,7 @@ fn apply_env_overrides_execution_timeout() {
         c.apply_env_overrides().unwrap();
         assert_eq!(
             c.runtime.execution_timeout,
-            std::time::Duration::from_secs(120)
+            std::time::Duration::from_mins(2)
         );
     });
 }
@@ -248,12 +248,12 @@ fn apply_env_overrides_security_auth() {
             assert_eq!(c.security.auth.jwt_secret, Some("secret123".to_string()));
             assert_eq!(
                 c.security.auth.session_timeout,
-                std::time::Duration::from_secs(600)
+                std::time::Duration::from_mins(10)
             );
             assert_eq!(c.security.auth.max_login_attempts, 5);
             assert_eq!(
                 c.security.auth.lockout_duration,
-                std::time::Duration::from_secs(300)
+                std::time::Duration::from_mins(5)
             );
         },
     );
@@ -349,7 +349,7 @@ fn apply_env_overrides_request_timeout() {
         c.apply_env_overrides().unwrap();
         assert_eq!(
             c.network.connection.request_timeout,
-            std::time::Duration::from_secs(60)
+            std::time::Duration::from_mins(1)
         );
     });
 }

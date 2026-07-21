@@ -145,7 +145,7 @@ async fn test_discovery_config_default() {
     assert!(config.enable_mdns);
     assert!(config.enable_dns_sd);
     assert_eq!(config.discovery_interval, Duration::from_secs(30));
-    assert_eq!(config.service_timeout, Duration::from_secs(300));
+    assert_eq!(config.service_timeout, Duration::from_mins(5));
     assert_eq!(config.max_services, 1000);
 }
 
@@ -155,8 +155,8 @@ async fn test_with_config() {
     let config = DiscoveryConfig {
         enable_mdns: false,
         enable_dns_sd: false,
-        discovery_interval: Duration::from_secs(60),
-        service_timeout: Duration::from_secs(120),
+        discovery_interval: Duration::from_mins(1),
+        service_timeout: Duration::from_mins(2),
         max_services: 50,
     };
     let discovery = RuntimeDiscovery::with_config(identity, config);
@@ -454,7 +454,7 @@ async fn test_discovery_config_custom_values() {
         enable_mdns: false,
         enable_dns_sd: false,
         discovery_interval: Duration::from_secs(10),
-        service_timeout: Duration::from_secs(60),
+        service_timeout: Duration::from_mins(1),
         max_services: 5,
     };
     let identity = SelfIdentity::new();

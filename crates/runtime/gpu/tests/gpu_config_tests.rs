@@ -110,7 +110,7 @@ fn test_discovery_config_timeout_value() {
     let config = GpuDiscoveryConfig::default();
 
     assert!(config.discovery_timeout > Duration::from_secs(0));
-    assert!(config.discovery_timeout <= Duration::from_secs(60));
+    assert!(config.discovery_timeout <= Duration::from_mins(1));
 }
 
 #[test]

@@ -38,7 +38,7 @@ fn test_graph_node_serialization_with_duration() {
     let json = serde_json::to_string(&node).unwrap();
     assert!(json.contains("120"));
     let restored: GraphNode = serde_json::from_str(&json).unwrap();
-    assert_eq!(restored.duration, Some(Duration::from_secs(120)));
+    assert_eq!(restored.duration, Some(Duration::from_mins(2)));
 }
 
 #[test]

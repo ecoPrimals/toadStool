@@ -148,7 +148,7 @@ mod background_services_tests {
             execution_id,
             runtime_type: RuntimeType::Native,
             started_at: SystemTime::now() - std::time::Duration::from_secs(400), // Started 400 seconds ago
-            timeout: Duration::from_secs(300), // Timeout is 300 seconds
+            timeout: Duration::from_mins(5), // Timeout is 300 seconds
             status: ExecutionStatus::Running,
             client_info: ClientInfo {
                 ip_address: Some("127.0.0.1".to_string()),
@@ -213,7 +213,7 @@ mod background_services_tests {
                 execution_id,
                 runtime_type: RuntimeType::Native,
                 started_at: SystemTime::now(),
-                timeout: Duration::from_secs(300),
+                timeout: Duration::from_mins(5),
                 status: ExecutionStatus::Running,
                 client_info: ClientInfo {
                     ip_address: Some(format!("127.0.0.{i}")),

@@ -93,9 +93,21 @@ impl DispatchHandler {
             Ok(order) => order,
             Err(graph_err) => {
                 let pipeline_id = uuid::Uuid::new_v4().to_string();
+                let response = serde_json::json!({
+                    "domain": "compute.dispatch",
+                    "operation": "pipeline.submit",
+                    "job_id": &pipeline_id,
+                    "status": "failed",
+                    "output": null,
+                    "error": graph_err.message.as_ref(),
+                    "metadata": {
+                        "name": &name,
+                        "stage_count": stages.len(),
+                    },
+                });
                 let pipeline_job = PipelineJob {
                     id: pipeline_id.clone(),
-                    name: name.clone(),
+                    name,
                     status: PipelineStatus::Failed(graph_err.message.to_string()),
                     submitted_at: std::time::Instant::now(),
                     stage_count: stages.len(),
@@ -103,19 +115,8 @@ impl DispatchHandler {
                     stage_results: Vec::new(),
                 };
                 let mut pipelines = self.pipelines.write().await;
-                pipelines.insert(pipeline_id.clone(), pipeline_job);
-                return Ok(serde_json::json!({
-                    "domain": "compute.dispatch",
-                    "operation": "pipeline.submit",
-                    "job_id": pipeline_id,
-                    "status": "failed",
-                    "output": null,
-                    "error": graph_err.message.as_ref(),
-                    "metadata": {
-                        "name": name,
-                        "stage_count": stages.len(),
-                    },
-                }));
+                pipelines.insert(pipeline_id, pipeline_job);
+                return Ok(response);
             }
         };
 
@@ -211,66 +212,70 @@ impl DispatchHandler {
 
                     let completed = stage_results.iter().filter(|r| r.error.is_none()).count();
 
+                    let response = serde_json::json!({
+                        "domain": "compute.dispatch",
+                        "operation": "pipeline.submit",
+                        "job_id": &pipeline_id,
+                        "status": "partial_failure",
+                        "output": { "stage_results": &stage_results },
+                        "error": &error_msg,
+                        "metadata": {
+                            "name": &name,
+                            "stage_count": stages.len(),
+                            "stages_completed": completed,
+                            "failed_stage": stage_id,
+                        },
+                    });
+
                     {
                         let mut pipelines = self.pipelines.write().await;
                         if let Some(pj) = pipelines.get_mut(&pipeline_id) {
                             pj.status = PipelineStatus::PartialFailure {
                                 completed,
                                 failed_stage: stage_id.clone(),
-                                error: error_msg.clone(),
+                                error: error_msg,
                             };
                             pj.stages_completed = completed;
-                            pj.stage_results.clone_from(&stage_results);
+                            pj.stage_results = stage_results;
                         }
                     }
 
                     self.dispatch_count.fetch_add(1, Ordering::Relaxed);
 
-                    return Ok(serde_json::json!({
-                        "domain": "compute.dispatch",
-                        "operation": "pipeline.submit",
-                        "job_id": pipeline_id,
-                        "status": "partial_failure",
-                        "output": { "stage_results": stage_results },
-                        "error": error_msg,
-                        "metadata": {
-                            "name": name,
-                            "stage_count": stages.len(),
-                            "stages_completed": completed,
-                            "failed_stage": stage_id,
-                        },
-                    }));
+                    return Ok(response);
                 }
             }
         }
 
         let total_elapsed_ms: u64 = stage_results.iter().map(|r| r.elapsed_ms).sum();
 
+        let response = serde_json::json!({
+            "domain": "compute.dispatch",
+            "operation": "pipeline.submit",
+            "job_id": &pipeline_id,
+            "status": "completed",
+            "output": { "stage_results": &stage_results },
+            "error": null,
+            "metadata": {
+                "name": &name,
+                "stage_count": stages.len(),
+                "stages_completed": stages.len(),
+                "total_elapsed_ms": total_elapsed_ms,
+            },
+        });
+
         {
             let mut pipelines = self.pipelines.write().await;
             if let Some(pj) = pipelines.get_mut(&pipeline_id) {
                 pj.status = PipelineStatus::Completed;
                 pj.stages_completed = stages.len();
-                pj.stage_results.clone_from(&stage_results);
+                pj.stage_results = stage_results;
             }
         }
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);
 
-        Ok(serde_json::json!({
-            "domain": "compute.dispatch",
-            "operation": "pipeline.submit",
-            "job_id": pipeline_id,
-            "status": "completed",
-            "output": { "stage_results": stage_results },
-            "error": null,
-            "metadata": {
-                "name": name,
-                "stage_count": stages.len(),
-                "stages_completed": stages.len(),
-                "total_elapsed_ms": total_elapsed_ms,
-            },
-        }))
+        Ok(response)
     }
 
     /// Handle `compute.dispatch.pipeline.status`.

@@ -72,8 +72,8 @@ fn test_circuit_breaker_config_default() {
 
     assert_eq!(config.failure_threshold, 5);
     assert_eq!(config.success_threshold, 3);
-    assert_eq!(config.timeout, Duration::from_secs(60));
-    assert_eq!(config.rolling_window, Duration::from_secs(60));
+    assert_eq!(config.timeout, Duration::from_mins(1));
+    assert_eq!(config.rolling_window, Duration::from_mins(1));
     assert_eq!(config.half_open_max_requests, 3);
 }
 
@@ -83,7 +83,7 @@ fn test_circuit_breaker_config_custom() {
         failure_threshold: 10,
         success_threshold: 5,
         timeout: Duration::from_secs(30),
-        rolling_window: Duration::from_secs(120),
+        rolling_window: Duration::from_mins(2),
         half_open_max_requests: 5,
     };
 
@@ -111,8 +111,8 @@ fn test_circuit_breaker_config_lenient() {
     let config = CircuitBreakerConfig {
         failure_threshold: 100,
         success_threshold: 50,
-        timeout: Duration::from_secs(300),
-        rolling_window: Duration::from_secs(600),
+        timeout: Duration::from_mins(5),
+        rolling_window: Duration::from_mins(10),
         half_open_max_requests: 20,
     };
 
@@ -296,7 +296,7 @@ fn test_production_hardening_config_creation() {
             emergency_threshold: 95.0,
             check_interval: Duration::from_secs(10),
         },
-        leak_detection_threshold: Duration::from_secs(300),
+        leak_detection_threshold: Duration::from_mins(5),
         ..Default::default()
     };
 
@@ -318,7 +318,7 @@ fn test_production_hardening_config_minimal() {
             emergency_threshold: 95.0,
             check_interval: Duration::from_secs(30),
         },
-        leak_detection_threshold: Duration::from_secs(600),
+        leak_detection_threshold: Duration::from_mins(10),
         ..Default::default()
     };
 
@@ -362,7 +362,7 @@ fn test_production_hardening_config_clone() {
             emergency_threshold: 95.0,
             check_interval: Duration::from_secs(10),
         },
-        leak_detection_threshold: Duration::from_secs(300),
+        leak_detection_threshold: Duration::from_mins(5),
         ..Default::default()
     };
 
@@ -476,8 +476,8 @@ fn test_circuit_breaker_config_large_thresholds() {
     let config = CircuitBreakerConfig {
         failure_threshold: 1000,
         success_threshold: 500,
-        timeout: Duration::from_secs(3600),
-        rolling_window: Duration::from_secs(7200),
+        timeout: Duration::from_hours(1),
+        rolling_window: Duration::from_hours(2),
         half_open_max_requests: 100,
     };
 

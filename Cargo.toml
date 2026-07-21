@@ -290,6 +290,7 @@ cast_precision_loss = "allow"      # Explicit casts are intentional
 cast_possible_truncation = "allow" # Explicit casts are intentional
 cast_sign_loss = "allow"           # Explicit casts are intentional
 cast_possible_wrap = "allow"       # Explicit casts are intentional
+duration_suboptimal_units = "allow" # MSRV 1.85 predates from_mins/from_hours (stable 1.91)
 
 # Nursery lint exceptions — these fire at high volume without catching real bugs
 use_self = "allow"                 # Noisy on struct impls; Self is optional style

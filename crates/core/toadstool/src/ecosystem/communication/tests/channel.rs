@@ -14,7 +14,7 @@ async fn test_communication_manager_creation() {
 
 #[tokio::test]
 async fn test_custom_timeout() {
-    let manager = CommunicationManager::with_timeout(std::time::Duration::from_secs(60));
+    let manager = CommunicationManager::with_timeout(std::time::Duration::from_mins(1));
     assert_eq!(manager.default_timeout.as_secs(), 60);
 }
 
@@ -272,7 +272,7 @@ async fn test_send_heartbeat_succeeds_and_updates_timestamp() {
         service_name: "Heartbeat Service".to_string(),
         endpoint: "http://localhost:1234".to_string(),
         client: ServiceClient::Disabled,
-        last_heartbeat: std::time::SystemTime::now() - std::time::Duration::from_secs(300),
+        last_heartbeat: std::time::SystemTime::now() - std::time::Duration::from_mins(5),
         status: ServiceStatus::Connected,
     };
 

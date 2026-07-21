@@ -100,11 +100,11 @@ fn test_protocol_message_with_ttl() {
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
-        ttl: Some(Duration::from_secs(60)),
+        ttl: Some(Duration::from_mins(1)),
         priority: MessagePriority::Normal,
     };
 
-    assert_eq!(message.ttl, Some(Duration::from_secs(60)));
+    assert_eq!(message.ttl, Some(Duration::from_mins(1)));
 }
 
 #[test]

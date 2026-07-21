@@ -21,7 +21,7 @@ fn test_custom_property_config() {
         test_name: "custom_property".to_string(),
         test_cases: 50,
         shrink_attempts: 50,
-        timeout: Duration::from_secs(60),
+        timeout: Duration::from_mins(1),
         verbose: true,
         seed: Some(12345),
     };
@@ -29,7 +29,7 @@ fn test_custom_property_config() {
     assert_eq!(config.test_name, "custom_property");
     assert_eq!(config.test_cases, 50);
     assert_eq!(config.shrink_attempts, 50);
-    assert_eq!(config.timeout, Duration::from_secs(60));
+    assert_eq!(config.timeout, Duration::from_mins(1));
     assert!(config.verbose);
     assert_eq!(config.seed, Some(12345));
 }
@@ -65,7 +65,7 @@ fn test_property_config_extreme_values() {
         test_name: "extreme".to_string(),
         test_cases: 10000,
         shrink_attempts: 1000,
-        timeout: Duration::from_secs(3600),
+        timeout: Duration::from_hours(1),
         verbose: false,
         seed: Some(u64::MAX),
     };
@@ -88,7 +88,7 @@ fn test_runner_creation_with_custom_config() {
         test_name: "custom_runner".to_string(),
         test_cases: 25,
         shrink_attempts: 25,
-        timeout: Duration::from_secs(120),
+        timeout: Duration::from_mins(2),
         verbose: false,
         seed: Some(42),
     };

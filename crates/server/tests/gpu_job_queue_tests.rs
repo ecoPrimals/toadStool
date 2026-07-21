@@ -501,7 +501,7 @@ async fn test_cleanup_keeps_recent_jobs() {
         .unwrap();
 
     // Cleanup with a large max_age: recently completed job is kept
-    queue.cleanup(std::time::Duration::from_secs(3600)).await;
+    queue.cleanup(std::time::Duration::from_hours(1)).await;
     assert!(queue.status(id).await.is_ok());
 }
 

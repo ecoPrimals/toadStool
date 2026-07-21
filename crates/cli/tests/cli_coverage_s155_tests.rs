@@ -455,13 +455,13 @@ mod monitoring_tests {
 
     #[test]
     fn test_metrics_store_new() {
-        let store = MetricsStore::new(Duration::from_secs(3600));
+        let store = MetricsStore::new(Duration::from_hours(1));
         drop(store);
     }
 
     #[tokio::test]
     async fn test_metrics_store_store_batch() {
-        let mut store = MetricsStore::new(Duration::from_secs(3600));
+        let mut store = MetricsStore::new(Duration::from_hours(1));
         let batch = MetricBatch {
             timestamp: std::time::SystemTime::now(),
             source: "test".to_string(),
@@ -559,11 +559,11 @@ mod monitoring_tests {
                 metric: "cpu".to_string(),
                 operator: ComparisonOperator::GreaterThan,
                 value: 90.0,
-                duration: Duration::from_secs(60),
+                duration: Duration::from_mins(1),
             },
             severity: AlertSeverity::Warning,
             enabled: true,
-            cooldown: Duration::from_secs(300),
+            cooldown: Duration::from_mins(5),
             last_triggered: None,
         };
         assert!(rule.enabled);
@@ -578,7 +578,7 @@ mod monitoring_tests {
             services_total: 2,
             cpu_usage: 25.0,
             memory_usage: 50.0,
-            uptime: Duration::from_secs(3600),
+            uptime: Duration::from_hours(1),
         };
         assert_eq!(summary.name, "test");
         assert_eq!(summary.services_running, 2);

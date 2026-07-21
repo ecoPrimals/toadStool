@@ -209,7 +209,7 @@ fn test_python_builder_with_timeout_long() {
 
     let _submission = WorkloadSubmission::python()
         .script(script)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_mins(1))
         .build();
 }
 
@@ -400,7 +400,7 @@ print(f"Dataset loaded: {iris.data.shape}")
         .requirements(requirements)
         .environment(environment)
         .priority(JobPriority::High)
-        .timeout(Duration::from_secs(300))
+        .timeout(Duration::from_mins(5))
         .resources(resources)
         .metadata(metadata)
         .build();
@@ -431,7 +431,7 @@ print("Analysis complete!")
         .script(script)
         .requirements(requirements)
         .priority(JobPriority::Normal)
-        .timeout(Duration::from_secs(120))
+        .timeout(Duration::from_mins(2))
         .metadata(metadata)
         .build();
 }

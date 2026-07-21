@@ -19,7 +19,7 @@ fn test_background_service_intervals() {
         Duration::from_secs(1),
         Duration::from_secs(5),
         Duration::from_secs(30),
-        Duration::from_secs(60),
+        Duration::from_mins(1),
     ];
 
     for interval in intervals {
@@ -82,13 +82,13 @@ fn test_monitoring_statistics() {
 fn test_cleanup_task_intervals() {
     // Test cleanup task timing
     let cleanup_intervals = vec![
-        Duration::from_secs(60),   // 1 minute
-        Duration::from_secs(300),  // 5 minutes
-        Duration::from_secs(3600), // 1 hour
+        Duration::from_mins(1),   // 1 minute
+        Duration::from_mins(5),  // 5 minutes
+        Duration::from_hours(1), // 1 hour
     ];
 
     for interval in cleanup_intervals {
-        assert!(interval >= Duration::from_secs(60));
+        assert!(interval >= Duration::from_mins(1));
     }
 }
 

@@ -341,7 +341,7 @@ fn test_alert_condition_threshold() {
         metric: "cpu_usage".to_string(),
         operator: ComparisonOperator::GreaterThan,
         value: 80.0,
-        duration: Duration::from_secs(60),
+        duration: Duration::from_mins(1),
     };
 
     match condition {
@@ -354,7 +354,7 @@ fn test_alert_condition_threshold() {
             assert_eq!(metric, "cpu_usage");
             assert!(matches!(operator, ComparisonOperator::GreaterThan));
             assert!((value - 80.0).abs() < f64::EPSILON);
-            assert_eq!(duration, Duration::from_secs(60));
+            assert_eq!(duration, Duration::from_mins(1));
         }
         _ => panic!("Expected Threshold variant"),
     }
@@ -365,7 +365,7 @@ fn test_alert_condition_rate_of_change() {
     let condition = AlertCondition::RateOfChange {
         metric: "requests".to_string(),
         threshold: 1000.0,
-        window: Duration::from_secs(60),
+        window: Duration::from_mins(1),
     };
 
     match condition {
@@ -376,7 +376,7 @@ fn test_alert_condition_rate_of_change() {
         } => {
             assert_eq!(metric, "requests");
             assert!((threshold - 1000.0).abs() < f64::EPSILON);
-            assert_eq!(window, Duration::from_secs(60));
+            assert_eq!(window, Duration::from_mins(1));
         }
         _ => panic!("Expected RateOfChange variant"),
     }
@@ -419,11 +419,11 @@ fn test_alert_rule_creation() {
             metric: "cpu".to_string(),
             operator: ComparisonOperator::GreaterThan,
             value: 90.0,
-            duration: Duration::from_secs(60),
+            duration: Duration::from_mins(1),
         },
         severity: AlertSeverity::Warning,
         enabled: true,
-        cooldown: Duration::from_secs(300),
+        cooldown: Duration::from_mins(5),
         last_triggered: None,
     };
 
@@ -446,7 +446,7 @@ fn test_alert_rule_disabled() {
         },
         severity: AlertSeverity::Info,
         enabled: false,
-        cooldown: Duration::from_secs(60),
+        cooldown: Duration::from_mins(1),
         last_triggered: None,
     };
 
@@ -466,7 +466,7 @@ fn test_alert_rule_serialization() {
         },
         severity: AlertSeverity::Warning,
         enabled: true,
-        cooldown: Duration::from_secs(60),
+        cooldown: Duration::from_mins(1),
         last_triggered: None,
     };
 
@@ -612,7 +612,7 @@ fn test_time_series_with_data() {
 #[test]
 fn test_monitoring_config_default() {
     let config = MonitoringConfig {
-        default_interval: Duration::from_secs(60),
+        default_interval: Duration::from_mins(1),
         retention_period: Duration::from_secs(30 * 24 * 3600),
         max_metrics_per_batch: 1000,
         enable_alerts: true,
@@ -621,14 +621,14 @@ fn test_monitoring_config_default() {
     };
 
     assert!(config.enable_alerts);
-    assert_eq!(config.default_interval, Duration::from_secs(60));
+    assert_eq!(config.default_interval, Duration::from_mins(1));
     assert_eq!(config.max_metrics_per_batch, 1000);
 }
 
 #[test]
 fn test_monitoring_config_disabled() {
     let config = MonitoringConfig {
-        default_interval: Duration::from_secs(300),
+        default_interval: Duration::from_mins(5),
         retention_period: Duration::from_secs(7 * 24 * 3600),
         max_metrics_per_batch: 500,
         enable_alerts: false,

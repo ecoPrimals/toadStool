@@ -342,7 +342,7 @@ fn test_mainframe_config() {
             job_class: "A".to_string(),
             message_class: "0".to_string(),
             priority: 8,
-            time_limit: Duration::from_secs(3600),
+            time_limit: Duration::from_hours(1),
             region_size: 4 * 1024 * 1024,
         },
         cobol_settings: COBOLSettings {

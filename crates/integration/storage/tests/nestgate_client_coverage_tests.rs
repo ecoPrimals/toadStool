@@ -159,7 +159,7 @@ fn cleanup_cache_enabled_noop() {
             enabled: true,
             cache_dir: Some(PathBuf::from("/tmp/storage-cache")),
             max_size: 1024,
-            ttl: Duration::from_secs(3600),
+            ttl: Duration::from_hours(1),
         }),
     };
     let client = StorageClient::new_for_testing(config, "test".to_string());

@@ -622,7 +622,7 @@ fn test_timing_metrics_serialization() {
     let t = TimingMetrics {
         start_time: SystemTime::now(),
         end_time: Some(SystemTime::now()),
-        duration: Duration::from_secs(60),
+        duration: Duration::from_mins(1),
     };
     let json = serde_json::to_string(&t).expect("serialize");
     let _: TimingMetrics = serde_json::from_str(&json).expect("deserialize");
@@ -648,7 +648,7 @@ fn test_resource_limits_with_timeout() {
         memory_limits: MemoryLimits::default(),
         storage_limits: StorageLimits::default(),
         network_limits: NetworkLimits::default(),
-        execution_timeout: Some(Duration::from_secs(600)),
+        execution_timeout: Some(Duration::from_mins(10)),
     };
     assert_eq!(limits.execution_timeout.unwrap().as_secs(), 600);
 }

@@ -307,7 +307,7 @@ async fn test_byob_executor_with_custom_config() {
     let config = ByobExecutorConfig {
         max_concurrent_deployments: 100,
         default_network_subnet: "192.168.0.0/16".to_string(),
-        resource_monitoring_interval: Duration::from_secs(60),
+        resource_monitoring_interval: Duration::from_mins(1),
         health_check_interval: Duration::from_secs(20),
         deployment_timeout: Duration::from_secs(1200),
         default_host_port: 9000,
@@ -364,7 +364,7 @@ fn test_deployment_request_resource_validation() {
 
     for service in request.services.values() {
         if let Some(cpu) = service.resources.cpu_cores {
-            total_cpu += cpu * f64::from(service.replicas);
+            total_cpu = cpu.mul_add(f64::from(service.replicas), total_cpu);
         }
         if let Some(memory) = service.resources.memory_bytes {
             total_memory += memory * u64::from(service.replicas);

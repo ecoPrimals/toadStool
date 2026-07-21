@@ -244,7 +244,7 @@ fn test_duration_comparisons() {
     use std::time::Duration;
 
     let short = Duration::from_secs(10);
-    let long = Duration::from_secs(60);
+    let long = Duration::from_mins(1);
 
     assert!(short < long);
     assert!(long > short);

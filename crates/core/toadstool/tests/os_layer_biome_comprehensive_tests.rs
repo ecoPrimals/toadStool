@@ -434,7 +434,7 @@ async fn test_biome_orchestrator_execute_deployment_returns_response() {
         json!({"app": "response-test", "version": "1.0"}),
     );
     job.priority = JobPriority::High;
-    job.timeout = Some(std::time::Duration::from_secs(300));
+    job.timeout = Some(std::time::Duration::from_mins(5));
 
     let response = orchestrator.execute_deployment(job).await.unwrap();
     let _execution_response: ExecutionResponse = response;
@@ -514,7 +514,7 @@ async fn test_full_deployment_lifecycle() {
         "team-lifecycle",
         json!({"app": "lifecycle-service", "config": "test.yaml"}),
     );
-    job.timeout = Some(std::time::Duration::from_secs(600));
+    job.timeout = Some(std::time::Duration::from_mins(10));
 
     let response = integration.execute_deployment(job).await;
     assert!(response.is_ok());

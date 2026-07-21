@@ -34,7 +34,7 @@ async fn test_cache_freshness() {
     let cached = engine.get_from_cache("orchestration").await;
     assert!(cached.is_some(), "Service should be cached");
     assert!(
-        cached.unwrap().is_fresh(Duration::from_secs(300)),
+        cached.unwrap().is_fresh(Duration::from_mins(5)),
         "Service should be fresh"
     );
 }
@@ -224,7 +224,7 @@ async fn test_cached_endpoint_is_fresh() {
     engine.cache_service("fresh_key", service).await;
     let cached = engine.get_from_cache("fresh_key").await;
     assert!(cached.is_some());
-    assert!(cached.unwrap().is_fresh(Duration::from_secs(300)));
+    assert!(cached.unwrap().is_fresh(Duration::from_mins(5)));
 }
 
 #[tokio::test]
@@ -386,8 +386,8 @@ fn test_discovery_config_default() {
 fn test_discovery_config_custom() {
     use std::time::Duration;
     let config = super::super::DiscoveryConfig {
-        cache_ttl: Duration::from_secs(600),
-        health_check_interval: Duration::from_secs(60),
+        cache_ttl: Duration::from_mins(10),
+        health_check_interval: Duration::from_mins(1),
         fallbacks: std::collections::HashMap::new(),
         enable_mdns: false,
         require_mdns: false,
@@ -414,7 +414,7 @@ async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {
     config.fallbacks.clear();
     config.enable_mdns = false;
     config.require_mdns = false;
-    config.cache_ttl = std::time::Duration::from_secs(600);
+    config.cache_ttl = std::time::Duration::from_mins(10);
 
     let engine = PrimalDiscoveryEngine::without_client(config).expect("create");
 
@@ -424,6 +424,6 @@ async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {
     assert!(
         cached
             .unwrap()
-            .is_fresh(std::time::Duration::from_secs(600))
+            .is_fresh(std::time::Duration::from_mins(10))
     );
 }

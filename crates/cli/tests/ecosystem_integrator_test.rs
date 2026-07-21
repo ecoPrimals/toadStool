@@ -152,7 +152,7 @@ fn test_beardog_permission_creation() {
         permission_id: uuid::Uuid::new_v4(),
         granted_to: "toadstool-instance-001".to_string(),
         capabilities: vec!["read".to_string(), "execute".to_string()],
-        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(24 * 3600),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_hours(24),
         signature: "ed25519-signature-base64".to_string(),
     };
 

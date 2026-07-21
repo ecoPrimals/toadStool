@@ -80,7 +80,7 @@ mod security_hardening_logic_tests {
 
     #[test]
     fn test_rate_limit_sliding_window() {
-        let window = Duration::from_secs(60);
+        let window = Duration::from_mins(1);
         assert_eq!(window.as_secs(), 60);
     }
 
@@ -179,7 +179,7 @@ mod security_hardening_logic_tests {
 
     #[test]
     fn test_intrusion_activity_window() {
-        let window = Duration::from_secs(300);
+        let window = Duration::from_mins(5);
         assert_eq!(window.as_secs(), 300);
     }
 
@@ -191,7 +191,7 @@ mod security_hardening_logic_tests {
 
     #[test]
     fn test_intrusion_ban_duration() {
-        let duration = Duration::from_secs(3600);
+        let duration = Duration::from_hours(1);
         assert_eq!(duration.as_secs(), 3600);
     }
 

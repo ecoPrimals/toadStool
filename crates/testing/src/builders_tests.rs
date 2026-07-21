@@ -5,12 +5,12 @@ use super::*;
 fn test_execution_request_builder() {
     let request = ExecutionRequestBuilder::new()
         .native_workload("/bin/echo", vec!["hello".to_string()])
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_mins(1))
         .env_var("TEST", "value")
         .build();
 
     assert!(matches!(request.workload, WorkloadSpec::Native { .. }));
-    assert_eq!(request.timeout, Some(Duration::from_secs(60)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(1)));
     assert_eq!(request.environment.get("TEST"), Some(&"value".to_string()));
 }
 

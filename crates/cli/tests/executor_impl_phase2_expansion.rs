@@ -437,7 +437,7 @@ fn test_ps_shows_uptime() {
     // Test: Uptime calculation
     // Covers: Uptime tracking
 
-    let start_time = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    let start_time = std::time::SystemTime::now() - std::time::Duration::from_hours(1);
     let current_time = std::time::SystemTime::now();
     let uptime = current_time.duration_since(start_time).unwrap_or_default();
 

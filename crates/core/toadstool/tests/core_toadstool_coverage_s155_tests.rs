@@ -432,7 +432,7 @@ async fn test_rate_limiter_first_request_allowed() {
 async fn test_rate_limiter_ban_client() {
     let config = RateLimitingConfig::default();
     let limiter = RateLimiter::new(config);
-    limiter.ban_client("banned", Duration::from_secs(60)).await;
+    limiter.ban_client("banned", Duration::from_mins(1)).await;
     let ok = limiter.check_rate_limit("banned").await.unwrap();
     assert!(!ok);
 }
@@ -519,7 +519,7 @@ async fn test_intrusion_detection_record_activity() {
 async fn test_intrusion_detection_ban_client() {
     let config = IntrusionDetectionConfig::default();
     let ids = IntrusionDetectionSystem::new(config);
-    ids.ban_client("banned-client", Duration::from_secs(60), "Test ban")
+    ids.ban_client("banned-client", Duration::from_mins(1), "Test ban")
         .await;
     assert!(ids.is_banned("banned-client").await);
 }

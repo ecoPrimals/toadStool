@@ -32,7 +32,7 @@ fn test_complete_server_config_with_all_options() {
         .bind_address("0.0.0.0:9000")
         .enable_api(true)
         .max_concurrent_executions(200)
-        .default_timeout(Duration::from_secs(600))
+        .default_timeout(Duration::from_mins(10))
         .auth(auth)
         .rate_limiting(rate_limiting);
     assert_eq!(config.bind_address, "0.0.0.0:9000");

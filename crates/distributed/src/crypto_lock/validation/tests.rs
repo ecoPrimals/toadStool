@@ -44,8 +44,8 @@ fn make_valid_permission() -> SecurityProviderPermission {
             geographic_limits: vec![],
             feature_restrictions: vec![],
         },
-        valid_from: now - Duration::from_secs(3600),
-        valid_until: now + Duration::from_secs(3600),
+        valid_from: now - Duration::from_hours(1),
+        valid_until: now + Duration::from_hours(1),
         crypto_proof: SecurityProof {
             signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
@@ -93,7 +93,7 @@ async fn test_validate_permission_expired() {
 async fn test_validate_permission_invalid_future_valid_from() {
     let validator = SecurityPermissionValidator::new().await.unwrap();
     let mut perm = make_valid_permission();
-    perm.valid_from = SystemTime::now() + Duration::from_secs(3600);
+    perm.valid_from = SystemTime::now() + Duration::from_hours(1);
     let result = validator.validate_permission(&perm).await.unwrap();
     assert!(matches!(result, PermissionValidationResult::Invalid));
 }

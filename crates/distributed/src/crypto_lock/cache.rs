@@ -68,7 +68,7 @@ pub struct CachedResult {
 }
 
 /// Default cache entry TTL (5 minutes).
-const CACHE_TTL: std::time::Duration = std::time::Duration::from_mins(5);
+const CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(300);
 
 impl CachedResult {
     /// Returns `true` if this entry has exceeded its TTL.

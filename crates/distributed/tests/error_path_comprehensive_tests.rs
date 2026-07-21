@@ -178,7 +178,7 @@ async fn test_submit_with_very_long_timeout() {
         .expect("Should create coordinator");
 
     let mut request = create_test_execution_request();
-    request.timeout = Some(Duration::from_secs(365 * 24 * 3600)); // 1 year
+    request.timeout = Some(Duration::from_hours(8760)); // 1 year
 
     let result = coordinator.submit_execution(request).await;
 

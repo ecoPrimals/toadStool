@@ -19,7 +19,7 @@ async fn test_rate_limiter_allows_first_request() {
         max_requests_per_minute: 10,
         max_requests_per_hour: 100,
         max_requests_per_day: 1000,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 5,
     };
 
@@ -34,7 +34,7 @@ async fn test_rate_limiter_allows_multiple_under_limit() {
         max_requests_per_minute: 10,
         max_requests_per_hour: 100,
         max_requests_per_day: 1000,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 5,
     };
 
@@ -53,7 +53,7 @@ async fn test_rate_limiter_blocks_over_limit() {
         max_requests_per_minute: 5,
         max_requests_per_hour: 100,
         max_requests_per_day: 1000,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 2,
     };
 
@@ -75,7 +75,7 @@ async fn test_rate_limiter_separate_clients() {
         max_requests_per_minute: 5,
         max_requests_per_hour: 100,
         max_requests_per_day: 1000,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 2,
     };
 
@@ -99,7 +99,7 @@ async fn test_rate_limiter_ban_blocks_requests() {
     assert!(limiter.check_rate_limit("client1").await.unwrap());
 
     // Ban client
-    limiter.ban_client("client1", Duration::from_secs(60)).await;
+    limiter.ban_client("client1", Duration::from_mins(1)).await;
 
     // Should now be blocked
     let blocked = limiter.check_rate_limit("client1").await.unwrap();
@@ -112,7 +112,7 @@ async fn test_rate_limiter_daily_limit() {
         max_requests_per_minute: 1000,
         max_requests_per_hour: 10000,
         max_requests_per_day: 3,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 10,
     };
 
@@ -133,7 +133,7 @@ async fn test_rate_limiter_zero_limit() {
         max_requests_per_minute: 0,
         max_requests_per_hour: 0,
         max_requests_per_day: 0,
-        sliding_window: Duration::from_secs(60),
+        sliding_window: Duration::from_mins(1),
         burst_allowance: 0,
     };
 

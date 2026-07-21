@@ -3,7 +3,7 @@
 use super::DispatchHandler;
 
 const CATALYST_WATCHDOG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(450);
-const WARM_HANDOFF_RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(7);
+const WARM_HANDOFF_RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(420);
 const SBR_RESET_SETTLE: std::time::Duration = std::time::Duration::from_millis(500);
 
 /// Orchestrates the full warm handoff: module patching → insmod →

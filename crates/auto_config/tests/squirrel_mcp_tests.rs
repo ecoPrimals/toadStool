@@ -262,8 +262,8 @@ fn test_expected_duration_validation() {
 
     let durations = vec![
         Duration::from_secs(1),
-        Duration::from_secs(60),
-        Duration::from_secs(3600),
+        Duration::from_mins(1),
+        Duration::from_hours(1),
     ];
 
     for duration in durations {
@@ -317,7 +317,7 @@ fn test_session_timeout_detection() {
     // Test session timeout detection
     use std::time::Duration;
 
-    let timeout_duration = Duration::from_secs(3600); // 1 hour
+    let timeout_duration = Duration::from_hours(1); // 1 hour
     let elapsed = Duration::from_secs(3601);
 
     let is_timed_out = elapsed > timeout_duration;

@@ -253,7 +253,7 @@ mod tests {
         let metrics = LatencyMetrics::from_samples(samples);
 
         assert_eq!(metrics.min, Duration::from_micros(10));
-        assert_eq!(metrics.max, Duration::from_micros(1000));
+        assert_eq!(metrics.max, Duration::from_millis(1));
         println!("Mean latency: {:?}", metrics.mean);
         println!("P99 latency: {:?}", metrics.p99);
     }

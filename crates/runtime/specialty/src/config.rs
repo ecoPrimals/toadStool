@@ -61,7 +61,7 @@ impl Default for SpecialtyRuntimeConfig {
             cross_compilation_enabled: true,
             emulation_enabled: true,
             max_concurrent_jobs: 10,
-            job_timeout: Duration::from_hours(1),
+            job_timeout: Duration::from_secs(3600),
             communication_timeout: Duration::from_secs(30),
             supported_systems: Vec::new(),
             toolchain_configs: HashMap::new(),

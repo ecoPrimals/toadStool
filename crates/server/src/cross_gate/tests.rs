@@ -361,7 +361,7 @@ async fn test_remote_dispatcher_forward_nonexistent_tcp_returns_transport_error(
 /// 1. Read 2-byte prefix [0xEC, 0x01]
 /// 2. Read NDJSON request line
 /// 3. Write NDJSON response line
-async fn mock_jsonrpc_unix_server(
+fn mock_jsonrpc_unix_server(
     socket_path: &std::path::Path,
     expected_method: &'static str,
     response_result: serde_json::Value,
@@ -417,7 +417,7 @@ async fn test_remote_dispatcher_forward_unix_success_path() {
     let sock = dir.path().join("test-dispatch.sock");
 
     let expected_result = serde_json::json!({"job_id": "j-42", "status": "queued"});
-    let handle = mock_jsonrpc_unix_server(&sock, "compute.submit", expected_result.clone()).await;
+    let handle = mock_jsonrpc_unix_server(&sock, "compute.submit", expected_result.clone());
 
     let params = serde_json::json!({"model": "tinyllama:latest", "prompt": "hello"});
     let result = RemoteDispatcher::forward(sock.to_str().unwrap(), "compute.submit", params).await;

@@ -31,8 +31,8 @@ fn test_server_config_very_short_timeout() {
 
 #[test]
 fn test_server_config_very_long_timeout() {
-    let config = ServerConfig::default().default_timeout(Duration::from_secs(86400));
-    assert_eq!(config.default_timeout, Duration::from_secs(86400));
+    let config = ServerConfig::default().default_timeout(Duration::from_hours(24));
+    assert_eq!(config.default_timeout, Duration::from_hours(24));
 }
 
 #[test]

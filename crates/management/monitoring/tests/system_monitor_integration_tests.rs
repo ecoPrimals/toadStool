@@ -31,7 +31,7 @@ mod system_resource_monitor_tests {
             enable_network_monitoring: false,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: std::time::Duration::from_secs(7200),
+            metrics_retention: std::time::Duration::from_hours(2),
         };
 
         let monitor = SystemResourceMonitor::with_config(config);

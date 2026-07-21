@@ -55,7 +55,7 @@ pub fn external_tool_target_no_trust() -> ExternalTarget {
 
 pub fn make_expired_permission(target: ExternalTarget) -> SecurityProviderPermission {
     let now = SystemTime::now();
-    let valid_from = now - Duration::from_secs(3600);
+    let valid_from = now - Duration::from_hours(1);
     let valid_until = now - Duration::from_secs(1);
     SecurityProviderPermission {
         permission_id: Uuid::new_v4(),

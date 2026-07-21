@@ -19,7 +19,7 @@ fn make_permission_request() -> PermissionRequest {
             resource_limits: ResourceLimits::default(),
             geo_restrictions: vec![],
         },
-        validity_duration: Duration::from_secs(3600),
+        validity_duration: Duration::from_hours(1),
         delegation_info: None,
     }
 }

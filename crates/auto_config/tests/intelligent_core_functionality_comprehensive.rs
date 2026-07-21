@@ -258,7 +258,7 @@ async fn test_auto_configure_with_timeout() {
     // Auto-configure can take time due to network discovery
     // This is an integration test, not a unit test
     let result = timeout(
-        Duration::from_secs(120), // Increased timeout for network operations
+        Duration::from_mins(2), // Increased timeout for network operations
         IntelligentAutoConfig::auto_configure(),
     )
     .await;

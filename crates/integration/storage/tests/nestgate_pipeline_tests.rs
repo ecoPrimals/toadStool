@@ -398,7 +398,7 @@ fn test_schedule_type_cron() {
 fn test_schedule_type_interval() {
     use std::time::Duration;
     let schedule = ScheduleType::Interval {
-        duration: Duration::from_secs(3600), // 1 hour
+        duration: Duration::from_hours(1), // 1 hour
     };
 
     match schedule {
@@ -453,7 +453,7 @@ fn test_pipeline_schedule_concurrent_limit() {
     use std::time::Duration;
     let schedule = PipelineSchedule {
         schedule_type: ScheduleType::Interval {
-            duration: Duration::from_secs(60),
+            duration: Duration::from_mins(1),
         },
         timezone: None,
         max_concurrent: Some(5),

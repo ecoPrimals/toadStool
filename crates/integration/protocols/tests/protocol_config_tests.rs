@@ -28,7 +28,7 @@ fn test_protocol_config_custom_service_id() {
         default_format: MessageFormat::MessagePack,
         supported_transports: vec![TransportType::TRpc],
         auth_config: None,
-        request_timeout: Duration::from_secs(60),
+        request_timeout: Duration::from_mins(1),
         connection_pool: ConnectionPoolConfig::default(),
         discovery_config: None,
         routing_config: RoutingConfig::default(),
@@ -110,7 +110,7 @@ fn test_protocol_config_default_request_timeout() {
 fn test_connection_pool_config_default() {
     let pool = ConnectionPoolConfig::default();
     assert_eq!(pool.max_connections_per_service, 10);
-    assert_eq!(pool.idle_timeout, Duration::from_secs(300));
+    assert_eq!(pool.idle_timeout, Duration::from_mins(5));
     assert_eq!(pool.keep_alive_interval, Duration::from_secs(30));
     assert_eq!(pool.max_concurrent_requests, 100);
 }
@@ -119,10 +119,10 @@ fn test_connection_pool_config_default() {
 fn test_connection_pool_config_custom() {
     let pool = ConnectionPoolConfig {
         max_connections_per_service: 50,
-        idle_timeout: Duration::from_secs(60),
+        idle_timeout: Duration::from_mins(1),
         keep_alive_interval: Duration::from_secs(10),
         max_concurrent_requests: 200,
     };
     assert_eq!(pool.max_connections_per_service, 50);
-    assert_eq!(pool.idle_timeout, Duration::from_secs(60));
+    assert_eq!(pool.idle_timeout, Duration::from_mins(1));
 }

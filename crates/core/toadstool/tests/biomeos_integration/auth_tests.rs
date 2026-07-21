@@ -13,17 +13,17 @@ use toadstool::biomeos_integration::*;
 fn test_auth_manager_config_creation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         ..Default::default()
     };
     
     assert_eq!(config.security_endpoint, "http://localhost:8080");
-    assert_eq!(config.token_refresh_interval, Duration::from_secs(300));
+    assert_eq!(config.token_refresh_interval, Duration::from_mins(5));
     assert!(config.signature_validation);
-    assert_eq!(config.timestamp_window, Duration::from_secs(60));
+    assert_eq!(config.timestamp_window, Duration::from_mins(1));
     assert!(config.replay_protection);
 }
 
@@ -31,9 +31,9 @@ fn test_auth_manager_config_creation() {
 fn test_auth_manager_config_clone() {
     let config1 = AuthManagerConfig {
         security_endpoint: "http://beardog:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(600),
+        token_refresh_interval: Duration::from_mins(10),
         signature_validation: false,
-        timestamp_window: Duration::from_secs(120),
+        timestamp_window: Duration::from_mins(2),
         replay_protection: false,
         ..Default::default()
     };
@@ -48,9 +48,9 @@ fn test_auth_manager_config_clone() {
 fn test_auth_manager_config_serialization() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         ..Default::default()
     };
@@ -165,7 +165,7 @@ fn test_authentication_token_creation() {
         token_type: "Bearer".to_string(),
         token: "encrypted_token_value".to_string(),
         public_key: "ed25519_public_key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string(), "nestgate".to_string()],
@@ -187,7 +187,7 @@ fn test_authentication_token_clone() {
         token_type: "Bearer".to_string(),
         token: "encrypted_token".to_string(),
         public_key: "public_key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["squirrel".to_string()],
@@ -295,9 +295,9 @@ fn test_verification_result_all_valid() {
 fn test_authentication_manager_creation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         ..Default::default()
     };
@@ -310,9 +310,9 @@ fn test_authentication_manager_creation() {
 fn test_authentication_manager_without_validation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(600),
+        token_refresh_interval: Duration::from_mins(10),
         signature_validation: false,
-        timestamp_window: Duration::from_secs(120),
+        timestamp_window: Duration::from_mins(2),
         replay_protection: false,
         ..Default::default()
     };
@@ -329,49 +329,49 @@ fn test_authentication_manager_without_validation() {
 fn test_auth_config_short_refresh_interval() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(60),
+        token_refresh_interval: Duration::from_mins(1),
         signature_validation: true,
         timestamp_window: Duration::from_secs(30),
         replay_protection: true,
         ..Default::default()
     };
     
-    assert_eq!(config.token_refresh_interval, Duration::from_secs(60));
+    assert_eq!(config.token_refresh_interval, Duration::from_mins(1));
 }
 
 #[test]
 fn test_auth_config_long_refresh_interval() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(3600),
+        token_refresh_interval: Duration::from_hours(1),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(300),
+        timestamp_window: Duration::from_mins(5),
         replay_protection: true,
         ..Default::default()
     };
     
-    assert_eq!(config.token_refresh_interval, Duration::from_secs(3600));
+    assert_eq!(config.token_refresh_interval, Duration::from_hours(1));
 }
 
 #[test]
 fn test_auth_config_wide_timestamp_window() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(300),
+        timestamp_window: Duration::from_mins(5),
         replay_protection: true,
         ..Default::default()
     };
     
-    assert_eq!(config.timestamp_window, Duration::from_secs(300));
+    assert_eq!(config.timestamp_window, Duration::from_mins(5));
 }
 
 #[test]
 fn test_auth_config_narrow_timestamp_window() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:8080".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
         timestamp_window: Duration::from_secs(10),
         replay_protection: true,

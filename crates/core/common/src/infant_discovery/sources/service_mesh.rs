@@ -63,7 +63,8 @@ mod tests {
 
     #[test]
     fn test_service_mesh_source_default() {
-        let _source = ServiceMeshSource;
+        let source = ServiceMeshSource;
+        let _ = source;
     }
 
     #[tokio::test]

@@ -47,11 +47,11 @@ fn test_storage_ext_config_custom_timeout() {
     // Test custom timeout configuration
     let config = StorageConfig {
         endpoint: "http://localhost:9000".to_string(),
-        timeout: Duration::from_secs(60),
+        timeout: Duration::from_mins(1),
         ..Default::default()
     };
 
-    assert_eq!(config.timeout, Duration::from_secs(60));
+    assert_eq!(config.timeout, Duration::from_mins(1));
 }
 
 #[test]

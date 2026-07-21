@@ -72,8 +72,8 @@ fn make_valid_permission(target: ExternalTarget) -> SecurityProviderPermission {
             geographic_limits: vec![],
             feature_restrictions: vec![],
         },
-        valid_from: now - Duration::from_secs(3600),
-        valid_until: now + Duration::from_secs(3600),
+        valid_from: now - Duration::from_hours(1),
+        valid_until: now + Duration::from_hours(1),
         crypto_proof: SecurityProof {
             signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
@@ -168,7 +168,7 @@ async fn install_crypto_permission_expired_rejects() {
     let mut lock = ToadStoolCryptoLock::new().await.unwrap();
     let mut perm = make_valid_permission(cloud_target());
     perm.valid_until = SystemTime::now() - Duration::from_secs(1);
-    perm.valid_from = SystemTime::now() - Duration::from_secs(3600);
+    perm.valid_from = SystemTime::now() - Duration::from_hours(1);
     let result = lock.install_crypto_permission(perm).await;
     assert!(result.is_err());
 }
@@ -200,7 +200,7 @@ async fn request_delegation_no_permission_fails() {
             &to,
             &cloud_target(),
             scope,
-            Duration::from_secs(3600),
+            Duration::from_hours(1),
         )
         .await;
     assert!(result.is_err());

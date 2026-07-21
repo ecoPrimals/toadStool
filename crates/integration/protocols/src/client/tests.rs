@@ -63,7 +63,7 @@ fn create_test_message(source: &str, msg_type: &str) -> ProtocolMessage {
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
-        ttl: Some(Duration::from_secs(60)),
+        ttl: Some(Duration::from_mins(1)),
         priority: MessagePriority::Normal,
     }
 }
@@ -294,7 +294,7 @@ async fn test_protocol_message_creation() {
     assert_eq!(msg.format, MessageFormat::Json);
     assert_eq!(msg.priority, MessagePriority::Normal);
     assert!(msg.ttl.is_some());
-    assert_eq!(msg.ttl.unwrap(), Duration::from_secs(60));
+    assert_eq!(msg.ttl.unwrap(), Duration::from_mins(1));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -316,7 +316,7 @@ async fn test_create_message_sets_fields() {
 async fn test_connection_pool_config_defaults() {
     let pool = crate::config::ConnectionPoolConfig::default();
     assert_eq!(pool.max_connections_per_service, 10);
-    assert_eq!(pool.idle_timeout, Duration::from_secs(300));
+    assert_eq!(pool.idle_timeout, Duration::from_mins(5));
     assert_eq!(pool.keep_alive_interval, Duration::from_secs(30));
     assert_eq!(pool.max_concurrent_requests, 100);
 }

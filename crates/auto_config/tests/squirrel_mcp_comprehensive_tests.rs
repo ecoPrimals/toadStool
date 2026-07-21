@@ -151,7 +151,7 @@ fn test_squirrel_request_execute_with_intent() {
         purpose: "Test execution".to_string(),
         security_requirements: vec!["high_security".to_string()],
         performance_expectations: PerformanceExpectations {
-            expected_duration: Some(Duration::from_secs(60)),
+            expected_duration: Some(Duration::from_mins(1)),
             cpu_intensity: 0.8,
             memory_pattern: MemoryPattern::Normal,
             io_intensity: IoIntensity::Low,
@@ -356,7 +356,7 @@ fn test_execution_intent_creation() {
         purpose: "Data processing".to_string(),
         security_requirements: vec!["data_privacy".to_string()],
         performance_expectations: PerformanceExpectations {
-            expected_duration: Some(Duration::from_secs(120)),
+            expected_duration: Some(Duration::from_mins(2)),
             cpu_intensity: 0.6,
             memory_pattern: MemoryPattern::Large,
             io_intensity: IoIntensity::High,
@@ -535,7 +535,7 @@ fn test_resource_hints_gpu_required() {
 #[test]
 fn test_performance_expectations_with_duration() {
     let perf = PerformanceExpectations {
-        expected_duration: Some(Duration::from_secs(300)),
+        expected_duration: Some(Duration::from_mins(5)),
         cpu_intensity: 0.8,
         memory_pattern: MemoryPattern::Normal,
         io_intensity: IoIntensity::Medium,

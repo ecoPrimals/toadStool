@@ -306,24 +306,20 @@ mod tests {
     }
 
     #[test]
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "IOVA addresses truncated to 32-bit registers"
-    )]
     fn runlist_chan_entry_encoding() {
-        let userd: u64 = 0x2000;
-        let dw0 = userd as u32 | (TARGET_SYS_MEM_COHERENT << 2);
+        let userd: u32 = 0x2000;
+        let dw0 = userd | (TARGET_SYS_MEM_COHERENT << 2);
         assert_eq!(dw0, 0x2008, "USERD=0x2000, target=COH(2), runq=0");
         assert_eq!((dw0 >> 2) & 3, 2, "USERD_TARGET = SYS_MEM_COH");
         assert_eq!(dw0 & 1, 0, "TYPE = 0 (channel)");
 
-        let dw0_runq1 = userd as u32 | (TARGET_SYS_MEM_COHERENT << 2) | (1 << 1);
+        let dw0_runq1 = userd | (TARGET_SYS_MEM_COHERENT << 2) | (1 << 1);
         assert_eq!(dw0_runq1, 0x200A, "USERD=0x2000, target=COH(2), runq=1");
         assert_eq!((dw0_runq1 >> 1) & 1, 1, "RUNQUEUE = 1");
 
-        let inst: u64 = 0x3000;
+        let inst: u32 = 0x3000;
         let chid: u32 = 0;
-        let dw2 = inst as u32 | (TARGET_SYS_MEM_NONCOHERENT << 4) | chid;
+        let dw2 = inst | (TARGET_SYS_MEM_NONCOHERENT << 4) | chid;
         assert_eq!(dw2, 0x3030, "INST=0x3000, target=NCOH(3), chid=0");
         assert_eq!((dw2 >> 4) & 3, 3, "INST_TARGET = SYS_MEM_NCOH");
     }

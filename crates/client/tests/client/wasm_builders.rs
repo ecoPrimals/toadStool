@@ -67,13 +67,13 @@ fn test_workload_submission_with_timeout() {
         },
         runtime_hint: None,
         priority: None,
-        timeout: Some(Duration::from_secs(300)),
+        timeout: Some(Duration::from_mins(5)),
         environment: HashMap::new(),
         resources: None,
         metadata: HashMap::new(),
     };
 
-    assert_eq!(submission.timeout, Some(Duration::from_secs(300)));
+    assert_eq!(submission.timeout, Some(Duration::from_mins(5)));
 }
 
 #[test]
@@ -194,7 +194,7 @@ fn test_workload_submission_full_configuration() {
         },
         runtime_hint: Some("native".to_string()),
         priority: Some(JobPriority::Critical),
-        timeout: Some(Duration::from_secs(600)),
+        timeout: Some(Duration::from_mins(10)),
         environment: env.clone(),
         resources: Some(resources),
         metadata: metadata.clone(),
@@ -202,7 +202,7 @@ fn test_workload_submission_full_configuration() {
 
     assert!(submission.runtime_hint.is_some());
     assert_eq!(submission.priority, Some(JobPriority::Critical));
-    assert_eq!(submission.timeout, Some(Duration::from_secs(600)));
+    assert_eq!(submission.timeout, Some(Duration::from_mins(10)));
     assert_eq!(submission.environment.len(), 1);
     assert_eq!(submission.metadata.len(), 1);
 }

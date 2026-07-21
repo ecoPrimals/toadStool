@@ -129,7 +129,7 @@ fn test_monitoring_config_default() {
     assert_eq!(config.granularity.to_duration(), Duration::from_millis(100));
     assert!(config.enable_network_monitoring);
     assert!(config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(3600));
+    assert_eq!(config.metrics_retention, Duration::from_hours(1));
 }
 
 #[test]
@@ -139,13 +139,13 @@ fn test_monitoring_config_custom() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     };
 
     assert_eq!(config.granularity.to_duration(), Duration::from_millis(10));
     assert!(!config.enable_network_monitoring);
     assert!(config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(7200));
+    assert_eq!(config.metrics_retention, Duration::from_hours(2));
 }
 
 #[test]
@@ -189,10 +189,10 @@ fn test_monitoring_config_minimal_retention() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(60), // 1 minute
+        metrics_retention: Duration::from_mins(1), // 1 minute
     };
 
-    assert_eq!(config.metrics_retention, Duration::from_secs(60));
+    assert_eq!(config.metrics_retention, Duration::from_mins(1));
 }
 
 #[test]
@@ -202,10 +202,10 @@ fn test_monitoring_config_extended_retention() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(86400), // 24 hours
+        metrics_retention: Duration::from_hours(24), // 24 hours
     };
 
-    assert_eq!(config.metrics_retention, Duration::from_secs(86400));
+    assert_eq!(config.metrics_retention, Duration::from_hours(24));
 }
 
 #[test]
@@ -215,7 +215,7 @@ fn test_monitoring_config_network_only() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     assert!(config.enable_network_monitoring);
@@ -229,7 +229,7 @@ fn test_monitoring_config_threshold_only() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Terminate,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     assert!(!config.enable_network_monitoring);
@@ -243,7 +243,7 @@ fn test_monitoring_config_all_disabled() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     assert!(!config.enable_network_monitoring);
@@ -477,7 +477,7 @@ fn test_system_resource_monitor_with_config() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(1800),
+        metrics_retention: Duration::from_mins(30),
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
@@ -507,7 +507,7 @@ fn test_monitoring_config_with_all_granularities() {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(3600),
+            metrics_retention: Duration::from_hours(1),
         };
 
         assert!(config.granularity.to_duration() > Duration::from_nanos(0));
@@ -528,7 +528,7 @@ fn test_monitoring_config_with_all_threshold_actions() {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: action,
-            metrics_retention: Duration::from_secs(3600),
+            metrics_retention: Duration::from_hours(1),
         };
 
         let debug_string = format!("{:?}", config.threshold_action);
@@ -543,13 +543,13 @@ fn test_monitoring_config_production_scenario() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(86400), // 24 hours
+        metrics_retention: Duration::from_hours(24), // 24 hours
     };
 
     assert_eq!(config.granularity.to_duration(), Duration::from_millis(100));
     assert!(config.enable_network_monitoring);
     assert!(config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(86400));
+    assert_eq!(config.metrics_retention, Duration::from_hours(24));
 }
 
 #[test]
@@ -559,12 +559,12 @@ fn test_monitoring_config_high_performance_scenario() {
         enable_network_monitoring: false, // Disable to reduce overhead
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Terminate, // Strict enforcement
-        metrics_retention: Duration::from_secs(300),  // 5 minutes (limited)
+        metrics_retention: Duration::from_mins(5),  // 5 minutes (limited)
     };
 
     assert_eq!(config.granularity.to_duration(), Duration::from_micros(100));
     assert!(!config.enable_network_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(300));
+    assert_eq!(config.metrics_retention, Duration::from_mins(5));
 }
 
 #[test]
@@ -574,7 +574,7 @@ fn test_monitoring_config_development_scenario() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: false, // Permissive during dev
         threshold_action: ThresholdAction::Log, // Just log
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     assert_eq!(config.granularity.to_duration(), Duration::from_secs(1));

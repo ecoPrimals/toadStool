@@ -357,7 +357,7 @@ fn defaults_getters_follow_env() {
             assert_eq!(ConfigUtils::get_max_concurrent_executions(), 77);
             assert_eq!(
                 ConfigUtils::get_execution_timeout(),
-                Duration::from_secs(120)
+                Duration::from_mins(2)
             );
             assert!((ConfigUtils::get_max_cpu_usage() - 12.5_f64).abs() < f64::EPSILON);
             assert_eq!(ConfigUtils::get_max_memory_usage(), 4096);
@@ -404,7 +404,7 @@ fn defaults_numeric_invalid_falls_back() {
             assert_eq!(ConfigUtils::get_max_memory_usage(), 8 * 1024 * 1024 * 1024);
             assert_eq!(
                 ConfigUtils::get_execution_timeout(),
-                Duration::from_secs(300)
+                Duration::from_mins(5)
             );
         },
     );

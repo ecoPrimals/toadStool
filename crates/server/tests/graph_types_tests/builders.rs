@@ -71,7 +71,7 @@ fn test_graph_node_builder_full() {
         .storage(100 * 1024 * 1024)
         .storage_gb(100)
         .network_bandwidth(1000)
-        .duration(Duration::from_secs(120))
+        .duration(Duration::from_mins(2))
         .duration_secs(60)
         .metadata("model", "gpt-4")
         .build();
@@ -79,7 +79,7 @@ fn test_graph_node_builder_full() {
     assert_eq!(node.id, "my_node");
     assert_eq!(node.primal, "squirrel");
     assert_eq!(node.operation, "gpu_compute");
-    assert_eq!(node.duration, Some(Duration::from_secs(60)));
+    assert_eq!(node.duration, Some(Duration::from_mins(1)));
 
     let req = node.requirements;
     assert!(req.cpu.is_some());

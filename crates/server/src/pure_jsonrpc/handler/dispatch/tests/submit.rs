@@ -255,7 +255,7 @@ fn enforce_envelope_timeout_rejects_excessive() {
 #[test]
 fn resolve_binary_param_valid_base64() {
     let data = [0xDE, 0xAD, 0xBE, 0xEF];
-    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+    let b64 = base64::engine::general_purpose::STANDARD.encode(data);
     let params = serde_json::json!({ "binary_b64": b64 });
     let result = resolve_binary_param(&params).unwrap();
     assert_eq!(result, data);

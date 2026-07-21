@@ -587,14 +587,14 @@ fn test_timing_metrics_default() {
 #[test]
 fn test_timing_metrics_with_duration() {
     let start = SystemTime::now();
-    let end = start + Duration::from_secs(120);
+    let end = start + Duration::from_mins(2);
     let metrics = TimingMetrics {
         start_time: start,
         end_time: Some(end),
-        duration: Duration::from_secs(120),
+        duration: Duration::from_mins(2),
     };
 
-    assert_eq!(metrics.duration, Duration::from_secs(120));
+    assert_eq!(metrics.duration, Duration::from_mins(2));
     assert!(metrics.end_time.is_some());
 }
 
@@ -603,11 +603,11 @@ fn test_timing_metrics_long_running() {
     let start = SystemTime::now();
     let metrics = TimingMetrics {
         start_time: start,
-        end_time: Some(start + Duration::from_secs(3600)),
-        duration: Duration::from_secs(3600),
+        end_time: Some(start + Duration::from_hours(1)),
+        duration: Duration::from_hours(1),
     };
 
-    assert!(metrics.duration >= Duration::from_secs(3600));
+    assert!(metrics.duration >= Duration::from_hours(1));
 }
 
 #[test]
@@ -667,14 +667,14 @@ fn test_runtime_metrics_complete() {
         gpu: None,
         timing: TimingMetrics {
             start_time: start,
-            end_time: Some(start + Duration::from_secs(120)),
-            duration: Duration::from_secs(120),
+            end_time: Some(start + Duration::from_mins(2)),
+            duration: Duration::from_mins(2),
         },
     };
 
     assert_eq!(metrics.cpu.cores_used, 4.0);
     assert_eq!(metrics.memory.used_bytes, 2 * 1024 * 1024 * 1024);
-    assert_eq!(metrics.timing.duration, Duration::from_secs(120));
+    assert_eq!(metrics.timing.duration, Duration::from_mins(2));
 }
 
 #[test]

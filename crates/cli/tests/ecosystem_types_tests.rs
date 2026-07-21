@@ -194,7 +194,7 @@ fn test_beardog_permission_creation() {
         permission_id: Uuid::new_v4(),
         granted_to: "user@example.com".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
-        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(24 * 3600),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_hours(24),
         signature: "sig123".to_string(),
     };
 
@@ -358,7 +358,7 @@ fn test_verify_service_signature_response_too_old() {
         "test",
         &base64::engine::general_purpose::STANDARD.encode([0u8; 32]),
     );
-    let old_timestamp = std::time::SystemTime::now() - Duration::from_secs(600);
+    let old_timestamp = std::time::SystemTime::now() - Duration::from_mins(10);
     let response = SignedServiceResponse {
         service_id: "svc-1".to_string(),
         service_type: "test".to_string(),

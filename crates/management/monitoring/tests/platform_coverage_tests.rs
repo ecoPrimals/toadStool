@@ -15,7 +15,7 @@ fn sample_monitoring_config() -> MonitoringConfig {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     }
 }
 

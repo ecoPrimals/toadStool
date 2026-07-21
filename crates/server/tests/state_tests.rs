@@ -224,7 +224,7 @@ fn test_active_execution_creation() {
     let execution_id = Uuid::new_v4();
     let runtime_type = RuntimeType::Native;
     let started_at = SystemTime::now();
-    let timeout = Duration::from_secs(300);
+    let timeout = Duration::from_mins(5);
     let status = ExecutionStatus::Running;
 
     let client_info = ClientInfo {
@@ -246,7 +246,7 @@ fn test_active_execution_creation() {
     assert_eq!(execution.execution_id, execution_id);
     assert_eq!(execution.runtime_type, RuntimeType::Native);
     assert_eq!(execution.status, status);
-    assert_eq!(execution.timeout, Duration::from_secs(300));
+    assert_eq!(execution.timeout, Duration::from_mins(5));
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn test_active_execution_clone() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Gpu,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(600),
+        timeout: Duration::from_mins(10),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: Some("10.0.0.1".to_string()),
@@ -278,7 +278,7 @@ fn test_active_execution_debug_format() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Wasm,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(120),
+        timeout: Duration::from_mins(2),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: None,
@@ -297,9 +297,9 @@ fn test_active_execution_debug_format() {
 fn test_active_execution_with_different_timeouts() {
     let timeouts = vec![
         Duration::from_secs(30),
-        Duration::from_secs(300),
-        Duration::from_secs(3600),
-        Duration::from_secs(86400),
+        Duration::from_mins(5),
+        Duration::from_hours(1),
+        Duration::from_hours(24),
     ];
 
     for timeout in timeouts {
@@ -336,7 +336,7 @@ fn test_active_execution_with_all_runtime_types() {
             execution_id: Uuid::new_v4(),
             runtime_type: rt.clone(),
             started_at: SystemTime::now(),
-            timeout: Duration::from_secs(300),
+            timeout: Duration::from_mins(5),
             status: ExecutionStatus::Running,
             client_info: ClientInfo {
                 ip_address: None,
@@ -366,7 +366,7 @@ fn test_active_execution_with_all_execution_statuses() {
             execution_id: Uuid::new_v4(),
             runtime_type: RuntimeType::Native,
             started_at: SystemTime::now(),
-            timeout: Duration::from_secs(300),
+            timeout: Duration::from_mins(5),
             status: status.clone(),
             client_info: ClientInfo {
                 ip_address: None,

@@ -19,7 +19,7 @@ fn create_test_token_validation_config() -> TokenValidationConfig {
         validate_audience: true,
         validate_expiration: true,
         validate_signature: true,
-        clock_skew: Duration::from_secs(60),
+        clock_skew: Duration::from_mins(1),
     }
 }
 
@@ -171,7 +171,7 @@ fn create_test_success_criteria() -> SuccessCriteria {
         success_rate: 0.99,
         latency_p99: Duration::from_millis(500),
         error_rate: 0.01,
-        evaluation_period: Duration::from_secs(300),
+        evaluation_period: Duration::from_mins(5),
     }
 }
 
@@ -179,7 +179,7 @@ fn create_test_rollback_criteria() -> RollbackCriteria {
     RollbackCriteria {
         error_rate: 0.05,
         latency_p99: Duration::from_secs(1),
-        evaluation_period: Duration::from_secs(60),
+        evaluation_period: Duration::from_mins(1),
         automatic_rollback: true,
     }
 }
@@ -187,9 +187,9 @@ fn create_test_rollback_criteria() -> RollbackCriteria {
 fn create_test_automation_config() -> AutomationConfig {
     AutomationConfig {
         enabled: true,
-        promotion_interval: Duration::from_secs(600),
+        promotion_interval: Duration::from_mins(10),
         max_promotion_steps: 5,
-        rollback_timeout: Duration::from_secs(300),
+        rollback_timeout: Duration::from_mins(5),
     }
 }
 
@@ -197,8 +197,8 @@ fn create_test_blue_green_config() -> BlueGreenConfig {
     BlueGreenConfig {
         enabled: true,
         switch_strategy: "instant".to_string(),
-        validation_period: Duration::from_secs(300),
-        rollback_timeout: Duration::from_secs(600),
+        validation_period: Duration::from_mins(5),
+        rollback_timeout: Duration::from_mins(10),
     }
 }
 
@@ -259,7 +259,7 @@ fn create_test_sticky_sessions_config() -> StickySessionsConfig {
         enabled: true,
         affinity_type: "cookie".to_string(),
         cookie: Some(create_test_cookie_config()),
-        timeout: Duration::from_secs(3600),
+        timeout: Duration::from_hours(1),
     }
 }
 
@@ -291,9 +291,9 @@ fn create_test_circuit_breaker_config() -> CircuitBreakerConfig {
         enabled: true,
         failure_threshold: 5,
         success_threshold: 2,
-        timeout: Duration::from_secs(60),
+        timeout: Duration::from_mins(1),
         half_open_timeout: Duration::from_secs(30),
-        reset_timeout: Duration::from_secs(120),
+        reset_timeout: Duration::from_mins(2),
     }
 }
 

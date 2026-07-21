@@ -78,8 +78,7 @@ fn test_runtime_config_default_thread_count() {
     assert!(
         config.worker_threads
             <= std::thread::available_parallelism()
-                .map(std::num::NonZero::get)
-                .unwrap_or(1)
+                .map_or(1, std::num::NonZero::get)
     );
 }
 
@@ -230,8 +229,7 @@ impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
             worker_threads: std::thread::available_parallelism()
-                .map(std::num::NonZero::get)
-                .unwrap_or(1),
+                .map_or(1, std::num::NonZero::get),
             max_memory_mb: 4096, // 4GB default
         }
     }

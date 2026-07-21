@@ -26,7 +26,7 @@ use std::time::Duration;
 use toadstool_cylinder::nv::registers::pmc::InterruptProfile;
 use tracing::{error, info, warn};
 
-pub(crate) const DEFAULT_WATCHDOG_TIMEOUT: Duration = Duration::from_mins(2);
+pub(crate) const DEFAULT_WATCHDOG_TIMEOUT: Duration = Duration::from_secs(120);
 const WATCHDOG_CHECK_INTERVAL: Duration = Duration::from_millis(500);
 const MODULE_POLL_INTERVAL: Duration = Duration::from_millis(200);
 

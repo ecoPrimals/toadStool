@@ -72,7 +72,7 @@ fn test_proxy_config_envoy() {
         concurrency: 4,
         timeouts: TimeoutConfig {
             connection_timeout: Duration::from_secs(30),
-            request_timeout: Duration::from_secs(60),
+            request_timeout: Duration::from_mins(1),
             read_timeout: Duration::from_secs(90),
             write_timeout: Duration::from_secs(90),
         },
@@ -113,15 +113,15 @@ fn test_proxy_config_haproxy() {
         admin_port: 9001,
         concurrency: 16,
         timeouts: TimeoutConfig {
-            connection_timeout: Duration::from_secs(60),
-            request_timeout: Duration::from_secs(120),
+            connection_timeout: Duration::from_mins(1),
+            request_timeout: Duration::from_mins(2),
             read_timeout: Duration::from_secs(180),
             write_timeout: Duration::from_secs(180),
         },
     };
 
     assert_eq!(config.proxy_type, "haproxy");
-    assert_eq!(config.timeouts.request_timeout, Duration::from_secs(120));
+    assert_eq!(config.timeouts.request_timeout, Duration::from_mins(2));
 }
 
 // ============================================================================
@@ -185,7 +185,7 @@ fn test_mtls_config_strict() {
         ca_cert: "/etc/certs/ca.crt".to_string(),
         service_cert: "/etc/certs/service.crt".to_string(),
         private_key: "/etc/certs/service.key".to_string(),
-        rotation_interval: Duration::from_secs(86400),
+        rotation_interval: Duration::from_hours(24),
         verification_mode: "strict".to_string(),
     };
 
@@ -200,7 +200,7 @@ fn test_mtls_config_permissive() {
         ca_cert: "/certs/ca.pem".to_string(),
         service_cert: "/certs/cert.pem".to_string(),
         private_key: "/certs/key.pem".to_string(),
-        rotation_interval: Duration::from_secs(3600),
+        rotation_interval: Duration::from_hours(1),
         verification_mode: "permissive".to_string(),
     };
 
@@ -302,7 +302,7 @@ fn test_service_discovery_enabled() {
         enabled: true,
         backends: vec![backend],
         refresh_interval: Duration::from_secs(30),
-        cache_ttl: Duration::from_secs(300),
+        cache_ttl: Duration::from_mins(5),
         health_check_integration: true,
     };
 
@@ -330,8 +330,8 @@ fn test_service_discovery_multiple_backends() {
     let config = ServiceDiscoveryConfig {
         enabled: true,
         backends: vec![dns_backend, consul_backend],
-        refresh_interval: Duration::from_secs(60),
-        cache_ttl: Duration::from_secs(600),
+        refresh_interval: Duration::from_mins(1),
+        cache_ttl: Duration::from_mins(10),
         health_check_integration: true,
     };
 

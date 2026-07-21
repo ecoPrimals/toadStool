@@ -29,7 +29,7 @@ fn test_server_config_default() {
     assert!(config.enable_api);
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
-    assert_eq!(config.default_timeout, Duration::from_secs(300));
+    assert_eq!(config.default_timeout, Duration::from_mins(5));
 }
 
 #[test]
@@ -59,9 +59,9 @@ fn test_server_config_builder_max_concurrent() {
 #[test]
 fn test_server_config_builder_timeout() {
     // Calls default_timeout() builder method
-    let config = ServerConfig::default().default_timeout(Duration::from_secs(120));
+    let config = ServerConfig::default().default_timeout(Duration::from_mins(2));
 
-    assert_eq!(config.default_timeout, Duration::from_secs(120));
+    assert_eq!(config.default_timeout, Duration::from_mins(2));
 }
 
 #[test]
@@ -89,11 +89,11 @@ fn test_server_config_builder_chaining() {
         .bind_address("0.0.0.0:8080")
         .enable_api(true)
         .max_concurrent_executions(200)
-        .default_timeout(Duration::from_secs(600));
+        .default_timeout(Duration::from_mins(10));
 
     assert_eq!(config.bind_address, "0.0.0.0:8080");
     assert_eq!(config.max_concurrent_executions, 200);
-    assert_eq!(config.default_timeout, Duration::from_secs(600));
+    assert_eq!(config.default_timeout, Duration::from_mins(10));
 }
 
 #[test]
@@ -380,7 +380,7 @@ fn test_health_check_config_frequent() {
 #[test]
 fn test_health_check_config_minimal() {
     let health = HealthCheckConfig {
-        interval: Duration::from_secs(300),
+        interval: Duration::from_mins(5),
         check_runtime_engines: false,
         check_resources: false,
         memory_threshold_percent: 100.0,
@@ -455,7 +455,7 @@ fn test_complete_server_configuration() {
         .bind_address("0.0.0.0:8080")
         .enable_api(true)
         .max_concurrent_executions(150)
-        .default_timeout(Duration::from_secs(600))
+        .default_timeout(Duration::from_mins(10))
         .auth(auth)
         .rate_limiting(rate_limit);
 

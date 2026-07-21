@@ -77,7 +77,7 @@ fn test_application_config_custom_values() {
         worker_threads: 16,
         queue_size: 2000,
         batch_size: 200,
-        shutdown_timeout: Duration::from_secs(60),
+        shutdown_timeout: Duration::from_mins(1),
     };
 
     assert_eq!(config.name, "custom-app");
@@ -143,7 +143,7 @@ fn test_connection_config_default() {
 #[test]
 fn test_connection_config_custom() {
     let config = ConnectionConfig {
-        request_timeout: Duration::from_secs(60),
+        request_timeout: Duration::from_mins(1),
         connection_timeout: Duration::from_secs(15),
         max_retries: 5,
         keepalive_interval: Duration::from_secs(45),
@@ -409,9 +409,9 @@ fn test_auth_config_enabled() {
         enabled: true,
         provider: "oauth2".to_string(),
         jwt_secret: Some("secret-key-here".to_string()),
-        session_timeout: Duration::from_secs(7200),
+        session_timeout: Duration::from_hours(2),
         max_login_attempts: 3,
-        lockout_duration: Duration::from_secs(600),
+        lockout_duration: Duration::from_mins(10),
     };
 
     assert!(config.enabled);
@@ -601,7 +601,7 @@ fn test_cache_config_redis() {
         cache_type: "redis".to_string(),
         url: Some("redis://localhost:6379".to_string()),
         max_size: 1024 * 1024 * 1024,
-        ttl: Duration::from_secs(7200),
+        ttl: Duration::from_hours(2),
         enable_compression: true,
         compression_algorithm: "lz4".to_string(),
     };

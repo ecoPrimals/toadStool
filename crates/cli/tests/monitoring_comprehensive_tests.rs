@@ -275,7 +275,7 @@ async fn test_stress_500_concurrent_monitor_operations() {
 
     // DEEP DEBT FIX: Add timeout to prevent infinite hang
     // 120s should be enough even with coverage overhead
-    let result: Result<usize, _> = timeout(Duration::from_secs(120), async {
+    let result: Result<usize, _> = timeout(Duration::from_mins(2), async {
         let mut successes = 0;
         for task in tasks {
             if task.await.unwrap_or(false) {

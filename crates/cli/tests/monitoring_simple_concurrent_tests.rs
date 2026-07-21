@@ -239,7 +239,7 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
 
     // ✅ DEEP DEBT FIX: Increased timeout for coverage instrumentation overhead
     // Coverage adds ~3-5x slowdown, CI can be slower
-    timeout(Duration::from_secs(60), async {
+    timeout(Duration::from_mins(1), async {
         for handle in burst1_handles {
             handle.await??;
         }
@@ -259,7 +259,7 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
     }
 
     // ✅ DEEP DEBT FIX: Increased timeout for coverage instrumentation overhead
-    timeout(Duration::from_secs(60), async {
+    timeout(Duration::from_mins(1), async {
         for handle in burst2_handles {
             handle.await??;
         }

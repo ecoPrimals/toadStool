@@ -74,7 +74,7 @@ async fn test_execution_cancellation() {
     let request = ExecutionRequestBuilder::new()
         .runtime_hint(RuntimeType::Native)
         .native_workload("sleep", vec!["30".to_string()])
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_mins(1))
         .build();
 
     // Validate request creation

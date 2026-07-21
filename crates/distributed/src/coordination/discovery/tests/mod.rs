@@ -78,7 +78,7 @@ pub(super) fn make_node_registration(
 
 pub(super) fn make_discovery() -> (CoordinationNetworkDiscovery, std::path::PathBuf) {
     let config = CoordinationDiscoveryConfig {
-        discovery_interval: Duration::from_secs(60),
+        discovery_interval: Duration::from_mins(1),
         node_timeout: Duration::from_secs(30),
     };
     let conn = Arc::new(make_coordination_connection());

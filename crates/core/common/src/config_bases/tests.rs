@@ -7,7 +7,7 @@ use std::time::Duration;
 fn test_timeout_config_defaults() {
     let config = TimeoutConfig::default();
     assert_eq!(config.connection_timeout, Duration::from_secs(30));
-    assert_eq!(config.request_timeout, Duration::from_secs(60));
+    assert_eq!(config.request_timeout, Duration::from_mins(1));
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn test_validation_config_defaults() {
     assert!(config.enabled);
     assert!(config.validate_expiration);
     assert!(config.clock_skew.is_some());
-    assert_eq!(config.clock_skew.unwrap(), Duration::from_secs(60));
+    assert_eq!(config.clock_skew.unwrap(), Duration::from_mins(1));
 }
 
 #[test]
@@ -67,15 +67,15 @@ fn test_connection_pool_config_defaults() {
     assert!(config.enabled);
     assert_eq!(config.max_connections_per_host, 100);
     assert_eq!(config.max_idle_connections, 10);
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
-    assert_eq!(config.connection_lifetime, Duration::from_secs(3600));
+    assert_eq!(config.idle_timeout, Duration::from_mins(5));
+    assert_eq!(config.connection_lifetime, Duration::from_hours(1));
 }
 
 #[test]
 fn test_cache_config_defaults() {
     let config = CacheConfig::default();
     assert!(config.enabled);
-    assert_eq!(config.ttl, Duration::from_secs(300));
+    assert_eq!(config.ttl, Duration::from_mins(5));
     assert_eq!(config.max_entries, 1000);
-    assert_eq!(config.negative_ttl, Duration::from_secs(60));
+    assert_eq!(config.negative_ttl, Duration::from_mins(1));
 }

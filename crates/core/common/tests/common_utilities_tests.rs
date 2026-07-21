@@ -178,22 +178,22 @@ fn test_format_duration_seconds_only() {
 
 #[test]
 fn test_format_duration_minutes_and_seconds() {
-    assert_eq!(format_duration(Duration::from_secs(60)), "1m 0s");
+    assert_eq!(format_duration(Duration::from_mins(1)), "1m 0s");
     assert_eq!(format_duration(Duration::from_secs(90)), "1m 30s");
     assert_eq!(format_duration(Duration::from_secs(150)), "2m 30s");
 }
 
 #[test]
 fn test_format_duration_hours_minutes_seconds() {
-    assert_eq!(format_duration(Duration::from_secs(3600)), "1h 0m 0s");
+    assert_eq!(format_duration(Duration::from_hours(1)), "1h 0m 0s");
     assert_eq!(format_duration(Duration::from_secs(3661)), "1h 1m 1s");
-    assert_eq!(format_duration(Duration::from_secs(7200)), "2h 0m 0s");
+    assert_eq!(format_duration(Duration::from_hours(2)), "2h 0m 0s");
     assert_eq!(format_duration(Duration::from_secs(7325)), "2h 2m 5s");
 }
 
 #[test]
 fn test_format_duration_large() {
-    assert_eq!(format_duration(Duration::from_secs(86400)), "24h 0m 0s");
+    assert_eq!(format_duration(Duration::from_hours(24)), "24h 0m 0s");
     assert_eq!(format_duration(Duration::from_secs(90061)), "25h 1m 1s");
 }
 

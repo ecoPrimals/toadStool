@@ -299,7 +299,7 @@ async fn demo_biomeos_integration(platform: &UniversalComputePlatform) -> ToadSt
         },
         priority: JobPriority::High,
         resources: ResourceRequirements::default(),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         created_at: SystemTime::now(),
         context,
     };

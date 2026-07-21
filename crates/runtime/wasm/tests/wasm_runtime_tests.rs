@@ -44,9 +44,9 @@ async fn test_engine_cache_configuration() {
     let config = WasmRuntimeConfig {
         cache: CacheConfig {
             enabled: true,
-            ttl: Duration::from_secs(3600),
+            ttl: Duration::from_hours(1),
             max_entries: 100,
-            negative_ttl: Duration::from_secs(300),
+            negative_ttl: Duration::from_mins(5),
         },
         ..Default::default()
     };

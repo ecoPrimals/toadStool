@@ -16,7 +16,7 @@ fn test_protocol_config_default() {
 fn test_connection_pool_config_default() {
     let config = ConnectionPoolConfig::default();
     assert_eq!(config.max_connections_per_service, 10);
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
+    assert_eq!(config.idle_timeout, Duration::from_mins(5));
     assert_eq!(config.keep_alive_interval, Duration::from_secs(30));
     assert_eq!(config.max_concurrent_requests, 100);
 }
@@ -83,12 +83,12 @@ fn test_routing_strategy_variants() {
 fn test_circuit_breaker_config() {
     let config = CircuitBreakerConfig {
         failure_threshold: 5,
-        recovery_timeout: Duration::from_secs(60),
+        recovery_timeout: Duration::from_mins(1),
         success_threshold: 2,
     };
 
     assert_eq!(config.failure_threshold, 5);
-    assert_eq!(config.recovery_timeout, Duration::from_secs(60));
+    assert_eq!(config.recovery_timeout, Duration::from_mins(1));
     assert_eq!(config.success_threshold, 2);
 }
 
@@ -98,8 +98,8 @@ fn test_service_discovery_config() {
     let config = ServiceDiscoveryConfig {
         discovery_type: DiscoveryType::Consul,
         registry_endpoint: Some(expected_endpoint.clone()),
-        registration_ttl: Duration::from_secs(300),
-        refresh_interval: Duration::from_secs(60),
+        registration_ttl: Duration::from_mins(5),
+        refresh_interval: Duration::from_mins(1),
         auto_register: true,
     };
 

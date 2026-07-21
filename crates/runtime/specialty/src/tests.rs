@@ -108,7 +108,7 @@ async fn test_legacy_job_creation() {
         communication_settings: CommunicationSettings::default(),
         priority: toadstool::JobPriority::Normal,
         created_at: std::time::SystemTime::now(),
-        timeout: Duration::from_secs(3600),
+        timeout: Duration::from_hours(1),
     };
 
     let serialized = serde_json::to_string(&job).unwrap();

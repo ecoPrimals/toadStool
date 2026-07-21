@@ -36,7 +36,7 @@ fn minimal_mainframe_config() -> MainframeConfig {
             job_class: "A".to_string(),
             message_class: "A".to_string(),
             priority: 1,
-            time_limit: Duration::from_secs(3600),
+            time_limit: Duration::from_hours(1),
             region_size: 1024 * 1024,
         },
         cobol_settings: COBOLSettings {
@@ -100,7 +100,7 @@ fn minimal_legacy_job() -> LegacyJob {
             },
             timing: TimingRequirements {
                 real_time: false,
-                max_response_time: Duration::from_secs(60),
+                max_response_time: Duration::from_mins(1),
                 min_cycle_time: Duration::from_millis(1),
                 timing_accuracy: Duration::from_millis(1),
             },
@@ -109,7 +109,7 @@ fn minimal_legacy_job() -> LegacyJob {
         communication_settings: CommunicationSettings::default(),
         priority: JobPriority::Normal,
         created_at: std::time::SystemTime::UNIX_EPOCH,
-        timeout: Duration::from_secs(300),
+        timeout: Duration::from_mins(5),
     }
 }
 

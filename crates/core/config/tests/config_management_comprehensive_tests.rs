@@ -416,7 +416,7 @@ fn test_runtime_config_default() {
 fn test_runtime_config_custom_values() {
     let config = RuntimeConfig {
         max_concurrent_executions: 100,
-        execution_timeout: std::time::Duration::from_secs(600),
+        execution_timeout: std::time::Duration::from_mins(10),
         ..Default::default()
     };
 
@@ -500,7 +500,7 @@ fn test_config_with_minimal_timeout() {
 #[test]
 fn test_config_with_max_timeout() {
     let config = RuntimeConfig {
-        execution_timeout: std::time::Duration::from_secs(3600),
+        execution_timeout: std::time::Duration::from_hours(1),
         ..Default::default()
     };
 

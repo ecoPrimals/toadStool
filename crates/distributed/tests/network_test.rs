@@ -330,12 +330,12 @@ fn test_network_distributor_config_disabled() {
     let config = NetworkDistributorConfig {
         enabled: false,
         max_concurrent_distributions: 5,
-        distribution_timeout: Duration::from_secs(60),
+        distribution_timeout: Duration::from_mins(1),
     };
 
     assert!(!config.enabled);
     assert_eq!(config.max_concurrent_distributions, 5);
-    assert_eq!(config.distribution_timeout, Duration::from_secs(60));
+    assert_eq!(config.distribution_timeout, Duration::from_mins(1));
 }
 
 #[test]
@@ -343,7 +343,7 @@ fn test_network_distributor_config_high_concurrency() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 100,
-        distribution_timeout: Duration::from_secs(600),
+        distribution_timeout: Duration::from_mins(10),
     };
 
     assert_eq!(config.max_concurrent_distributions, 100);
@@ -376,10 +376,10 @@ fn test_network_distributor_config_long_timeout() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 10,
-        distribution_timeout: Duration::from_secs(3600),
+        distribution_timeout: Duration::from_hours(1),
     };
 
-    assert_eq!(config.distribution_timeout, Duration::from_secs(3600));
+    assert_eq!(config.distribution_timeout, Duration::from_hours(1));
 }
 
 #[test]
@@ -387,7 +387,7 @@ fn test_network_distributor_config_clone() {
     let config1 = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 20,
-        distribution_timeout: Duration::from_secs(120),
+        distribution_timeout: Duration::from_mins(2),
     };
 
     let config2 = config1.clone();
@@ -702,7 +702,7 @@ fn test_network_distributor_with_disabled_config() {
     let config = NetworkDistributorConfig {
         enabled: false,
         max_concurrent_distributions: 10,
-        distribution_timeout: Duration::from_secs(300),
+        distribution_timeout: Duration::from_mins(5),
     };
     let _distributor = NetworkDistributor::new(config);
     // Should create even when disabled
@@ -730,11 +730,11 @@ fn test_config_maximum_resources() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 1000,
-        distribution_timeout: Duration::from_secs(7200),
+        distribution_timeout: Duration::from_hours(2),
     };
 
     assert_eq!(config.max_concurrent_distributions, 1000);
-    assert_eq!(config.distribution_timeout, Duration::from_secs(7200));
+    assert_eq!(config.distribution_timeout, Duration::from_hours(2));
 }
 
 #[test]

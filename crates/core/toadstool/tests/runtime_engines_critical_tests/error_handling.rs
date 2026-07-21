@@ -28,7 +28,7 @@ fn test_runtime_not_available() {
 
 #[test]
 fn test_execution_timeout_handling() {
-    let timeout = Duration::from_secs(300);
+    let timeout = Duration::from_mins(5);
     let elapsed = Duration::from_secs(400);
 
     assert!(elapsed > timeout);

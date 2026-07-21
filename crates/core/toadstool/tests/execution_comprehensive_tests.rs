@@ -395,7 +395,7 @@ fn test_callback_config_serialization() {
 fn test_execution_request_default() {
     let request = ExecutionRequest::default();
 
-    assert_eq!(request.timeout, Some(Duration::from_secs(300)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(5)));
     assert!(request.environment.is_empty());
     assert!(request.runtime_hint.is_none());
 }
@@ -423,11 +423,11 @@ fn test_execution_request_with_environment() {
 #[test]
 fn test_execution_request_with_timeout() {
     let request = ExecutionRequest {
-        timeout: Some(Duration::from_secs(600)),
+        timeout: Some(Duration::from_mins(10)),
         ..Default::default()
     };
 
-    assert_eq!(request.timeout, Some(Duration::from_secs(600)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(10)));
 }
 
 #[test]

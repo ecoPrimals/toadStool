@@ -25,7 +25,7 @@ fn test_request(tenant: &str, priority: u8) -> ResourceRequest {
         priority,
         preferred_devices: vec![],
         min_vram_bytes: 1_000_000_000,
-        estimated_duration: Duration::from_secs(60),
+        estimated_duration: Duration::from_mins(1),
         caller_gate_id: None,
         hardware_owner_gate_id: None,
     }

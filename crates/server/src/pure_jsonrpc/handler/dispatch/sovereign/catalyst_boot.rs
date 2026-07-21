@@ -3,7 +3,7 @@
 use super::DispatchHandler;
 use super::init;
 
-const CATALYST_BOOT_WATCHDOG_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(2);
+const CATALYST_BOOT_WATCHDOG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
 const CATALYST_BOOT_RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
 
 /// Catalyst-free boot: nouveau warm handoff + golden state replay + tier classification.

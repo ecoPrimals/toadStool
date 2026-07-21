@@ -112,7 +112,7 @@ async fn test_metric_collection_interval() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_cleanup_old_data() {
-    let retention_period = Duration::from_secs(3600);
+    let retention_period = Duration::from_hours(1);
     assert!(
         retention_period.as_secs() > 0,
         "Retention should be positive"

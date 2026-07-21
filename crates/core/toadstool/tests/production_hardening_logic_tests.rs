@@ -74,13 +74,13 @@ mod production_hardening_logic_tests {
 
     #[test]
     fn test_circuit_breaker_timeout() {
-        let timeout = Duration::from_secs(60);
+        let timeout = Duration::from_mins(1);
         assert_eq!(timeout.as_secs(), 60);
     }
 
     #[test]
     fn test_circuit_breaker_rolling_window() {
-        let window = Duration::from_secs(60);
+        let window = Duration::from_mins(1);
         assert_eq!(window.as_secs(), 60);
     }
 
@@ -126,7 +126,7 @@ mod production_hardening_logic_tests {
         use std::time::Instant;
 
         let last_failure = Instant::now().checked_sub(Duration::from_secs(70)).unwrap();
-        let timeout = Duration::from_secs(60);
+        let timeout = Duration::from_mins(1);
 
         let should_try_half_open = last_failure.elapsed() > timeout;
         assert!(should_try_half_open);
@@ -137,7 +137,7 @@ mod production_hardening_logic_tests {
         use std::time::Instant;
 
         let last_failure = Instant::now().checked_sub(Duration::from_secs(30)).unwrap();
-        let timeout = Duration::from_secs(60);
+        let timeout = Duration::from_mins(1);
 
         let should_try_half_open = last_failure.elapsed() > timeout;
         assert!(!should_try_half_open);

@@ -115,7 +115,7 @@ mod performance_hardening_logic_tests {
 
     #[test]
     fn test_monitoring_aggregation_window() {
-        let window = Duration::from_secs(60);
+        let window = Duration::from_mins(1);
         assert_eq!(window.as_secs(), 60);
     }
 
@@ -152,7 +152,7 @@ mod performance_hardening_logic_tests {
 
     #[test]
     fn test_memory_pool_cleanup_interval() {
-        let cleanup = Duration::from_secs(60);
+        let cleanup = Duration::from_mins(1);
         assert_eq!(cleanup.as_secs(), 60);
     }
 
@@ -180,13 +180,13 @@ mod performance_hardening_logic_tests {
 
     #[test]
     fn test_cache_ttl() {
-        let ttl = Duration::from_secs(300);
+        let ttl = Duration::from_mins(5);
         assert_eq!(ttl.as_secs(), 300);
     }
 
     #[test]
     fn test_cache_cleanup_interval() {
-        let cleanup = Duration::from_secs(60);
+        let cleanup = Duration::from_mins(1);
         assert_eq!(cleanup.as_secs(), 60);
     }
 
@@ -272,7 +272,7 @@ mod performance_hardening_logic_tests {
 
     #[test]
     fn test_connection_idle_timeout() {
-        let idle_timeout = Duration::from_secs(300);
+        let idle_timeout = Duration::from_mins(5);
         assert_eq!(idle_timeout.as_secs(), 300);
     }
 
@@ -330,7 +330,7 @@ mod performance_hardening_logic_tests {
 
     #[test]
     fn test_metric_windowing() {
-        let window = Duration::from_secs(60);
+        let window = Duration::from_mins(1);
         let sample_interval = Duration::from_millis(100);
 
         let samples_per_window = window.as_millis() / sample_interval.as_millis();

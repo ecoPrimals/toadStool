@@ -67,8 +67,8 @@ async fn test_expired_token_validation() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-key".to_string(),
-        expires_at: SystemTime::now() - Duration::from_secs(3600), // Expired!
-        issued_at: SystemTime::now() - Duration::from_secs(7200),
+        expires_at: SystemTime::now() - Duration::from_hours(1), // Expired!
+        issued_at: SystemTime::now() - Duration::from_hours(2),
         issuer: capabilities::CRYPTO.to_string(),
         audience: vec![PRIMAL_NAME.to_string()],
         scope: vec!["test".to_string()],
@@ -79,7 +79,7 @@ async fn test_expired_token_validation() {
     assert!(result.is_err());
 
     // Fix expiration
-    token.expires_at = SystemTime::now() + Duration::from_secs(3600);
+    token.expires_at = SystemTime::now() + Duration::from_hours(1);
     let result = backend.validate_token(&token);
     assert!(result.is_ok());
 }

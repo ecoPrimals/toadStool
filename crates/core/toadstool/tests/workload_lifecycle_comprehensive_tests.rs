@@ -70,9 +70,9 @@ fn test_execution_request_with_custom_id() {
 #[test]
 fn test_execution_request_with_timeout() {
     let mut request = ExecutionRequest::default();
-    request.timeout = Some(Duration::from_secs(60));
+    request.timeout = Some(Duration::from_mins(1));
 
-    assert_eq!(request.timeout, Some(Duration::from_secs(60)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(1)));
 }
 
 #[test]
@@ -221,10 +221,10 @@ fn test_execution_response_with_error() {
 fn test_execution_response_with_timeout() {
     let mut response = ExecutionResponse::default();
     response.status = ExecutionStatus::TimedOut;
-    response.duration = Duration::from_secs(300);
+    response.duration = Duration::from_mins(5);
 
     assert_eq!(response.status, ExecutionStatus::TimedOut);
-    assert_eq!(response.duration, Duration::from_secs(300));
+    assert_eq!(response.duration, Duration::from_mins(5));
 }
 
 #[test]
@@ -686,9 +686,9 @@ fn test_execution_request_with_multiple_runtime_hints() {
 #[test]
 fn test_execution_request_with_long_timeout() {
     let mut request = ExecutionRequest::default();
-    request.timeout = Some(Duration::from_secs(3600));
+    request.timeout = Some(Duration::from_hours(1));
 
-    assert_eq!(request.timeout, Some(Duration::from_secs(3600)));
+    assert_eq!(request.timeout, Some(Duration::from_hours(1)));
 }
 
 #[test]

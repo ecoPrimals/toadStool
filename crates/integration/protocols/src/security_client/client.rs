@@ -19,7 +19,7 @@ use super::policy::{SecurityAuditEvent, SecurityPolicy};
 use super::transport;
 
 /// Skew before nominal expiry when we proactively refresh (same window as `ensure_valid_token`).
-const TOKEN_REFRESH_SKEW: Duration = Duration::from_mins(1);
+const TOKEN_REFRESH_SKEW: Duration = Duration::from_secs(60);
 
 const AUDIT_FLUSH_INTERVAL_SECS: u64 = 60;
 

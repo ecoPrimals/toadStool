@@ -296,7 +296,7 @@ fn test_env_config_get_duration_with_env() {
     temp_env::with_var("TOADSTOOL_TEST_DURATION_WITH_ENV", Some("60"), || {
         let loader = EnvConfigLoader::new();
         let value = loader.get_duration("TEST_DURATION_WITH_ENV", Duration::from_secs(30));
-        assert_eq!(value, Duration::from_secs(60));
+        assert_eq!(value, Duration::from_mins(1));
     });
 }
 

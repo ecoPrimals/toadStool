@@ -117,7 +117,7 @@ async fn get_public_key_delegates_to_backend() {
 #[tokio::test(flavor = "current_thread")]
 async fn start_and_stop_token_refresh() {
     let mut config = base_config();
-    config.token_refresh_interval = Duration::from_secs(3600);
+    config.token_refresh_interval = Duration::from_hours(1);
     let mut manager = AuthenticationManager::with_inmemory(config);
     let start_result = manager.start_token_refresh();
     assert!(start_result.is_ok());

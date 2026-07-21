@@ -16,9 +16,9 @@ use toadstool::biomeos_integration::{
 fn test_auth_manager_config_creation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:6000".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
@@ -32,7 +32,7 @@ fn test_auth_manager_config_creation() {
 fn test_auth_manager_config_short_refresh() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:6000".to_string(),
-        token_refresh_interval: Duration::from_secs(60),
+        token_refresh_interval: Duration::from_mins(1),
         signature_validation: true,
         timestamp_window: Duration::from_secs(30),
         replay_protection: true,
@@ -40,16 +40,16 @@ fn test_auth_manager_config_short_refresh() {
         ..Default::default()
     };
 
-    assert_eq!(config.token_refresh_interval, Duration::from_secs(60));
+    assert_eq!(config.token_refresh_interval, Duration::from_mins(1));
 }
 
 #[test]
 fn test_auth_manager_config_no_replay_protection() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:6000".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: false,
         signing_key_seed: None,
         ..Default::default()
@@ -62,9 +62,9 @@ fn test_auth_manager_config_no_replay_protection() {
 fn test_auth_manager_config_no_signature_validation() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:6000".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: false,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
@@ -77,9 +77,9 @@ fn test_auth_manager_config_no_signature_validation() {
 fn test_auth_manager_config_serialization() {
     let config = AuthManagerConfig {
         security_endpoint: "http://localhost:6000".to_string(),
-        token_refresh_interval: Duration::from_secs(300),
+        token_refresh_interval: Duration::from_mins(5),
         signature_validation: true,
-        timestamp_window: Duration::from_secs(60),
+        timestamp_window: Duration::from_mins(1),
         replay_protection: true,
         signing_key_seed: None,
         ..Default::default()
@@ -100,7 +100,7 @@ fn test_authentication_token_creation() {
         token_type: "Bearer".to_string(),
         token: "encrypted".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -118,7 +118,7 @@ fn test_authentication_token_multiple_audiences() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string(), "songbird".to_string()],
@@ -139,7 +139,7 @@ fn test_authentication_token_with_claims() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
@@ -157,7 +157,7 @@ fn test_authentication_token_expiry() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -175,7 +175,7 @@ fn test_authentication_token_serialization() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -198,7 +198,7 @@ fn test_token_propagation_request_creation() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -224,7 +224,7 @@ fn test_token_propagation_request_different_targets() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
@@ -250,7 +250,7 @@ fn test_token_propagation_request_with_signature() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
@@ -276,7 +276,7 @@ fn test_token_propagation_request_timestamp() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
@@ -303,7 +303,7 @@ fn test_token_propagation_request_serialization() {
         token_type: "Bearer".to_string(),
         token: "value".to_string(),
         public_key: "key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "beardog".to_string(),
         audience: vec!["all".to_string()],
@@ -368,7 +368,7 @@ fn test_token_verification_status_error() {
 fn test_token_verification_response_valid() {
     let response = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
-        expires_at: Some(SystemTime::now() + Duration::from_secs(3600)),
+        expires_at: Some(SystemTime::now() + Duration::from_hours(1)),
         details: None,
     };
 
@@ -390,7 +390,7 @@ fn test_token_verification_response_invalid() {
 fn test_token_verification_response_serialization() {
     let response = TokenVerificationResponse {
         status: TokenVerificationStatus::Valid,
-        expires_at: Some(SystemTime::now() + Duration::from_secs(3600)),
+        expires_at: Some(SystemTime::now() + Duration::from_hours(1)),
         details: None,
     };
 

@@ -51,7 +51,7 @@ mod ecosystem_logic_tests {
     #[test]
     fn test_ecosystem_config_custom() {
         let auto_discovery = false;
-        let discovery_timeout = Duration::from_secs(60);
+        let discovery_timeout = Duration::from_mins(1);
         let mut primal_endpoints = HashMap::new();
         primal_endpoints.insert("songbird".to_string(), "http://songbird:8080".to_string());
 
@@ -294,7 +294,7 @@ mod ecosystem_logic_tests {
 
     #[test]
     fn test_discovery_timeout_custom() {
-        let timeout = Duration::from_secs(60);
+        let timeout = Duration::from_mins(1);
         assert_eq!(timeout.as_secs(), 60);
         assert!(timeout > Duration::from_secs(30));
     }
@@ -437,7 +437,7 @@ mod ecosystem_logic_tests {
 
     #[test]
     fn test_heartbeat_timeout_check() {
-        let last_heartbeat = std::time::SystemTime::now() - Duration::from_secs(60);
+        let last_heartbeat = std::time::SystemTime::now() - Duration::from_mins(1);
         let timeout = Duration::from_secs(30);
 
         let elapsed = std::time::SystemTime::now()

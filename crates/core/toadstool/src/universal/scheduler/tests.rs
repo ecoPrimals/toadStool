@@ -43,7 +43,7 @@ fn make_universal_job(job_type: UniversalJobType) -> UniversalJob {
         job_type,
         priority: JobPriority::Normal,
         resources: ResourceRequirements::default(),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         created_at: std::time::SystemTime::now(),
         context: make_test_context(),
     }

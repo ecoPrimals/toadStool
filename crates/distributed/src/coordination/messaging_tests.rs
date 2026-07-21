@@ -40,7 +40,7 @@ fn test_connection() -> CoordinationConnection {
 
 fn capacity_config() -> CapacityConfig {
     CapacityConfig {
-        monitoring_interval: Duration::from_secs(60),
+        monitoring_interval: Duration::from_mins(1),
         resource_buffer: 0.1,
     }
 }

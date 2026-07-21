@@ -28,7 +28,7 @@ fn test_server_config_default_values() {
     assert!(config.enable_api);
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
-    assert_eq!(config.default_timeout, Duration::from_secs(300));
+    assert_eq!(config.default_timeout, Duration::from_mins(5));
     assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
 }
 
@@ -38,12 +38,12 @@ fn test_server_config_builder_pattern() {
         .bind_address("127.0.0.1:3000")
         .enable_api(true)
         .max_concurrent_executions(50)
-        .default_timeout(Duration::from_secs(600));
+        .default_timeout(Duration::from_mins(10));
 
     assert_eq!(config.bind_address, "127.0.0.1:3000");
     assert!(config.enable_api);
     assert_eq!(config.max_concurrent_executions, 50);
-    assert_eq!(config.default_timeout, Duration::from_secs(600));
+    assert_eq!(config.default_timeout, Duration::from_mins(10));
 }
 
 #[test]
@@ -115,14 +115,14 @@ fn test_health_check_config_defaults() {
 #[test]
 fn test_health_check_config_custom_thresholds() {
     let config = HealthCheckConfig {
-        interval: Duration::from_secs(60),
+        interval: Duration::from_mins(1),
         check_runtime_engines: true,
         check_resources: true,
         memory_threshold_percent: 80.0,
         cpu_threshold_percent: 85.0,
     };
 
-    assert_eq!(config.interval, Duration::from_secs(60));
+    assert_eq!(config.interval, Duration::from_mins(1));
     assert_eq!(config.memory_threshold_percent, 80.0);
     assert_eq!(config.cpu_threshold_percent, 85.0);
 }
@@ -320,14 +320,14 @@ fn test_full_production_config() {
         .bind_address("0.0.0.0:443")
         .enable_api(true)
         .max_concurrent_executions(500)
-        .default_timeout(Duration::from_secs(1800))
+        .default_timeout(Duration::from_mins(30))
         .auth(auth)
         .rate_limiting(rate_limiting);
 
     // Verify production settings
     assert_eq!(config.bind_address, "0.0.0.0:443");
     assert_eq!(config.max_concurrent_executions, 500);
-    assert_eq!(config.default_timeout, Duration::from_secs(1800));
+    assert_eq!(config.default_timeout, Duration::from_mins(30));
     assert!(config.auth.is_some());
     assert!(config.rate_limiting.is_some());
 }

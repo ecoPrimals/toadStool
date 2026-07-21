@@ -159,7 +159,7 @@ async fn test_scheduler_job_with_custom_resources() {
         },
         priority: JobPriority::Normal,
         resources: create_resource_spec(2.0, Some(4.0), 1, Some(2)),
-        timeout: Some(Duration::from_secs(60)),
+        timeout: Some(Duration::from_mins(1)),
         created_at: std::time::SystemTime::now(),
         context: create_test_context(),
     };

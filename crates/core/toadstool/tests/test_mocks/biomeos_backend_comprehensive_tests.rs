@@ -23,7 +23,7 @@ fn test_auth_backend_trait_validate_token_valid() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -43,8 +43,8 @@ fn test_auth_backend_trait_validate_token_expired() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: SystemTime::now() - Duration::from_secs(3600), // Expired
-        issued_at: SystemTime::now() - Duration::from_secs(7200),
+        expires_at: SystemTime::now() - Duration::from_hours(1), // Expired
+        issued_at: SystemTime::now() - Duration::from_hours(2),
         issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
@@ -65,7 +65,7 @@ fn test_auth_backend_trait_validate_token_invalid_issuer() {
         token_type: "Bearer".to_string(),
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "malicious-issuer".to_string(), // Invalid issuer
         audience: vec!["toadstool".to_string()],
@@ -87,7 +87,7 @@ fn test_auth_backend_trait_validate_token_invalid_type() {
         token_type: "InvalidType".to_string(), // Invalid token type
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -109,7 +109,7 @@ fn test_auth_backend_trait_validate_token_bearer_type() {
         token_type: "Bearer".to_string(), // Valid Bearer type
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
@@ -129,7 +129,7 @@ fn test_auth_backend_trait_validate_token_ed25519_type() {
         token_type: "Ed25519".to_string(), // Valid Ed25519 type
         token: "test-value".to_string(),
         public_key: "test-public-key".to_string(),
-        expires_at: SystemTime::now() + Duration::from_secs(3600),
+        expires_at: SystemTime::now() + Duration::from_hours(1),
         issued_at: SystemTime::now(),
         issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],

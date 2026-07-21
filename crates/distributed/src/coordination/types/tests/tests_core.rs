@@ -717,7 +717,7 @@ fn test_load_balancer_config_constructor() {
 fn test_broadcast_config_constructor() {
     let config = BroadcastConfig {
         channels: vec!["events".to_string(), "alerts".to_string()],
-        message_retention: Duration::from_secs(60),
+        message_retention: Duration::from_mins(1),
     };
     assert_eq!(config.channels.len(), 2);
 }
@@ -735,7 +735,7 @@ fn test_capacity_config_constructor() {
 fn test_receiver_config_constructor() {
     let config = ReceiverConfig {
         max_concurrent_jobs: 10,
-        job_timeout: Duration::from_secs(300),
+        job_timeout: Duration::from_mins(5),
     };
     assert_eq!(config.max_concurrent_jobs, 10);
 }

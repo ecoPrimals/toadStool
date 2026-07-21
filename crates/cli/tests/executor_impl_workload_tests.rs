@@ -504,9 +504,9 @@ mod workload_execution_tests {
     fn test_execution_timeout_values() {
         let timeouts = vec![
             Duration::from_secs(30),
-            Duration::from_secs(60),
-            Duration::from_secs(300),
-            Duration::from_secs(3600),
+            Duration::from_mins(1),
+            Duration::from_mins(5),
+            Duration::from_hours(1),
         ];
 
         for timeout in timeouts {
@@ -520,7 +520,7 @@ mod workload_execution_tests {
         let timeout: Option<Duration> = None;
         assert!(timeout.is_none(), "Infinite timeout represented as None");
 
-        let finite_timeout = Some(Duration::from_secs(300));
+        let finite_timeout = Some(Duration::from_mins(5));
         assert!(finite_timeout.is_some());
         if let Some(timeout) = finite_timeout {
             assert_eq!(timeout.as_secs(), 300);

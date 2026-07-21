@@ -47,7 +47,7 @@ pub(super) fn sample_coordination_config() -> CoordinationIntegrationConfig {
             splitting_strategies: HashMap::new(),
         },
         discovery_config: CoordinationDiscoveryConfig {
-            discovery_interval: Duration::from_secs(60),
+            discovery_interval: Duration::from_mins(1),
             node_timeout: Duration::from_secs(30),
         },
         load_balancer_config: LoadBalancerConfig {
@@ -56,7 +56,7 @@ pub(super) fn sample_coordination_config() -> CoordinationIntegrationConfig {
         },
         broadcast_config: BroadcastConfig {
             channels: vec![],
-            message_retention: Duration::from_secs(60),
+            message_retention: Duration::from_mins(1),
         },
         capacity_config: CapacityConfig {
             monitoring_interval: Duration::from_secs(10),
@@ -64,7 +64,7 @@ pub(super) fn sample_coordination_config() -> CoordinationIntegrationConfig {
         },
         receiver_config: ReceiverConfig {
             max_concurrent_jobs: 4,
-            job_timeout: Duration::from_secs(120),
+            job_timeout: Duration::from_mins(2),
         },
     }
 }

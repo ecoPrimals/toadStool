@@ -8,7 +8,7 @@ async fn test_integration_test_manager() {
 
     // Test manager creation and config values
     assert_eq!(config.max_concurrent_tests, 10);
-    assert_eq!(config.default_timeout, Duration::from_secs(300));
+    assert_eq!(config.default_timeout, Duration::from_mins(5));
 
     // Test initial state
     let results = manager.get_results().await;
@@ -19,7 +19,7 @@ async fn test_integration_test_manager() {
 async fn test_comprehensive_integration_tests() {
     let config = IntegrationTestConfig {
         max_concurrent_tests: 5,
-        default_timeout: Duration::from_secs(60),
+        default_timeout: Duration::from_mins(1),
         collect_metrics: true,
         save_artifacts: false,
         artifact_dir: std::path::PathBuf::from("./test_artifacts"),

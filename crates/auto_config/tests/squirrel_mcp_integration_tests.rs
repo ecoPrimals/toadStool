@@ -572,7 +572,7 @@ async fn test_execute_with_gpu_intent() {
         purpose: "GPU computation".to_string(),
         security_requirements: vec![],
         performance_expectations: PerformanceExpectations {
-            expected_duration: Some(Duration::from_secs(60)),
+            expected_duration: Some(Duration::from_mins(1)),
             cpu_intensity: 0.9,
             memory_pattern: MemoryPattern::Large,
             io_intensity: IoIntensity::Medium,

@@ -199,7 +199,7 @@ async fn create_permission_service_unavailable() {
                 toadstool_distributed::security_provider::types::ResourceLimits::default(),
             geo_restrictions: vec![],
         },
-        validity_duration: Duration::from_secs(3600),
+        validity_duration: Duration::from_hours(1),
         delegation_info: None,
     };
     let result: Result<_, _> = client.create_permission(&req).await;
@@ -224,7 +224,7 @@ async fn validate_permission_service_unavailable() {
             geo_restrictions: vec![],
         },
         valid_from: std::time::SystemTime::now(),
-        valid_until: std::time::SystemTime::now() + Duration::from_secs(3600),
+        valid_until: std::time::SystemTime::now() + Duration::from_hours(1),
         proof: SecurityProof {
             signature: vec![],
             algorithm: SignatureAlgorithm::Ed25519,

@@ -459,7 +459,7 @@ async fn test_timeout_calculation() {
 
     // Test custom timeouts
     let short_timeout = Duration::from_secs(5);
-    let long_timeout = Duration::from_secs(120);
+    let long_timeout = Duration::from_mins(2);
 
     assert!(short_timeout < default_timeout);
     assert!(long_timeout > default_timeout);

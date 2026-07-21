@@ -110,7 +110,7 @@ fn test_execution_request_creation() {
     let request = ExecutionRequest::default();
 
     assert!(!request.execution_id.is_nil());
-    assert_eq!(request.timeout, Some(Duration::from_secs(300)));
+    assert_eq!(request.timeout, Some(Duration::from_mins(5)));
     assert!(request.environment.is_empty());
 }
 
@@ -142,7 +142,7 @@ fn test_execution_request_with_environment() {
 
 #[test]
 fn test_execution_request_with_timeout() {
-    let custom_timeout = Duration::from_secs(600);
+    let custom_timeout = Duration::from_mins(10);
     let request = ExecutionRequest {
         timeout: Some(custom_timeout),
         ..ExecutionRequest::default()

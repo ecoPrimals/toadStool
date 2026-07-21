@@ -49,11 +49,11 @@ async fn test_analyze_trends_with_increasing_trend() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Create increasing trend data
-    let base_time = SystemTime::now() - Duration::from_secs(5 * 3600);
+    let base_time = SystemTime::now() - Duration::from_hours(5);
     for i in 0..10 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::from_secs((i as u64) * 3600),
+            timestamp: base_time + Duration::from_hours(i as u64),
             metric_name: "increasing_metric".to_string(),
             value: f64::from(i).mul_add(5.0, 10.0), // 10, 15, 20, 25, ...
             runtime_type: Some(RuntimeType::Native),
@@ -73,11 +73,11 @@ async fn test_analyze_trends_with_stable_data() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Create stable data (low variation)
-    let base_time = SystemTime::now() - Duration::from_secs(3 * 3600);
+    let base_time = SystemTime::now() - Duration::from_hours(3);
     for i in 0..10 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::from_secs((i as u64) * 3600),
+            timestamp: base_time + Duration::from_hours(i as u64),
             metric_name: "stable_metric".to_string(),
             value: f64::from(i).mul_add(0.1, 50.0), // Very small variation
             runtime_type: Some(RuntimeType::Wasm),
@@ -109,11 +109,11 @@ async fn test_predict_values_with_historical_data() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Add historical data for prediction
-    let base_time = SystemTime::now() - Duration::from_secs(7 * 86400);
+    let base_time = SystemTime::now() - Duration::from_hours(7 * 24);
     for i in 0..50 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::from_secs((i * 3) as u64 * 3600),
+            timestamp: base_time + Duration::from_hours((i * 3) as u64),
             metric_name: "predict_metric".to_string(),
             value: f64::from(i).mul_add(2.0, 100.0),
             runtime_type: Some(RuntimeType::Native),
@@ -132,11 +132,11 @@ async fn test_predict_values_short_horizon() {
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
 
     // Add minimal data
-    let base_time = SystemTime::now() - Duration::from_secs(12 * 3600);
+    let base_time = SystemTime::now() - Duration::from_hours(12);
     for i in 0..5 {
         let data_point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
-            timestamp: base_time + Duration::from_secs((i * 2) as u64 * 3600),
+            timestamp: base_time + Duration::from_hours((i * 2) as u64),
             metric_name: "short_predict".to_string(),
             value: 50.0 + f64::from(i),
             runtime_type: Some(RuntimeType::Wasm),

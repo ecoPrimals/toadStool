@@ -45,7 +45,7 @@ fn test_config_with_signing_key() -> AuthManagerConfig {
 
 fn sample_token() -> AuthenticationToken {
     let now = SystemTime::now();
-    let expires = now + Duration::from_secs(3600);
+    let expires = now + Duration::from_hours(1);
     AuthenticationToken {
         id: "token-123".to_string(),
         token_type: "Bearer".to_string(),
@@ -241,7 +241,7 @@ fn test_default_token_audience_self_and_platform_when_no_env() {
 #[tokio::test(flavor = "current_thread")]
 async fn test_start_and_stop_token_refresh() {
     let mut config = test_config();
-    config.token_refresh_interval = std::time::Duration::from_secs(3600);
+    config.token_refresh_interval = std::time::Duration::from_hours(1);
     let mut manager = AuthenticationManager::with_inmemory(config);
     let start_result = manager.start_token_refresh();
     assert!(start_result.is_ok());

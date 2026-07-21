@@ -651,7 +651,7 @@ fn make_test_message() -> ProtocolMessage {
         format: MessageFormat::Json,
         correlation_id: None,
         reply_to: None,
-        ttl: Some(Duration::from_secs(60)),
+        ttl: Some(Duration::from_mins(1)),
         priority: MessagePriority::Normal,
     }
 }

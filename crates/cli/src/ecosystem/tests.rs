@@ -134,7 +134,7 @@ fn test_beardog_permission_creation() {
         permission_id: Uuid::new_v4(),
         granted_to: "test-service".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
-        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_hours(1),
         signature: "test-signature".to_string(),
     };
 
@@ -277,7 +277,7 @@ fn test_create_permission_message() {
         permission_id: Uuid::new_v4(),
         granted_to: "test-service".to_string(),
         capabilities: vec!["read".to_string(), "write".to_string()],
-        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_hours(1),
         signature: "test-signature".to_string(),
     };
 
@@ -508,7 +508,7 @@ fn test_nestgate_mount_without_encryption() {
 
 #[test]
 fn test_service_signature_timestamp_validation() {
-    let old_time = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    let old_time = std::time::SystemTime::now() - std::time::Duration::from_hours(1);
     let signature = ServiceSignature {
         algorithm: "ed25519".to_string(),
         signature: "sig".to_string(),

@@ -78,7 +78,7 @@ fn test_registry_config_default() {
 
     assert_eq!(config.default_registry, "docker.io");
     assert_eq!(config.pull_policy, ImagePullPolicy::IfNotPresent);
-    assert_eq!(config.pull_timeout, Duration::from_secs(300));
+    assert_eq!(config.pull_timeout, Duration::from_mins(5));
     assert!(config.registries.is_empty());
 }
 
@@ -248,7 +248,7 @@ fn test_container_resource_limits_default() {
 
     assert_eq!(limits.max_memory_bytes, 512 * 1024 * 1024); // 512 MB
     assert_eq!(limits.max_cpu_millicores, 1000); // 1 CPU core
-    assert_eq!(limits.max_execution_time, Duration::from_secs(3600));
+    assert_eq!(limits.max_execution_time, Duration::from_hours(1));
     assert_eq!(limits.max_io_bps, 100 * 1024 * 1024); // 100 MB/s
 }
 
@@ -283,7 +283,7 @@ fn test_image_config_default() {
 
     assert!(config.cache_enabled);
     assert_eq!(config.max_cache_size_mb, 5120); // 5 GB
-    assert_eq!(config.cleanup_interval, Duration::from_secs(3600));
+    assert_eq!(config.cleanup_interval, Duration::from_hours(1));
     assert!(config.cache_dir.is_none());
 }
 
@@ -485,10 +485,10 @@ fn test_registry_config_custom_timeout() {
         default_registry: "ghcr.io".to_string(),
         registries: HashMap::new(),
         pull_policy: ImagePullPolicy::Always,
-        pull_timeout: Duration::from_secs(600),
+        pull_timeout: Duration::from_mins(10),
     };
 
-    assert_eq!(config.pull_timeout, Duration::from_secs(600));
+    assert_eq!(config.pull_timeout, Duration::from_mins(10));
 }
 
 #[test]
@@ -515,7 +515,7 @@ fn test_registry_config_multiple_registries() {
         default_registry: "docker.io".to_string(),
         registries: registries.clone(),
         pull_policy: ImagePullPolicy::IfNotPresent,
-        pull_timeout: Duration::from_secs(300),
+        pull_timeout: Duration::from_mins(5),
     };
 
     assert_eq!(config.registries.len(), 2);

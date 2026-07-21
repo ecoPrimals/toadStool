@@ -46,7 +46,7 @@ fn test_resource_limits_very_low_cpu() {
 #[test]
 fn test_resource_limits_max_execution_time() {
     let limits = ResourceLimits {
-        max_execution_time: Some(Duration::from_secs(600)), // 10 minutes
+        max_execution_time: Some(Duration::from_mins(10)), // 10 minutes
         ..ResourceLimits::default()
     };
 

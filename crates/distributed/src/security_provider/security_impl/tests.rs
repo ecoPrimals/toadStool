@@ -132,7 +132,7 @@ mod tests {
                 resource_limits: ResourceLimits::default(),
                 geo_restrictions: vec![],
             },
-            validity_duration: std::time::Duration::from_secs(3600),
+            validity_duration: std::time::Duration::from_hours(1),
             delegation_info: None,
         };
 

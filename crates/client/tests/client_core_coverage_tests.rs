@@ -253,7 +253,7 @@ fn new_for_testing_with_custom_headers() {
 fn new_for_testing_with_request_timeout() {
     let config = ClientConfig {
         base_url: "unix:///tmp/sock".to_string(),
-        request_timeout: std::time::Duration::from_secs(60),
+        request_timeout: std::time::Duration::from_mins(1),
         ..Default::default()
     };
     let result = ToadStoolClient::new_for_testing(config);

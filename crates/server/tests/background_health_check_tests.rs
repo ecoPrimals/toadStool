@@ -346,7 +346,7 @@ async fn test_active_executions_tracking() {
                     execution_id,
                     runtime_type: RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
                         ip_address: Some(format!("192.168.1.{i}")),
@@ -384,7 +384,7 @@ async fn test_too_many_active_executions() {
                     execution_id,
                     runtime_type: RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
                         ip_address: Some("127.0.0.1".to_string()),
@@ -422,7 +422,7 @@ async fn test_active_executions_within_limit() {
                     execution_id,
                     runtime_type: RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
                         ip_address: Some("127.0.0.1".to_string()),
@@ -480,7 +480,7 @@ async fn test_complete_health_check_scenario_healthy() {
                     execution_id,
                     runtime_type: RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
                         ip_address: Some("127.0.0.1".to_string()),
@@ -532,7 +532,7 @@ async fn test_complete_health_check_scenario_unhealthy() {
                     execution_id,
                     runtime_type: RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: ExecutionStatus::Running,
                     client_info: toadstool_server::state::ClientInfo {
                         ip_address: Some("127.0.0.1".to_string()),

@@ -401,8 +401,8 @@ async fn s155_background_cleanup_removes_timed_out_executions() {
             ActiveExecution {
                 execution_id: exec_id,
                 runtime_type: RuntimeType::Native,
-                started_at: std::time::SystemTime::now() - Duration::from_secs(7200),
-                timeout: Duration::from_secs(60),
+                started_at: std::time::SystemTime::now() - Duration::from_hours(2),
+                timeout: Duration::from_mins(1),
                 status: ExecutionStatus::Running,
                 client_info: ClientInfo {
                     ip_address: None,
@@ -465,7 +465,7 @@ async fn s155_background_services_with_active_executions() {
                     execution_id: exec_id,
                     runtime_type: RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: ExecutionStatus::Running,
                     client_info: ClientInfo {
                         ip_address: Some(format!("192.168.1.{i}")),

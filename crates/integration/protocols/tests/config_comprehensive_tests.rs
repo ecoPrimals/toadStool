@@ -82,7 +82,7 @@ fn test_connection_pool_config_default() {
     let config = ConnectionPoolConfig::default();
 
     assert_eq!(config.max_connections_per_service, 10);
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
+    assert_eq!(config.idle_timeout, Duration::from_mins(5));
     assert_eq!(config.keep_alive_interval, Duration::from_secs(30));
     assert_eq!(config.max_concurrent_requests, 100);
 }
@@ -201,11 +201,11 @@ fn test_protocol_config_with_auth() {
 #[test]
 fn test_protocol_config_timeout_customization() {
     let config = ProtocolConfig {
-        request_timeout: Duration::from_secs(60),
+        request_timeout: Duration::from_mins(1),
         ..Default::default()
     };
 
-    assert_eq!(config.request_timeout, Duration::from_secs(60));
+    assert_eq!(config.request_timeout, Duration::from_mins(1));
 }
 
 #[test]

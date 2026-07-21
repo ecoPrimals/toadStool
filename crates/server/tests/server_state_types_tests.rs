@@ -65,7 +65,7 @@ fn test_active_execution_creation() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Native,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(3600),
+        timeout: Duration::from_hours(1),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: Some("192.168.1.1".to_string()),
@@ -85,7 +85,7 @@ fn test_active_execution_with_timeout() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(7200), // 2 hours
+        timeout: Duration::from_hours(2), // 2 hours
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: Some("10.0.0.5".to_string()),
@@ -95,7 +95,7 @@ fn test_active_execution_with_timeout() {
         },
     };
 
-    assert_eq!(execution.timeout, Duration::from_secs(7200));
+    assert_eq!(execution.timeout, Duration::from_hours(2));
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn test_active_execution_clone() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Wasm,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(1800),
+        timeout: Duration::from_mins(30),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: None,
@@ -136,7 +136,7 @@ fn test_execution_with_client_context() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(3600),
+        timeout: Duration::from_hours(1),
         status: ExecutionStatus::Running,
         client_info: client,
     };

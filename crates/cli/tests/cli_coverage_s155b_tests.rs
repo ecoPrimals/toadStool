@@ -74,7 +74,7 @@ mod ecosystem_tests {
             permission_id: Uuid::new_v4(),
             granted_to: "test-service".to_string(),
             capabilities: vec!["read".to_string(), "write".to_string()],
-            valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
+            valid_until: std::time::SystemTime::now() + std::time::Duration::from_hours(1),
             signature: "test-signature".to_string(),
         };
         assert_eq!(permission.granted_to, "test-service");
@@ -492,7 +492,7 @@ mod universal_tests {
             target_platform: "docker".to_string(),
             workload_id: "w1".to_string(),
             migration_type: MigrationType::ColdMigration,
-            estimated_duration: tokio::time::Duration::from_secs(60),
+            estimated_duration: tokio::time::Duration::from_mins(1),
             risks: vec!["downtime".to_string()],
             requirements: vec!["target available".to_string()],
             cleanup_source: false,

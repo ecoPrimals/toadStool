@@ -233,7 +233,7 @@ async fn test_with_config_submillisecond() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
@@ -247,7 +247,7 @@ async fn test_with_config_millisecond() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Alert,
-        metrics_retention: Duration::from_secs(7200),
+        metrics_retention: Duration::from_hours(2),
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
@@ -261,7 +261,7 @@ async fn test_with_config_high_frequency() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Terminate,
-        metrics_retention: Duration::from_secs(1800),
+        metrics_retention: Duration::from_mins(30),
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
@@ -275,7 +275,7 @@ async fn test_with_config_custom_granularity() {
         enable_network_monitoring: false,
         enable_threshold_monitoring: false,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(600),
+        metrics_retention: Duration::from_mins(10),
     };
 
     let monitor = SystemResourceMonitor::with_config(config);
@@ -291,7 +291,7 @@ fn test_monitoring_config_default() {
     ));
     assert!(config.enable_network_monitoring);
     assert!(config.enable_threshold_monitoring);
-    assert_eq!(config.metrics_retention, Duration::from_secs(3600));
+    assert_eq!(config.metrics_retention, Duration::from_hours(1));
 }
 
 #[test]
@@ -336,7 +336,7 @@ async fn test_monitoring_loop_with_thresholds() {
         enable_network_monitoring: true,
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Log,
-        metrics_retention: Duration::from_secs(3600),
+        metrics_retention: Duration::from_hours(1),
     };
 
     let monitor = SystemResourceMonitor::with_config(config);

@@ -132,7 +132,7 @@ fn test_network_health_monitor_state_transition_healthy_to_degraded() {
 
 #[test]
 fn test_network_health_monitor_state_transition_unhealthy_to_healthy() {
-    let mut monitor = NetworkHealthMonitor::with_interval(Duration::from_secs(60));
+    let mut monitor = NetworkHealthMonitor::with_interval(Duration::from_mins(1));
     let node_id = "recovered".to_string();
     monitor.update_node_health(node_id.clone(), ConnectionHealth::Unhealthy);
     assert_eq!(

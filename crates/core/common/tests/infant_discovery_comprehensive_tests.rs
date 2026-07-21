@@ -19,7 +19,7 @@ fn test_discovery_config_default() {
     let config = DiscoveryConfig::default();
 
     assert!(config.enable_cache);
-    assert_eq!(config.cache_ttl, Duration::from_secs(300));
+    assert_eq!(config.cache_ttl, Duration::from_mins(5));
     assert_eq!(config.default_timeout, Duration::from_secs(30));
     assert_eq!(config.retry_attempts, 3);
     assert_eq!(config.retry_delay, Duration::from_secs(1));
@@ -29,8 +29,8 @@ fn test_discovery_config_default() {
 fn test_discovery_config_clone() {
     let config = DiscoveryConfig {
         enable_cache: false,
-        cache_ttl: Duration::from_secs(600),
-        default_timeout: Duration::from_secs(60),
+        cache_ttl: Duration::from_mins(10),
+        default_timeout: Duration::from_mins(1),
         retry_attempts: 5,
         retry_delay: Duration::from_secs(2),
     };
@@ -47,7 +47,7 @@ fn test_discovery_config_clone() {
 fn test_discovery_config_custom_values() {
     let config = DiscoveryConfig {
         enable_cache: false,
-        cache_ttl: Duration::from_secs(60),
+        cache_ttl: Duration::from_mins(1),
         default_timeout: Duration::from_secs(10),
         retry_attempts: 1,
         retry_delay: Duration::from_millis(500),
@@ -404,14 +404,14 @@ fn test_discovery_engine_builder_new() {
 
 #[test]
 fn test_discovery_engine_builder_cache_ttl() {
-    let builder = DiscoveryEngineBuilder::new().cache_ttl(Duration::from_secs(600));
+    let builder = DiscoveryEngineBuilder::new().cache_ttl(Duration::from_mins(10));
     // Verify builder method returns builder - if this compiles, test passes
     drop(builder);
 }
 
 #[test]
 fn test_discovery_engine_builder_timeout() {
-    let builder = DiscoveryEngineBuilder::new().timeout(Duration::from_secs(60));
+    let builder = DiscoveryEngineBuilder::new().timeout(Duration::from_mins(1));
     // Verify builder method returns builder - if this compiles, test passes
     drop(builder);
 }
@@ -426,7 +426,7 @@ fn test_discovery_engine_builder_disable_cache() {
 #[test]
 fn test_discovery_engine_builder_chaining() {
     let builder = DiscoveryEngineBuilder::new()
-        .cache_ttl(Duration::from_secs(600))
+        .cache_ttl(Duration::from_mins(10))
         .timeout(Duration::from_secs(45))
         .disable_cache();
     // Verify builder methods can be chained - if this compiles, test passes
@@ -448,7 +448,7 @@ fn test_discovery_engine_new() {
 fn test_discovery_engine_with_config() {
     let config = DiscoveryConfig {
         enable_cache: false,
-        cache_ttl: Duration::from_secs(300),
+        cache_ttl: Duration::from_mins(5),
         default_timeout: Duration::from_secs(30),
         retry_attempts: 3,
         retry_delay: Duration::from_secs(1),
@@ -609,15 +609,15 @@ fn test_discovery_config_variations() {
     let configs = [
         DiscoveryConfig {
             enable_cache: true,
-            cache_ttl: Duration::from_secs(60),
+            cache_ttl: Duration::from_mins(1),
             default_timeout: Duration::from_secs(10),
             retry_attempts: 1,
             retry_delay: Duration::from_millis(100),
         },
         DiscoveryConfig {
             enable_cache: false,
-            cache_ttl: Duration::from_secs(3600),
-            default_timeout: Duration::from_secs(120),
+            cache_ttl: Duration::from_hours(1),
+            default_timeout: Duration::from_mins(2),
             retry_attempts: 10,
             retry_delay: Duration::from_secs(5),
         },

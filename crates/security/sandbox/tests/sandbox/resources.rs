@@ -78,10 +78,10 @@ fn test_resource_limits_unlimited() {
 #[test]
 fn test_resource_limits_with_timeout() {
     let limits = ResourceLimits {
-        max_execution_time: Some(Duration::from_secs(300)),
+        max_execution_time: Some(Duration::from_mins(5)),
         ..ResourceLimits::default()
     };
 
-    assert_eq!(limits.max_execution_time, Some(Duration::from_secs(300)));
+    assert_eq!(limits.max_execution_time, Some(Duration::from_mins(5)));
 }
 

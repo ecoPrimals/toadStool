@@ -335,7 +335,7 @@ mod health_monitoring_tests {
             Duration::from_secs(5),
             Duration::from_secs(10),
             Duration::from_secs(30),
-            Duration::from_secs(60),
+            Duration::from_mins(1),
         ];
 
         for interval in intervals {
@@ -790,7 +790,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_timeout_handling() {
-        let job_timeout = Duration::from_secs(300);
+        let job_timeout = Duration::from_mins(5);
         let elapsed = Duration::from_secs(400);
 
         assert!(elapsed > job_timeout);

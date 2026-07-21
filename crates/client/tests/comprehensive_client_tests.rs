@@ -34,7 +34,7 @@ fn test_client_config_custom() {
 
     let config = ClientConfig {
         base_url: "http://custom:9000".to_string(),
-        request_timeout: Duration::from_secs(60),
+        request_timeout: Duration::from_mins(1),
         max_retries: 5,
         retry_backoff: Duration::from_millis(500),
         auth: None,
@@ -49,23 +49,23 @@ fn test_client_config_custom() {
 #[test]
 fn test_client_config_timeouts() {
     let config = ClientConfig {
-        request_timeout: Duration::from_secs(120),
+        request_timeout: Duration::from_mins(2),
         ..ClientConfig::default()
     };
 
-    assert_eq!(config.request_timeout, Duration::from_secs(120));
+    assert_eq!(config.request_timeout, Duration::from_mins(2));
 }
 
 #[test]
 fn test_client_config_retries() {
     let config = ClientConfig {
         max_retries: 10,
-        retry_backoff: Duration::from_millis(2000),
+        retry_backoff: Duration::from_secs(2),
         ..ClientConfig::default()
     };
 
     assert_eq!(config.max_retries, 10);
-    assert_eq!(config.retry_backoff, Duration::from_millis(2000));
+    assert_eq!(config.retry_backoff, Duration::from_secs(2));
 }
 
 #[test]

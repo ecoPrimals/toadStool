@@ -76,7 +76,7 @@ fn test_discovery_method_variants() {
 #[test]
 fn test_discovery_config_default() {
     let config = DiscoveryConfig::default();
-    assert_eq!(config.cache_ttl, Duration::from_secs(300));
+    assert_eq!(config.cache_ttl, Duration::from_mins(5));
     assert_eq!(config.health_check_interval, Duration::from_secs(30));
     assert!(config.fallbacks.is_empty());
     assert!(config.enable_mdns);

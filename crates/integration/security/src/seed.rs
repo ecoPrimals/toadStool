@@ -5,7 +5,7 @@ use crate::types::{EntropyMixing, EntropySource};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime};
 
-const DEFAULT_SEED_FRESHNESS: Duration = Duration::from_mins(5);
+const DEFAULT_SEED_FRESHNESS: Duration = Duration::from_secs(300);
 
 /// Quality score for entropy
 ///

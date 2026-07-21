@@ -254,7 +254,7 @@ async fn test_cache_hit_returns_cached_service() {
     );
     config.enable_mdns = false;
     config.require_mdns = false;
-    config.cache_ttl = Duration::from_secs(300);
+    config.cache_ttl = Duration::from_mins(5);
 
     let engine = PrimalDiscoveryEngine::without_client(config).expect("Failed to create engine");
 

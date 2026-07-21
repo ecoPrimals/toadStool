@@ -134,6 +134,4 @@ temp-env = { workspace = true }
 
 
 [features]
-default = ["pure-ecosystem"]
-pure-ecosystem = []
-full-ecosystem = ["pure-ecosystem"]
+default = []

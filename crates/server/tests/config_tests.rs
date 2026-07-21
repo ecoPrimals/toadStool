@@ -25,7 +25,7 @@ fn test_server_config_default() {
     assert!(config.enable_api);
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
-    assert_eq!(config.default_timeout, Duration::from_secs(300));
+    assert_eq!(config.default_timeout, Duration::from_mins(5));
     assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
 }
 
@@ -52,9 +52,9 @@ fn test_server_config_max_concurrent_executions() {
 
 #[test]
 fn test_server_config_default_timeout() {
-    let config = ServerConfig::default().default_timeout(Duration::from_secs(600));
+    let config = ServerConfig::default().default_timeout(Duration::from_mins(10));
 
-    assert_eq!(config.default_timeout, Duration::from_secs(600));
+    assert_eq!(config.default_timeout, Duration::from_mins(10));
 }
 
 #[test]
@@ -63,12 +63,12 @@ fn test_server_config_chained_builders() {
         .bind_address("0.0.0.0:8080")
         .enable_api(true)
         .max_concurrent_executions(50)
-        .default_timeout(Duration::from_secs(120));
+        .default_timeout(Duration::from_mins(2));
 
     assert_eq!(config.bind_address, "0.0.0.0:8080");
     assert!(config.enable_api);
     assert_eq!(config.max_concurrent_executions, 50);
-    assert_eq!(config.default_timeout, Duration::from_secs(120));
+    assert_eq!(config.default_timeout, Duration::from_mins(2));
 }
 
 #[test]
@@ -119,11 +119,11 @@ fn test_server_config_maximal() {
     let config = ServerConfig::default()
         .enable_api(true)
         .max_concurrent_executions(1000)
-        .default_timeout(Duration::from_secs(3600));
+        .default_timeout(Duration::from_hours(1));
 
     assert!(config.enable_api);
     assert_eq!(config.max_concurrent_executions, 1000);
-    assert_eq!(config.default_timeout, Duration::from_secs(3600));
+    assert_eq!(config.default_timeout, Duration::from_hours(1));
 }
 
 // ============================================================================
@@ -521,7 +521,7 @@ fn test_full_server_config_production() {
         .bind_address("0.0.0.0:443")
         .enable_api(true)
         .max_concurrent_executions(500)
-        .default_timeout(Duration::from_secs(600))
+        .default_timeout(Duration::from_mins(10))
         .auth(auth)
         .rate_limiting(rate_limiting);
 
@@ -538,7 +538,7 @@ fn test_full_server_config_development() {
         .bind_address("127.0.0.1:8080")
         .enable_api(true)
         .max_concurrent_executions(10)
-        .default_timeout(Duration::from_secs(60));
+        .default_timeout(Duration::from_mins(1));
 
     assert_eq!(config.bind_address, "127.0.0.1:8080");
     assert_eq!(config.max_concurrent_executions, 10);

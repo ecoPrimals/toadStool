@@ -118,8 +118,8 @@ fn test_timeout_configuration() {
     // Test timeout configuration
     let timeout_values = vec![
         Duration::from_secs(30),
-        Duration::from_secs(60),
-        Duration::from_secs(300),
+        Duration::from_mins(1),
+        Duration::from_mins(5),
     ];
 
     for timeout in timeout_values {

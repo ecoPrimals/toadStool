@@ -18,7 +18,7 @@ fn test_discovery_config_defaults() {
     assert!(config.enable_mdns);
     assert!(config.enable_dns_sd);
     assert_eq!(config.discovery_interval, Duration::from_secs(30));
-    assert_eq!(config.service_timeout, Duration::from_secs(300));
+    assert_eq!(config.service_timeout, Duration::from_mins(5));
     assert_eq!(config.max_services, 1000);
 }
 
@@ -29,8 +29,8 @@ async fn test_custom_discovery_config() {
     let config = DiscoveryConfig {
         enable_mdns: false,
         enable_dns_sd: true,
-        discovery_interval: Duration::from_secs(60),
-        service_timeout: Duration::from_secs(600),
+        discovery_interval: Duration::from_mins(1),
+        service_timeout: Duration::from_mins(10),
         max_services: 500,
     };
 

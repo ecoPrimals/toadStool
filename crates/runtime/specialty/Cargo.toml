@@ -36,8 +36,6 @@ nb = "1.0"
 void = "1.0"
 cortex-m = { version = "0.7", optional = true }
 
-# Cross-compilation support — C build deps behind feature (ecoBin compliance)
-cross = { version = "0.2", optional = true }
 
 # Industrial control protocols
 modbus = { version = "1.0", optional = true }
@@ -58,9 +56,6 @@ embedded-placeholder-impls = []
 # embedded = ["cortex-m", "bindgen"]  # Missing dependencies
 serial-transport = ["serialport"]
 modbus-transport = ["modbus"]
-# C build dependencies for native bindings (ecoBin: opt-in)
-native-bindings = []
-cross-compilation = ["cross", "native-bindings"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

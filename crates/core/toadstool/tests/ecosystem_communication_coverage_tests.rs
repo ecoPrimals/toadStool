@@ -38,7 +38,7 @@ fn communication_manager_default() {
 
 #[tokio::test]
 async fn communication_manager_with_timeout() {
-    let m = CommunicationManager::with_timeout(std::time::Duration::from_secs(60));
+    let m = CommunicationManager::with_timeout(std::time::Duration::from_mins(1));
     let channels: Vec<ServiceChannel> = m.get_all_channels().await;
     assert!(channels.is_empty());
 }

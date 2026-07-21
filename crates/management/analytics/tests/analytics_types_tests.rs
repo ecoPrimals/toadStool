@@ -407,7 +407,7 @@ fn test_panel_type_variants() {
 fn test_time_range_creation() {
     let now = SystemTime::now();
     let time_range = TimeRange {
-        from: now - Duration::from_secs(24 * 3600),
+        from: now - Duration::from_hours(24),
         to: now,
         refresh_interval_secs: 30,
     };
@@ -438,7 +438,7 @@ fn test_dashboard_panel_creation() {
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu_usage".to_string(), "cpu_load".to_string()],
         time_range: TimeRange {
-            from: now - Duration::from_secs(3600),
+            from: now - Duration::from_hours(1),
             to: now,
             refresh_interval_secs: 10,
         },
@@ -525,7 +525,7 @@ fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::LineChart,
         metrics: vec!["cpu".to_string()],
         time_range: TimeRange {
-            from: now - Duration::from_secs(3600),
+            from: now - Duration::from_hours(1),
             to: now,
             refresh_interval_secs: 10,
         },
@@ -543,7 +543,7 @@ fn test_dashboard_with_multiple_panels() {
         panel_type: PanelType::LineChart,
         metrics: vec!["memory".to_string()],
         time_range: TimeRange {
-            from: now - Duration::from_secs(3600),
+            from: now - Duration::from_hours(1),
             to: now,
             refresh_interval_secs: 10,
         },

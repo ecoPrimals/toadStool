@@ -131,8 +131,8 @@ impl HardwareTransport for TestHighBandwidthTransport {
         Ok(data.len())
     }
 
-    fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-        Ok(buf.len().min(0))
+    fn recv(&mut self, _buf: &mut [u8]) -> Result<usize, TransportError> {
+        Ok(0)
     }
 }
 

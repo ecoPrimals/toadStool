@@ -235,7 +235,7 @@ fn test_server_event_clone() {
 fn test_active_execution_creation() {
     let execution_id = Uuid::new_v4();
     let started_at = SystemTime::now();
-    let timeout = Duration::from_secs(300);
+    let timeout = Duration::from_mins(5);
 
     let execution = ActiveExecution {
         execution_id,
@@ -264,7 +264,7 @@ fn test_active_execution_clone() {
         execution_id: Uuid::new_v4(),
         runtime_type: RuntimeType::Container,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(600),
+        timeout: Duration::from_mins(10),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: Some("10.0.0.1".to_string()),
@@ -422,7 +422,7 @@ async fn test_server_state_active_executions() {
         execution_id,
         runtime_type: RuntimeType::Native,
         started_at: SystemTime::now(),
-        timeout: Duration::from_secs(300),
+        timeout: Duration::from_mins(5),
         status: ExecutionStatus::Running,
         client_info: ClientInfo {
             ip_address: Some("127.0.0.1".to_string()),

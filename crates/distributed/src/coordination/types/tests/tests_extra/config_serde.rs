@@ -43,7 +43,7 @@ fn test_load_balancer_config_serde() {
 fn test_broadcast_config_serde() {
     let config = BroadcastConfig {
         channels: vec!["events".to_string()],
-        message_retention: Duration::from_secs(60),
+        message_retention: Duration::from_mins(1),
     };
     let json = serde_json::to_string(&config).unwrap();
     let parsed: BroadcastConfig = serde_json::from_str(&json).unwrap();
@@ -65,7 +65,7 @@ fn test_capacity_config_serde() {
 fn test_receiver_config_serde() {
     let config = ReceiverConfig {
         max_concurrent_jobs: 16,
-        job_timeout: Duration::from_secs(600),
+        job_timeout: Duration::from_mins(10),
     };
     let json = serde_json::to_string(&config).unwrap();
     let parsed: ReceiverConfig = serde_json::from_str(&json).unwrap();

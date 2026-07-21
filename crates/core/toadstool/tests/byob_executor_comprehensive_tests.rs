@@ -665,6 +665,6 @@ async fn test_config_defaults() {
     assert_eq!(config.default_network_subnet, "10.0.0.0/24");
     assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
     assert_eq!(config.health_check_interval, Duration::from_secs(10));
-    assert_eq!(config.deployment_timeout, Duration::from_secs(600));
+    assert_eq!(config.deployment_timeout, Duration::from_mins(10));
     assert!(!config.web_service_ports.is_empty());
 }

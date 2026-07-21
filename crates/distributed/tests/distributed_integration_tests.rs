@@ -381,7 +381,7 @@ async fn test_resource_requirement_matching() {
 async fn test_node_failure_detection() {
     // Test detecting node failures
     let _node_id = Uuid::new_v4();
-    let last_heartbeat = Duration::from_secs(60);
+    let last_heartbeat = Duration::from_mins(1);
     let timeout_threshold = Duration::from_secs(45);
 
     let is_failed = last_heartbeat > timeout_threshold;

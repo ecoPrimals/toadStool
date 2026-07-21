@@ -54,8 +54,8 @@ fn make_performance_metrics(
 #[test]
 fn test_cleanup_old_metrics_removes_old_entries() {
     let now = std::time::SystemTime::now();
-    let old_time = now - Duration::from_secs(25 * 3600); // 25 hours ago
-    let recent_time = now - Duration::from_secs(3600); // 1 hour ago
+    let old_time = now - Duration::from_hours(25); // 25 hours ago
+    let recent_time = now - Duration::from_hours(1); // 1 hour ago
 
     let mut history = VecDeque::new();
     history.push_back(make_performance_metrics(

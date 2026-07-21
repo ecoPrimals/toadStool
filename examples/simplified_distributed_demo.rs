@@ -191,7 +191,7 @@ async fn demonstrate_coordination() -> Result<(), Box<dyn std::error::Error>> {
         runtime_hint: Some(RuntimeType::Native),
         resources: ResourceRequirements::default(),
         security_context: SecurityContext::default(),
-        timeout: Some(Duration::from_secs(300)),
+        timeout: Some(Duration::from_mins(5)),
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,

@@ -488,7 +488,7 @@ fn test_load_test_config_creation() {
         test_name: "load_test".to_string(),
         concurrent_users: 10,
         ramp_up_duration: Duration::from_secs(5),
-        test_duration: Duration::from_secs(60),
+        test_duration: Duration::from_mins(1),
         target_rps: Some(100.0),
         think_time: Duration::from_millis(500),
     };
@@ -496,7 +496,7 @@ fn test_load_test_config_creation() {
     assert_eq!(config.test_name, "load_test");
     assert_eq!(config.concurrent_users, 10);
     assert_eq!(config.ramp_up_duration, Duration::from_secs(5));
-    assert_eq!(config.test_duration, Duration::from_secs(60));
+    assert_eq!(config.test_duration, Duration::from_mins(1));
     assert_eq!(config.target_rps, Some(100.0));
     assert_eq!(config.think_time, Duration::from_millis(500));
 }

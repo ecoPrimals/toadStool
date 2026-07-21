@@ -147,7 +147,7 @@ async fn test_health_check_with_too_many_executions() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),
@@ -237,7 +237,7 @@ async fn test_resource_monitoring_with_many_active_executions() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),
@@ -292,7 +292,7 @@ async fn test_resource_monitoring_updates_peak_concurrent() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),
@@ -372,7 +372,7 @@ async fn test_statistics_with_varying_execution_counts() {
                     execution_id: exec_id,
                     runtime_type: toadstool::RuntimeType::Native,
                     started_at: std::time::SystemTime::now(),
-                    timeout: Duration::from_secs(300),
+                    timeout: Duration::from_mins(5),
                     status: toadstool::ExecutionStatus::Running,
                     client_info: ClientInfo {
                         user_agent: Some(format!("test-{i}")),
@@ -447,7 +447,7 @@ async fn test_cleanup_with_mixed_timeout_states() {
                 execution_id: timed_out_id,
                 runtime_type: toadstool::RuntimeType::Native,
                 started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(400),
-                timeout: Duration::from_secs(300),
+                timeout: Duration::from_mins(5),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: ClientInfo {
                     user_agent: Some("timed-out".to_string()),
@@ -466,7 +466,7 @@ async fn test_cleanup_with_mixed_timeout_states() {
                 execution_id: active_id,
                 runtime_type: toadstool::RuntimeType::Native,
                 started_at: std::time::SystemTime::now(),
-                timeout: Duration::from_secs(3600),
+                timeout: Duration::from_hours(1),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: ClientInfo {
                     user_agent: Some("active".to_string()),

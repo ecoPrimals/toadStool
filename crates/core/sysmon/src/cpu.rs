@@ -233,7 +233,7 @@ mod tests {
     fn test_per_cpu_usage_in_range() {
         let usages = per_cpu_usage(Duration::from_millis(50)).unwrap();
         for (i, &u) in usages.iter().enumerate() {
-            assert!((0.0..=100.0).contains(&u), "CPU {i} usage {u} out of range",);
+            assert!((0.0..=100.0).contains(&u), "CPU {i} usage {u} out of range");
         }
     }
 }

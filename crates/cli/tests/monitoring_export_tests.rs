@@ -44,7 +44,7 @@ async fn test_export_to_file() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_generate_report() {
     let report = MonitorReport {
-        duration: Duration::from_secs(3600),
+        duration: Duration::from_hours(1),
         metric_count: 100,
         avg_cpu: 45.0,
         avg_memory: 60.0,
@@ -56,7 +56,7 @@ async fn test_generate_report() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_report_time_range() {
-    let start = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    let start = std::time::SystemTime::now() - std::time::Duration::from_hours(1);
     let end = std::time::SystemTime::now();
     assert!(end > start, "End should be after start");
 }

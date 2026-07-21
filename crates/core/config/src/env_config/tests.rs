@@ -278,7 +278,7 @@ fn test_get_env_duration() {
     let key = format!("TEST_DURATION_{}", std::process::id());
     temp_env::with_var(&key, Some("120"), || {
         let value = get_env_duration(&key, Duration::from_secs(30));
-        assert_eq!(value, Duration::from_secs(120));
+        assert_eq!(value, Duration::from_mins(2));
     });
 }
 

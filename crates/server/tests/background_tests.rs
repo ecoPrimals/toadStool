@@ -193,7 +193,7 @@ async fn test_resource_monitoring_tracks_peak_executions() {
             execution_id: uuid::Uuid::new_v4(),
             runtime_type: toadstool::RuntimeType::Native,
             started_at: std::time::SystemTime::now(),
-            timeout: Duration::from_secs(300),
+            timeout: Duration::from_mins(5),
             status: toadstool::ExecutionStatus::Running,
             client_info: toadstool_server::ClientInfo {
                 ip_address: Some("127.0.0.1".to_string()),
@@ -316,8 +316,8 @@ async fn test_cleanup_task_runs() {
         let old_execution = toadstool_server::ActiveExecution {
             execution_id: uuid::Uuid::new_v4(),
             runtime_type: toadstool::RuntimeType::Native,
-            started_at: std::time::SystemTime::now() - std::time::Duration::from_secs(7200),
-            timeout: Duration::from_secs(60), // Should have timed out
+            started_at: std::time::SystemTime::now() - std::time::Duration::from_hours(2),
+            timeout: Duration::from_mins(1), // Should have timed out
             status: toadstool::ExecutionStatus::Running,
             client_info: toadstool_server::ClientInfo {
                 ip_address: None,
@@ -376,7 +376,7 @@ async fn test_background_services_with_active_executions() {
                 execution_id: uuid::Uuid::new_v4(),
                 runtime_type: toadstool::RuntimeType::Native,
                 started_at: std::time::SystemTime::now(),
-                timeout: Duration::from_secs(300),
+                timeout: Duration::from_mins(5),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: toadstool_server::ClientInfo {
                     ip_address: Some(format!("192.168.1.{i}")),
@@ -453,7 +453,7 @@ async fn test_background_services_rapid_state_changes() {
                 execution_id: uuid::Uuid::new_v4(),
                 runtime_type: toadstool::RuntimeType::Native,
                 started_at: std::time::SystemTime::now(),
-                timeout: Duration::from_secs(300),
+                timeout: Duration::from_mins(5),
                 status: toadstool::ExecutionStatus::Running,
                 client_info: toadstool_server::ClientInfo {
                     ip_address: Some(format!("192.168.1.{i}")),

@@ -318,7 +318,7 @@ fn test_local_metrics_with_max_values() {
         active_jobs: u64::MAX,
         total_processed: u64::MAX,
         success_rate: 1.0,
-        average_execution_time: Duration::from_secs(3600),
+        average_execution_time: Duration::from_hours(1),
     };
 
     assert_eq!(metrics.active_jobs, u64::MAX);

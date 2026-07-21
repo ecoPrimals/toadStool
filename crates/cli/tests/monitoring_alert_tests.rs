@@ -77,7 +77,7 @@ async fn test_alert_deduplication() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_cooldown_period() {
-    let cooldown = Duration::from_secs(300);
+    let cooldown = Duration::from_mins(5);
     assert!(
         cooldown.as_secs() >= 60,
         "Cooldown should be at least 1 minute"

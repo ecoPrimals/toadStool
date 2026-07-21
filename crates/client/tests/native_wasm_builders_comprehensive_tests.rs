@@ -136,7 +136,7 @@ fn test_native_builder_with_priority() {
 
 #[test]
 fn test_native_builder_with_timeout() {
-    let timeout = Duration::from_secs(300);
+    let timeout = Duration::from_mins(5);
 
     let workload = NativeWorkloadBuilder::new()
         .executable("/bin/sleep")
@@ -207,7 +207,7 @@ fn test_native_builder_full_configuration() {
         .working_dir("/opt/app")
         .environment(env.clone())
         .priority(JobPriority::Normal)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_mins(1))
         .resources(resources.clone())
         .metadata(metadata.clone())
         .build()
@@ -228,7 +228,7 @@ fn test_native_builder_full_configuration() {
 
     assert_eq!(workload.runtime_hint, Some("native".to_string()));
     assert_eq!(workload.priority, Some(JobPriority::Normal));
-    assert_eq!(workload.timeout, Some(Duration::from_secs(60)));
+    assert_eq!(workload.timeout, Some(Duration::from_mins(1)));
     assert_eq!(workload.resources, Some(resources));
     assert_eq!(
         workload.environment.get("VAR1"),
@@ -335,7 +335,7 @@ fn test_native_builder_zero_timeout() {
 
 #[test]
 fn test_native_builder_very_long_timeout() {
-    let long_timeout = Duration::from_secs(86400); // 1 day
+    let long_timeout = Duration::from_hours(24); // 1 day
 
     let workload = NativeWorkloadBuilder::new()
         .executable("/bin/longrunning")
@@ -451,7 +451,7 @@ fn test_wasm_builder_with_priority() {
 #[test]
 fn test_wasm_builder_with_timeout() {
     let module_data = vec![0x00, 0x61, 0x73, 0x6D];
-    let timeout = Duration::from_secs(120);
+    let timeout = Duration::from_mins(2);
 
     let workload = WasmWorkloadBuilder::new()
         .module_data(module_data)
