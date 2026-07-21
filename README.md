@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S336+ | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S339 | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,232+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,252+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
@@ -383,7 +383,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jul 16, 2026 — S336+. **23,000+** workspace tests, 0 failures (9,232+ lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L**. **Zero clippy warnings** (S335). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). Phase 2 GPU backends: `WgpuGpuDiscovery`, `PortableSwapExecutor`, `PortableResourceHandle` (S332). S336: security_impl migrated to crypto_integration (#![expect(deprecated)] removed), dead channels feature removed (12 cfg blocks), test extraction wave 6 (2 files, -173L). S335: doc-comment primal name sweep (22 replacements, 9 files), test extraction waves 4-5 (10 files, −1,103L), dead code elimination (DispatchJob.id removed). S334: test extraction waves 2–3 (11 files, −1,888 lines), 750L gate cleared, dispatch clone polish. S333: 7 large files refactored via test extraction (−2,188 production lines), hardcoded primal names → capability terms in BTSP relay. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
+**Last Updated**: Jul 21, 2026 — S339. **23,000+** workspace tests, 0 failures (9,252+ lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (largest 713L). **Zero clippy warnings** (`-D warnings` on Rust 1.96, S339). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). Phase 2 GPU backends: `WgpuGpuDiscovery`, `PortableSwapExecutor`, `PortableResourceHandle` (S332). S339: Rust 1.96 clippy sweep (251 files — MSRV-safe lint resolution, `duration_suboptimal_units` allowed workspace-wide since `from_mins`/`from_hours` require 1.91+ above MSRV 1.85). S338: structural splits — `rm_object_tree`, `pmu_investigate`, `opcodes`. S337: hot-path `Cow<str>` dispatch mode, `warm.rs` + `operations.rs` structural splits. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
 
 ---
 

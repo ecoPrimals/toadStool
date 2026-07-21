@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: July 16, 2026 — S336+
+**Date**: July 21, 2026 — S339
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S339 (Rust 1.96 Clippy Sweep + Dead Feature Removal)**:
+Rust 1.96 lint resolution across 251 files (MSRV-safe: `duration_suboptimal_units` allowed workspace-wide, `map_unwrap_or` → `is_ok_and`, `used_underscore_binding`, `suboptimal_flops` → `mul_add`). Dead features removed from specialty/examples/sandbox Cargo.toml. 9,252 lib tests.
+
+**S338 (Structural Splits: rm_object_tree, pmu_investigate, opcodes)**:
+3 largest remaining production files split into modular architectures. All `// Pending:` markers verified as legitimate active blockers.
+
+**S337 (Hot-Path Cow<str> + Structural Splits: warm.rs, operations.rs)**:
+`detect_dispatch_mode` returns `Cow<'a, str>` eliminating per-submit heap allocations. 2 large files split.
 
 **S336 (security_impl Migration + Dead Channels Removal + Test Extraction Wave 6)**:
 security_impl migrated to crypto_integration (#![expect(deprecated)] removed), dead channels feature removed (12 cfg blocks), test extraction wave 6 (2 files, -173L).

@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 18, 2026 (Sessions 43-338+)
+## [Unreleased] - Jul 21, 2026 (Sessions 43-339+)
+
+### Session S339 (Jul 21, 2026) — Rust 1.96 Clippy Sweep: MSRV-Safe Lint Resolution
+
+Resolved all new clippy warnings from Rust 1.96 toolchain across 251 files while maintaining MSRV 1.85 compatibility.
+
+- **MSRV compatibility** — `duration_suboptimal_units` lint allowed workspace-wide in `Cargo.toml` since `from_mins`/`from_hours` require Rust 1.91+ (above MSRV 1.85 for `const` contexts). Production code retains `from_secs()` for MSRV safety; test code uses readable `from_mins`/`from_hours`.
+- **Lint fixes** — `map_unwrap_or` → `is_ok_and` (6 sites), `used_underscore_binding` → renamed `_guard` → `guard` in test code (6 sites), `suboptimal_flops` → `mul_add` (1 site), `needless_borrows_for_generic_args` (1 site), `unused_async` → removed `async` from non-async mock server (1 site).
+- **Dead feature removal** — `specialty/native-bindings`, `specialty/cross-compilation` (no `#[cfg]` usage), `examples/pure-ecosystem`, `examples/full-ecosystem` (no `#[cfg]` usage), `sandbox/macos-sandbox` (no `#[cfg]` usage). Removed associated optional dependencies.
+- **Quality gates** — 9,252 lib tests (+20), 0 failures. Zero clippy warnings (`-D warnings` on Rust 1.96), zero fmt diff.
 
 ### Session S338 (Jul 18, 2026) — Deep Structural Refactoring: 3 Large File Splits
 
