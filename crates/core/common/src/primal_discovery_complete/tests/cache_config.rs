@@ -421,9 +421,5 @@ async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {
     engine.cache_service("fresh_key", service).await;
     let cached = engine.get_from_cache("fresh_key").await;
     assert!(cached.is_some());
-    assert!(
-        cached
-            .unwrap()
-            .is_fresh(std::time::Duration::from_mins(10))
-    );
+    assert!(cached.unwrap().is_fresh(std::time::Duration::from_mins(10)));
 }

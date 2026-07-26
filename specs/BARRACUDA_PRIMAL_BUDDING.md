@@ -365,7 +365,7 @@ through computational substrates, discovering barraCuda instances for GPU math.
 ## References
 
 - `SOVEREIGN_COMPUTE_EVOLUTION.md` — barraCuda as "unified math language"
-- `PRIMAL_CAPABILITY_SYSTEM.md` — capability-based discovery (implemented)
+- `CAPABILITY_BASED_DISCOVERY_STANDARD.md` (wateringHole) — capability-based discovery (implemented)
 - `wateringHole/UNIVERSAL_IPC_EVOLUTION_HANDOFF.md` — JSON-RPC 2.0 primal protocol
 - `wateringHole/handoffs/TOADSTOOL_S88_BARRACUDA_PRIMAL_BUDDING_PROPOSAL_MAR02_2026.md`
 - S87: FHE shader fixes proving GPU validation canary viability

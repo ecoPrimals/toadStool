@@ -598,7 +598,6 @@ async fn test_print_ecosystem_table_with_connections() {
             },
             status: ConnectionStatus::Connected,
             last_heartbeat: std::time::SystemTime::now(),
-            _auth_token: Some("token".to_string()),
         },
     );
     let result = integrator.show_ecosystem_status("table").await;

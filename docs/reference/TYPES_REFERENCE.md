@@ -1,8 +1,8 @@
 # ToadStool Types Reference Guide
 ## Canonical Type Definitions and Usage Patterns
 
-**Last Updated**: May 2026 — S282  
-**Status**: 📦 Reference — canonical type definitions and usage patterns
+**Last Updated**: Jul 2026 — S340  
+**Status**: Reference — canonical type definitions and usage patterns
 
 ---
 

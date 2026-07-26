@@ -37,15 +37,11 @@ pub(super) struct ServiceConnection {
     pub(super) endpoint: ServiceEndpoint,
     pub(super) status: ConnectionStatus,
     pub(super) last_heartbeat: std::time::SystemTime,
-    pub(super) _auth_token: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub(super) enum ConnectionStatus {
-    _Connecting,
     Connected,
-    _Disconnected,
-    _Error(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

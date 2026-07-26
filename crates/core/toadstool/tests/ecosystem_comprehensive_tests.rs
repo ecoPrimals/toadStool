@@ -663,10 +663,7 @@ async fn test_discovery_timeout_default() {
 async fn test_discovery_timeout_custom() {
     let mut coordinator = create_mock_coordinator().await.unwrap();
     coordinator.config.discovery_timeout = Duration::from_mins(1);
-    assert_eq!(
-        coordinator.config.discovery_timeout,
-        Duration::from_mins(1)
-    );
+    assert_eq!(coordinator.config.discovery_timeout, Duration::from_mins(1));
 }
 
 // Helper functions

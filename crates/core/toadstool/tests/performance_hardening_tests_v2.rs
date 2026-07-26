@@ -342,10 +342,10 @@ async fn test_minimal_memory_pool_config() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_large_cache_config() {
     let config = CachingConfig {
-        max_size: 100_000,                          // 100K entries
+        max_size: 100_000,                        // 100K entries
         default_ttl: Duration::from_hours(1),     // 1 hour
         cleanup_interval: Duration::from_mins(5), // 5 minutes
-        hit_rate_threshold: 0.95,                   // Very high target
+        hit_rate_threshold: 0.95,                 // Very high target
     };
 
     assert_eq!(config.max_size, 100_000);

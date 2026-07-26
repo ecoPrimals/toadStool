@@ -415,8 +415,8 @@ fn test_full_configuration_scenario() {
     config.cache = Some(CacheConfig {
         enabled: true,
         cache_dir: Some(PathBuf::from("/var/cache/storage")),
-        max_size: 10 * 1024 * 1024 * 1024,  // 10GB
-        ttl: Duration::from_hours(4), // 4 hours
+        max_size: 10 * 1024 * 1024 * 1024, // 10GB
+        ttl: Duration::from_hours(4),      // 4 hours
     });
 
     assert_eq!(config.endpoint, "http://production-storage:8080");

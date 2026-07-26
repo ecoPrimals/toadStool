@@ -2405,7 +2405,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | File size limit | All under 1000 lines (largest: 451 after refactoring). |
 | `#![forbid(unsafe_code)]` | 20 crates upgraded from deny to forbid. |
 | SAFETY comments | Added to akida-driver + runtime/gpu. |
-| Stale REST spec | PRIMAL_CAPABILITY_SYSTEM.md updated (REST→JSON-RPC 2.0). |
+| Stale REST spec | PRIMAL_CAPABILITY_SYSTEM.md superseded → `CAPABILITY_BASED_DISCOVERY_STANDARD.md` in wateringHole (S339 cleanup: spec removed). |
 
 ## Recently Resolved (S144 — Last Mile Deep Debt — Mar 10, 2026)
 

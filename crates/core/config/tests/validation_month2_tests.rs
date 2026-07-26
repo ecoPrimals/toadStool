@@ -77,8 +77,7 @@ fn test_runtime_config_default_thread_count() {
     assert!(config.worker_threads > 0);
     assert!(
         config.worker_threads
-            <= std::thread::available_parallelism()
-                .map_or(1, std::num::NonZero::get)
+            <= std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
     );
 }
 
@@ -228,8 +227,7 @@ impl Default for NetworkConfig {
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
-            worker_threads: std::thread::available_parallelism()
-                .map_or(1, std::num::NonZero::get),
+            worker_threads: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
             max_memory_mb: 4096, // 4GB default
         }
     }

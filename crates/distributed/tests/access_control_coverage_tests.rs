@@ -195,13 +195,7 @@ async fn request_delegation_no_permission_fails() {
         geographic_subset: vec![],
     };
     let result = lock
-        .request_delegation(
-            &from,
-            &to,
-            &cloud_target(),
-            scope,
-            Duration::from_hours(1),
-        )
+        .request_delegation(&from, &to, &cloud_target(), scope, Duration::from_hours(1))
         .await;
     assert!(result.is_err());
 }

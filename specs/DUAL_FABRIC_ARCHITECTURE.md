@@ -3,7 +3,7 @@
 **Version**: 1.0  
 **Date**: March 3, 2026  
 **Status**: Specified (S94b)  
-**Depends on**: `HARDWARE_TRANSPORT_SPEC.md`, `ARCHITECTURE_DEMARCATION.md`, `PRIMAL_CAPABILITY_SYSTEM.md`  
+**Depends on**: `HARDWARE_TRANSPORT_SPEC.md`, `ARCHITECTURE_DEMARCATION.md`, `CAPABILITY_BASED_DISCOVERY_STANDARD.md` (wateringHole)  
 **License**: AGPL-3.0-only
 
 ---
@@ -264,7 +264,7 @@ No primal hardcodes another's topology. Songbird doesn't know about HDMI cables.
 |------|-------------|
 | `ARCHITECTURE_DEMARCATION.md` | Extends the "hardware streaming" section. HDMI/capture is a new substrate alongside GPU/NPU/CPU. |
 | `HARDWARE_TRANSPORT_SPEC.md` | Implementation detail. Defines the `HardwareTransport` trait, frame protocol, and concrete transport types used by this architecture. |
-| `PRIMAL_CAPABILITY_SYSTEM.md` | toadStool registers `transport_hdmi`, `transport_capture`, `transport_serial` as capabilities alongside existing `compute_gpu`, `compute_npu`. |
+| `CAPABILITY_BASED_DISCOVERY_STANDARD.md` (wateringHole) | toadStool registers `transport_hdmi`, `transport_capture`, `transport_serial` as capabilities alongside existing `compute_gpu`, `compute_npu`. |
 | `SOVEREIGN_COMPUTE_EVOLUTION.md` | The airgapped deployment model is the ultimate expression of sovereign compute — user controls every physical data path. |
 | `BARRACUDA_PRIMAL_BUDDING.md` | The budding freed toadStool to specialize in hardware. This spec is a direct consequence. |
 

@@ -521,10 +521,7 @@ fn test_find_timed_out_execution_ids_none_expired() {
     let id = Uuid::new_v4();
     let now = std::time::SystemTime::now();
     let mut active = HashMap::new();
-    active.insert(
-        id,
-        sample_active_execution(id, now, Duration::from_mins(1)),
-    );
+    active.insert(id, sample_active_execution(id, now, Duration::from_mins(1)));
 
     let timed_out = find_timed_out_execution_ids(&active, now);
     assert!(timed_out.is_empty());

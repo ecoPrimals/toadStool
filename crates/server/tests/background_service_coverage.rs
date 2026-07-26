@@ -82,7 +82,7 @@ fn test_monitoring_statistics() {
 fn test_cleanup_task_intervals() {
     // Test cleanup task timing
     let cleanup_intervals = vec![
-        Duration::from_mins(1),   // 1 minute
+        Duration::from_mins(1),  // 1 minute
         Duration::from_mins(5),  // 5 minutes
         Duration::from_hours(1), // 1 hour
     ];

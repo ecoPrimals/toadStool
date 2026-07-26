@@ -392,7 +392,7 @@ without changes. Both paths converge on the same hardware target.
 | `FP64_GPU_EVOLUTION.md` | Phase 0 complete — fossil functions, capability matrix |
 | `BARRACUDA_PARITY_ROADMAP.md` | Performance parity via WGSL ILP is the next tier |
 | `CROSS_VENDOR_BENCHMARK_SPEC.md` | `bench_f64_builtins` feeds `MeasuredLatencyModel` |
-| `PRIMAL_CAPABILITY_SYSTEM.md` | ToadStool node discovery — the mycelial network foundation |
+| `CAPABILITY_BASED_DISCOVERY_STANDARD.md` (wateringHole) | ToadStool node discovery — the mycelial network foundation |
 | `NAK_CONTRIBUTION_PLAN_FEB18_2026.md` | Upstream NAK work (parallel, not dependent) |
 | `ARCHITECTURE_DEMARCATION.md` | Consumption chain: barraCuda → coralReef → toadStool |
 | `HARDWARE_TRANSPORT_SPEC.md` | Data-plane transports (HDMI, PCIe P2P) vs VFIO control-plane |

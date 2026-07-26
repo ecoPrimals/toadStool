@@ -148,8 +148,8 @@ fn test_cleanup_candidate_identification() {
 fn test_statistics_collection_interval() {
     // Test statistics collection interval
     let collection_intervals = vec![
-        Duration::from_mins(1),  // 1 minute
-        Duration::from_mins(5), // 5 minutes
+        Duration::from_mins(1),   // 1 minute
+        Duration::from_mins(5),   // 5 minutes
         Duration::from_secs(900), // 15 minutes
     ];
 

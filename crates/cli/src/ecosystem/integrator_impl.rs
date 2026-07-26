@@ -12,7 +12,7 @@
 //
 // See:
 // - `crates/cli/src/ecosystem/adapters/` - New capability-based API
-// - `specs/PRIMAL_CAPABILITY_SYSTEM.md` - Architecture documentation
+// - `CAPABILITY_BASED_DISCOVERY_STANDARD.md` in wateringHole — ecosystem standard
 
 use self::discovery::*;
 
@@ -248,7 +248,6 @@ impl EcosystemIntegrator {
                     },
                     status: ConnectionStatus::Connected,
                     last_heartbeat: std::time::SystemTime::now(),
-                    _auth_token: Some(reg_token.token),
                 };
 
                 self.connections.insert("coordination".to_string(), connection);
@@ -350,7 +349,6 @@ impl EcosystemIntegrator {
                     },
                     status: ConnectionStatus::Connected,
                     last_heartbeat: std::time::SystemTime::now(),
-                    _auth_token: None,
                 };
 
                 self.connections.insert("storage".to_string(), connection);

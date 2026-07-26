@@ -559,7 +559,7 @@ fn test_monitoring_config_high_performance_scenario() {
         enable_network_monitoring: false, // Disable to reduce overhead
         enable_threshold_monitoring: true,
         threshold_action: ThresholdAction::Terminate, // Strict enforcement
-        metrics_retention: Duration::from_mins(5),  // 5 minutes (limited)
+        metrics_retention: Duration::from_mins(5),    // 5 minutes (limited)
     };
 
     assert_eq!(config.granularity.to_duration(), Duration::from_micros(100));

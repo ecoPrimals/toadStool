@@ -193,6 +193,7 @@ gap closure, performance surface database. See `ALL_SILICON_PIPELINE.md`.
 |----------|---------|---------|--------|
 | **[DUAL_FABRIC_ARCHITECTURE.md](./DUAL_FABRIC_ARCHITECTURE.md)** | Multi-machine dual-fabric: hardware backbone (toadStool) + network plane (Songbird) | **Mar 3** | ✅ Specified |
 | **[HARDWARE_TRANSPORT_SPEC.md](./HARDWARE_TRANSPORT_SPEC.md)** | `HardwareTransport` trait + VFIO clarification — data-plane vs control-plane | **Mar 12** | ✅ Implemented |
+| **[DISPATCH_WIRE_CONTRACT.md](./DISPATCH_WIRE_CONTRACT.md)** | Wire Standard L3 dispatch contract — compute.dispatch.submit schema | **Apr 12** | ✅ Active |
 | **[DISPLAY_BACKEND_SPEC.md](./DISPLAY_BACKEND_SPEC.md)** | DRM/input backend — display hardware control | Jan 19 | ✅ Phase 1 Complete |
 
 ### Research & Extensions (Future Work)
@@ -200,7 +201,7 @@ gap closure, performance surface database. See `ALL_SILICON_PIPELINE.md`.
 | Document | Purpose | Updated | Status |
 |----------|---------|---------|--------|
 | ~~RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS~~ | Neuromorphic reservoir computing ops | Jan 29 | Transferred to barraCuda |
-| **[PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md)** | Capability-based discovery | Nov 2025 | ✅ Implemented |
+| ~~PRIMAL_CAPABILITY_SYSTEM~~ | Capability-based discovery | Nov 2025 | Superseded → `CAPABILITY_BASED_DISCOVERY_STANDARD.md` in wateringHole |
 
 ### All-Silicon Pipeline — Phased Evolution
 
