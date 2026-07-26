@@ -82,23 +82,29 @@ impl SecurityDiscovery {
 
         match PrimalDiscovery::with_config(discovery_config) {
             Ok(discovery) => match discovery.find_capability("security").await {
-                Ok(endpoint) => {
-                    let security_endpoint = SecurityEndpoint {
-                        service_id: endpoint.service_id.clone(),
-                        protocol: "http".to_string(),
-                        address: endpoint
-                            .url()
-                            .parse()
-                            .unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 8081))),
-                        api_version: "v1".to_string(),
-                        capabilities: vec![SecurityCapability::Encryption {
-                            algorithms: vec!["aes-256".to_string()],
-                        }],
-                        healthy: true,
-                        latency_ms: Some(endpoint.latency_ms),
-                    };
-                    Ok(vec![security_endpoint])
-                }
+                Ok(endpoint) => match endpoint.url().parse() {
+                    Ok(address) => {
+                        let security_endpoint = SecurityEndpoint {
+                            service_id: endpoint.service_id.clone(),
+                            protocol: "http".to_string(),
+                            address,
+                            api_version: "v1".to_string(),
+                            capabilities: vec![SecurityCapability::Encryption {
+                                algorithms: vec!["aes-256".to_string()],
+                            }],
+                            healthy: true,
+                            latency_ms: Some(endpoint.latency_ms),
+                        };
+                        Ok(vec![security_endpoint])
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            url = endpoint.url(),
+                            "mDNS security endpoint URL failed to parse as SocketAddr: {e}"
+                        );
+                        Ok(Vec::new())
+                    }
+                },
                 Err(_) => Ok(Vec::new()),
             },
             Err(_) => Ok(Vec::new()),
@@ -126,23 +132,30 @@ impl SecurityDiscovery {
 
         match PrimalDiscovery::with_config(discovery_config) {
             Ok(discovery) => match discovery.find_capability("security").await {
-                Ok(endpoint) => {
-                    let security_endpoint = SecurityEndpoint {
-                        service_id: endpoint.service_id.clone(),
-                        protocol: "http".to_string(),
-                        address: endpoint
-                            .url()
-                            .parse()
-                            .unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 8081))),
-                        api_version: "v1".to_string(),
-                        capabilities: vec![SecurityCapability::Encryption {
-                            algorithms: vec!["aes-256".to_string()],
-                        }],
-                        healthy: true,
-                        latency_ms: Some(endpoint.latency_ms),
-                    };
-                    Ok(vec![security_endpoint])
-                }
+                Ok(endpoint) => match endpoint.url().parse() {
+                    Ok(address) => {
+                        let security_endpoint = SecurityEndpoint {
+                            service_id: endpoint.service_id.clone(),
+                            protocol: "http".to_string(),
+                            address,
+                            api_version: "v1".to_string(),
+                            capabilities: vec![SecurityCapability::Encryption {
+                                algorithms: vec!["aes-256".to_string()],
+                            }],
+                            healthy: true,
+                            latency_ms: Some(endpoint.latency_ms),
+                        };
+                        Ok(vec![security_endpoint])
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            url = endpoint.url(),
+                            "coordination security endpoint URL failed to parse \
+                             as SocketAddr: {e}"
+                        );
+                        Ok(Vec::new())
+                    }
+                },
                 Err(_) => Ok(Vec::new()),
             },
             Err(_) => Ok(Vec::new()),

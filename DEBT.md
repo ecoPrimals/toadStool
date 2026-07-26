@@ -1,12 +1,18 @@
 # Active Technical Debt Register
 
-**Date**: July 21, 2026 — S339
+**Date**: July 26, 2026 — S341
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S341 (Hardcoded Economics + Silent Fallback Elimination)**:
+Migration planner `evaluate_migration_targets` now queries `CloudProvider::estimate_cost()` and `capabilities()` instead of hardcoded `$5/hr` and `us-west-1`. Security discovery `unwrap_or_else(127.0.0.1:8081)` → parse error logging + empty result. `StorageConfig::default()` magic `8082` → `discovery_ports::DEFAULT_STORAGE_PORT`. 9,232 lib tests.
+
+**S340 (Stale Refs + Dead Legacy Types + Fmt Normalization)**:
+Cross-references to deleted `PRIMAL_CAPABILITY_SYSTEM.md` updated to wateringHole standard. Dead `ConnectionStatus` variants and `_auth_token` field removed from legacy integrator. `cargo fmt` normalization after S339 bulk sed.
 
 **S339 (Rust 1.96 Clippy Sweep + Dead Feature Removal)**:
 Rust 1.96 lint resolution across 251 files (MSRV-safe: `duration_suboptimal_units` allowed workspace-wide, `map_unwrap_or` → `is_ok_and`, `used_underscore_binding`, `suboptimal_flops` → `mul_add`). Dead features removed from specialty/examples/sandbox Cargo.toml. 9,252 lib tests.

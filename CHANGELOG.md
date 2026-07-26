@@ -5,7 +5,23 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 21, 2026 (Sessions 43-339+)
+## [Unreleased] - Jul 26, 2026 (Sessions 43-341+)
+
+### Session S341 (Jul 26, 2026) — Hardcoded Economics & Silent Fallback Elimination
+
+Evolved three Class C production stubs: migration planner querying provider APIs, security discovery eliminating silent fallbacks, and storage config using centralized port constants.
+
+- **Migration planner evolution** — `evaluate_migration_targets` now calls `CloudProvider::estimate_cost()` and `capabilities()` to get real per-region pricing instead of hardcoded `$5/hr` and `us-west-1`. New helpers `query_best_gpu_provider()` and `query_provider_cost()` iterate registered providers. Recommendations include actual costs with degraded confidence when provider data unavailable.
+- **Security discovery fallback elimination** — Two `unwrap_or_else(|_| 127.0.0.1:8081)` sites in mDNS and coordination discovery replaced with `tracing::warn` logging + empty result on parse failure. Callers handle empty discovery via `get_best_endpoint()` typed error.
+- **Storage port centralization** — `StorageConfig::default()` magic `8082` replaced with `discovery_ports::DEFAULT_STORAGE_PORT` from centralized port registry.
+- **Mock audit** — 9/10 production mock/stub files confirmed properly evolved (Class A: test-gated, Class B: typed error sentinels). Only `planner.rs` was Class C (now resolved).
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings (`-D warnings` on Rust 1.96), zero fmt diff.
+
+### Session S340 (Jul 21, 2026) — Stale Refs + Dead Legacy Types + Fmt Normalization
+
+- **Stale reference cleanup** — Cross-references to deleted `PRIMAL_CAPABILITY_SYSTEM.md` updated to `CAPABILITY_BASED_DISCOVERY_STANDARD.md` (wateringHole) in 5 spec files + DEBT.md. `DISPATCH_WIRE_CONTRACT.md` added to specs/README.md.
+- **Dead code removal** — `ConnectionStatus` variants `_Connecting`, `_Disconnected`, `_Error` and `_auth_token` field removed from legacy `ServiceConnection`. Updated construction sites in `integrator_impl.rs` and `tests.rs`.
+- **Fmt normalization** — `cargo fmt` resolved whitespace differences introduced by S339 bulk `sed` replacements.
 
 ### Session S339 (Jul 21, 2026) — Rust 1.96 Clippy Sweep: MSRV-Safe Lint Resolution
 

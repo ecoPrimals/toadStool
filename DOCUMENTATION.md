@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Jul 21, 2026 — S339
+**Last Updated**: Jul 26, 2026 — S341
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S339 — Jul 2026)
+## Current State (S341 — Jul 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,000+ tests** (9,252+ lib-only), 0 failures, 0 clippy warnings (`-D warnings` on Rust 1.96), 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes (S329). **S339**: Rust 1.96 clippy sweep (251 files — MSRV-safe lint resolution, dead feature removal). **S338**: structural splits — `rm_object_tree`, `pmu_investigate`, `opcodes`. **S337**: hot-path `Cow<str>` dispatch mode + `warm.rs`/`operations.rs` structural splits.
+- **23,000+ tests** (9,232 lib-only), 0 failures, 0 clippy warnings (`-D warnings` on Rust 1.96), 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes (S329). **S341**: migration planner queries provider APIs (replaces hardcoded economics), security discovery eliminates silent fallbacks, centralized port constants. **S339**: Rust 1.96 clippy sweep (251 files — MSRV-safe lint resolution, dead feature removal). **S338**: structural splits — `rm_object_tree`, `pmu_investigate`, `opcodes`. **S337**: hot-path `Cow<str>` dispatch mode + `warm.rs`/`operations.rs` structural splits.
 - **112 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
 - **100% SPDX AGPL-3.0-or-later** headers across all `.rs` files (S320+).
 - **Zero-copy dispatch** (S320+) — `Arc<EncryptionKey>` cache, pipeline first-stage borrow, `binary_size` telemetry, error consolidation.
@@ -54,7 +54,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S339).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S341).
 
 ---
 

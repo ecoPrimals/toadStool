@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S339 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S341 | v0.2.0
 
 ---
 
@@ -42,12 +42,12 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,252+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,232+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` / `unreachable!()` (S282–S290: all paths evolved to Result; S313: 3 `unreachable!()` → typed errors) |
-| Production stubs / test mocks | Stubs evolved to real implementations or typed errors (`NoProviderRegistered`, `NoEngineRegistered`); **embedded-placeholder** opt-in via `embedded-placeholder-impls` feature (S285 — removed from default features); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
+| Production stubs / test mocks | Stubs evolved to real implementations or typed errors (`NoProviderRegistered`, `NoEngineRegistered`); S341: migration planner queries provider APIs instead of hardcoded economics; **embedded-placeholder** opt-in via `embedded-placeholder-impls` feature (S285 — removed from default features); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); **zero production `#[allow]`** (S291 — all converted to `#[expect]` with `reason`; ~13 test-only `#[allow]` remain) |
@@ -55,7 +55,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardcoded primal names | **0** user-visible; install/launcher paths use `PRIMAL_BINARY_NAME` (S292); **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3 |
 | `async-trait` migration | **DEPRECATED** — fully removed and banned in `deny.toml` (S203r). **Stadial parity gate cleared (S203s)**: ~32 traits converted from `dyn` dispatch to **enum dispatch + RPITIT**. Zero finite-implementor `dyn` remaining. |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
-| Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
+| Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery; S341: magic port `8082` → `discovery_ports::DEFAULT_STORAGE_PORT` |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | JSON-RPC surface | **112** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
@@ -278,7 +278,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (9,232+ lib default; +1,289 legacy-coordination) |
+| Workspace tests | **23,000+**, 0 failures (9,232 lib default; +1,289 legacy-coordination) |
 | Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -383,7 +383,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jul 21, 2026 — S339. **23,000+** workspace tests, 0 failures (9,252+ lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (largest 713L). **Zero clippy warnings** (`-D warnings` on Rust 1.96, S339). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). Phase 2 GPU backends: `WgpuGpuDiscovery`, `PortableSwapExecutor`, `PortableResourceHandle` (S332). S339: Rust 1.96 clippy sweep (251 files — MSRV-safe lint resolution, `duration_suboptimal_units` allowed workspace-wide since `from_mins`/`from_hours` require 1.91+ above MSRV 1.85). S338: structural splits — `rm_object_tree`, `pmu_investigate`, `opcodes`. S337: hot-path `Cow<str>` dispatch mode, `warm.rs` + `operations.rs` structural splits. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
+**Last Updated**: Jul 26, 2026 — S341. **23,000+** workspace tests, 0 failures (9,232 lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (largest 713L). **Zero clippy warnings** (`-D warnings` on Rust 1.96, S341). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). S341: migration planner queries provider APIs (replaces hardcoded $5/hr economics), security discovery eliminates silent `127.0.0.1:8081` fallbacks, `StorageConfig` uses centralized port constants. S339: Rust 1.96 clippy sweep (251 files). S338: structural splits. S337: hot-path `Cow<str>` dispatch mode. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
 
 ---
 

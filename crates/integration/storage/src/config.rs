@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use toadstool_common::constants::discovery_ports;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
 use toadstool_common::interned_strings::socket_env;
 
@@ -57,7 +58,7 @@ impl Default for StorageConfig {
                     .ok()
                     .and_then(|p| p.parse().ok())
             })
-            .unwrap_or(8082);
+            .unwrap_or(discovery_ports::DEFAULT_STORAGE_PORT);
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
 

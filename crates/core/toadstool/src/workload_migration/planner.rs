@@ -3,14 +3,14 @@
 
 //! Migration planning logic — evaluation of when and where to migrate.
 
-use crate::cloud_provider_trait::{CloudProvider, WorkloadLocation};
+use crate::cloud_provider_trait::{CloudProvider, WorkloadLocation, WorkloadSpec};
 use crate::composition_constraints::{CompositionRequest, Constraint, ConstraintPriority};
 use crate::workload_migration::{CostImpact, MigrationRecommendation, MigrationTarget};
 
 use super::MigrationCoordinator;
 use crate::ToadStoolResult;
 use std::collections::HashMap;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 impl<P: CloudProvider> MigrationCoordinator<P> {
     /// Evaluate if workload should migrate
@@ -58,14 +58,15 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         Ok(recommendation)
     }
 
-    /// Evaluate potential migration targets
+    /// Evaluate potential migration targets by querying registered providers
     pub(super) async fn evaluate_migration_targets(
         &self,
-        _workload_id: &str,
+        workload_id: &str,
         constraints: &[Constraint],
         current_location: Option<&WorkloadLocation>,
     ) -> ToadStoolResult<MigrationRecommendation> {
-        let available = self.providers.read().await.available_providers();
+        let registry = self.providers.read().await;
+        let available = registry.available_providers();
 
         if available.is_empty() {
             return Ok(MigrationRecommendation {
@@ -88,22 +89,42 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         match current_location {
             None | Some(WorkloadLocation::Local { .. }) => {
                 if requires_gpu && !self.runtime.has_direct_gpu_access() {
-                    Ok(MigrationRecommendation {
-                        should_migrate: true,
-                        reason: "Local lacks GPU, cloud may have it".to_string(),
-                        target: Some(MigrationTarget::Cloud {
-                            provider: available[0].clone(),
-                            region: "us-west-1".to_string(),
-                            estimated_cost_per_hour: 5.0,
+                    let best = self
+                        .query_best_gpu_provider(&registry, &available, workload_id)
+                        .await;
+                    match best {
+                        Some((provider, region, cost)) => Ok(MigrationRecommendation {
+                            should_migrate: true,
+                            reason: format!(
+                                "Local lacks GPU; {provider} in {region} has GPU at ${cost:.2}/hr"
+                            ),
+                            target: Some(MigrationTarget::Cloud {
+                                provider,
+                                region,
+                                estimated_cost_per_hour: cost,
+                            }),
+                            cost_impact: Some(CostImpact {
+                                current_cost_per_hour: 0.0,
+                                new_cost_per_hour: cost,
+                                savings_per_hour: -cost,
+                                migration_cost: 0.1,
+                            }),
+                            confidence: 0.9,
                         }),
-                        cost_impact: Some(CostImpact {
-                            current_cost_per_hour: 0.0,
-                            new_cost_per_hour: 5.0,
-                            savings_per_hour: -5.0,
-                            migration_cost: 0.1,
+                        None => Ok(MigrationRecommendation {
+                            should_migrate: true,
+                            reason: "Local lacks GPU; providers registered but cost \
+                                     estimation unavailable"
+                                .to_string(),
+                            target: Some(MigrationTarget::Cloud {
+                                provider: available[0].clone(),
+                                region: "unknown".to_string(),
+                                estimated_cost_per_hour: 0.0,
+                            }),
+                            cost_impact: None,
+                            confidence: 0.5,
                         }),
-                        confidence: 0.8,
-                    })
+                    }
                 } else if has_cost_constraint {
                     Ok(MigrationRecommendation {
                         should_migrate: false,
@@ -122,19 +143,27 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
                     })
                 }
             }
-            Some(WorkloadLocation::Cloud { provider, .. }) => {
+            Some(WorkloadLocation::Cloud {
+                provider, region, ..
+            }) => {
                 if has_cost_constraint {
+                    let cloud_cost = self
+                        .query_provider_cost(&registry, provider, workload_id, region)
+                        .await;
                     Ok(MigrationRecommendation {
                         should_migrate: true,
-                        reason: "Cloud costs high, local available".to_string(),
+                        reason: format!(
+                            "Cloud costs ${:.2}/hr, local available",
+                            cloud_cost.unwrap_or(0.0)
+                        ),
                         target: Some(MigrationTarget::Local),
-                        cost_impact: Some(CostImpact {
-                            current_cost_per_hour: 5.0,
+                        cost_impact: cloud_cost.map(|c| CostImpact {
+                            current_cost_per_hour: c,
                             new_cost_per_hour: 0.0,
-                            savings_per_hour: 5.0,
+                            savings_per_hour: c,
                             migration_cost: 0.1,
                         }),
-                        confidence: 0.8,
+                        confidence: if cloud_cost.is_some() { 0.9 } else { 0.6 },
                     })
                 } else {
                     Ok(MigrationRecommendation {
@@ -147,6 +176,74 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
                 }
             }
         }
+    }
+
+    async fn query_best_gpu_provider(
+        &self,
+        registry: &crate::cloud_provider_trait::CloudProviderRegistry<P>,
+        available: &[String],
+        workload_id: &str,
+    ) -> Option<(String, String, f64)> {
+        let spec = WorkloadSpec {
+            id: workload_id.to_string(),
+            memory_gb: 8.0,
+            cpu_cores: 4,
+            requires_gpu: true,
+            preferred_gpu_type: None,
+            estimated_runtime_hours: None,
+            custom: HashMap::new(),
+        };
+
+        let mut best: Option<(String, String, f64)> = None;
+
+        for name in available {
+            let Some(provider) = registry.get(name) else {
+                continue;
+            };
+            let caps = match provider.capabilities().await {
+                Ok(c) if c.supports_gpu => c,
+                Ok(_) => continue,
+                Err(e) => {
+                    warn!("Failed to query capabilities from {name}: {e}");
+                    continue;
+                }
+            };
+
+            for region in &caps.available_regions {
+                if let Ok(estimate) = provider.estimate_cost(&spec, region).await {
+                    let cost = estimate.cost_per_hour;
+                    if best.as_ref().is_none_or(|(_, _, c)| cost < *c) {
+                        best = Some((name.clone(), region.clone(), cost));
+                    }
+                }
+            }
+        }
+
+        best
+    }
+
+    async fn query_provider_cost(
+        &self,
+        registry: &crate::cloud_provider_trait::CloudProviderRegistry<P>,
+        provider_name: &str,
+        workload_id: &str,
+        region: &str,
+    ) -> Option<f64> {
+        let provider = registry.get(provider_name)?;
+        let spec = WorkloadSpec {
+            id: workload_id.to_string(),
+            memory_gb: 8.0,
+            cpu_cores: 4,
+            requires_gpu: false,
+            preferred_gpu_type: None,
+            estimated_runtime_hours: None,
+            custom: HashMap::new(),
+        };
+        provider
+            .estimate_cost(&spec, region)
+            .await
+            .ok()
+            .map(|e| e.cost_per_hour)
     }
 }
 
@@ -305,6 +402,13 @@ mod tests {
             .expect("should_migrate");
         assert!(!rec.reason.is_empty());
         assert!(rec.confidence >= 0.0 && rec.confidence <= 1.0);
+        if rec.should_migrate {
+            assert!(
+                rec.reason.contains("$/") || rec.reason.contains("local"),
+                "reason should reflect provider-queried cost: {}",
+                rec.reason
+            );
+        }
     }
 
     #[tokio::test]
