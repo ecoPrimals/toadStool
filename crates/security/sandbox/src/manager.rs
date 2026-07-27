@@ -92,7 +92,10 @@ impl CrossPlatformSandboxManager {
     }
 
     /// Setup filesystem mounts for sandbox
-    #[allow(clippy::used_underscore_binding)]
+    #[expect(
+        clippy::used_underscore_binding,
+        reason = "_sandbox_id reserved for per-sandbox mount namespacing"
+    )]
     async fn setup_filesystem_mounts(
         &self,
         _sandbox_id: &str,

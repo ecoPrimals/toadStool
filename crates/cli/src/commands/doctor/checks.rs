@@ -91,9 +91,18 @@ async fn check_gpu_available() -> bool {
             || std::env::var(toadstool_common::interned_strings::socket_env::VK_ICD_FILENAMES)
                 .is_ok()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
     {
-        true
+        Path::new(r"C:\Windows\System32\vulkan-1.dll").exists()
+            || Path::new(r"C:\Windows\System32\d3d12.dll").exists()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Path::new("/System/Library/Frameworks/Metal.framework").exists()
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    {
+        false
     }
 }
 

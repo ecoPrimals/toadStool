@@ -532,7 +532,10 @@ pub(crate) fn ndjson_line_prefix_after_first_byte(first_byte: u8) -> String {
 }
 
 /// JSON-RPC response for the early-health responder while the full handler starts.
-#[allow(clippy::needless_pass_by_value)]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "id is consumed once into the response object — taking by value avoids a clone at call sites"
+)]
 pub(crate) fn early_health_response(
     method: Option<&str>,
     id: serde_json::Value,

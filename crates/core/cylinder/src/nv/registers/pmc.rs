@@ -143,6 +143,7 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
 
             let disable_off = profile.disable_offset() as usize;
             let disable_val = profile.disable_value();
+            // SAFETY: disable_off is within the 0x1000 mapped BAR0 page.
             unsafe {
                 std::ptr::write_volatile(base.add(disable_off).cast::<u32>(), disable_val);
             }

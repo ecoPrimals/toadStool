@@ -4,6 +4,7 @@
 //! Detects GPUs via:
 //! - Linux: `/sys/class/drm` for all GPUs, `/proc/driver/nvidia` for NVIDIA details
 //! - macOS: System Profiler for Apple Silicon / discrete GPUs
+//! - All platforms (with `gpu-discovery` feature): wgpu adapter enumeration as fallback
 
 use super::GpuDevice;
 use tracing::info;
@@ -71,12 +72,10 @@ fn infer_gpu_model_from_ids(vendor_id: u32, device_id: u32) -> String {
 /// Query GPU devices (self-knowledge)
 ///
 /// Vendor-agnostic, graceful degradation if no GPUs found.
+/// Uses platform-native detection (sysfs/DRM on Linux, System Profiler on macOS),
+/// then falls back to wgpu adapter enumeration for cross-platform coverage.
 pub(super) fn query_gpu_devices() -> Vec<GpuDevice> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut devices: Vec<GpuDevice> = Vec::new();
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    let devices: Vec<GpuDevice> = Vec::new();
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut device_id = 0;
 
     #[cfg(target_os = "linux")]
@@ -90,8 +89,13 @@ pub(super) fn query_gpu_devices() -> Vec<GpuDevice> {
         detect_macos_gpus(&mut devices, &mut device_id);
     }
 
+    #[cfg(feature = "gpu-discovery")]
+    if devices.is_empty() {
+        detect_wgpu_gpus(&mut devices, &mut device_id);
+    }
+
     if !devices.is_empty() {
-        info!("🎮 Detected {} GPU(s) via self-knowledge", devices.len());
+        info!("Detected {} GPU(s) via self-knowledge", devices.len());
         for device in &devices {
             info!(
                 "   - {}: {} ({} MB)",
@@ -290,6 +294,55 @@ fn detect_macos_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
                 }
             }
         }
+    }
+}
+
+/// Cross-platform GPU detection via wgpu adapter enumeration.
+///
+/// Used as a fallback when platform-native detection (sysfs, System Profiler) is
+/// unavailable or finds no GPUs. Covers Windows (DX12/Vulkan), Linux (Vulkan),
+/// macOS (Metal), and any future wgpu backend.
+#[cfg(feature = "gpu-discovery")]
+fn detect_wgpu_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+    for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
+        let info = adapter.get_info();
+        if info.device_type == wgpu::DeviceType::Cpu {
+            continue;
+        }
+        let vendor = wgpu_vendor_label(info.vendor);
+        let driver = if info.driver.is_empty() {
+            None
+        } else {
+            Some(info.driver.clone())
+        };
+        devices.push(GpuDevice {
+            device_id: *device_id,
+            name: info.name.clone(),
+            vendor: vendor.to_string(),
+            memory_bytes: 0,
+            compute_capability: Some(format!("{:?}", info.backend)),
+            render_node: None,
+            driver,
+            arch: None,
+        });
+        *device_id += 1;
+    }
+}
+
+#[cfg(feature = "gpu-discovery")]
+fn wgpu_vendor_label(vendor_id: u32) -> &'static str {
+    match vendor_id {
+        0x10DE => "nvidia",
+        0x1002 => "amd",
+        0x8086 => "intel",
+        0x106B => "apple",
+        0x1414 => "microsoft",
+        0x5143 => "qualcomm",
+        _ => "unknown",
     }
 }
 

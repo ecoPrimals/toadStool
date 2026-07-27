@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 26, 2026 (Sessions 43-341+)
+## [Unreleased] - Jul 27, 2026 (Sessions 43-342+)
+
+### Session S342 (Jul 27, 2026) — Cross-Platform GPU Discovery & Unsafe SAFETY Docs
+
+Wired wgpu adapter enumeration into the self-knowledge pipeline as cross-platform fallback, fixed unsafe SAFETY documentation gaps, and eliminated false positives in doctor checks.
+
+- **Cross-platform GPU discovery** — `capabilities/gpu.rs` now falls back to `wgpu::Instance::enumerate_adapters()` when platform-native detection (sysfs/DRM on Linux, System Profiler on macOS) finds no GPUs. Windows (DX12/Vulkan), macOS (Metal), and any wgpu backend now populate `GpuDevice` entries for self-knowledge. CPU-type adapters are filtered out.
+- **Doctor GPU check fix** — `check_gpu_available()` no longer returns `true` unconditionally on non-Linux. Windows checks for `vulkan-1.dll` / `d3d12.dll`; macOS checks for Metal framework; unknown platforms return `false`.
+- **SAFETY documentation** — Added per-block `// SAFETY:` comments to 4 MMIO read/write operations in `rm_trigger/main.rs` quench loop and 1 in `nv/registers/pmc.rs`. All unsafe blocks now have individually documented invariants.
+- **Lint attribute evolution** — 2 production `#[allow]` without `reason` converted to `#[expect]` with documented reasons (`sandbox/manager.rs`, `unix.rs`).
+- **VRAM estimate documentation** — Resource validator's hardcoded 2GB estimate now documented as intentional wgpu limitation (wgpu `AdapterInfo` does not expose total VRAM; platform-native queries happen in `capabilities::gpu`).
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S341 (Jul 26, 2026) — Hardcoded Economics & Silent Fallback Elimination
 

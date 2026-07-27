@@ -91,28 +91,23 @@ pub(crate) fn estimate_network_bandwidth_mbps(
 
 /// Query GPU capabilities via wgpu (vendor-agnostic)
 ///
-/// **Deep Debt Compliance**:
-/// - Runtime GPU discovery (no hardcoded assumptions)
-/// - Vendor-agnostic (works with NVIDIA, AMD, Intel, Apple)
-/// - Graceful degradation (returns empty if no GPU)
-/// - Part of universal GPU compute framework
+/// Vendor-agnostic runtime GPU discovery via wgpu adapter enumeration.
+/// wgpu's `AdapterInfo` does not expose total VRAM, so memory is estimated
+/// conservatively. Platform-native VRAM queries (nvidia-smi, sysfs) happen
+/// in `capabilities::gpu` instead.
 async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
+    const GPU_ESTIMATED_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+
     match discover_gpus_via_wgpu().await {
         Ok(ref gpus) if !gpus.is_empty() => {
-            const GPU_ESTIMATED_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
-
             let gpu_count = gpus.len();
             let gpu_types: Vec<String> = gpus.iter().map(|g: &GpuInfo| g.name.clone()).collect();
 
-            let estimated_memory_per_gpu = GPU_ESTIMATED_MEMORY_BYTES;
-            let total_gpu_memory = estimated_memory_per_gpu * gpu_count as u64; // fits: GPU count < u64::MAX
+            let total_gpu_memory = GPU_ESTIMATED_MEMORY_BYTES * gpu_count as u64;
 
             (total_gpu_memory, total_gpu_memory, gpu_count, gpu_types)
         }
-        _ => {
-            // No GPUs detected or discovery failed - graceful degradation
-            (0, 0, 0, Vec::new())
-        }
+        _ => (0, 0, 0, Vec::new()),
     }
 }
 

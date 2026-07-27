@@ -1,12 +1,15 @@
 # Active Technical Debt Register
 
-**Date**: July 26, 2026 — S341
+**Date**: July 27, 2026 — S342
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S342 (Cross-Platform GPU Discovery + Unsafe SAFETY Docs)**:
+wgpu adapter enumeration wired into `capabilities/gpu.rs` as cross-platform GPU fallback (Windows DX12/Vulkan, macOS Metal). Doctor `check_gpu_available` no longer false-positive on non-Linux. 5 unsafe MMIO operations in rm_trigger/pmc.rs given individual `// SAFETY:` comments. 2 `#[allow]` → `#[expect]` with reasons. 9,232 lib tests.
 
 **S341 (Hardcoded Economics + Silent Fallback Elimination)**:
 Migration planner `evaluate_migration_targets` now queries `CloudProvider::estimate_cost()` and `capabilities()` instead of hardcoded `$5/hr` and `us-west-1`. Security discovery `unwrap_or_else(127.0.0.1:8081)` → parse error logging + empty result. `StorageConfig::default()` magic `8082` → `discovery_ports::DEFAULT_STORAGE_PORT`. 9,232 lib tests.

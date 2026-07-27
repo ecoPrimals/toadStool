@@ -146,10 +146,12 @@ fn quench_gpu_interrupts(bdf: &str) {
         };
         if let Ok(map) = map_result {
             let base = map.cast::<u8>();
-            // SAFETY: all offsets are within the 0x1000 mapped page.
+            // SAFETY: NV_PMC_INTR_EN_0 (0x140) within the 0x1000 mapped BAR0 page.
             let old_en =
                 unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>()) };
 
+            // SAFETY: NV_PMC_INTR_EN_CLEAR_0 (0x180) within the 0x1000 mapped BAR0 page;
+            // writing 0xFFFFFFFF disables all interrupt sources.
             unsafe {
                 std::ptr::write_volatile(
                     base.add(NV_PMC_INTR_EN_CLEAR_0).cast::<u32>(),
@@ -157,9 +159,11 @@ fn quench_gpu_interrupts(bdf: &str) {
                 );
             }
 
+            // SAFETY: NV_PMC_INTR_EN_0 (0x140) within the 0x1000 mapped BAR0 page.
             let new_en =
                 unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>()) };
 
+            // SAFETY: NV_PMC_INTR_0 (0x100) within the 0x1000 mapped BAR0 page.
             let pending = unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_0).cast::<u32>()) };
 
             // SAFETY: map and size match the successful mmap above.
