@@ -2,12 +2,13 @@
 //! GPU System Query Helpers
 //!
 //! Standalone functions for querying GPU devices, memory, and available backends.
-//! Detects NVIDIA GPUs via /proc on Linux, falls back to wgpu abstraction.
-//! Backend discovery is capability-based — no hardcoded backend lists.
+//! Detects NVIDIA GPUs via /proc on Linux, falls back to wgpu adapter enumeration
+//! on all platforms. Backend discovery is capability-based.
 
-/// Query available GPU devices
+/// Query available GPU devices.
 ///
-/// Detects NVIDIA GPUs via /proc on Linux, falls back to wgpu abstraction.
+/// Linux: detects NVIDIA GPUs via `/proc/driver/nvidia/gpus`.
+/// All platforms: falls back to wgpu adapter enumeration for cross-platform coverage.
 #[must_use]
 pub fn query_gpu_devices() -> Vec<serde_json::Value> {
     let mut devices = Vec::new();
@@ -22,22 +23,54 @@ pub fn query_gpu_devices() -> Vec<serde_json::Value> {
         }
     }
 
+    #[cfg(feature = "gpu-discovery")]
+    if devices.is_empty() {
+        discover_via_wgpu(&mut devices);
+    }
+
+    #[cfg(not(feature = "gpu-discovery"))]
     if devices.is_empty() {
         devices.push(serde_json::json!({
-            "index": 0, "id": "wgpu-default", "backend": "wgpu",
-            "note": "GPU detection via wgpu adapter enumeration at runtime",
+            "index": 0, "id": "none", "backend": "cpu",
+            "note": "No GPU detected; gpu-discovery feature not enabled",
         }));
     }
 
     devices
 }
 
-/// Query GPU memory usage via nvidia-smi
+/// Enumerate GPU adapters via wgpu (cross-platform: Vulkan, DX12, Metal).
+#[cfg(feature = "gpu-discovery")]
+fn discover_via_wgpu(devices: &mut Vec<serde_json::Value>) {
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+    for (idx, adapter) in instance
+        .enumerate_adapters(wgpu::Backends::all())
+        .iter()
+        .enumerate()
+    {
+        let info = adapter.get_info();
+        if info.device_type == wgpu::DeviceType::Cpu {
+            continue;
+        }
+        devices.push(serde_json::json!({
+            "index": idx,
+            "id": format!("{:#06x}:{:#06x}", info.vendor, info.device),
+            "name": info.name,
+            "backend": format!("{:?}", info.backend),
+            "device_type": format!("{:?}", info.device_type),
+            "driver": if info.driver.is_empty() { None } else { Some(&info.driver) },
+        }));
+    }
+}
+
+/// Query GPU memory usage via `nvidia-smi` (cross-platform — works on Linux and Windows).
 #[must_use]
 pub fn query_gpu_memory() -> Vec<serde_json::Value> {
     let mut devices = Vec::new();
 
-    #[cfg(target_os = "linux")]
     if let Ok(output) = std::process::Command::new("nvidia-smi")
         .args([
             "--query-gpu=index,memory.total,memory.used,memory.free",
@@ -60,7 +93,7 @@ pub fn query_gpu_memory() -> Vec<serde_json::Value> {
 
     if devices.is_empty() {
         devices.push(serde_json::json!({
-            "note": "GPU memory query requires nvidia-smi or wgpu adapter",
+            "note": "GPU memory query requires nvidia-smi (available on Linux and Windows with NVIDIA drivers)",
         }));
     }
 
@@ -91,13 +124,19 @@ pub fn query_available_backends() -> Vec<&'static str> {
 
     #[cfg(target_os = "macos")]
     {
-        backends.push("metal");
+        if std::path::Path::new("/System/Library/Frameworks/Metal.framework").exists() {
+            backends.push("metal");
+        }
     }
 
     #[cfg(target_os = "windows")]
     {
-        backends.push("dx12");
-        backends.push("vulkan");
+        if std::path::Path::new(r"C:\Windows\System32\d3d12.dll").exists() {
+            backends.push("dx12");
+        }
+        if std::path::Path::new(r"C:\Windows\System32\vulkan-1.dll").exists() {
+            backends.push("vulkan");
+        }
     }
 
     if backends.is_empty() {

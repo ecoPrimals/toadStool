@@ -40,6 +40,29 @@ fn gpu_architecture(vendor: toadstool_sysmon::GpuVendor, device_id: u32) -> Opti
     }
 }
 
+/// Map wgpu vendor ID to architecture hint (best-effort without PCI device ID).
+#[cfg(feature = "gpu-discovery")]
+fn wgpu_vendor_arch(vendor_id: u32) -> Option<&'static str> {
+    match vendor_id {
+        0x10DE => Some("sm_unknown"),
+        0x1002 => Some("gcn"),
+        0x8086 => Some("xe"),
+        _ => None,
+    }
+}
+
+/// Vendor label from wgpu vendor ID.
+#[cfg(feature = "gpu-discovery")]
+fn wgpu_vendor_label(vendor_id: u32) -> &'static str {
+    match vendor_id {
+        0x10DE => "Nvidia",
+        0x1002 => "Amd",
+        0x8086 => "Intel",
+        0x106B => "Apple",
+        _ => "Unknown",
+    }
+}
+
 impl DispatchHandler {
     pub async fn dispatch_capabilities(
         &self,
@@ -81,11 +104,45 @@ impl DispatchHandler {
             .iter()
             .filter_map(|g| gpu_architecture(g.vendor, g.device_id))
             .collect();
+
+        let gpu_count;
+        let wgpu_gpus;
+
+        #[cfg(feature = "gpu-discovery")]
+        {
+            let wgpu_adapters = if gpus.is_empty() {
+                discover_wgpu_adapters()
+            } else {
+                Vec::new()
+            };
+            for entry in &wgpu_adapters {
+                if let Some(arch) = entry
+                    .get("vendor_id")
+                    .and_then(serde_json::Value::as_u64)
+                    .and_then(|v| wgpu_vendor_arch(v as u32))
+                    && !architectures.contains(&arch)
+                {
+                    architectures.push(arch);
+                }
+            }
+            gpu_count = if gpus.is_empty() {
+                wgpu_adapters.len()
+            } else {
+                gpus.len()
+            };
+            wgpu_gpus = wgpu_adapters;
+        }
+
+        #[cfg(not(feature = "gpu-discovery"))]
+        {
+            gpu_count = gpus.len();
+            wgpu_gpus = Vec::<serde_json::Value>::new();
+        }
+
         architectures.sort_unstable();
         architectures.dedup();
 
         let vfio_count = vfio_gpus.len();
-        let gpu_count = gpus.len();
 
         #[cfg(target_os = "linux")]
         let held_devices = self.held_device_count().await;
@@ -96,6 +153,23 @@ impl DispatchHandler {
         #[cfg(not(target_os = "linux"))]
         let local_dispatch = false;
 
+        let dispatch_modes: Vec<&str> = {
+            let mut modes = Vec::new();
+            if vfio_count > 0 {
+                modes.push("vfio");
+            }
+            if !drm_gpus.is_empty() {
+                modes.push("drm");
+            }
+            if !wgpu_gpus.is_empty() {
+                modes.push("wgpu");
+            }
+            if modes.is_empty() {
+                modes.push("cpu");
+            }
+            modes
+        };
+
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "capabilities",
@@ -104,7 +178,7 @@ impl DispatchHandler {
             "output": {
                 "sovereign_pipeline": true,
                 "shader_compiler_available": coral_available,
-                "dispatch_modes": ["vfio", "drm"],
+                "dispatch_modes": dispatch_modes,
                 "methods": [
                     "compute.dispatch.submit",
                     "compute.dispatch.status",
@@ -123,6 +197,7 @@ impl DispatchHandler {
                 },
                 "vfio_gpus": vfio_gpus,
                 "drm_gpus": drm_gpus,
+                "wgpu_gpus": wgpu_gpus,
                 "total_dispatch_count": self.dispatch_count.load(Ordering::Relaxed),
                 "ember": {
                     "held_devices": held_devices,
@@ -139,4 +214,32 @@ impl DispatchHandler {
             "metadata": {},
         }))
     }
+}
+
+/// Discover GPU adapters via wgpu for cross-platform dispatch capabilities.
+#[cfg(feature = "gpu-discovery")]
+fn discover_wgpu_adapters() -> Vec<serde_json::Value> {
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+    instance
+        .enumerate_adapters(wgpu::Backends::all())
+        .iter()
+        .filter(|a| a.get_info().device_type != wgpu::DeviceType::Cpu)
+        .enumerate()
+        .map(|(idx, adapter)| {
+            let info = adapter.get_info();
+            serde_json::json!({
+                "index": idx,
+                "name": info.name,
+                "vendor": wgpu_vendor_label(info.vendor),
+                "vendor_id": info.vendor,
+                "device_id": format!("{:#06x}", info.device),
+                "backend": format!("{:?}", info.backend),
+                "device_type": format!("{:?}", info.device_type),
+                "architecture": wgpu_vendor_arch(info.vendor),
+            })
+        })
+        .collect()
 }

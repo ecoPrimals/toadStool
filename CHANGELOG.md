@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 27, 2026 (Sessions 43-342+)
+## [Unreleased] - Jul 27, 2026 (Sessions 43-343+)
+
+### Session S343 (Jul 27, 2026) — Cross-Platform GPU Pipeline: wgpu → System Queries → Dispatch
+
+Deep cross-platform GPU evolution: wgpu adapter enumeration wired into every GPU system query and dispatch capabilities path. Windows/macOS now report real GPU devices and backends instead of stubs and placeholders.
+
+- **`gpu_system::query_gpu_devices()`** — Replaced static `"wgpu-default"` placeholder with real wgpu adapter enumeration. Windows/macOS now report actual GPU names, vendor IDs, device IDs, backend types, and driver info.
+- **`gpu_system::query_gpu_memory()`** — Removed Linux-only `#[cfg]` gate from `nvidia-smi` invocation. `nvidia-smi` works on Windows when NVIDIA drivers are installed — now probed cross-platform.
+- **`gpu_system::query_available_backends()`** — Windows/macOS blocks evolved from hardcoded labels to capability probing: Windows checks for `d3d12.dll`/`vulkan-1.dll`, macOS checks for `Metal.framework`.
+- **`dispatch/capabilities.rs`** — When `sysmon::discover_gpus()` returns empty (non-Linux), falls back to wgpu adapter enumeration. New `wgpu_gpus` array in JSON-RPC response. `dispatch_modes` now dynamically computed: reports `vfio`/`drm`/`wgpu`/`cpu` based on actual detection. Architecture hints derived from wgpu vendor IDs.
+- **Quality gates** — 9,232 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
 
 ### Session S342 (Jul 27, 2026) — Cross-Platform GPU Discovery & Unsafe SAFETY Docs
 

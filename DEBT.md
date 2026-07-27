@@ -1,12 +1,15 @@
 # Active Technical Debt Register
 
-**Date**: July 27, 2026 — S342
+**Date**: July 27, 2026 — S343
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S343 (Cross-Platform GPU Pipeline: System Queries → Dispatch)**:
+`gpu_system.rs` query functions evolved from stubs/placeholders to real wgpu adapter enumeration. `nvidia-smi` memory query ungated (cross-platform). Backend detection probes actual DLLs/frameworks instead of hardcoding. `dispatch/capabilities.rs` falls back to wgpu when sysmon empty — adds `wgpu_gpus` array and dynamic `dispatch_modes`. 9,232 lib tests.
 
 **S342 (Cross-Platform GPU Discovery + Unsafe SAFETY Docs)**:
 wgpu adapter enumeration wired into `capabilities/gpu.rs` as cross-platform GPU fallback (Windows DX12/Vulkan, macOS Metal). Doctor `check_gpu_available` no longer false-positive on non-Linux. 5 unsafe MMIO operations in rm_trigger/pmc.rs given individual `// SAFETY:` comments. 2 `#[allow]` → `#[expect]` with reasons. 9,232 lib tests.
