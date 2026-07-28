@@ -2,7 +2,9 @@
 //! RAII wrapper for mmap-backed MMIO with bounds-checked volatile access.
 //!
 //! Volatile register access delegates to [`toadstool_hw_safe::VolatileMmio`];
-//! fd-backed mappings use [`toadstool_hw_safe::DeviceMmap`].
+//! fd-backed mappings use [`toadstool_hw_safe::DeviceMmap`]. This replaces the
+//! former crate-local `Mmio` / `VolatilePtr` types — region ownership and drop
+//! semantics live here; volatile reads/writes route through hw-safe.
 
 use std::borrow::Cow;
 use std::ptr::NonNull;

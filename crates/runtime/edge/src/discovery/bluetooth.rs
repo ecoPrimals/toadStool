@@ -10,10 +10,8 @@ use std::sync::Arc;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
-use toadstool::error::ToadStoolResult;
-use toadstool::execution::{
-    ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeType,
-};
+use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool::execution::{ExecutionRequest, ExecutionResponse};
 use toadstool_common::constants::platform_paths::sysfs;
 
 use crate::platforms::*;
@@ -203,33 +201,29 @@ impl EdgeDevice for BluetoothSysfsEdgeDevice {
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+        Box::pin(async move {
+            Err(ToadStoolError::not_supported(
+                "Bluetooth sysfs discovery devices do not support connect".to_string(),
+            ))
+        })
     }
 
     fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+        Box::pin(async move {
+            Err(ToadStoolError::not_supported(
+                "Bluetooth sysfs discovery devices do not support disconnect".to_string(),
+            ))
+        })
     }
 
     fn execute(
         &self,
-        request: &ExecutionRequest,
+        _request: &ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        let request = request.clone();
         Box::pin(async move {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Success,
-                output: ExecutionOutput {
-                    stdout: Some(
-                        "bluetooth-sysfs discovery device (no workload execution)".to_string(),
-                    ),
-                    ..ExecutionOutput::default()
-                },
-                metrics: toadstool::RuntimeMetrics::default(),
-                duration: std::time::Duration::ZERO,
-                runtime_used: RuntimeType::Native,
-                warnings: Vec::new(),
-            })
+            Err(ToadStoolError::not_supported(
+                "Bluetooth sysfs discovery devices do not support workload execution".to_string(),
+            ))
         })
     }
 
@@ -244,7 +238,11 @@ impl EdgeDevice for BluetoothSysfsEdgeDevice {
         &self,
         _execution_id: Uuid,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+        Box::pin(async move {
+            Err(ToadStoolError::not_supported(
+                "Bluetooth sysfs discovery devices do not support stop_execution".to_string(),
+            ))
+        })
     }
 
     fn get_status(

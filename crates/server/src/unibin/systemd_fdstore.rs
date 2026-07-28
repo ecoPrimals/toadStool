@@ -201,7 +201,7 @@ pub(crate) fn retrieve_anchors() -> HashMap<String, VfioAnchor> {
     }
 
     // Clearing these prevents child processes from accidentally consuming
-    // the stored fds. Safe: called single-threaded at startup before tokio
+    // the stored fds. SAFETY: called single-threaded at startup before tokio
     // runtime spawns worker threads.
     unsafe {
         std::env::remove_var("LISTEN_FDS");

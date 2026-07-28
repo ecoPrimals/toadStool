@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Non-Unix stub for [`super::unix_jsonrpc_client`].
+//! Non-Unix stub for the Unix-only `unix_jsonrpc_client` module.
 //!
 //! Unix domain sockets are unavailable on Windows and other non-Unix targets.
 //! This module preserves the public API so cross-compiled crates compile; calls

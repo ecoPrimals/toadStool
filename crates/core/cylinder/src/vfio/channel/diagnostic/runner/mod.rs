@@ -3,8 +3,9 @@
 use std::borrow::Cow;
 use std::time::Instant;
 
+use std::ptr::NonNull;
+
 use crate::error::{DriverError, DriverResult};
-use crate::mmio::VolatilePtr;
 use crate::vfio::device::{DmaBackend, MappedBar};
 use crate::vfio::dma::DmaBuffer;
 
@@ -15,6 +16,7 @@ use super::super::registers::*;
 use super::experiments::context::ExperimentContext;
 use super::experiments::run_experiment;
 use super::types::{ExperimentConfig, ExperimentOrdering, ExperimentResult};
+use toadstool_hw_safe::VolatileMmio;
 
 mod matrix_support;
 
@@ -459,27 +461,15 @@ pub fn diagnostic_matrix(
         // (GPU may have written to this DMA-mapped page)
         // SAFETY: userd_page is a valid DMA-mapped slice; ramuserd::GP_GET/GP_PUT are in-bounds
         // offsets; volatile required because GPU may have written to this shared memory.
-        let vol_get = unsafe {
-            VolatilePtr::new(
-                userd_page
-                    .as_ptr()
-                    .add(ramuserd::GP_GET)
-                    .cast_mut()
-                    .cast::<u32>(),
-            )
-        };
-        // SAFETY: Same as `vol_get`: in-bounds offset within `userd_page`.
-        let vol_put = unsafe {
-            VolatilePtr::new(
-                userd_page
-                    .as_ptr()
-                    .add(ramuserd::GP_PUT)
-                    .cast_mut()
-                    .cast::<u32>(),
-            )
-        };
-        let host_gp_get = vol_get.read();
-        let host_gp_put = vol_put.read();
+        let userd_ptr =
+            NonNull::new(userd_page.as_ptr().cast_mut()).expect("userd_page is non-empty");
+        let mmio = unsafe { VolatileMmio::new(userd_ptr, userd_page.len()) };
+        let host_gp_get = mmio
+            .read_u32(ramuserd::GP_GET)
+            .expect("ramuserd::GP_GET in bounds");
+        let host_gp_put = mmio
+            .read_u32(ramuserd::GP_PUT)
+            .expect("ramuserd::GP_PUT in bounds");
 
         let result = ExperimentResult {
             name: cfg.name.to_string(),

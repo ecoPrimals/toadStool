@@ -274,6 +274,7 @@ async fn execute_nonexistent_workload_returns_error() {
 }
 
 #[tokio::test]
+#[cfg(all(target_os = "linux", feature = "display"))]
 async fn transport_list_executes_fast() {
     let cli = make_cli(Commands::Transport {
         action: TransportCommands::List {
@@ -286,6 +287,7 @@ async fn transport_list_executes_fast() {
 }
 
 #[tokio::test]
+#[cfg(all(target_os = "linux", feature = "display"))]
 async fn transport_status_executes_fast() {
     let cli = make_cli(Commands::Transport {
         action: TransportCommands::Status,
@@ -437,6 +439,7 @@ async fn execute_universal_detect() {
     assert!(result.is_ok() || result.is_err());
 }
 
+#[cfg(feature = "migration-preview")]
 #[tokio::test]
 async fn execute_universal_migrate() {
     let cli = make_cli(Commands::Universal {
@@ -556,6 +559,7 @@ async fn execute_validate_json_format() {
 }
 
 #[tokio::test]
+#[cfg(all(target_os = "linux", feature = "display"))]
 async fn execute_transport_discover() {
     let cli = make_cli(Commands::Transport {
         action: TransportCommands::Discover {

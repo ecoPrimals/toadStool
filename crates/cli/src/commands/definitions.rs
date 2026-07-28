@@ -186,7 +186,7 @@ pub enum Commands {
 
     /// Advanced universal compute operations
     Universal {
-        /// Subcommand (detect, benchmark, migrate, federate)
+        /// Subcommand (detect, benchmark, federate; migrate requires `migration-preview`)
         #[command(subcommand)]
         operation: UniversalCommands,
     },
@@ -474,7 +474,7 @@ pub enum TransportCommands {
     Status,
 }
 
-/// Universal compute subcommands (detect, benchmark, migrate, federate)
+/// Universal compute subcommands (detect, benchmark, federate; migrate is preview-only)
 #[derive(Subcommand)]
 pub enum UniversalCommands {
     /// Detect all available compute substrates
@@ -507,7 +507,8 @@ pub enum UniversalCommands {
         format: String,
     },
 
-    /// Migrate workloads between substrates
+    /// Migrate workloads between substrates (preview: requires `migration-preview` feature)
+    #[cfg(feature = "migration-preview")]
     Migrate {
         /// Source biome
         source: String,

@@ -19,6 +19,7 @@ use rustix::mm::{mlock, munlock};
 use std::borrow::Cow;
 use std::os::fd::AsFd;
 use std::ptr::NonNull;
+use toadstool_hw_safe::VolatileMmio;
 
 use super::device::DmaBackend;
 use super::ioctl;
@@ -300,10 +301,8 @@ impl DmaBuffer {
         assert!(offset + 4 <= len, "DMA volatile write out of bounds");
         // SAFETY: NonNull guarantees non-null; bounds checked above; DmaBuffer
         // is mlock'd and page-aligned, so aligned u32 writes are valid.
-        let vol = unsafe {
-            crate::mmio::VolatilePtr::new(self.bytes.ptr().as_ptr().add(offset).cast::<u32>())
-        };
-        vol.write(value);
+        let mmio = unsafe { VolatileMmio::new(self.bytes.ptr(), len) };
+        mmio.write_u32(offset, value).expect("bounds checked above");
     }
 
     /// Volatile read a u32 at the given byte offset.
@@ -314,10 +313,8 @@ impl DmaBuffer {
         let len = self.bytes.len();
         assert!(offset + 4 <= len, "DMA volatile read out of bounds");
         // SAFETY: NonNull guarantees non-null; bounds checked above.
-        let vol = unsafe {
-            crate::mmio::VolatilePtr::new(self.bytes.ptr().as_ptr().add(offset).cast::<u32>())
-        };
-        vol.read()
+        let mmio = unsafe { VolatileMmio::new(self.bytes.ptr(), len) };
+        mmio.read_u32(offset).expect("bounds checked above")
     }
 
     /// Volatile write a u64 at the given byte offset.
@@ -327,10 +324,8 @@ impl DmaBuffer {
         let len = self.bytes.len();
         assert!(offset + 8 <= len, "DMA volatile write out of bounds");
         // SAFETY: NonNull guarantees non-null; bounds checked above.
-        let vol = unsafe {
-            crate::mmio::VolatilePtr::new(self.bytes.ptr().as_ptr().add(offset).cast::<u64>())
-        };
-        vol.write(value);
+        let mmio = unsafe { VolatileMmio::new(self.bytes.ptr(), len) };
+        mmio.write_u64(offset, value).expect("bounds checked above");
     }
 }
 

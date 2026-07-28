@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![cfg(all(target_os = "linux", feature = "display"))]
 #![allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,

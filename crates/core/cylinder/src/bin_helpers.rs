@@ -16,10 +16,6 @@ pub struct Bar0 {
     mmap: DeviceMmap,
 }
 
-// SAFETY: Bar0 wraps hw-safe DeviceMmap (Send + Sync). The bins that use this
-// are single-threaded CLI tools.
-unsafe impl Send for Bar0 {}
-
 impl Bar0 {
     /// Map `size` bytes of a PCI BAR via the given fd (read-write).
     ///

@@ -45,6 +45,8 @@ use std::process::ExitCode;
 use rustix::ioctl::Opcode;
 
 #[cfg(target_os = "linux")]
+use toadstool_cylinder::bin_helpers::Bar0;
+#[cfg(target_os = "linux")]
 use toadstool_cylinder::nv::rm_abi::NvChannelAllocParams;
 
 #[cfg(target_os = "linux")]
@@ -86,28 +88,12 @@ fn cleanup(ctl_path: &str, gpu_path: &str) {
 /// Read PMC_ENABLE (offset 0x200) from BAR0 via sysfs resource0 mmap
 #[cfg(target_os = "linux")]
 fn read_pmc_enable(bdf: &str) -> Option<u32> {
+    const BAR0_SIZE: usize = 0x1000;
     let path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "resource0");
     let f = std::fs::OpenOptions::new().read(true).open(&path).ok()?;
-    // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC registers;
-    // MAP_SHARED is required for MMIO coherency.
-    let map = unsafe {
-        rustix::mm::mmap(
-            std::ptr::null_mut(),
-            0x1000,
-            rustix::mm::ProtFlags::READ,
-            rustix::mm::MapFlags::SHARED,
-            &f,
-            0,
-        )
-    }
-    .ok()?;
-    // SAFETY: offset 0x200 is PMC_ENABLE within the mapped BAR0 page.
-    let val = unsafe { std::ptr::read_volatile(map.cast::<u8>().add(0x200).cast::<u32>()) };
-    // SAFETY: map and size match the successful mmap above.
-    unsafe {
-        let _ = rustix::mm::munmap(map, 0x1000);
-    }
-    Some(val)
+    // SAFETY: f is a valid sysfs BAR0 resource0; BAR0_SIZE covers PMC registers.
+    let bar0 = unsafe { Bar0::map_with_prot(f.as_fd(), BAR0_SIZE, false) }.ok()?;
+    Some(bar0.r32(0x200))
 }
 
 // Volta (GV100) uses SET/CLEAR register pairs for interrupt enable:
@@ -132,54 +118,26 @@ fn quench_gpu_interrupts(bdf: &str) {
         .write(true)
         .open(&bar0_path)
     {
-        // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC registers;
-        // MAP_SHARED + R/W is required for MMIO register writes.
-        let map_result = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                0x1000,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &f,
-                0,
-            )
-        };
-        if let Ok(map) = map_result {
-            let base = map.cast::<u8>();
-            // SAFETY: NV_PMC_INTR_EN_0 (0x140) within the 0x1000 mapped BAR0 page.
-            let old_en =
-                unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>()) };
-
-            // SAFETY: NV_PMC_INTR_EN_CLEAR_0 (0x180) within the 0x1000 mapped BAR0 page;
-            // writing 0xFFFFFFFF disables all interrupt sources.
-            unsafe {
-                std::ptr::write_volatile(
-                    base.add(NV_PMC_INTR_EN_CLEAR_0).cast::<u32>(),
-                    0xFFFF_FFFF,
-                );
-            }
-
-            // SAFETY: NV_PMC_INTR_EN_0 (0x140) within the 0x1000 mapped BAR0 page.
-            let new_en =
-                unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_EN_0).cast::<u32>()) };
-
-            // SAFETY: NV_PMC_INTR_0 (0x100) within the 0x1000 mapped BAR0 page.
-            let pending = unsafe { std::ptr::read_volatile(base.add(NV_PMC_INTR_0).cast::<u32>()) };
-
-            // SAFETY: map and size match the successful mmap above.
-            unsafe {
-                let _ = rustix::mm::munmap(map, 0x1000);
-            }
-            eprintln!(
-                "[QUENCH] INTR_EN: 0x{old_en:08x} → 0x{new_en:08x} (wrote 0xFFFFFFFF to CLEAR@0x180) pending=0x{pending:08x}"
-            );
-            if new_en != 0 {
+        const BAR0_SIZE: usize = 0x1000;
+        // SAFETY: f is a valid sysfs BAR0 resource0; BAR0_SIZE covers PMC registers.
+        match unsafe { Bar0::map(f.as_fd(), BAR0_SIZE) } {
+            Ok(bar0) => {
+                let old_en = bar0.r32(NV_PMC_INTR_EN_0 as u32);
+                bar0.w32(NV_PMC_INTR_EN_CLEAR_0 as u32, 0xFFFF_FFFF);
+                let new_en = bar0.r32(NV_PMC_INTR_EN_0 as u32);
+                let pending = bar0.r32(NV_PMC_INTR_0 as u32);
                 eprintln!(
-                    "[QUENCH] WARNING: INTR_EN not zero after CLEAR — GPU may still generate interrupts!"
+                    "[QUENCH] INTR_EN: 0x{old_en:08x} → 0x{new_en:08x} (wrote 0xFFFFFFFF to CLEAR@0x180) pending=0x{pending:08x}"
                 );
+                if new_en != 0 {
+                    eprintln!(
+                        "[QUENCH] WARNING: INTR_EN not zero after CLEAR — GPU may still generate interrupts!"
+                    );
+                }
             }
-        } else {
-            eprintln!("[QUENCH] BAR0 mmap failed — cannot disable GPU interrupts at source!");
+            Err(_) => {
+                eprintln!("[QUENCH] BAR0 mmap failed — cannot disable GPU interrupts at source!");
+            }
         }
     } else {
         eprintln!("[QUENCH] Cannot open {bar0_path} for write — interrupt quench skipped");

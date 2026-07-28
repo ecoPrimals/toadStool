@@ -104,8 +104,9 @@ impl EntropyClient {
                 let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
                     .await
                     .unwrap_or_else(|_| {
-                        toadstool_common::primal_sockets::get_biomeos_dir()
-                            .join(format!("{}.sock", capabilities::CRYPTO))
+                        toadstool_common::primal_sockets::get_socket_path_for_capability(
+                            capabilities::CRYPTO,
+                        )
                     });
 
                 Ok(Self {
@@ -162,8 +163,9 @@ impl EntropyClient {
                     "Capability discovery failed: {}, using biomeOS standard path",
                     e
                 );
-                // Fallback to biomeOS standard path for crypto services (no hardcoded name)
-                toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock")
+                toadstool_common::primal_sockets::get_socket_path_for_capability(
+                    capabilities::CRYPTO,
+                )
             });
 
         if tokio::fs::metadata(&socket_path).await.is_ok() {
@@ -187,8 +189,9 @@ impl EntropyClient {
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
             .unwrap_or_else(|_| {
-                // Fallback to biomeOS standard path for crypto services
-                toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock")
+                toadstool_common::primal_sockets::get_socket_path_for_capability(
+                    capabilities::CRYPTO,
+                )
             });
 
         match tokio::net::UnixStream::connect(socket_path).await {
@@ -209,8 +212,9 @@ impl EntropyClient {
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir()
-                    .join(format!("{}.sock", capabilities::CRYPTO))
+                toadstool_common::primal_sockets::get_socket_path_for_capability(
+                    capabilities::CRYPTO,
+                )
             });
 
         let socket_client =

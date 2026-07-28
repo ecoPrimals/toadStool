@@ -140,7 +140,12 @@ pub(crate) async fn handle_tcp_connection(
             let _ = tokio::io::AsyncWriteExt::flush(&mut stream).await;
             return Ok(());
         }
-        _ => {}
+        other => {
+            debug!(
+                first_byte = format_args!("0x{:02X}", other),
+                "riboCipher TCP: unhandled signal byte, falling through to unsignalled rejection"
+            );
+        }
     }
 
     // Wave 113: REJECT unsignalled connections

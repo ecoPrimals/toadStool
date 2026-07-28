@@ -64,13 +64,13 @@ pub mod unix_jsonrpc_client;
 pub mod unix_jsonrpc_client;
 #[cfg(not(unix))]
 pub mod unix_jsonrpc {
-    //! Alias for [`unix_jsonrpc_client`] (stub on non-Unix platforms).
+    //! Alias for [`super::unix_jsonrpc_client`] (stub on non-Unix platforms).
     pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
 }
 
 #[cfg(unix)]
 pub mod unix_jsonrpc {
-    //! Alias for [`unix_jsonrpc_client`] (BearDog / security IPC naming in phase handoffs).
+    //! Alias for [`super::unix_jsonrpc_client`] (BearDog / security IPC naming in phase handoffs).
     pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
 }
 

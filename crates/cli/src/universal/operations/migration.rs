@@ -2,6 +2,14 @@
 //! Migration Operations
 //!
 //! Extension trait for workload migration operations between platforms.
+//!
+//! ## Preview status
+//!
+//! Most platform-specific steps still return [`crate::CliError::NotImplemented`] until
+//! the corresponding capability providers are wired (pause, transfer, restore, etc.).
+//! The `universal migrate` CLI subcommand is gated behind the `migration-preview` Cargo
+//! feature so default builds do not expose a command that always fails at runtime.
+//! Library callers (tests, internal orchestration) may invoke [`MigrationOps`] directly.
 
 use crate::Result;
 use std::future::Future;

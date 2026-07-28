@@ -7,7 +7,6 @@
 )]
 
 use std::sync::Arc;
-use tracing::debug;
 
 #[cfg(test)]
 use toadstool::error::ToadStoolError;
@@ -19,12 +18,9 @@ use crate::coordination::types::{NodeCapabilities, NodeMetadata, NodeType};
 
 impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
-        let biomeos = toadstool_common::primal_sockets::get_biomeos_dir();
-        let socket_path = biomeos.join("coordination.sock");
-
         Self {
             connection: Arc::clone(&self.connection),
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
+            rpc_client: self.rpc_client.clone(),
         }
     }
 }
@@ -35,7 +31,7 @@ impl DiscoveryClient {
         let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir().join("coordination.sock")
+                toadstool_common::primal_sockets::get_socket_path_for_capability("coordination")
             });
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
@@ -59,7 +55,10 @@ impl DiscoveryClient {
         }
     }
 
-    /// Call `coordination.discover_nodes` and return registrations (empty on RPC failure).
+    /// Call `coordination.discover_nodes` and return registrations.
+    ///
+    /// Returns an error when the coordination RPC call fails so callers can
+    /// distinguish discovery outages from an empty registry.
     pub async fn discover_nodes(&self) -> ToadStoolResult<Vec<NodeRegistration>> {
         let mut params = serde_json::json!({});
 
@@ -67,16 +66,9 @@ impl DiscoveryClient {
             params["auth_token"] = serde_json::json!(token);
         }
 
-        let nodes: Vec<NodeRegistration> = self
-            .rpc_client
+        self.rpc_client
             .call_typed("coordination.discover_nodes", params)
             .await
-            .unwrap_or_else(|e| {
-                debug!("Discovery failed: {e}, returning empty list");
-                Vec::new()
-            });
-
-        Ok(nodes)
     }
 
     #[cfg(test)]

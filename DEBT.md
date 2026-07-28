@@ -1,12 +1,31 @@
 # Active Technical Debt Register
 
-**Date**: July 27, 2026 — S343
+**Date**: July 28, 2026 — S344
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S344 (strandGate Deep Debt Evolution — Wave 155f)**:
+deny.toml expanded from 8 → 19+ bans (Pure Rust Crypto Purity Standard
+alignment). Crypto encryption evolved to best-effort (dispatch proceeds
+unencrypted when Tower unavailable / FAMILY_ID unset). 3 clippy
+`assigning_clones` fixed in distributed discovery crates. Overstep
+reduced: `toadstool-display` + `akida-driver` feature-gated off default
+build. `UniversalKernelCompiler` renamed → `KernelStringOptimizer`
+(clarified architectural boundary). Socket fallbacks centralized via
+`get_socket_path_for_capability()` (eliminated inline hardcoded paths).
+Production stubs evolved: bluetooth connect/disconnect/execute → proper
+`not_supported` errors; macOS sandbox → `PlatformNotSupported`; webhook
+export → `not_supported` (needs songBird IPC). `discover_nodes` error
+propagation (RPC failures no longer silently swallowed). Migration CLI
+gated behind `migration-preview` feature. TCP riboCipher unhandled signal
+bytes now logged. Cylinder MMIO consolidated through hw-safe containment
+zone (mmio.rs deleted, rm_trigger migrated to Bar0). SAFETY comment
+normalization (`// Safe:` → `// SAFETY:`). 23,332 workspace tests, 0
+failures.
 
 **S343 (Cross-Platform GPU Pipeline: System Queries → Dispatch)**:
 `gpu_system.rs` query functions evolved from stubs/placeholders to real wgpu adapter enumeration. `nvidia-smi` memory query ungated (cross-platform). Backend detection probes actual DLLs/frameworks instead of hardcoding. `dispatch/capabilities.rs` falls back to wgpu when sysmon empty — adds `wgpu_gpus` array and dynamic `dispatch_modes`. 9,232 lib tests.

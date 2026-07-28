@@ -9,7 +9,7 @@ use tracing::{info, warn};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-use crate::compiler::UniversalKernelCompiler;
+use crate::compiler::KernelStringOptimizer;
 use crate::config::UniversalGpuConfig;
 use crate::coordinator::ComputeResourceCoordinator;
 use crate::parallel_framework_dispatch::ParallelComputeFrameworkDispatch;
@@ -50,7 +50,7 @@ impl UniversalGpuEngine {
         let frameworks = Arc::new(RwLock::new(HashMap::new()));
         let devices = Arc::new(RwLock::new(HashMap::new()));
         let active_sessions = Arc::new(RwLock::new(HashMap::new()));
-        let kernel_compiler = Arc::new(UniversalKernelCompiler::new(config.compilation.clone()));
+        let kernel_compiler = Arc::new(KernelStringOptimizer::new(config.compilation.clone()));
         let resource_coordinator =
             Arc::new(ComputeResourceCoordinator::new(config.resources.clone()));
         let evolution_metrics = Arc::new(RwLock::new(EvolutionMetrics::default()));

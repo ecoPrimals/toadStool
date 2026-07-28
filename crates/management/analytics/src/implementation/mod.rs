@@ -289,11 +289,9 @@ impl IntelligentAnalyticsEngine {
         clippy::unused_async,
         reason = "trait method; will await HTTP when coordination service integration added"
     )]
-    async fn export_to_webhook(&self, webhook: &WebhookConfig) -> ToadStoolResult<()> {
-        tracing::info!(
-            "Webhook export to {} -- use coordination service for external HTTP",
-            webhook.url
-        );
-        Ok(())
+    async fn export_to_webhook(&self, _webhook: &WebhookConfig) -> ToadStoolResult<()> {
+        Err(ToadStoolError::not_supported(
+            "Webhook export requires songBird IPC integration".to_string(),
+        ))
     }
 }

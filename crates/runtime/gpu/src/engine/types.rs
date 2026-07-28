@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use toadstool::resources::ResourceMonitorDispatch;
 
-use crate::compiler::UniversalKernelCompiler;
+use crate::compiler::KernelStringOptimizer;
 use crate::config::UniversalGpuConfig;
 use crate::coordinator::ComputeResourceCoordinator;
 use crate::parallel_framework_dispatch::ParallelComputeFrameworkDispatch;
@@ -26,7 +26,7 @@ pub struct UniversalGpuEngine {
     /// Active compute sessions (supports recursive execution)
     pub(super) active_sessions: Arc<RwLock<HashMap<Uuid, ComputeSession>>>,
     /// Universal kernel compiler and optimizer
-    pub(super) _kernel_compiler: Arc<UniversalKernelCompiler>,
+    pub(super) _kernel_compiler: Arc<KernelStringOptimizer>,
     /// Device resource coordinator
     pub(super) resource_coordinator: Arc<ComputeResourceCoordinator>,
     /// Configuration

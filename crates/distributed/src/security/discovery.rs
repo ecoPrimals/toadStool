@@ -63,7 +63,7 @@ impl SecurityDiscovery {
         }
 
         // Cache discovered endpoints
-        *self.discovered_endpoints.write().await = endpoints.clone();
+        (*self.discovered_endpoints.write().await).clone_from(&endpoints);
 
         Ok(endpoints)
     }

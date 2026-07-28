@@ -72,30 +72,51 @@ wildcards = "warn"
 # These are C-FFI crates that must not appear in the toadstool / server / core
 # dependency graph. They are allowed in feature-gated GPU/neuromorphic crates.
 deny = [
-    # OpenSSL — use rustls + aws-lc-rs instead
+    # ── Pure Rust Crypto Purity Standard (19-crate ban list) ──────────────────
+    # Reference: infra/wateringHole/fossilRecord/wave150s_standards/PURE_RUST_CRYPTO_PURITY_STANDARD.md
+    # S344: expanded from 8 → 19+ bans per standard.
+
+    # OpenSSL — use rustls + rustls-rustcrypto instead
     { name = "openssl" },
     { name = "openssl-sys" },
-    # aws-lc-sys — C FFI shim for AWS-LC; banned per SOVEREIGNTY_STANDARDS.md.
+    # aws-lc — C FFI crypto; banned per PURE_RUST_CRYPTO_PURITY_STANDARD.md S1/S2.
+    { name = "aws-lc-rs" },
     { name = "aws-lc-sys" },
-    # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives.
+    # ring — C/asm crypto; use RustCrypto alternatives (ed25519-dalek, aes-gcm, etc.).
     # License clarified in [[licenses.clarify]]; present in Cargo.lock as a
     # conditional transitive dep via quinn-proto / rustls-webpki (not on default build path).
     { name = "ring" },
-    # async-trait — proc macro for dyn-safe async traits; fully evolved to manual
-    # Pin<Box<dyn Future>> and native AFIT (S203r). No workspace crate depends on it directly.
-    # Transitive via axum (still pulled by toadstool-runtime-container), config, wiggle — wrappers
-    # until upstream drops it. Verify: `cargo tree -p config -i async-trait`, `cargo tree -i axum`.
-    { name = "async-trait", wrappers = ["axum", "axum-core", "config", "wiggle"] },
-    # zstd-sys — C FFI for zstd; banned in production paths.
-    # toadstool-runtime-secure-enclave uses ruzstd (pure Rust); no member needs zstd-sys.
+    # BoringSSL — Google's OpenSSL fork; same C-FFI concerns.
+    { name = "boring" },
+    { name = "boring-sys" },
+    # Platform TLS — wraps system C crypto (SChannel/SecureTransport/OpenSSL).
+    { name = "native-tls" },
+    { name = "security-framework-sys" },
+    { name = "schannel" },
+    # Compression — C FFI shims; use pure Rust alternatives (flate2/rust_backend, ruzstd).
     { name = "zstd-sys" },
-    # tungstenite WebSocket — removed in R-011; must not return
+    { name = "lz4-sys" },
+    # Database — no SQLite C in compute binary.
+    { name = "libsqlite3-sys" },
+    # System info — replaced by toadstool-sysmon (ecoBin v3.0, S137).
+    { name = "sysinfo" },
+    # PKCS#11 — C cryptographic token interface.
+    { name = "cryptoki-sys" },
+    # Build tools — no C bindgen/cmake in core path.
+    { name = "bindgen" },
+    { name = "cmake" },
+
+    # ── Architectural bans ────────────────────────────────────────────────────
+    # async-trait — fully evolved to manual Pin<Box<dyn Future>> and native AFIT (S203r).
+    # Transitive via axum/config/wiggle — wrappers until upstream drops it.
+    { name = "async-trait", wrappers = ["axum", "axum-core", "config", "wiggle"] },
+    # tungstenite WebSocket — removed in R-011; must not return.
     { name = "tungstenite" },
     { name = "tokio-tungstenite" },
     # reqwest — migrated to pure Rust Unix IPC in production (R-008).
     # Policy: reqwest is allowed ONLY behind the optional `http-downloads` feature
     # on toadstool-runtime-edge (excluded from workspace). No core/server/cli crate
-    # may depend on it. Commented out because it's not on the default binary path.
+    # may depend on it.
     #{ name = "reqwest", reason = "Use unix-jsonrpc-client instead of reqwest in core paths" },
 ]
 

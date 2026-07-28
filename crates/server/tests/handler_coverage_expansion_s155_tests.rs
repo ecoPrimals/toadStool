@@ -41,106 +41,111 @@ fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonR
 // Transport handler — transport.open, transport.stream, transport.status
 // ═══════════════════════════════════════════════════════════
 
-#[tokio::test]
-async fn transport_open_missing_params() {
-    let handler = test_handler();
-    let request = mk_request("transport.open", None, 1);
-    let response = handler.handle_request(&request).await;
+#[cfg(all(target_os = "linux", feature = "display"))]
+mod transport_handler_tests {
+    use super::*;
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-}
+    #[tokio::test]
+    async fn transport_open_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("transport.open", None, 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_open_missing_source_slot() {
-    let handler = test_handler();
-    let params = serde_json::json!({ "target_slot": "0000:41:00.0" });
-    let request = mk_request("transport.open", Some(params), 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-    assert!(err.message.contains("source_slot"));
-}
+    #[tokio::test]
+    async fn transport_open_missing_source_slot() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "target_slot": "0000:41:00.0" });
+        let request = mk_request("transport.open", Some(params), 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_open_missing_target_slot() {
-    let handler = test_handler();
-    let params = serde_json::json!({ "source_slot": "0000:25:00.0" });
-    let request = mk_request("transport.open", Some(params), 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("source_slot"));
+    }
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-    assert!(err.message.contains("target_slot"));
-}
+    #[tokio::test]
+    async fn transport_open_missing_target_slot() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "source_slot": "0000:25:00.0" });
+        let request = mk_request("transport.open", Some(params), 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_open_nonexistent_link() {
-    let handler = test_handler();
-    let params = serde_json::json!({
-        "source_slot": "0000:99:00.0",
-        "target_slot": "0000:99:00.1"
-    });
-    let request = mk_request("transport.open", Some(params), 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("target_slot"));
+    }
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert!(err.message.contains("No PCIe link") || err.message.contains("params"));
-}
+    #[tokio::test]
+    async fn transport_open_nonexistent_link() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "source_slot": "0000:99:00.0",
+            "target_slot": "0000:99:00.1"
+        });
+        let request = mk_request("transport.open", Some(params), 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_stream_missing_params() {
-    let handler = test_handler();
-    let request = mk_request("transport.stream", None, 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert!(err.message.contains("No PCIe link") || err.message.contains("params"));
+    }
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-}
+    #[tokio::test]
+    async fn transport_stream_missing_params() {
+        let handler = test_handler();
+        let request = mk_request("transport.stream", None, 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_stream_unregistered_transports() {
-    let handler = test_handler();
-    let params = serde_json::json!({
-        "rx_id": "nonexistent-rx",
-        "tx_id": "nonexistent-tx"
-    });
-    let request = mk_request("transport.stream", Some(params), 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert!(err.message.contains("not registered"));
-}
+    #[tokio::test]
+    async fn transport_stream_unregistered_transports() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "rx_id": "nonexistent-rx",
+            "tx_id": "nonexistent-tx"
+        });
+        let request = mk_request("transport.stream", Some(params), 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_status_all_streams_empty() {
-    let handler = test_handler();
-    let request = mk_request("transport.status", None, 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert!(err.message.contains("not registered"));
+    }
 
-    assert!(response.error.is_none());
-    let result = response.result.expect("result present");
-    assert!(result["streams"].as_array().is_some());
-    assert_eq!(result["count"].as_u64().unwrap(), 0);
-}
+    #[tokio::test]
+    async fn transport_status_all_streams_empty() {
+        let handler = test_handler();
+        let request = mk_request("transport.status", None, 1);
+        let response = handler.handle_request(&request).await;
 
-#[tokio::test]
-async fn transport_status_unknown_stream_id() {
-    let handler = test_handler();
-    let params = serde_json::json!({ "stream_id": "stream-999" });
-    let request = mk_request("transport.status", Some(params), 1);
-    let response = handler.handle_request(&request).await;
+        assert!(response.error.is_none());
+        let result = response.result.expect("result present");
+        assert!(result["streams"].as_array().is_some());
+        assert_eq!(result["count"].as_u64().unwrap(), 0);
+    }
 
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert!(err.message.contains("Unknown stream"));
+    #[tokio::test]
+    async fn transport_status_unknown_stream_id() {
+        let handler = test_handler();
+        let params = serde_json::json!({ "stream_id": "stream-999" });
+        let request = mk_request("transport.status", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+
+        assert!(response.result.is_none());
+        let err = response.error.expect("error present");
+        assert!(err.message.contains("Unknown stream"));
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -157,7 +162,11 @@ async fn dispatch_submit_with_valid_binary_returns_job_id() {
     let request = mk_request("compute.dispatch.submit", Some(params), 1);
     let response = handler.handle_request(&request).await;
 
-    assert!(response.error.is_none());
+    assert!(
+        response.error.is_none(),
+        "unexpected JSON-RPC error: {:?}",
+        response.error
+    );
     let result = response.result.expect("result present");
     assert_eq!(result["domain"], "compute.dispatch");
     assert_eq!(result["operation"], "submit");

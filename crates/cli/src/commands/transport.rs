@@ -7,9 +7,9 @@ use crate::{CliError, Result};
 
 use super::definitions::TransportCommands;
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 use toadstool_core::{TransportInfo, TransportMedium};
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 use toadstool_display::{
     discover_capture_transports, discover_display_transports, discover_pcie_transports,
     serial_transport::discover_serial_transports,
@@ -17,7 +17,7 @@ use toadstool_display::{
 
 /// Execute transport subcommands (local discovery, no daemon).
 pub async fn execute_transport_command(action: &TransportCommands) -> Result<()> {
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "display"))]
     {
         match action {
             TransportCommands::Discover { format } => {
@@ -33,6 +33,14 @@ pub async fn execute_transport_command(action: &TransportCommands) -> Result<()>
         Ok(())
     }
 
+    #[cfg(all(target_os = "linux", not(feature = "display")))]
+    {
+        let _ = action;
+        Err(CliError::Other(
+            "Transport commands require the 'display' feature (petalTongue domain)".into(),
+        ))
+    }
+
     #[cfg(not(target_os = "linux"))]
     {
         let _ = action;
@@ -41,7 +49,7 @@ pub async fn execute_transport_command(action: &TransportCommands) -> Result<()>
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 async fn run_discover(format: &str) -> Result<()> {
     let transports = discover_all_transports();
 
@@ -70,7 +78,7 @@ async fn run_discover(format: &str) -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 async fn run_status() -> Result<()> {
     let transports = discover_all_transports();
 
@@ -102,7 +110,7 @@ async fn run_status() -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 fn discover_all_transports() -> Vec<TransportInfo> {
     let mut transports = Vec::new();
     transports.extend(discover_display_transports());
@@ -112,7 +120,7 @@ fn discover_all_transports() -> Vec<TransportInfo> {
     transports
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 fn print_transports_table(transports: &[TransportInfo]) {
     println!("Hardware Transports");
     println!("═══════════════════════════════════════════════════");
@@ -151,7 +159,7 @@ fn print_transports_table(transports: &[TransportInfo]) {
     );
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(all(test, target_os = "linux", feature = "display"))]
 mod tests {
     use super::*;
     use crate::commands::definitions::TransportCommands;

@@ -122,7 +122,7 @@ http-body-util = "0.1"
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-cylinder = { path = "../core/cylinder" }
 nvpmu = { path = "../core/nvpmu" }
-toadstool-display = { path = "../runtime/display" }
+toadstool-display = { path = "../runtime/display", optional = true }
 
 [target.'cfg(unix)'.dev-dependencies]
 # EVOLVED: libc replaced with rustix (Feb 16, 2026) - ecoBin compliant, safer API
@@ -147,11 +147,17 @@ gpu = ["toadstool-runtime-gpu"]  # WebGPU by default (pure Rust, universal)
 gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # WebGPU + AI/ML extensions
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
 
-# NPU FEATURES: Neuromorphic accelerator support
-npu = ["dep:akida-driver"]
+# NPU FEATURES: Neuromorphic accelerator support (squirrel domain)
+npu = ["dep:akida-driver", "toadstool/npu"]
+
+# Display / hardware transport (petalTongue domain — DRM, V4L2, serial)
+display = ["dep:toadstool-display"]
 
 # Nautilus: proxied to barraCuda via capability-based IPC (zero library dep)
 nautilus = []
+
+# Workload migration CLI and orchestration stubs (platform capabilities not yet wired)
+migration-preview = []
 
 [lints]
 workspace = true

@@ -74,6 +74,8 @@ tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
 btsp = ["toadstool-common/btsp"]
 # Cross-platform sandbox + policy enforcement (seccomp, capabilities, RBAC)
 sandbox = ["dep:toadstool-security-sandbox", "dep:toadstool-security-policies"]
+# Display / hardware transport (petalTongue domain — DRM, V4L2, serial)
+display = ["dep:toadstool-display"]
 # UNIBIN EVOLUTION (Feb 2, 2026):
 # Removed [[bin]] section to make this a library-only crate.
 # The toadstool-server binary violated UniBin standard.
@@ -92,14 +94,13 @@ sandbox = ["dep:toadstool-security-sandbox", "dep:toadstool-security-policies"]
 # Reference: wateringHole/UNIBIN_ARCHITECTURE_STANDARD.md
 
 [target.'cfg(target_os = "linux")'.dependencies]
-toadstool-display = { path = "../runtime/display" }
+toadstool-display = { path = "../runtime/display", optional = true }
 toadstool-cylinder = { path = "../core/cylinder" }
 toadstool-runtime-gpu = { path = "../runtime/gpu" }
 hw-learn = { path = "../core/hw-learn" }
 nvpmu = { path = "../core/nvpmu" }
 
 [dev-dependencies]
-toadstool-display = { path = "../runtime/display", features = ["test-mocks"] }
 criterion = { workspace = true }
 hw-learn = { path = "../core/hw-learn" }
 tokio-test = { workspace = true }

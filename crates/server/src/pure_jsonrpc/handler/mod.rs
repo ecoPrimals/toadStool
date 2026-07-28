@@ -29,6 +29,7 @@ mod silicon;
 #[cfg(target_os = "linux")]
 mod sovereign;
 #[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 mod transport;
 mod workload;
 
@@ -52,7 +53,7 @@ pub use hw_learn::HwLearnHandler;
 use job::JobHandler;
 use resources::ResourceHandler;
 use silicon::SiliconHandler;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 use transport::TransportHandler;
 use workload::WorkloadHandler;
 
@@ -85,7 +86,7 @@ pub struct JsonRpcHandler {
     job: JobHandler,
     workload: WorkloadHandler,
     resources: ResourceHandler,
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "display"))]
     transport: TransportHandler,
     silicon: SiliconHandler,
     #[cfg(target_os = "linux")]
@@ -199,7 +200,7 @@ impl JsonRpcHandler {
             job: JobHandler::new(Arc::clone(&gate_ownership)),
             workload: WorkloadHandler::new(executor),
             resources: ResourceHandler::new(),
-            #[cfg(target_os = "linux")]
+            #[cfg(all(target_os = "linux", feature = "display"))]
             transport: TransportHandler::new(),
             silicon: SiliconHandler::new(),
             #[cfg(target_os = "linux")]

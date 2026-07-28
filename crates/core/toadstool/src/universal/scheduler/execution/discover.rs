@@ -7,7 +7,7 @@ use toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT;
 /// Discovers the primal's own IP/host for `PrimalContext.network_location`.
 ///
 /// Resolution order: `TOADSTOOL_BIND_ADDRESS` (host part) → `TOADSTOOL_BIND_HOST` →
-/// `BIND_HOST` → `HOST` → `HOSTNAME` → `0.0.0.0` (any interface).
+/// `BIND_HOST` → `HOST` → `HOSTNAME` → `BIND_ADDRESS_DEFAULT` (`127.0.0.1`).
 ///
 /// This is the self-discovery default when no explicit bind address is configured.
 #[must_use]
@@ -43,7 +43,7 @@ pub(in crate::universal::scheduler::execution) fn discover_self_ip_address() -> 
             return h;
         }
     }
-    // 6. Fallback: any interface (not loopback-only)
+    // 6. Fallback: loopback default
     BIND_ADDRESS_DEFAULT.to_string()
 }
 

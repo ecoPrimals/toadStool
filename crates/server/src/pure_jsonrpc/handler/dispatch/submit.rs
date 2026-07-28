@@ -340,9 +340,19 @@ impl DispatchHandler {
         }
 
         if self.coral_client.is_available().await {
-            let encrypted = self.crypto_client.is_some();
+            let mut encrypted = self.crypto_client.is_some();
             let dispatch_binary = if encrypted {
-                self.encrypt_payload(&binary_bytes).await?
+                match self.encrypt_payload(&binary_bytes).await {
+                    Ok(enc) => enc,
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e.message,
+                            "crypto encryption unavailable \u{2014} dispatching unencrypted"
+                        );
+                        encrypted = false;
+                        binary_bytes
+                    }
+                }
             } else {
                 binary_bytes
             };

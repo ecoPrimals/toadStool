@@ -11,7 +11,7 @@ use std::sync::atomic::Ordering;
 use tracing::debug;
 
 use super::method_gate::CallerContext;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "display"))]
 use super::transport::TransportHandler;
 use super::{JsonRpcHandler, core, extract_caller_context};
 #[cfg(target_os = "linux")]
@@ -294,7 +294,8 @@ impl JsonRpcHandler {
 
 #[cfg(target_os = "linux")]
 impl JsonRpcHandler {
-    fn is_linux_only_method(method: &str) -> bool {
+    #[cfg(feature = "display")]
+    fn is_transport_method(method: &str) -> bool {
         matches!(
             method,
             "transport.discover"
@@ -303,7 +304,17 @@ impl JsonRpcHandler {
                 | "transport.open"
                 | "transport.stream"
                 | "transport.status"
-                | "compute.hardware.observe"
+        )
+    }
+
+    fn is_linux_only_method(method: &str) -> bool {
+        #[cfg(feature = "display")]
+        if Self::is_transport_method(method) {
+            return true;
+        }
+        matches!(
+            method,
+            "compute.hardware.observe"
                 | "compute.hardware.distill"
                 | "compute.hardware.apply"
                 | "compute.hardware.share_recipe"
@@ -376,11 +387,17 @@ impl JsonRpcHandler {
         caller_ctx: &CallerContext,
     ) -> JsonRpcResult {
         match method {
+            #[cfg(feature = "display")]
             "transport.discover" => Ok(TransportHandler::transport_discover(params)),
+            #[cfg(feature = "display")]
             "transport.list" => self.transport.transport_list().await,
+            #[cfg(feature = "display")]
             "transport.route" => self.transport.transport_route(params).await,
+            #[cfg(feature = "display")]
             "transport.open" => self.transport.transport_open(params).await,
+            #[cfg(feature = "display")]
             "transport.stream" => self.transport.transport_stream(params).await,
+            #[cfg(feature = "display")]
             "transport.status" => self.transport.transport_status(params).await,
             "compute.hardware.observe" => self.hw_learn.hw_learn_observe(params).await,
             "compute.hardware.distill" => self.hw_learn.hw_learn_distill(params).await,

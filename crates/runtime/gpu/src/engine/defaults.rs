@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use crate::compiler::UniversalKernelCompiler;
+use crate::compiler::KernelStringOptimizer;
 use crate::config::{CompilationConfig, ResourceConfig, UniversalGpuConfig};
 use crate::coordinator::ComputeResourceCoordinator;
 use crate::strategy::{BackendSelectionStrategy, EvolutionMetrics};
@@ -21,7 +21,7 @@ impl Default for UniversalGpuEngine {
             frameworks: Arc::new(RwLock::new(HashMap::new())),
             devices: Arc::new(RwLock::new(HashMap::new())),
             active_sessions: Arc::new(RwLock::new(HashMap::new())),
-            _kernel_compiler: Arc::new(UniversalKernelCompiler::new(CompilationConfig::default())),
+            _kernel_compiler: Arc::new(KernelStringOptimizer::new(CompilationConfig::default())),
             resource_coordinator: Arc::new(ComputeResourceCoordinator::new(
                 ResourceConfig::default(),
             )),

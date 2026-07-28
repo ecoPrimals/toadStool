@@ -51,6 +51,7 @@ async fn test_execute_command_universal_benchmark() {
     );
 }
 
+#[cfg(feature = "migration-preview")]
 #[tokio::test(flavor = "current_thread")]
 async fn test_execute_command_universal_migrate_error_path() {
     let cli = Cli {

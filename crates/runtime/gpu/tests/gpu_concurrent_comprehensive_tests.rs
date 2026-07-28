@@ -14,8 +14,8 @@ use std::sync::Arc;
 use tokio::sync::Barrier;
 
 use toadstool_runtime_gpu::{
-    ComputeResourceCoordinator, DeviceRequirements, GpuFramework, UniversalGpuEngine,
-    UniversalKernelCompiler, config::ResourceConfig,
+    ComputeResourceCoordinator, DeviceRequirements, GpuFramework, KernelStringOptimizer,
+    UniversalGpuEngine, config::ResourceConfig,
 };
 
 // ============================================================================
@@ -273,7 +273,7 @@ async fn test_concurrent_compiler_creation() {
             bar.wait().await;
 
             // Create universal kernel compiler
-            let _compiler = UniversalKernelCompiler::new(
+            let _compiler = KernelStringOptimizer::new(
                 toadstool_runtime_gpu::config::CompilationConfig::default(),
             );
             true // Always succeeds, compiler is not a Result
@@ -288,7 +288,7 @@ async fn test_concurrent_compiler_creation() {
 #[tokio::test]
 async fn test_concurrent_kernel_compilation() {
     // ✅ FULLY CONCURRENT: Compile kernels concurrently
-    let compiler = Arc::new(UniversalKernelCompiler::new(
+    let compiler = Arc::new(KernelStringOptimizer::new(
         toadstool_runtime_gpu::config::CompilationConfig::default(),
     ));
 

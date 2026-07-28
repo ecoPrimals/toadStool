@@ -12,7 +12,12 @@ use tracing::{debug, info, trace};
     reason = "explicit visibility for clarity"
 )]
 pub(crate) trait DiscoveryExt {
-    /// Apply DNS discovery configuration
+    /// Persist DNS discovery settings for the orchestration layer.
+    ///
+    /// This is the **configure** stage of the configurator lifecycle: values are
+    /// validated via [`DiscoveryExt::validate_dns_discovery_config`] and stored on
+    /// [`OrchestrationNetworkConfigurator`]. Live DNS resolver wiring and service
+    /// discovery registration happen later when the orchestration runtime starts.
     async fn apply_dns_discovery_config(&self) -> ToadStoolResult<()>;
 
     /// Validate DNS discovery configuration
@@ -26,6 +31,7 @@ impl DiscoveryExt for super::OrchestrationNetworkConfigurator {
         let config = &self.config.dns_discovery;
         debug!("DNS servers: {:?}", config.dns_servers);
         debug!("Search domains: {:?}", config.search_domains);
+        // Intentional no-op at this stage: see trait doc for configure → runtime lifecycle.
         debug!(
             "configuration stored; runtime application deferred to orchestration layer (DNS discovery)"
         );

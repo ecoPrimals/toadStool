@@ -63,7 +63,7 @@ pub mod glowplug;
 pub mod backends;
 
 // Re-export main types and traits for convenience
-pub use compiler::UniversalKernelCompiler;
+pub use compiler::KernelStringOptimizer;
 pub use compute_dispatch::{ComputeContextDispatch, UniversalComputeResourceDispatch};
 pub use config::{
     AllocationStrategy, AsyncExecutionConfig, CachingConfig, CompilationConfig,

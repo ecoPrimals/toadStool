@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S343 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S344 | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,232+ lib-only default; +1,289 behind `legacy-coordination`), **~221** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,332 tests, 0 failures** (9,232+ lib-only default; +1,289 behind `legacy-coordination`), **~206** ignored (hardware-gated); full workspace ~12m on Dual EPYC |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
@@ -278,7 +278,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (9,232 lib default; +1,289 legacy-coordination) |
+| Workspace tests | **23,332**, 0 failures (9,232 lib default; +1,289 legacy-coordination) |
 | Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -308,6 +308,8 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S344 (Jul 28, 2026)**: **Deep Debt Evolution (strandGate)** — `deny.toml` expanded to 19+ bans (Pure Rust Crypto standard). Crypto encryption best-effort fallback (dispatch proceeds unencrypted when Tower unavailable). 3 clippy `assigning_clones` fixed. Overstep reduced: `toadstool-display` + `akida-driver` feature-gated off default build. `UniversalKernelCompiler` → `KernelStringOptimizer`. Socket fallbacks centralized via `get_socket_path_for_capability()`. Production stubs evolved: bluetooth/sandbox/webhook → proper errors. `discover_nodes` error propagation. Migration CLI gated behind `migration-preview`. TCP riboCipher unhandled states logged. Cylinder MMIO consolidated through hw-safe. 23,332 tests, 0 failures.
+- **S343 (Jul 27, 2026)**: **Cross-platform GPU pipeline** — wgpu wired into gpu_system queries + dispatch capabilities.
 - **S315 (Jun 14, 2026)**: **Wave 113 Compliance** — Bare `"health"` JSON-RPC method added (`{status, primal, version}` — guideStone-mandated shape). Early-health responder now accepts riboCipher `[0xEC, 0x01]` prefix. Wave 113 REJECT enforced: unsignalled connections on all accept loops (Unix, TCP, BTSP) now return `-32600` error instead of legacy fallback. MITO/NUCLEAR tiers send error response instead of silent close. Tests updated to use riboCipher signal.
 - **S317 (Jun 15, 2026)**: **Deprecated Symbol Evolution II** — 6 deprecated symbols deleted: `IntelligenceBackend::new`, `SecurityBackend::new`, `SocketStorageBackend::new` (→test-only `new_test`), `SecurityClient::new` (production callers migrated to `new_async`), `invoke_http` (HTTP match arm inlined as error), `setup_websocket_federation` (trait method + 7 dead tests removed). Clippy `if_not_else` fixed in `unix.rs`. ~25 `#[expect(deprecated)]` test attrs cleaned.
 - **S316 (Jun 15, 2026)**: **Deep Debt XVII: File Splits + Dead Symbol Deletion** — `cpu_resource.rs` split (749→673L): dispatch enums extracted to `compute_dispatch.rs`. `glowplug_client.rs` split (729→635L): serde types extracted to `glowplug_types.rs`. `TOADSTOOL_ENABLE_GRPC` constant deleted (zero callers since S314). Unfulfilled `#[expect(dead_code)]` removed from `executor/types.rs` (code now alive).
@@ -383,7 +385,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jul 26, 2026 — S341. **23,000+** workspace tests, 0 failures (9,232 lib default; +1,289 behind `legacy-coordination`). ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals, S321). **Zero `/tmp` hardcoding** — 3-tier: `XDG_RUNTIME_DIR` > `/run/membrane/<user>` (systemd) > `temp_dir` (S328). **`TRANSPORT_ENDPOINT` accepted** (S301–S302). **Zero production files >750L** (largest 713L). **Zero clippy warnings** (`-D warnings` on Rust 1.96, S341). **Cross-architecture** — `cargo check --target x86_64-pc-windows-gnu` passes (S329: 134 files `cfg`-gated). S341: migration planner queries provider APIs (replaces hardcoded $5/hr economics), security discovery eliminates silent `127.0.0.1:8081` fallbacks, `StorageConfig` uses centralized port constants. S339: Rust 1.96 clippy sweep (251 files). S338: structural splits. S337: hot-path `Cow<str>` dispatch mode. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant**. `ProtectSystem=strict` compatible (S328). **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced (S315). **MitoBeacon `0xED` accepted** (S320). **gRPC + OpenCL deleted** (S319).
+**Last Updated**: Jul 28, 2026 — S344 (strandGate deep evolution). **23,332** workspace tests, 0 failures. ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list** (Pure Rust Crypto standard compliance). **Zero production files >750L**. **Zero clippy warnings** (`-D warnings`). **Overstep reduced** — `toadstool-display` and `akida-driver` feature-gated (S344). **Crypto best-effort** — dispatch gracefully falls back to unencrypted when Tower unavailable (S344). **Capability-based socket fallbacks** — centralized via `get_socket_path_for_capability()` (S344). **MMIO consolidated** — cylinder bins route through hw-safe containment zone (S344). Rust 1.85+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced.
 
 ---
 

@@ -5,7 +5,7 @@
 ## Status
 
 **Phase**: 0 - Foundation (In Progress)  
-**Version**: 0.1.0  
+**Version**: 0.2.0  
 **Pure Rust**: ✅ 100% (Zero C dependencies!)
 
 ## Mission

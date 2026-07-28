@@ -48,7 +48,6 @@ pub type SandboxResult<T> = std::result::Result<T, SandboxError>;
 // Platform-specific implementations
 #[cfg(target_os = "linux")]
 pub mod linux;
-#[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "windows")]
 pub mod windows;

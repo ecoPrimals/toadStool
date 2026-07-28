@@ -37,6 +37,7 @@ pub async fn execute(operation: &UniversalCommands) -> Result<()> {
                 .await?;
         }
 
+        #[cfg(feature = "migration-preview")]
         UniversalCommands::Migrate {
             source,
             target,

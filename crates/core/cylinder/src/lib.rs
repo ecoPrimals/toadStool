@@ -95,8 +95,6 @@ mod hardware_tests;
 #[cfg(target_os = "linux")]
 pub mod linux_paths;
 #[cfg(target_os = "linux")]
-pub(crate) mod mmio;
-#[cfg(target_os = "linux")]
 pub(crate) mod mmio_region;
 
 #[cfg(target_os = "linux")]
