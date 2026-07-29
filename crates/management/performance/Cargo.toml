@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-management-performance"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 description = "Performance management and optimization for ToadStool"
 readme = "README.md"

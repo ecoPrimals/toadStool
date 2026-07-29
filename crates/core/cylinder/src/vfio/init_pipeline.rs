@@ -37,7 +37,7 @@ use crate::vfio::device::MappedBar;
 pub struct ProbeResult {
     /// Raw BOOT0 register value.
     pub boot0: u32,
-    /// Decoded chip ID from BOOT0 bits [28:20].
+    /// Decoded chip ID from BOOT0 bits `[28:20]`.
     pub chip_id: u32,
     /// SM version for this chip.
     pub sm_version: u32,

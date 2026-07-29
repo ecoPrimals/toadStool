@@ -92,43 +92,74 @@ mod tests {
 
     #[tokio::test]
     async fn authenticate_standalone_stores_token() {
-        let config = SecurityConfig {
-            socket_path: "/nonexistent/security-test.sock".to_string(),
-            ..SecurityConfig::default()
-        };
-        let integration = SecurityServiceIntegration::new(config).unwrap();
-        let result = integration
-            .authenticate(
-                "test",
-                "compute",
-                vec!["compute".to_string()],
-                SecurityContext::default(),
-            )
-            .await;
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_standalone());
+        temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+            let config = SecurityConfig {
+                socket_path: "/nonexistent/security-test.sock".to_string(),
+                ..SecurityConfig::default()
+            };
+            let integration = SecurityServiceIntegration::new(config).unwrap();
+            let result = integration
+                .authenticate(
+                    "test",
+                    "compute",
+                    vec!["compute".to_string()],
+                    SecurityContext::default(),
+                )
+                .await;
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_standalone());
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn authenticate_fails_without_standalone_env() {
+        temp_env::async_with_vars([("TOADSTOOL_STANDALONE", None::<&str>)], async {
+            let config = SecurityConfig {
+                socket_path: "/nonexistent/security-authz.sock".to_string(),
+                ..SecurityConfig::default()
+            };
+            let integration = SecurityServiceIntegration::new(config).unwrap();
+            let result = integration
+                .authenticate(
+                    "test",
+                    "compute",
+                    vec!["compute".to_string()],
+                    SecurityContext::default(),
+                )
+                .await;
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("standalone mode not configured"));
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn authorize_without_token_returns_error() {
-        let config = SecurityConfig {
-            socket_path: "/nonexistent/security-authz.sock".to_string(),
-            ..SecurityConfig::default()
-        };
-        let integration = SecurityServiceIntegration::new(config).unwrap();
-        integration
-            .authenticate(
-                "test",
-                "compute",
-                vec!["compute".to_string()],
-                SecurityContext::default(),
-            )
-            .await
-            .unwrap();
-        let result = integration
-            .authorize("/resource", "read", HashMap::new())
-            .await;
-        assert!(result.is_err());
+        temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+            let config = SecurityConfig {
+                socket_path: "/nonexistent/security-authz.sock".to_string(),
+                ..SecurityConfig::default()
+            };
+            let integration = SecurityServiceIntegration::new(config).unwrap();
+            integration
+                .authenticate(
+                    "test",
+                    "compute",
+                    vec!["compute".to_string()],
+                    SecurityContext::default(),
+                )
+                .await
+                .unwrap();
+            let result = integration
+                .authorize("/resource", "read", HashMap::new())
+                .await;
+            assert!(result.is_err());
+        })
+        .await;
     }
 
     #[tokio::test]

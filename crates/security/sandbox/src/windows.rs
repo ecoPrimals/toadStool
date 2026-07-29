@@ -7,9 +7,9 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
-use toadstool::error::ToadStoolResult;
+use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_security_policies::SecurityPolicy;
 
 use crate::types::{FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec};
@@ -26,46 +26,26 @@ impl WindowsSandbox {
         Self { config }
     }
 
-    /// Apply Windows sandbox restrictions
+    /// Apply Windows sandbox restrictions.
+    ///
+    /// Returns `PlatformNotSupported` — Job Object / AppContainer integration
+    /// is not yet implemented. Callers must not assume enforcement.
     pub async fn apply_sandbox(&self) -> SandboxResult<()> {
-        info!("Applying Windows sandbox restrictions");
-
-        if !cfg!(windows) {
-            return Err(SandboxError::PlatformNotSupported(
-                "Windows sandbox requires Windows OS".to_string(),
-            ));
-        }
-
-        info!("Windows sandbox restrictions applied (basic implementation)");
-        debug!(
-            isolation_level = ?self.config.default_isolation_level,
-            "Sandbox config applied"
-        );
-
-        if self.config.enable_seccomp {
-            warn!("Seccomp not available on Windows, using equivalent restrictions");
-        }
-
-        Ok(())
+        let _ = &self.config;
+        Err(SandboxError::PlatformNotSupported(
+            "Windows sandbox enforcement not yet implemented (Job Objects / AppContainer)"
+                .to_string(),
+        ))
     }
 
-    /// Remove Windows sandbox restrictions
+    /// Remove Windows sandbox restrictions.
+    ///
+    /// Returns `PlatformNotSupported` — no sandbox is applied, so none can be removed.
     pub async fn remove_sandbox(&self) -> SandboxResult<()> {
-        info!("Removing Windows sandbox restrictions");
-
-        if !cfg!(windows) {
-            return Err(SandboxError::PlatformNotSupported(
-                "Windows sandbox requires Windows OS".to_string(),
-            ));
-        }
-
-        info!("Windows sandbox restrictions removed (basic implementation)");
-        debug!(
-            isolation_level = ?self.config.default_isolation_level,
-            "Sandbox cleanup completed"
-        );
-
-        Ok(())
+        let _ = &self.config;
+        Err(SandboxError::PlatformNotSupported(
+            "Windows sandbox enforcement not yet implemented".to_string(),
+        ))
     }
 
     /// Check if Windows sandbox is supported
@@ -114,9 +94,9 @@ impl WindowsSandboxManager {
 
     /// Start execution in Windows sandbox.
     pub async fn start_execution(&self, sandbox_id: &str) -> ToadStoolResult<()> {
-        debug!("Starting execution in Windows sandbox: {sandbox_id}");
-        info!("Started execution in Windows sandbox {sandbox_id}");
-        Ok(())
+        Err(ToadStoolError::not_supported(format!(
+            "Windows sandbox execution not yet implemented (sandbox {sandbox_id})"
+        )))
     }
 
     /// Stop execution in Windows sandbox.
@@ -164,8 +144,9 @@ impl WindowsSandboxManager {
 
     /// Monitor sandbox resource usage.
     pub async fn monitor_sandbox(&self, sandbox_id: &str) -> ToadStoolResult<ResourceUsage> {
-        debug!("Monitoring Windows sandbox: {sandbox_id}");
-        Ok(ResourceUsage::default())
+        Err(ToadStoolError::not_supported(format!(
+            "Windows sandbox monitoring not yet implemented (sandbox {sandbox_id})"
+        )))
     }
 
     /// Apply a security policy to the sandbox.
@@ -174,8 +155,9 @@ impl WindowsSandboxManager {
         sandbox_id: &str,
         _policy: &SecurityPolicy,
     ) -> ToadStoolResult<()> {
-        debug!("Applying security policy to Windows sandbox: {sandbox_id}");
-        Ok(())
+        Err(ToadStoolError::not_supported(format!(
+            "Windows sandbox policy enforcement not yet implemented (sandbox {sandbox_id})"
+        )))
     }
 
     /// Retrieve sandbox logs.

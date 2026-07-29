@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S344 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Jul 2026 | S346 | v0.2.0
 
 ---
 
@@ -308,6 +308,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S346 (Jul 29, 2026)**: **Deep Debt Evolution Sprint (strandGate)** — Security fail-closed: macOS/Windows sandbox → `PlatformNotSupported` (no more faking enforcement). PKI auth/authz fallback requires `TOADSTOOL_STANDALONE=1`. Entropy hardened: `getrandom` replaces timestamp-based fallback. Silent stubs evolved: BLE deploy → `not_supported`, migration verify → `NotImplemented`. Unsafe containment: `madvise_dontdump` → hw-safe, DRM ioctl → hw-safe, systemd fd adoption → hw-safe, SPIR-V shader → runtime/gpu. 75 rustdoc warnings fixed (cylinder bit-field notation, unresolved links). 27 crates migrated to `version.workspace = true`. Magic numbers extracted to named constants. Hardcoded `/run/toadstool` → `get_runtime_dir()`. `duration_suboptimal_units` phantom lint removed. All quality gates green: 0 clippy warnings, 0 doc warnings, 0 fmt diffs, deny bans pass.
 - **S344 (Jul 28, 2026)**: **Deep Debt Evolution (strandGate)** — `deny.toml` expanded to 19+ bans (Pure Rust Crypto standard). Crypto encryption best-effort fallback (dispatch proceeds unencrypted when Tower unavailable). 3 clippy `assigning_clones` fixed. Overstep reduced: `toadstool-display` + `akida-driver` feature-gated off default build. `UniversalKernelCompiler` → `KernelStringOptimizer`. Socket fallbacks centralized via `get_socket_path_for_capability()`. Production stubs evolved: bluetooth/sandbox/webhook → proper errors. `discover_nodes` error propagation. Migration CLI gated behind `migration-preview`. TCP riboCipher unhandled states logged. Cylinder MMIO consolidated through hw-safe. 23,332 tests, 0 failures.
 - **S343 (Jul 27, 2026)**: **Cross-platform GPU pipeline** — wgpu wired into gpu_system queries + dispatch capabilities.
 - **S315 (Jun 14, 2026)**: **Wave 113 Compliance** — Bare `"health"` JSON-RPC method added (`{status, primal, version}` — guideStone-mandated shape). Early-health responder now accepts riboCipher `[0xEC, 0x01]` prefix. Wave 113 REJECT enforced: unsignalled connections on all accept loops (Unix, TCP, BTSP) now return `-32600` error instead of legacy fallback. MITO/NUCLEAR tiers send error response instead of silent close. Tests updated to use riboCipher signal.

@@ -97,6 +97,7 @@ display = ["dep:toadstool-display"]
 toadstool-display = { path = "../runtime/display", optional = true }
 toadstool-cylinder = { path = "../core/cylinder" }
 toadstool-runtime-gpu = { path = "../runtime/gpu" }
+toadstool-hw-safe = { path = "../core/hw-safe" }
 hw-learn = { path = "../core/hw-learn" }
 nvpmu = { path = "../core/nvpmu" }
 

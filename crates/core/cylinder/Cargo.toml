@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-cylinder"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Sovereign hardware driver layer — DRM/VFIO ioctl dispatch (Phase C absorption from coral-driver)"

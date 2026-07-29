@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Enum dispatch for [`ParallelComputeFramework`](crate::traits::ParallelComputeFramework).
+//! Enum dispatch for [`ParallelComputeFramework`].
 
 use crate::frameworks::{FallbackFramework, WebGpuFramework};
 use crate::traits::ParallelComputeFramework;

@@ -1,12 +1,26 @@
 # Active Technical Debt Register
 
-**Date**: July 28, 2026 — S344
+**Date**: July 29, 2026 — S346
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S346 (strandGate Deep Debt Evolution Sprint — Wave 155i)**:
+Security fail-closed: macOS/Windows sandbox apply/remove/monitor return
+`PlatformNotSupported` / `not_supported` errors instead of faking success.
+PKI auth/authz fallback now requires explicit `TOADSTOOL_STANDALONE=1`.
+Entropy: `getrandom` replaces timestamp-based seed. Silent stubs evolved:
+BLE deploy → `not_supported`; migration verify → `NotImplemented`.
+Unsafe containment: `madvise_dontdump`, DRM ioctl, systemd fd adoption,
+SPIR-V shader creation all moved into designated containment crates
+(hw-safe, runtime/gpu). 75 rustdoc warnings fixed (cylinder bit-field
+notation, unresolved links across 10 crates). 27 crates migrated to
+`version.workspace = true`. Magic numbers extracted. Hardcoded
+`/run/toadstool` replaced with `get_runtime_dir()`. `duration_suboptimal_units`
+phantom lint removed from workspace config. All quality gates green.
 
 **S344 (strandGate Deep Debt Evolution — Wave 155f)**:
 deny.toml expanded from 8 → 19+ bans (Pure Rust Crypto Purity Standard

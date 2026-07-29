@@ -41,35 +41,8 @@ fn map_lock_error(e: LockError) -> Error {
 
 /// Best-effort: exclude region from core dumps (`MADV_DONTDUMP`).
 #[cfg(target_os = "linux")]
-#[expect(
-    unsafe_code,
-    reason = "rustix madvise is unsafe; pointer is our live LockedMemory allocation"
-)]
 fn madvise_linux_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
-    use rustix::mm::{Advice, madvise};
-    use std::ffi::c_void;
-
-    #[cfg(debug_assertions)]
-    {
-        debug_assert_eq!(
-            ptr.addr().get() % PAGE_SIZE,
-            0,
-            "madvise range must start on a page boundary (LockedMemory uses PAGE_SIZE alignment)"
-        );
-        debug_assert_eq!(
-            len % PAGE_SIZE,
-            0,
-            "madvise length must be a multiple of page size (caller rounds to page boundary)"
-        );
-        debug_assert!(len > 0, "madvise length must be non-zero");
-    }
-
-    // SAFETY: `ptr`/`len` describe the same page-aligned region locked by `LockedMemory` in the
-    // caller. `LinuxDontDump` does not alter buffer bytes for heap memory.
-    let result = unsafe { madvise(ptr.as_ptr().cast::<c_void>(), len, Advice::LinuxDontDump) };
-    if let Err(e) = result {
-        tracing::warn!("madvise(MADV_DONTDUMP) failed: {e}");
-    }
+    toadstool_hw_safe::locked_memory::madvise_dontdump(ptr, len);
 }
 
 /// Isolated memory region with security guarantees

@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-runtime-universal"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Universal Compute Runtime - CPU, GPU, and future compute paradigms unified"

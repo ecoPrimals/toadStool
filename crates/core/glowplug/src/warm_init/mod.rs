@@ -131,7 +131,7 @@ pub struct WarmInitStep {
 
 #[cfg(target_os = "linux")]
 impl WarmInitPlan {
-    /// Derive a `WarmInitPlan` from the diesel engine's [`HandoffConfig`].
+    /// Derive a `WarmInitPlan` from the diesel engine's `HandoffConfig`.
     ///
     /// This is the canonical conversion path: the `HandoffConfig` (cylinder)
     /// is the authoritative source for BDF, driver, module source, settle

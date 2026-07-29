@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
-use std::os::fd::{AsRawFd, BorrowedFd, FromRawFd, OwnedFd};
+use std::os::fd::{AsRawFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
 
 use toadstool_ember::VfioAnchor;
@@ -193,21 +193,12 @@ pub(crate) fn retrieve_anchors() -> HashMap<String, VfioAnchor> {
     for i in 0..listen_fds {
         let fd_num = SD_LISTEN_FDS_START + i as i32;
         let name = names.get(i).cloned().unwrap_or_default();
-        // SAFETY: systemd guarantees these fd numbers are valid, owned by us,
-        // and that LISTEN_PID matches our PID (checked above).
-        let fd = unsafe { OwnedFd::from_raw_fd(fd_num) };
+        let fd = toadstool_hw_safe::systemd_fds::adopt_raw_fd(fd_num);
         info!(fd = fd.as_raw_fd(), fdname = %name, "retrieved stored fd");
         named_fds.push((name, fd));
     }
 
-    // Clearing these prevents child processes from accidentally consuming
-    // the stored fds. SAFETY: called single-threaded at startup before tokio
-    // runtime spawns worker threads.
-    unsafe {
-        std::env::remove_var("LISTEN_FDS");
-        std::env::remove_var("LISTEN_PID");
-        std::env::remove_var("LISTEN_FDNAMES");
-    }
+    toadstool_hw_safe::systemd_fds::clear_systemd_fd_env();
 
     // Group fds by BDF and reconstruct anchors
     reconstruct_anchors(named_fds)
@@ -341,20 +332,17 @@ mod tests {
 
     #[test]
     fn sd_notify_missing_socket() {
-        // SAFETY: test runs single-threaded (serial test runner)
-        unsafe { std::env::remove_var("NOTIFY_SOCKET") };
-        let err = sd_notify("READY=1\n").unwrap_err();
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        temp_env::with_var_unset("NOTIFY_SOCKET", || {
+            let err = sd_notify("READY=1\n").unwrap_err();
+            assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        });
     }
 
     #[test]
     fn retrieve_no_stored_fds() {
-        // SAFETY: test runs single-threaded (serial test runner)
-        unsafe {
-            std::env::remove_var("LISTEN_FDS");
-            std::env::remove_var("LISTEN_PID");
-        }
-        let anchors = retrieve_anchors();
-        assert!(anchors.is_empty());
+        temp_env::with_vars_unset(["LISTEN_FDS", "LISTEN_PID"], || {
+            let anchors = retrieve_anchors();
+            assert!(anchors.is_empty());
+        });
     }
 }

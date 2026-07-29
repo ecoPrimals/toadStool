@@ -17,7 +17,7 @@ use toadstool_runtime_wasm::WasmRuntimeEngine;
 #[cfg(target_os = "linux")]
 pub type GpuRuntimeEngine = UniversalGpuEngine;
 
-/// Bundles all first-party runtime engines for use with [`toadstool::runtime::EngineRegistry`],
+/// Bundles all first-party runtime engines for use with `toadstool::runtime::EngineRegistry`,
 /// [`crate::state::ServerState`], and related generic APIs.
 pub enum RuntimeEngineDispatch {
     /// Native process runtime.

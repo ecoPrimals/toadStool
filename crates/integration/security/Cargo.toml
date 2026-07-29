@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-integration-security"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 readme = "README.md"
 keywords = ["entropy", "rng", "beardog", "capability-discovery", "deep-debt"]
@@ -22,7 +22,8 @@ thiserror = { workspace = true }
 # ToadStool core
 toadstool-common = { path = "../../core/common" }
 
-# HTTP client for bearDog discovery/communication
+# OS-level entropy
+getrandom = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

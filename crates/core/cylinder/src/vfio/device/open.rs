@@ -239,7 +239,7 @@ impl VfioDevice {
     /// that gate GPCs. The caller must:
     ///
     /// 1. Map BAR0 and quiesce PFIFO/engines via MMIO
-    /// 2. Call [`enable_bus_master`] explicitly
+    /// 2. Call `enable_bus_master` explicitly
     pub fn open_no_busmaster(bdf: &str) -> Result<Self, DriverError> {
         crate::vfio::ember_gate::check_driver(bdf)?;
         match Self::open_iommufd_no_busmaster(bdf) {

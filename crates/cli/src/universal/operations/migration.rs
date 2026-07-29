@@ -147,7 +147,9 @@ impl crate::universal::UniversalComputeManager {
 
 impl MigrationOps for crate::universal::UniversalComputeManager {
     async fn create_migration_plan(&self, source: &str, target: &str) -> Result<MigrationPlan> {
-        // Analyze source and target platforms to create migration plan
+        // Pending: real plan generation requires capability discovery for
+        // source/target platform types, workload introspection, and risk analysis.
+        // Gate behind `migration-preview` feature before production use.
         Ok(MigrationPlan {
             source_platform: source.to_string(),
             target_platform: target.to_string(),
@@ -246,12 +248,10 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn verify_migration_success(&self, plan: &MigrationPlan) -> Result<bool> {
-        tracing::warn!(
-            source = %plan.source_platform,
-            target = %plan.target_platform,
-            "migration verification requires platform.health.check capability"
-        );
-        Ok(false)
+        Err(crate::CliError::NotImplemented(format!(
+            "migration verification for {} → {}: requires platform.health.check capability",
+            plan.source_platform, plan.target_platform
+        )))
     }
 
     async fn prepare_target_platform(&self, target: &str) -> Result<()> {

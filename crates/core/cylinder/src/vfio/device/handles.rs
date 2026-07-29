@@ -10,7 +10,7 @@ use super::dma::{DmaBackend, DupAnchorFds, VfioBackend, VfioBackendKind};
 
 impl VfioDevice {
     /// DMA mapping backend for this device. Pass this to [`crate::vfio::DmaBuffer`],
-    /// [`crate::vfio::VfioChannel`], and other code that needs to create IOMMU mappings.
+    /// `crate::vfio::VfioChannel`, and other code that needs to create IOMMU mappings.
     #[must_use]
     pub fn dma_backend(&self) -> DmaBackend {
         match &self.backend {

@@ -5,7 +5,7 @@
 //! to load firmware from VRAM into falcon IMEM, which bypasses HS protection.
 //!
 //! Usage:
-//!   sovereign_pmu_boot <resource0> <pmu_imem.bin> <pmu_dmem.bin> [--dry-run]
+//!   sovereign_pmu_boot `<resource0>` <pmu_imem.bin> <pmu_dmem.bin> [--dry-run]
 
 #![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
 #![allow(

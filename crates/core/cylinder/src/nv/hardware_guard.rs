@@ -494,7 +494,7 @@ impl<'a> GuardedBar<'a> {
         }
     }
 
-    /// Build a guarded read closure. Returns [`DEAD_SENTINEL`] on link-down
+    /// Build a guarded read closure. Returns `DEAD_SENTINEL` on link-down
     /// (matching existing convention) but also logs the failure.
     pub fn read_fn(&self) -> impl Fn(u32) -> u32 + '_ {
         move |reg: u32| match self.read_u32(reg) {

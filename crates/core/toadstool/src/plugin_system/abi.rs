@@ -6,7 +6,7 @@
 //! # Safety (FFI contract)
 //!
 //! Every `unsafe extern "C"` symbol in this module is invoked only from
-//! [`super::ffi_loader::LoadedPlugin`] after `dlopen` and ABI version checks.
+//! `super::ffi_loader::LoadedPlugin` after `dlopen` and ABI version checks.
 //! Plugins must uphold:
 //!
 //! - **Calling convention**: `extern "C"` with no unwinding across the boundary.
@@ -62,7 +62,7 @@ pub struct PluginVTable {
     /// # Safety (call-site contract)
     ///
     /// - Invoked only while the host holds the open `Library` handle and after
-    ///   ABI/name validation in [`super::ffi_loader::LoadedPlugin::load`].
+    ///   ABI/name validation in `super::ffi_loader::LoadedPlugin::load`.
     /// - Must not unwind across the FFI boundary; return non-zero to signal failure.
     /// - If absent (`None`), the host skips initialization hooks.
     pub on_load: Option<unsafe extern "C" fn() -> i32>,

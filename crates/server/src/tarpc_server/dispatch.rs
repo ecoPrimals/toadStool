@@ -14,7 +14,7 @@ use super::executor::{StandaloneExecutor, WorkloadExecutor};
 ///
 /// Production servers use [`WorkloadExecutorDispatch::Standalone`] or
 /// [`WorkloadExecutorDispatch::Coordinator`]. When compiled for unit tests,
-/// [`WorkloadExecutorDispatch::TestDouble`] exists for injected behavior.
+/// `WorkloadExecutorDispatch::TestDouble` exists for injected behavior.
 pub enum WorkloadExecutorDispatch {
     /// Single-node / dev executor (queries local hardware).
     Standalone(StandaloneExecutor),

@@ -244,7 +244,7 @@ impl ExperimentWrite {
 
 /// Read-only snapshot capture — no mutating writes.
 ///
-/// Returns the current [`SovereignSnapshot`] and [`TierEvidence`] for the
+/// Returns the current [`SovereignSnapshot`] and `TierEvidence` for the
 /// given BAR0 mapping. Used by the `sovereign.snapshot` RPC.
 pub fn sovereign_snapshot_only(
     bar0: &MappedBar,

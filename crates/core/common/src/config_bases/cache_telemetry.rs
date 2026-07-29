@@ -108,5 +108,5 @@ impl Default for TelemetryConfig {
 }
 
 const fn default_metrics_port() -> u16 {
-    9090
+    crate::constants::discovery_ports::DEFAULT_METRICS_PORT
 }

@@ -94,9 +94,16 @@ impl SecurityServiceIntegration {
                 Ok(auth_response)
             }
             Err(e) => {
-                info!("⚠️  PKI security service not available: {}", e);
-                info!("   ToadStool operates standalone — capability discovery will retry");
-                Ok(AuthResponse::standalone())
+                if std::env::var("TOADSTOOL_STANDALONE").is_ok() {
+                    info!("PKI security service not available: {e}");
+                    info!("TOADSTOOL_STANDALONE set — operating without PKI auth");
+                    Ok(AuthResponse::standalone())
+                } else {
+                    Err(ToadStoolError::security(format!(
+                        "PKI authentication failed and standalone mode not configured \
+                         (set TOADSTOOL_STANDALONE=1 to allow): {e}"
+                    )))
+                }
             }
         }
     }
@@ -159,15 +166,22 @@ impl SecurityServiceIntegration {
                 Ok(authz_response)
             }
             Err(e) => {
-                info!("⚠️  PKI security not available for authorization: {}", e);
-                info!("   ToadStool operates standalone — capability discovery will retry");
-                Ok(AuthzResponse {
-                    allowed: true,
-                    reason: Some("Standalone mode — PKI security unavailable".to_string()),
-                    policies_applied: vec![],
-                    security_recommendations: vec![],
-                    audit_id: Uuid::new_v4().to_string(),
-                })
+                if std::env::var("TOADSTOOL_STANDALONE").is_ok() {
+                    info!("PKI security not available for authorization: {e}");
+                    info!("TOADSTOOL_STANDALONE set — allowing without PKI authz");
+                    Ok(AuthzResponse {
+                        allowed: true,
+                        reason: Some("Standalone mode — PKI security unavailable".to_string()),
+                        policies_applied: vec![],
+                        security_recommendations: vec![],
+                        audit_id: Uuid::new_v4().to_string(),
+                    })
+                } else {
+                    Err(ToadStoolError::security(format!(
+                        "PKI authorization failed and standalone mode not configured \
+                         (set TOADSTOOL_STANDALONE=1 to allow): {e}"
+                    )))
+                }
             }
         }
     }

@@ -109,7 +109,7 @@ pub const DEFAULT_REAGENT_CHIP: &str = "gv100";
 /// Default nvidia driver version when `/proc/driver/nvidia/version` is unavailable.
 pub const DEFAULT_REAGENT_DRIVER_VERSION: &str = "470.256.02";
 
-/// Discover GPU chip name from BAR0 BOOT0 via [`GenerationProfile`].
+/// Discover GPU chip name from BAR0 BOOT0 via `GenerationProfile`.
 ///
 /// Reads PMC BOOT0 at offset 0, decodes SM version, and returns
 /// `profile.firmware_chip`. Returns `None` when BAR0 is unreadable or BOOT0

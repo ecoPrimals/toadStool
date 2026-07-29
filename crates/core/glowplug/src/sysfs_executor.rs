@@ -100,7 +100,7 @@ impl SysfsSwapExecutor {
 }
 
 impl SysfsSwapExecutor {
-    /// Execute a bare-metal [`WarmInitPlan`] — the diesel engine's core
+    /// Execute a bare-metal `WarmInitPlan` — the diesel engine's core
     /// injection path for host-safe seeder drivers.
     ///
     /// Steps:
@@ -117,7 +117,7 @@ impl SysfsSwapExecutor {
     ///
     /// Panics if the plan requires VM containment. Contained plans must be
     /// dispatched through agentReagents, not through sysfs bare-metal swaps.
-    /// Use [`WarmInitPlan::is_bare_metal`] to check before calling.
+    /// Use `WarmInitPlan::is_bare_metal` to check before calling.
     pub async fn execute_warm_init(
         &self,
         plan: &crate::warm_init::WarmInitPlan,

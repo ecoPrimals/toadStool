@@ -31,11 +31,11 @@ pub const IMEMD: u32 = 0x184;
 pub const DMEMC: u32 = 0x1C0;
 /// DMEM data port.
 pub const DMEMD: u32 = 0x1C4;
-/// Security mode register (SEC_MODE in bits [13:12]).
+/// Security mode register (SEC_MODE in bits `[13:12]`).
 pub const SCTL: u32 = 0x240;
 /// Alternate CPU control register (falcon v5+ / HS falcons).
 pub const CPUCTL_ALIAS: u32 = 0x130;
-/// Exception info: [31:16]=cause, [15:0]=PC.
+/// Exception info: `[31:16]`=cause, `[15:0]`=PC.
 pub const EXCI: u32 = 0x148;
 /// Falcon OS / version register.
 pub const OS: u32 = 0x180;

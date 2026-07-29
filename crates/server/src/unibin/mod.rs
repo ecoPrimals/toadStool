@@ -7,7 +7,6 @@ mod capabilities;
 mod execution;
 mod format;
 #[cfg(target_os = "linux")]
-#[expect(unsafe_code, reason = "systemd fd store / sd_notify requires unsafe")]
 pub(crate) mod systemd_fdstore;
 
 // Re-exports: capability probe, execution helpers, socket layout (integration tests / coverage)

@@ -125,7 +125,7 @@ pub fn profile_for_gfx(major: u8) -> &'static AmdGenerationProfile {
 }
 
 impl AmdGenerationProfile {
-    /// Build vendor-agnostic [`HardwareCapabilities`] from this AMD profile.
+    /// Build vendor-agnostic `HardwareCapabilities` from this AMD profile.
     #[must_use]
     pub fn to_capabilities(&self) -> crate::HardwareCapabilities {
         use crate::hardware::{CompletionStyle, Vendor, WaveSize};

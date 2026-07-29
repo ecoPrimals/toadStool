@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! [`CryptoProvider`] dispatch for security backends (IPC client, etc.).
+//! `CryptoProvider` dispatch for security backends (IPC client, etc.).
 
 use std::future::Future;
 use std::sync::Arc;

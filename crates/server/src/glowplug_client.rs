@@ -232,12 +232,10 @@ impl GlowPlugClient {
 
 /// Resolve the runtime directory for toadStool's socket tree.
 ///
-/// Priority: `TOADSTOOL_RUN_DIR` env → `/run/toadstool`.
+/// Delegates to `primal_sockets::get_runtime_dir()` — respects
+/// `XDG_RUNTIME_DIR`, systemd detection, and user fallbacks.
 pub fn run_dir() -> std::path::PathBuf {
-    std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_RUN_DIR).map_or_else(
-        |_| std::path::PathBuf::from("/run/toadstool"),
-        std::path::PathBuf::from,
-    )
+    std::path::PathBuf::from(toadstool_common::primal_sockets::get_runtime_dir())
 }
 
 /// Shared glowPlug service wrapped in Arc for handler use.
@@ -385,18 +383,16 @@ mod tests {
     }
 
     #[test]
-    fn run_dir_default() {
-        temp_env::with_var_unset("TOADSTOOL_RUN_DIR", || {
-            let dir = super::run_dir();
-            assert_eq!(dir, std::path::PathBuf::from("/run/toadstool"));
-        });
+    fn run_dir_returns_nonempty_path() {
+        let dir = super::run_dir();
+        assert!(!dir.as_os_str().is_empty());
     }
 
     #[test]
-    fn run_dir_override() {
-        temp_env::with_var("TOADSTOOL_RUN_DIR", Some("/custom/toadstool"), || {
+    fn run_dir_respects_xdg_runtime_dir() {
+        temp_env::with_var("XDG_RUNTIME_DIR", Some("/custom/runtime"), || {
             let dir = super::run_dir();
-            assert_eq!(dir, std::path::PathBuf::from("/custom/toadstool"));
+            assert_eq!(dir, std::path::PathBuf::from("/custom/runtime"));
         });
     }
 

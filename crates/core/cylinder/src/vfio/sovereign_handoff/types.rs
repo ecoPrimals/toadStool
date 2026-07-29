@@ -29,7 +29,7 @@ pub struct HandoffConfig {
     /// Final driver target (e.g., "vfio-pci").
     pub final_driver: String,
 
-    /// Optional JSON-serialized [`PatchSet`] override. When present, the
+    /// Optional JSON-serialized `PatchSet` override. When present, the
     /// pipeline uses this instead of resolving the patch set by name from
     /// [`ModuleSourceConfig`]. Enables runtime-defined patch sets via RPC.
     #[serde(default, skip_serializing_if = "Option::is_none")]

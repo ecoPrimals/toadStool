@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-core"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Core hardware infrastructure layer for ToadStool compute primals"

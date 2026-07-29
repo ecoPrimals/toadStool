@@ -188,24 +188,16 @@ fn run_wgpu_dispatch(
     };
 
     let shader = if ctx.spirv_passthrough && is_valid_spirv {
-        let spirv_words: Vec<u32> = binary
-            .chunks_exact(4)
-            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-            .collect();
-
         tracing::info!(
-            spirv_words = spirv_words.len(),
+            spirv_bytes = binary.len(),
             "wgpu dispatch: SPIR-V passthrough"
         );
-        #[expect(unsafe_code, reason = "spirv shader module creation requires unsafe")]
-        // SAFETY: SPIR-V magic validated; compiled by the shader compiler (trusted provider).
-        unsafe {
-            ctx.device
-                .create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {
-                    label: Some("toadstool_wgpu_dispatch"),
-                    source: std::borrow::Cow::Borrowed(&spirv_words),
-                })
-        }
+        toadstool_runtime_gpu::shader_spirv::create_spirv_shader_module(
+            &ctx.device,
+            "toadstool_wgpu_dispatch",
+            binary,
+        )
+        .map_err(|e| format!("SPIR-V validation failed: {e}"))?
     } else if let Some(wgsl) = wgsl_source {
         if !is_valid_spirv && !binary.is_empty() {
             tracing::info!(

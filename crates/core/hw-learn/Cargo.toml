@@ -1,6 +1,6 @@
 [package]
 name = "hw-learn"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 description = "Vendor-neutral GPU hardware learning — observe, distill, apply compute init patterns across AMD/Intel/NVIDIA"
 license.workspace = true
@@ -17,9 +17,8 @@ tracing = { workspace = true }
 toadstool-sysmon = { path = "../sysmon" }
 proptest = { workspace = true, optional = true }
 
-[target.'cfg(target_os = "linux")'.dependencies.rustix]
-workspace = true
-features = ["fs"]
+[target.'cfg(target_os = "linux")'.dependencies]
+toadstool-hw-safe = { path = "../hw-safe" }
 
 [features]
 default = []

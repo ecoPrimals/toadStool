@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-runtime-edge"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Team"]
 description = "Edge/IoT runtime engine for ToadStool Universal Compute Platform"

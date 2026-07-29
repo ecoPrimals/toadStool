@@ -72,7 +72,7 @@ pub struct SovereignInitOptions {
     /// When provided, the pipeline replays this sequence to ungate PGRAPH
     /// before falcon boot on NoAcr (Kepler) GPUs.
     ///
-    /// Prefer [`engine_init_sequences`] for new code; this field is checked
+    /// Prefer `engine_init_sequences` for new code; this field is checked
     /// as a fallback for backward compatibility.
     #[serde(skip)]
     pub kepler_gr_init: Option<crate::nv::gr_init::GrInitSequence>,

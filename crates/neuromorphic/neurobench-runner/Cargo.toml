@@ -1,6 +1,6 @@
 [package]
 name = "neurobench-runner"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Team <team@toadstool.bio>"]
 description = "Pure Rust NeuroBench harness for Akida benchmarking"

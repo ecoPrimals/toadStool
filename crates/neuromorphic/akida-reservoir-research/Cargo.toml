@@ -1,6 +1,6 @@
 [package]
 name = "akida-reservoir-research"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Reservoir computing research for Akida neuromorphic hardware"

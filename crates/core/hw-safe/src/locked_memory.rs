@@ -95,6 +95,31 @@ impl LockedMemory {
     }
 }
 
+/// Best-effort `MADV_DONTDUMP` — excludes a page-aligned region from core dumps.
+///
+/// `ptr` and `len` must describe a valid, page-aligned allocation.
+/// Logs a warning on failure rather than panicking; this is advisory.
+pub fn madvise_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
+    use rustix::mm::{Advice, madvise};
+
+    debug_assert!(len > 0);
+    debug_assert_eq!(ptr.as_ptr() as usize % 4096, 0);
+    debug_assert_eq!(len % 4096, 0);
+
+    // SAFETY: caller provides a valid, page-aligned allocation.
+    // `LinuxDontDump` is advisory and does not alter buffer bytes.
+    let result = unsafe {
+        madvise(
+            ptr.as_ptr().cast::<std::ffi::c_void>(),
+            len,
+            Advice::LinuxDontDump,
+        )
+    };
+    if let Err(e) = result {
+        tracing::warn!("madvise(MADV_DONTDUMP) failed: {e}");
+    }
+}
+
 impl Drop for LockedMemory {
     fn drop(&mut self) {
         // SAFETY: same address range passed to `mlock` in `new()`; rustix `munlock` documents the

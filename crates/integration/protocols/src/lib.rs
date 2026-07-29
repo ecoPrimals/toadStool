@@ -204,22 +204,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_authenticate_standalone_when_unavailable() {
-        let config = SecurityConfig {
-            socket_path: "/nonexistent/security.sock".to_string(),
-            ..SecurityConfig::default()
-        };
-        let integration = SecurityServiceIntegration::new(config).expect("new");
-        let result = integration
-            .authenticate(
-                "test-svc",
-                "compute",
-                vec!["encrypt".to_string()],
-                SecurityContext::default(),
-            )
-            .await;
-        assert!(result.is_ok());
-        let resp = result.unwrap();
-        assert!(resp.is_standalone());
+        temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+            let config = SecurityConfig {
+                socket_path: "/nonexistent/security.sock".to_string(),
+                ..SecurityConfig::default()
+            };
+            let integration = SecurityServiceIntegration::new(config).expect("new");
+            let result = integration
+                .authenticate(
+                    "test-svc",
+                    "compute",
+                    vec!["encrypt".to_string()],
+                    SecurityContext::default(),
+                )
+                .await;
+            assert!(result.is_ok());
+            let resp = result.unwrap();
+            assert!(resp.is_standalone());
+        })
+        .await;
     }
 
     #[tokio::test]
@@ -304,21 +307,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_trait_authenticate() {
-        let config = SecurityConfig {
-            socket_path: "/nonexistent/security.sock".to_string(),
-            ..SecurityConfig::default()
-        };
-        let integration = SecurityServiceIntegration::new(config).expect("new");
-        let result = integration
-            .authenticate(
-                "svc",
-                "compute",
-                vec!["encrypt".to_string()],
-                SecurityContext::default(),
-            )
-            .await;
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_standalone());
+        temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+            let config = SecurityConfig {
+                socket_path: "/nonexistent/security.sock".to_string(),
+                ..SecurityConfig::default()
+            };
+            let integration = SecurityServiceIntegration::new(config).expect("new");
+            let result = integration
+                .authenticate(
+                    "svc",
+                    "compute",
+                    vec!["encrypt".to_string()],
+                    SecurityContext::default(),
+                )
+                .await;
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_standalone());
+        })
+        .await;
     }
 
     #[tokio::test]

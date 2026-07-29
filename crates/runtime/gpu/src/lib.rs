@@ -61,6 +61,8 @@ pub mod glowplug;
 
 // Real GPU backends (no mocks): WebGPU + Vulkan in-tree; CUDA stub for API compatibility.
 pub mod backends;
+#[cfg(feature = "webgpu")]
+pub mod shader_spirv;
 
 // Re-export main types and traits for convenience
 pub use compiler::KernelStringOptimizer;

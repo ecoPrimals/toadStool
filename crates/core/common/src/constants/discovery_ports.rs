@@ -18,3 +18,6 @@ pub const DISCOVERY_LOCALHOST_FALLBACK_BASE: u16 = 9080;
 
 /// Cold-start fallback for display IPC TCP when `TOADSTOOL_DISPLAY_IPC_PORT` is unset.
 pub const DISPLAY_IPC_FALLBACK: u16 = 8091;
+
+/// Default Prometheus-compatible metrics port when `TOADSTOOL_METRICS_PORT` is unset.
+pub const DEFAULT_METRICS_PORT: u16 = 9090;

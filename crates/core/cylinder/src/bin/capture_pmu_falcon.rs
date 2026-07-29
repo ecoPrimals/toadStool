@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! capture_pmu_falcon — Capture GV100 PMU falcon state and IMEM/DMEM via PIO read.
 //!
-//! Usage: capture_pmu_falcon <resource0_path> [output_dir] [rw]
+//! Usage: capture_pmu_falcon <resource0_path> `output_dir` `rw`
 
 #![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
 #![allow(

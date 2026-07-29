@@ -7,10 +7,8 @@ use crate::vfio::device::MappedBar;
 /// Probes NVIDIA BOOT0 at offset 0 first; if unrecognized, probes AMD GRBM_STATUS
 /// at offset 0x8010. Distinguishes:
 /// - NVIDIA GPU (chip name + SM version)
-/// - AMD GPU present (cold boot not implemented — probe-only via [`VegaInit`])
+/// - AMD GPU present (cold boot not implemented — probe-only via `crate::vfio::amd_metal::VegaInit`)
 /// - No responsive GPU (unmapped BAR0 or all-ones reads)
-///
-/// [`VegaInit`]: crate::vfio::amd_metal::VegaInit
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChipDetection {
     /// NVIDIA GPU identified from BOOT0.
@@ -22,7 +20,7 @@ pub enum ChipDetection {
     },
     /// AMD GPU identified from GRBM register map.
     ///
-    /// Warm detection works via [`VegaInit::probe`]; cold boot (`devinit`,
+    /// Warm detection works via `VegaInit::probe`; cold boot (`devinit`,
     /// `engine_init`) is not implemented.
     AmdPresent {
         /// GPU family label (e.g. `"Vega 20"`).

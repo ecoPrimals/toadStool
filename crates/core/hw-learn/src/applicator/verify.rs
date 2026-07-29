@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Post-apply verification — confirm init recipe succeeded.
 //!
-//! Verification uses typed [`VerificationResult`] values. When [`RegisterAccess`]
+//! Verification uses typed [`VerificationResult`] values. When `RegisterAccess`
 //! or [`GpuReadbackAccess`] is unavailable, checks return
 //! [`VerificationResult::Unavailable`] with a specific reason instead of opaque
 //! debt strings.
@@ -43,7 +43,7 @@ pub enum VerificationResult {
 /// Why a verification step could not run.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnavailableReason {
-    /// No BAR / MMIO [`RegisterAccess`] was provided.
+    /// No BAR / MMIO `RegisterAccess` was provided.
     NoRegisterAccess,
     /// No GPU readback implementation was wired (VRAM / compute scratch path).
     NoGpuReadbackPath,

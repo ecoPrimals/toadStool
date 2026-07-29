@@ -15,13 +15,13 @@ use crate::universal::{
     UniversalWorkload, WorkloadResult,
 };
 
-/// Enum dispatch for [`UniversalComputeResource`](crate::universal::execution::UniversalComputeResource).
+/// Enum dispatch for [`UniversalComputeResource`].
 pub enum UniversalComputeResourceDispatch {
     /// CPU (Rayon-backed) resource.
     Cpu(CpuComputeResource),
 }
 
-/// Enum dispatch for [`ComputeContext`](crate::universal::execution::ComputeContext).
+/// Enum dispatch for [`ComputeContext`].
 pub enum ComputeContextDispatch {
     /// CPU execution context.
     Cpu(CpuComputeContext),

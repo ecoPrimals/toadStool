@@ -11,6 +11,15 @@ use uuid::Uuid;
 use crate::error::DistributedError;
 use crate::types::UniversalJob;
 
+mod defaults {
+    pub const MEMORY_MB: u64 = 512;
+    pub const STORAGE_MIN_MB: u64 = 100;
+    pub const STORAGE_MAX_MB: u64 = 1000;
+    pub const NETWORK_BANDWIDTH_MBPS: u64 = 100;
+    pub const NETWORK_LATENCY_MS: u64 = 50;
+    pub const GPU_MEMORY_MB: u64 = 1024;
+}
+
 /// Workload request from a primal
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadRequest {
@@ -266,22 +275,30 @@ impl WorkloadExecutor {
                     .map(|c| (c * 2) as f64),
             },
             memory: crate::types::MemoryRequirements {
-                min_bytes: request.resource_requirements.memory_mb.unwrap_or(512) * 1024 * 1024,
+                min_bytes: request
+                    .resource_requirements
+                    .memory_mb
+                    .unwrap_or(defaults::MEMORY_MB)
+                    * 1024
+                    * 1024,
                 max_bytes: request
                     .resource_requirements
                     .memory_mb
                     .map(|m| m * 2 * 1024 * 1024),
             },
             storage: crate::types::StorageRequirements {
-                min_bytes: 100 * 1024 * 1024,        // 100 MB in bytes
-                max_bytes: Some(1000 * 1024 * 1024), // 1000 MB in bytes
+                min_bytes: defaults::STORAGE_MIN_MB * 1024 * 1024,
+                max_bytes: Some(defaults::STORAGE_MAX_MB * 1024 * 1024),
             },
             network: crate::types::NetworkRequirements {
-                bandwidth_mbps: Some(100),
-                latency_ms: Some(50),
+                bandwidth_mbps: Some(defaults::NETWORK_BANDWIDTH_MBPS),
+                latency_ms: Some(defaults::NETWORK_LATENCY_MS),
             },
             gpu: if request.resource_requirements.gpu_required {
-                let gpu_memory_mb = request.resource_requirements.gpu_memory_mb.unwrap_or(1024);
+                let gpu_memory_mb = request
+                    .resource_requirements
+                    .gpu_memory_mb
+                    .unwrap_or(defaults::GPU_MEMORY_MB);
                 Some(crate::types::GpuRequirements {
                     min_memory_gb: (gpu_memory_mb as f64) / 1024.0,
                     compute_capability: None,

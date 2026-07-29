@@ -24,10 +24,10 @@ impl PushBuf {
     /// Encode and push a single-word method write.
     ///
     /// Uses the SEC_OP=1 (INC_METHOD) encoding with count=1:
-    /// - Bits [31:29] = 001 (INC_METHOD)
-    /// - Bits [28:16] = count (1)
-    /// - Bits [15:13] = subchannel
-    /// - Bits [12:0]  = method address >> 2
+    /// - Bits `[31:29]` = 001 (INC_METHOD)
+    /// - Bits `[28:16]` = count (1)
+    /// - Bits `[15:13]` = subchannel
+    /// - Bits `[12:0]`  = method address >> 2
     pub fn push_1(&mut self, subchannel: u32, method_addr: u32, value: u32) {
         let hdr =
             (1u32 << 29) | (1 << 16) | ((subchannel & 0x7) << 13) | ((method_addr >> 2) & 0x1FFF);
@@ -88,12 +88,12 @@ pub mod ce {
         /// Line count.
         pub const LINE_COUNT: u32 = 0x041C;
         /// Launch DMA transfer.
-        /// Bits: [1:0] = data_transfer_type (0=NONE, 1=PIPELINED, 2=NON_PIPELINED)
-        ///       [2]   = flush_enable
-        ///       [8]   = src_memory_layout (0=BLOCKLINEAR, 1=PITCH)
-        ///       [12]  = dst_memory_layout (0=BLOCKLINEAR, 1=PITCH)
-        ///       [20]  = src_type (0=VIRTUAL, 1=PHYSICAL)
-        ///       [24]  = dst_type (0=VIRTUAL, 1=PHYSICAL)
+        /// Bits: `[1:0]` = data_transfer_type (0=NONE, 1=PIPELINED, 2=NON_PIPELINED)
+        ///       `[2]`   = flush_enable
+        ///       `[8]`   = src_memory_layout (0=BLOCKLINEAR, 1=PITCH)
+        ///       `[12]`  = dst_memory_layout (0=BLOCKLINEAR, 1=PITCH)
+        ///       `[20]`  = src_type (0=VIRTUAL, 1=PHYSICAL)
+        ///       `[24]`  = dst_type (0=VIRTUAL, 1=PHYSICAL)
         pub const LAUNCH_DMA: u32 = 0x0300;
         /// LAUNCH_DMA value: pipelined, pitch src+dst, virtual addressing.
         pub const LAUNCH_PIPELINED_PITCH: u32 = 0x0000_1101;
@@ -103,7 +103,7 @@ pub mod ce {
         pub const SET_SEMAPHORE_B: u32 = 0x0244;
         /// Semaphore payload.
         pub const SET_SEMAPHORE_PAYLOAD: u32 = 0x0248;
-        /// Semaphore control: bit [0] = release after copy.
+        /// Semaphore control: bit `[0]` = release after copy.
         pub const SEMAPHORE_CTRL: u32 = 0x024C;
     }
 }
@@ -143,7 +143,7 @@ pub mod method {
     /// Turing compute class value — used to determine launch path.
     pub const TURING_COMPUTE_A: u32 = 0xC5C0;
     /// PCAS2 action (Ampere+): invalidate QMD cache, copy from memory, schedule.
-    /// 4-bit field [3:0] per clcec0.h NVCEC0_SEND_SIGNALING_PCAS2_B_PCAS_ACTION.
+    /// 4-bit field `[3:0]` per clcec0.h NVCEC0_SEND_SIGNALING_PCAS2_B_PCAS_ACTION.
     pub const PCAS_ACTION_INVALIDATE_COPY_SCHEDULE: u32 = 3;
 
     /// Semaphore address upper 8 bits (method 0x06C0).
@@ -153,7 +153,7 @@ pub mod method {
     /// Semaphore payload value to write on release (method 0x06C8).
     pub const SEMAPHORE_PAYLOAD: u32 = 0x06C8;
     /// Semaphore control: operation mode (method 0x06CC).
-    /// Bit [0] = RELEASE (write payload to addr), Bit [2:1] = ACQUIRE mode.
+    /// Bit `[0]` = RELEASE (write payload to addr), Bit `[2:1]` = ACQUIRE mode.
     pub const SEMAPHORE_CTRL: u32 = 0x06CC;
     /// Semaphore control value: release (write payload, no acquire).
     pub const SEMAPHORE_CTRL_RELEASE: u32 = 0x1;
@@ -313,7 +313,7 @@ impl PushBuf {
     /// Build a per-dispatch push buffer using the compute class to infer
     /// the launch method (PCAS vs PCAS2).
     ///
-    /// Prefer [`compute_dispatch_with_launch`] when a
+    /// Prefer `compute_dispatch_with_launch` when a
     /// [`GenerationProfile`](super::generation::GenerationProfile) is available.
     #[must_use]
     pub fn compute_dispatch(compute_class: u32, qmd_addr: u64) -> Self {
@@ -426,7 +426,7 @@ impl PushBuf {
     /// GR class method offset and `value` is the data to write.
     ///
     /// Callers must ensure all addresses fit in the 13-bit push buffer
-    /// method encoding (<= 0x7FFC). Use [`crate::gsp::split_for_application`]
+    /// method encoding (<= 0x7FFC). Use `crate::gsp::split_for_application`
     /// to separate BAR0 from channel-submittable entries.
     #[must_use]
     pub fn gr_context_init(compute_class: u32, method_entries: &[(u32, u32)]) -> Self {

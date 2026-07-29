@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! NVIDIA VFIO compute device — sovereign GPU dispatch via BAR0/PBDMA.
 //!
-//! Implements [`ComputeDevice`] for NVIDIA GPUs bound to `vfio-pci`. This is
+//! Implements `ComputeDevice` for NVIDIA GPUs bound to `vfio-pci`. This is
 //! the direct-dispatch path: toadStool owns the GPU fd, programs PBDMA channels
 //! via BAR0 MMIO, and reads back results without any kernel driver intermediary.
 //!

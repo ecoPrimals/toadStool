@@ -94,7 +94,7 @@ pub struct StepResult {
 ///   implementation (e.g. `nvpmu::Bar0Access`) for direct register writes
 ///   and verification.
 /// - Optional **GPU readback** (`with_gpu_readback`) — wires [`verify::GpuReadbackAccess`]
-///   for [`VerifyCheck::ComputeReadback`] when a scratch / VRAM read path exists.
+///   for `VerifyCheck::ComputeReadback` when a scratch / VRAM read path exists.
 pub struct RecipeApplicator<'a, R: RegisterAccess = NoRegisterAccess> {
     dry_run: bool,
     register_access: Option<&'a mut R>,

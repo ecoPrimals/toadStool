@@ -196,7 +196,11 @@ async fn test_verify_migration_success() -> Result<()> {
         .await?;
     let result = manager.verify_migration_success(&plan).await;
 
-    assert!(result.is_ok(), "Verification should complete");
+    assert!(result.is_err(), "Verification should return NotImplemented");
+    assert!(
+        result.unwrap_err().to_string().contains("health.check"),
+        "Error should mention missing capability"
+    );
 
     Ok(())
 }

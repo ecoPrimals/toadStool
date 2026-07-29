@@ -1,6 +1,6 @@
 [package]
 name = "akida-models"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Team"]
 description = "Akida neural network model parser and loader"

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Finite dispatch for [`HardwareTransport`](toadstool_core::HardwareTransport) implementations
+//! Finite dispatch for [`HardwareTransport`] implementations
 //! in this crate — replaces `Box<dyn HardwareTransport>` at router boundaries.
 
 use toadstool_core::{HardwareTransport, TransportError, TransportInfo};

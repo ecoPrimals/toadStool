@@ -99,7 +99,7 @@ impl KmodBuilder {
     /// Stage source and Makefile, then compile via kbuild.
     ///
     /// Returns the path to the compiled `.ko` file. Does not load the
-    /// module — use [`build_and_load`] for the full lifecycle, or call
+    /// module — use `build_and_load` for the full lifecycle, or call
     /// this when you only need the compiled artifact (e.g. ELF inspection
     /// in kernel health probes).
     pub fn compile_only(&self) -> Result<PathBuf, GuardedSysfsError> {
@@ -236,7 +236,7 @@ impl KmodBuilder {
 
     /// Remove build artifacts from the tmpdir.
     ///
-    /// Deletes the entire build directory. Use after [`compile_only`] when
+    /// Deletes the entire build directory. Use after `compile_only` when
     /// the `.ko` has been consumed and is no longer needed.
     pub fn clean(tmpdir: &str) {
         let path = Path::new(tmpdir);

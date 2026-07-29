@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-security-policies"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 description = "Advanced security policy management for ToadStool"
 authors = ["ToadStool Project"]

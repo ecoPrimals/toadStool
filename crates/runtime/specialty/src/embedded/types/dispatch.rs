@@ -242,7 +242,7 @@ pub enum ProgrammerInterfaceDispatch {
     /// EPROM programmer.
     #[cfg(feature = "embedded-placeholder-impls")]
     Eprom(EPROMProgrammer),
-    /// Sentinel when [`embedded-placeholder-impls`] is disabled.
+    /// Sentinel when `embedded-placeholder-impls` is disabled.
     #[cfg(not(feature = "embedded-placeholder-impls"))]
     Unregistered,
 }
@@ -414,7 +414,7 @@ pub enum EmbeddedEmulatorDispatch {
     /// Z80 emulator stub.
     #[cfg(feature = "embedded-placeholder-impls")]
     EmulatorZ80(EmulatorZ80),
-    /// Sentinel when [`embedded-placeholder-impls`] is disabled.
+    /// Sentinel when `embedded-placeholder-impls` is disabled.
     #[cfg(not(feature = "embedded-placeholder-impls"))]
     Unregistered,
 }

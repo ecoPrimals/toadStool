@@ -7,7 +7,7 @@ use super::super::pci_discovery::GpuVendor;
 
 /// Detect which `GpuMetal` implementation to use from a BOOT0 value.
 ///
-/// Lives under [`super::metal`] (`nv_metal`) for VFIO bootstrap layout but selects
+/// Lives under `super::metal` (`nv_metal`) for VFIO bootstrap layout but selects
 /// implementations by vendor: NVIDIA BAR0 decode vs AMD `amd_metal`. Returns `Some(metal)`
 /// for supported NVIDIA architectures (Volta and later) and AMD GFX906 (Vega 20 / MI50/MI60).
 /// Returns `None` for Intel and other vendors. Future: Turing, Ampere, Ada variants; Intel Arc/Xe.

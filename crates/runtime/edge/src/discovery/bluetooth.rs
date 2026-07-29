@@ -231,7 +231,11 @@ impl EdgeDevice for BluetoothSysfsEdgeDevice {
         &self,
         _code: &[u8],
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
-        Box::pin(async move { Ok(String::new()) })
+        Box::pin(async move {
+            Err(ToadStoolError::not_supported(
+                "BLE deploy requires edge transport — not available for sysfs discovery devices",
+            ))
+        })
     }
 
     fn stop_execution(

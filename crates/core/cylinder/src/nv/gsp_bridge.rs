@@ -152,7 +152,7 @@ pub trait GspBridge: Send + Sync {
 ///
 /// This is a null-object implementation, not a test mock. Non-firmware
 /// stages (bar0_probe, pmc_enable, memory training, warm detection) run
-/// normally. Firmware-dependent stages return [`DriverError::Unsupported`]
+/// normally. Firmware-dependent stages return `DriverError::Unsupported`
 /// with generation-specific guidance on which bridge implementation to use.
 ///
 /// When constructed with [`NoopGspBridge::with_gr_init_sequence`], the

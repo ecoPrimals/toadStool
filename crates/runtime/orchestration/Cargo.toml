@@ -1,6 +1,6 @@
 [package]
 name = "toadstool-runtime-orchestration"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["ToadStool Contributors"]
 description = "Intelligent workload orchestration across compute substrates"

@@ -74,7 +74,7 @@ pub(crate) fn gddr5_training(bar0: &MappedBar, bdf: &str) -> Result<String, Sove
     }
 }
 
-/// Strategy for memory training, keyed by [`MemoryType`].
+/// Strategy for memory training, keyed by `MemoryType`.
 ///
 /// Each GPU generation's `GenerationProfile::memory_type` maps to a
 /// training strategy. The dispatch function runs the appropriate path

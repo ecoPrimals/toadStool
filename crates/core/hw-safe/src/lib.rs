@@ -31,6 +31,8 @@ mod contiguous;
 #[cfg(target_os = "linux")]
 pub mod device_mmap;
 #[cfg(target_os = "linux")]
+pub mod drm_ioctl;
+#[cfg(target_os = "linux")]
 mod exclusive_ptr;
 #[cfg(target_os = "linux")]
 pub mod huge_page;
@@ -38,6 +40,8 @@ pub mod huge_page;
 pub mod locked_memory;
 #[cfg(target_os = "linux")]
 pub mod safe_mmap;
+#[cfg(target_os = "linux")]
+pub mod systemd_fds;
 #[cfg(target_os = "linux")]
 pub mod vfio_dma;
 #[cfg(target_os = "linux")]

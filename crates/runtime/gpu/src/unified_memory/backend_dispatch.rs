@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Enum dispatch for [`UnifiedMemoryBackend`](super::backend::UnifiedMemoryBackend).
+//! Enum dispatch for [`UnifiedMemoryBackend`].
 
 use super::backend::{BackendAllocation, UnifiedMemoryBackend};
 use super::backends::CpuBackend;

@@ -7,7 +7,7 @@
 //! → work submit token. This establishes FECS ctx-switch state that survives
 //! the catalyst warm swap (Exp 229).
 //!
-//! Usage: rm_trigger <major> [--channel]
+//! Usage: rm_trigger `<major>` [--channel]
 //!
 //! Without --channel: legacy mode (root/device/subdevice/GR_GET_INFO only).
 //! With --channel: full RM compute channel creation (Exp 229).

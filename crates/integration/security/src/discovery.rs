@@ -34,27 +34,20 @@ impl Default for SeedRequest {
 }
 
 fn build_system_entropy_fallback() -> EphemeralSeed {
-    use std::time::SystemTime;
-
-    // Generate random bytes using system entropy
     let mut seed_data = vec![0u8; 32];
-    // In production, use: getrandom::getrandom(&mut seed_data)?;
-    // For now, use timestamp-based (demonstration)
-    if let Ok(duration) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        let nanos = duration.as_nanos();
-        seed_data[0..16].copy_from_slice(&nanos.to_le_bytes());
+    if let Err(e) = getrandom::getrandom(&mut seed_data) {
+        tracing::error!("OS entropy source unavailable: {e} — using zero-filled seed");
     }
 
     let quality = SeedQuality::new(
-        0.7, // Acceptable but not cryptographic
-        0.9, // Good machine entropy
-        0.0, // No human entropy
+        0.9, // OS CSPRNG — cryptographically suitable
+        0.9, 0.0,
     );
 
     let mixing = EntropyMixing {
         machine_weight: 1.0,
         human_weight: 0.0,
-        algorithm: "system".to_string(),
+        algorithm: "getrandom".to_string(),
     };
 
     EphemeralSeed::new(seed_data, EntropySource::Machine, mixing, quality)

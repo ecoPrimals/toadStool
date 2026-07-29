@@ -31,7 +31,7 @@ pub(crate) fn device_mmap_err_to_io(
 ///
 /// ## Thread safety (`Send` / `Sync`)
 ///
-/// The [`std::fs::File`] keeps the sysfs mapping alive; [`MmioRegion`]
+/// The [`std::fs::File`] keeps the sysfs mapping alive; `MmioRegion`
 /// holds the hw-safe mapping and length. Read-only volatile `u32` loads are safe to
 /// share across threads for aligned MMIO access on the supported platforms, in line
 /// with other BAR0 readers in this crate.

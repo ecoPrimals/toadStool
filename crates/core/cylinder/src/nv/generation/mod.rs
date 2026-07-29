@@ -315,7 +315,7 @@ pub const fn uses_semaphore_fence(profile: &GenerationProfile) -> bool {
 }
 
 impl GenerationProfile {
-    /// Build vendor-agnostic [`HardwareCapabilities`] from this NVIDIA profile.
+    /// Build vendor-agnostic `HardwareCapabilities` from this NVIDIA profile.
     #[must_use]
     pub fn to_capabilities(&self) -> crate::HardwareCapabilities {
         use crate::hardware::{CompletionStyle, Vendor, WaveSize};

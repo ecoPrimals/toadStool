@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Transport Router — any hardware input to any hardware output.
 //!
-//! Discovers all available [`HardwareTransport`](toadstool_core::HardwareTransport) endpoints
+//! Discovers all available [`HardwareTransport`] endpoints
 //! and routes data between any Rx transport and any Tx transport. Supports capability-based
 //! selection (e.g. "give me a 10+ Gbps unidirectional Tx").
 
