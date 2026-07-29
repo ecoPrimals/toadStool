@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,232+ lib tests, 23,000+ workspace tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 44 unsafe (all SAFETY-documented), 100% env centralized, cross-platform GPU backends (WgpuGpuDiscovery, PortableSwapExecutor, PortableResourceHandle), cfg-gated cross-arch"
-date = 2026-07-16
+description = "Sovereign compute hardware primal — 9,193+ lib tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero doc/clippy warnings, 46 crates version.workspace"
+date = 2026-07-29
 
 [taxonomies]
 primals = ["toadstool"]
@@ -10,15 +10,15 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S336+, Jul 16, 2026)
-- **S336**: security_impl migrated to crypto_integration (#![expect(deprecated)] removed), dead channels feature removed (12 cfg blocks), test extraction wave 6 (2 files, -173L)
-- **Lib tests**: 9,232+ (0 failures, unlimited parallelism)
-- **Workspace tests**: 23,000+ (0 failures, ~221 hardware-gated ignores; 9,232+ lib-only)
+- **Version**: 0.2.0 (Session S346, Jul 29, 2026)
+- **S346**: Security fail-closed (sandbox/PKI), unsafe containment (4 migrations to hw-safe/runtime-gpu), 75 rustdoc warnings fixed, 27 crates version-aligned, entropy hardened (getrandom)
+- **Lib tests**: 9,193+ (0 failures, unlimited parallelism)
 - **JSON-RPC methods**: 112 (direct) + semantic registry aliases
-- **Workspace crates**: 47
+- **Workspace crates**: 47 (46 with `version.workspace = true`)
 - **Clippy**: 0 warnings (`-D warnings`)
-- **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned)
-- **Unsafe blocks**: 44 actual (all SAFETY-documented, hw-containment crates only)
+- **Doc warnings**: 0
+- **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned; 19+ bans)
+- **Unsafe blocks**: 138 (all SAFETY-documented, designated containment crates only: hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader)
 - **Production unwrap/panic**: 0
 - **License**: AGPL-3.0-or-later (SPDX headers on all files)
 

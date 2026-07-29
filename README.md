@@ -42,10 +42,10 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,332 tests, 0 failures** (9,232+ lib-only default; +1,289 behind `legacy-coordination`), **~206** ignored (hardware-gated); full workspace ~12m on Dual EPYC |
+| `cargo test --workspace` | **9,193+ lib tests, 0 failures** (lib-only default); **~50** ignored (hardware-gated); full workspace ~8m on Dual EPYC |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S310: −2 via kernel_sentinel AsFd evolution); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
+| `unsafe` blocks | **138 blocks** across designated containment crates (hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + hw crates with narrow `#[allow(unsafe_code, reason)]`; S346: madvise/DRM-ioctl/systemd-fds/SPIR-V migrated into hw-safe/runtime-gpu |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` / `unreachable!()` (S282–S290: all paths evolved to Result; S313: 3 `unreachable!()` → typed errors) |
 | Production stubs / test mocks | Stubs evolved to real implementations or typed errors (`NoProviderRegistered`, `NoEngineRegistered`); S341: migration planner queries provider APIs instead of hardcoded economics; **embedded-placeholder** opt-in via `embedded-placeholder-impls` feature (S285 — removed from default features); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -268,7 +268,7 @@ toadStool/
 7. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 8. **Vendor-agnostic** -- WGPU/Vulkan for GPU discovery, any vendor works
 9. **Sovereign compute** -- no vendor lock-in, pure Rust core
-10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (44 blocks, all justified; all in hw-safe/GPU/VFIO/display/plugin containment crates)
+10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (138 blocks, all justified; all in designated containment crates: hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader)
 11. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -278,10 +278,10 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,332**, 0 failures (9,232 lib default; +1,289 legacy-coordination) |
+| Workspace tests | **9,193+ lib**, 0 failures |
 | Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **44 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| `unsafe` blocks | **138 blocks** across designated containment crates (hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + hw crates with `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` / `unreachable!()` (S282–S290: all paths evolved to Result; S313: 3 `unreachable!()` → typed errors) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | Typed error returns (`NoProviderRegistered`, `NoEngineRegistered`, etc.); test-only mocks **`#[cfg(test)]`** only |
@@ -301,7 +301,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,232+ lib); ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 9,193+ lib tests; ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
@@ -343,7 +343,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,232+ lib); ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 9,193+ lib tests; ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -387,7 +387,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Jul 28, 2026 — S344 (strandGate deep evolution). **23,332** workspace tests, 0 failures. ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **44 unsafe blocks** — all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list** (Pure Rust Crypto standard compliance). **Zero production files >750L**. **Zero clippy warnings** (`-D warnings`). **Overstep reduced** — `toadstool-display` and `akida-driver` feature-gated (S344). **Crypto best-effort** — dispatch gracefully falls back to unencrypted when Tower unavailable (S344). **Capability-based socket fallbacks** — centralized via `get_socket_path_for_capability()` (S344). **MMIO consolidated** — cylinder bins route through hw-safe containment zone (S344). Rust 1.85+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced.
+**Last Updated**: Jul 29, 2026 — S346 (strandGate deep evolution sprint). **9,193+ lib tests**, 0 failures. ~85%+ lib-only line coverage (target 90%). **112 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **138 unsafe blocks** — all SAFETY-documented, all in designated containment crates; workspace `unsafe_code = "deny"`, **41 crates `forbid`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list** (Pure Rust Crypto standard compliance). **Zero production files >750L**. **Zero clippy warnings** (`-D warnings`). **Zero doc warnings**. **46 crates `version.workspace = true`**. **Security fail-closed** — sandbox/PKI require explicit config (S346). **Overstep reduced** — `toadstool-display` and `akida-driver` feature-gated (S344). **Crypto best-effort** — dispatch gracefully falls back to unencrypted when Tower unavailable (S344). Rust 1.85+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced.
 
 ---
 
