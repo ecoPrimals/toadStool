@@ -11,7 +11,7 @@ fn test_dispatch_module_compiles_and_commands_accessible() {
         all: false,
         hardware: false,
         ecosystem: false,
-        config: false,
+        check_config: false,
         format: "text".to_string(),
         fix: false,
     };
@@ -365,7 +365,7 @@ fn test_commands_doctor_all_flags() {
         all: true,
         hardware: true,
         ecosystem: true,
-        config: true,
+        check_config: true,
         format: "json".to_string(),
         fix: true,
     };
@@ -374,14 +374,14 @@ fn test_commands_doctor_all_flags() {
             all,
             hardware,
             ecosystem,
-            config,
+            check_config,
             fix,
             ..
         } => {
             assert!(*all);
             assert!(*hardware);
             assert!(*ecosystem);
-            assert!(*config);
+            assert!(*check_config);
             assert!(*fix);
         }
         _ => panic!("Expected Doctor variant"),

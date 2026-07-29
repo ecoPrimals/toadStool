@@ -249,7 +249,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             all,
             hardware,
             ecosystem,
-            config,
+            check_config,
             format,
             fix,
         } => {
@@ -257,7 +257,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             super::doctor::run_doctor(
                 *all || *hardware,
                 *all || *ecosystem,
-                *all || *config,
+                *all || *check_config,
                 format,
                 *fix,
             )

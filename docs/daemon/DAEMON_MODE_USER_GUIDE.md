@@ -1,11 +1,9 @@
 # ToadStool Daemon Mode
 
-> **Fossilized (S170).** The HTTP-based daemon guide has been archived to
-> `ecoPrimals/infra/wateringHole/fossilRecord/TOADSTOOL_DAEMON_MODE_USER_GUIDE_S169_DEPRECATED.md`.
->
 > Since S169, the daemon exposes **JSON-RPC 2.0 over Unix sockets only**
 > (no HTTP, no REST, no `curl`). See:
 >
+> - [`docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md`](../reference/PRODUCTION_DEPLOYMENT_GUIDE.md) — full deployment guide
 > - [`docs/reference/SERVER_METHODS.md`](../reference/SERVER_METHODS.md) — all JSON-RPC methods
 > - [`CONTEXT.md`](../../CONTEXT.md) — primal role and IPC details
 

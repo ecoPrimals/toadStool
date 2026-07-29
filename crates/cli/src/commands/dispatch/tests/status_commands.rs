@@ -48,7 +48,7 @@ async fn test_execute_command_doctor() {
             all: false,
             hardware: true,
             ecosystem: false,
-            config: false,
+            check_config: false,
             format: "text".to_string(),
             fix: false,
         },

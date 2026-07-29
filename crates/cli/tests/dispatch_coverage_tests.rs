@@ -237,7 +237,7 @@ fn cli_context_from_doctor_all() {
         all: true,
         hardware: false,
         ecosystem: false,
-        config: false,
+        check_config: false,
         format: "text".to_string(),
         fix: false,
     });
@@ -251,7 +251,7 @@ fn cli_context_from_doctor_hardware_only() {
         all: false,
         hardware: true,
         ecosystem: false,
-        config: false,
+        check_config: false,
         format: "json".to_string(),
         fix: true,
     });
@@ -461,7 +461,7 @@ async fn execute_doctor_config_only() {
         all: false,
         hardware: false,
         ecosystem: false,
-        config: true,
+        check_config: true,
         format: "text".to_string(),
         fix: false,
     });
@@ -476,7 +476,7 @@ async fn execute_doctor_ecosystem_only() {
         all: false,
         hardware: false,
         ecosystem: true,
-        config: false,
+        check_config: false,
         format: "json".to_string(),
         fix: false,
     });
@@ -491,7 +491,7 @@ async fn execute_doctor_with_fix() {
         all: false,
         hardware: false,
         ecosystem: false,
-        config: true,
+        check_config: true,
         format: "text".to_string(),
         fix: true,
     });

@@ -314,8 +314,8 @@ pub enum Commands {
         ecosystem: bool,
 
         /// Check configuration validity
-        #[arg(long)]
-        config: bool,
+        #[arg(long = "config-check")]
+        check_config: bool,
 
         /// Output format (text, json)
         #[arg(short, long, default_value = "text")]

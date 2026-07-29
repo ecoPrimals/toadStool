@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Jul 26, 2026 — S341
+**Last Updated**: Jul 29, 2026 — S345
 
 ---
 
@@ -22,6 +22,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 | Hardware Transport Layer | [specs/HARDWARE_TRANSPORT_SPEC.md](specs/HARDWARE_TRANSPORT_SPEC.md) |
 | Dual-Fabric Architecture | [specs/DUAL_FABRIC_ARCHITECTURE.md](specs/DUAL_FABRIC_ARCHITECTURE.md) |
 | GPU operations | See barraCuda (`ecoPrimals/barraCuda/`) |
+| Deploy to production | [docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md](docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md) |
 | FHE encryption | [docs/guides/QUICK_START_ENCRYPTION.md](docs/guides/QUICK_START_ENCRYPTION.md) |
 | Run tests | [docs/guides/TESTING.md](docs/guides/TESTING.md) |
 | Deploy NPU drivers | [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md) |
@@ -30,11 +31,11 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S341 — Jul 2026)
+## Current State (S345 — Jul 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,000+ tests** (9,232 lib-only), 0 failures, 0 clippy warnings (`-D warnings` on Rust 1.96), 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes (S329). **S341**: migration planner queries provider APIs (replaces hardcoded economics), security discovery eliminates silent fallbacks, centralized port constants. **S339**: Rust 1.96 clippy sweep (251 files — MSRV-safe lint resolution, dead feature removal). **S338**: structural splits — `rm_object_tree`, `pmu_investigate`, `opcodes`. **S337**: hot-path `Cow<str>` dispatch mode + `warm.rs`/`operations.rs` structural splits.
+- **23,332 tests** (9,232 lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes. **S344**: deny.toml expanded (19+ bans), overstep reduced (display/akida feature-gated), crypto best-effort, socket centralization, MMIO consolidation. **S343**: wgpu into system queries + dispatch. **S342**: cross-platform GPU fallback.
 - **112 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
 - **100% SPDX AGPL-3.0-or-later** headers across all `.rs` files (S320+).
 - **Zero-copy dispatch** (S320+) — `Arc<EncryptionKey>` cache, pipeline first-stage borrow, `binary_size` telemetry, error consolidation.
@@ -54,7 +55,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S341).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S345).
 
 ---
 
@@ -102,7 +103,7 @@ Scientific computing middleware (linalg, numerical, special, stats, optimize, su
 
 **System Architects**: [README.md](README.md) then [specs/](specs/)
 
-**DevOps Engineers**: [README.md](README.md) then [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)
+**DevOps Engineers**: [docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md](docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md) then [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)
 
 ---
 

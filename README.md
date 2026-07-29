@@ -376,6 +376,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 | Document | Purpose |
 |----------|---------|
 | [DOCUMENTATION.md](DOCUMENTATION.md) | Navigation hub (guides, specs, audits) |
+| [Production Deployment](docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md) | Deployment, systemd, env vars, health probes |
 | [CHANGELOG.md](CHANGELOG.md) | Full session-by-session evolution history |
 | [DEBT.md](DEBT.md) | Active debt register, workarounds, evolution paths |
 | [NEXT_STEPS.md](NEXT_STEPS.md) | Roadmap and upcoming work |

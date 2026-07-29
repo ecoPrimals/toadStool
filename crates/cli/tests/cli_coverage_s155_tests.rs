@@ -91,14 +91,11 @@ fn test_cli_parse_down_command() {
 
 #[test]
 fn test_cli_parse_doctor_command() {
-    // Note: Doctor has --config (bool) which conflicts with global --config (PathBuf).
-    // Parsing doctor triggers this conflict. We test doctor via run_doctor instead.
-    // Verify Doctor variant exists in Commands.
     let _ = Commands::Doctor {
         all: false,
         hardware: true,
         ecosystem: false,
-        config: false,
+        check_config: false,
         format: "json".to_string(),
         fix: false,
     };
