@@ -222,27 +222,28 @@ pub async fn run_server_main(
 
     // Legacy symlink: toadstool.sock → compute.sock for callers still using
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
+    // Points at JSON-RPC (primary), NOT tarpc (binary protocol).
     let legacy_filename = format::legacy_socket_filename_for_family(&family_id);
-    let legacy_socket = tarpc_socket_path
+    let legacy_socket = jsonrpc_socket
         .parent()
         .map(|dir| dir.join(legacy_filename));
     if let Some(ref legacy) = legacy_socket
-        && legacy != &tarpc_socket_path
+        && legacy != &jsonrpc_socket
     {
         let _ = std::fs::remove_file(legacy);
         #[cfg(unix)]
         {
-            if let Err(e) = std::os::unix::fs::symlink(&tarpc_socket_path, legacy) {
+            if let Err(e) = std::os::unix::fs::symlink(&jsonrpc_socket, legacy) {
                 warn!(
                     "Could not create legacy symlink {} → {}: {e}",
                     legacy.display(),
-                    tarpc_socket_path.display()
+                    jsonrpc_socket.display()
                 );
             } else {
                 info!(
-                    "🔗 Legacy symlink: {} → {}",
+                    "Legacy symlink: {} → {}",
                     legacy.display(),
-                    tarpc_socket_path
+                    jsonrpc_socket
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
