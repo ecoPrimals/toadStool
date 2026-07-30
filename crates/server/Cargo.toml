@@ -61,6 +61,7 @@ toadstool-sysmon = { workspace = true }
 
 # GPU detection via barraCuda (vendor-agnostic)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
+toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 futures = { workspace = true }
 
 # Security sandboxing (optional — workload isolation via seccomp/capabilities)
@@ -69,7 +70,7 @@ toadstool-security-policies = { path = "../security/policies", optional = true }
 
 [features]
 default = ["gpu-discovery", "tarpc", "btsp"]
-gpu-discovery = ["wgpu"]
+gpu-discovery = ["wgpu", "dep:toadstool-runtime-gpu"]
 tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
 btsp = ["toadstool-common/btsp"]
 # Cross-platform sandbox + policy enforcement (seccomp, capabilities, RBAC)
@@ -96,7 +97,6 @@ display = ["dep:toadstool-display"]
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-display = { path = "../runtime/display", optional = true }
 toadstool-cylinder = { path = "../core/cylinder" }
-toadstool-runtime-gpu = { path = "../runtime/gpu" }
 toadstool-hw-safe = { path = "../core/hw-safe" }
 hw-learn = { path = "../core/hw-learn" }
 nvpmu = { path = "../core/nvpmu" }

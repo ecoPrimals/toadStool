@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: July 29, 2026 — S346
+**Date**: July 30, 2026 — S347
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S347 (strandGate Windows Cross-Compile Fix — Wave 155j P1)**:
+`toadstool-runtime-gpu` moved from `[target.'cfg(target_os = "linux")'.dependencies]`
+to general `[dependencies]` as an optional dep tied to the `gpu-discovery` feature.
+`RuntimeEngineDispatch::Gpu` variant cfg-gated to `all(target_os = "linux", feature
+= "gpu-discovery")`. `cargo check -p toadstool-cli --target x86_64-pc-windows-msvc`
+now passes. Unblocks `toadstool.exe` in sporeGate Windows depot pipeline.
 
 **S346 (strandGate Deep Debt Evolution Sprint — Wave 155i)**:
 Security fail-closed: macOS/Windows sandbox apply/remove/monitor return
