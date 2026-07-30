@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,193+ lib tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero doc/clippy warnings, 46 crates version.workspace"
-date = 2026-07-29
+description = "Sovereign compute hardware primal — 9,193+ lib tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 134 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, Windows cross-compile, 46 crates version.workspace"
+date = 2026-07-30
 
 [taxonomies]
 primals = ["toadstool"]
@@ -10,15 +10,15 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S346, Jul 29, 2026)
-- **S346**: Security fail-closed (sandbox/PKI), unsafe containment (4 migrations to hw-safe/runtime-gpu), 75 rustdoc warnings fixed, 27 crates version-aligned, entropy hardened (getrandom)
+- **Version**: 0.2.0 (Session S349, Jul 30, 2026)
+- **S349**: ~15 dead deps purged, stubs fail-closed (mainframe/probe/InMemoryBackend), hardcoding consolidated, cylinder unsafe lint reasons. S348: legacy symlink fix. S347: Windows cross-compile. S346: security fail-closed, unsafe containment, 75 doc warnings fixed
 - **Lib tests**: 9,193+ (0 failures, unlimited parallelism)
 - **JSON-RPC methods**: 112 (direct) + semantic registry aliases
 - **Workspace crates**: 47 (46 with `version.workspace = true`)
 - **Clippy**: 0 warnings (`-D warnings`)
 - **Doc warnings**: 0
 - **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned; 19+ bans)
-- **Unsafe blocks**: 138 (all SAFETY-documented, designated containment crates only: hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader)
+- **Unsafe blocks**: 134 (all SAFETY-documented, designated containment crates only: hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader; all cylinder `#[allow]` have `reason`)
 - **Production unwrap/panic**: 0
 - **License**: AGPL-3.0-or-later (SPDX headers on all files)
 

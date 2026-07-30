@@ -289,7 +289,7 @@ toadStool/
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **zero production `#[allow]`** — all converted to `#[expect]` with `reason` (S291); ~13 test-only `#[allow]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif`. S288: `modbus` (feature-gated `modbus-transport`). S289: `bollard` (feature-gated `docker`, not default) |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif`. S288: `modbus` (feature-gated). S289: `bollard` (feature-gated). S349: `parking_lot`, `config`, `futures-intrusive`, `statrs`, `ndarray` ×2, phantom `serde_yaml_ng` ×6, `regex` ×2 removed |
 | Env centralization | **100%** (zero production raw env string literals, S321; ~410+ reads via `socket_env::` constants) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
