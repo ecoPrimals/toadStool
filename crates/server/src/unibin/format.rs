@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use tracing::info;
 
 use crate::errors::{ServerError, ServerResult};
-use toadstool_common::constants::platform_paths::{etc_paths, procfs};
 use toadstool_common::interned_strings::socket_env;
+use toadstool_common::primal_sockets::get_runtime_dir;
 
 /// Ensure biomeos directory exists with proper permissions
 ///
@@ -139,31 +139,8 @@ pub fn get_socket_path(
         && PathBuf::from(&xdg_runtime).exists()
     {
         PathBuf::from(xdg_runtime)
-    } else if let Ok(uid_str) = std::fs::read_to_string(procfs::PROC_SELF_LOGINUID) {
-        if let Ok(uid) = uid_str.trim().parse::<u32>() {
-            PathBuf::from(format!("/run/user/{uid}"))
-        } else {
-            std::env::var(socket_env::USER)
-                .ok()
-                .and_then(|user| {
-                    std::fs::read_to_string(etc_paths::PASSWD)
-                        .ok()
-                        .and_then(|passwd| {
-                            passwd
-                                .lines()
-                                .find(|line| line.starts_with(&format!("{user}:")))
-                                .and_then(|line| {
-                                    line.split(':')
-                                        .nth(2)
-                                        .and_then(|uid| uid.parse::<u32>().ok())
-                                })
-                                .map(|uid| PathBuf::from(format!("/run/user/{uid}")))
-                        })
-                })
-                .unwrap_or_else(std::env::temp_dir)
-        }
     } else {
-        std::env::temp_dir()
+        PathBuf::from(get_runtime_dir())
     };
 
     if runtime_dir.exists() {

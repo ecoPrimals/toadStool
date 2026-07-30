@@ -21,6 +21,9 @@ use serde::{Deserialize, Serialize};
 #[cfg(unix)]
 use std::path::PathBuf;
 
+#[cfg(unix)]
+use toadstool_common::primal_sockets::get_runtime_dir;
+
 #[cfg(any(unix, target_os = "linux"))]
 use toadstool_common::interned_strings::socket_env;
 
@@ -243,24 +246,6 @@ fn is_android() -> bool {
     }
 
     false
-}
-
-/// Get `XDG_RUNTIME_DIR` or fallback.
-#[cfg(unix)]
-fn get_runtime_dir() -> String {
-    if let Ok(dir) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
-        return dir;
-    }
-    #[cfg(unix)]
-    if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
-        return format!("/run/user/{uid}");
-    }
-    std::env::var(socket_env::BIOMEOS_RUNTIME_DIR).unwrap_or_else(|_| {
-        std::env::temp_dir()
-            .join("biomeos-runtime")
-            .to_string_lossy()
-            .into_owned()
-    })
 }
 
 // ============================================================================

@@ -21,7 +21,6 @@ thiserror = { workspace = true }
 # Legacy system communication
 serialport = { workspace = true, optional = true }
 telnet = "0.2"
-regex = { workspace = true }
 # encoding removed: was declared but unused in source (RUSTSEC-2021-0153 unmaintained).
 # CharacterEncoding enum is defined locally. If legacy codec support is needed,
 # use encoding_rs (maintained by Mozilla, pure Rust).

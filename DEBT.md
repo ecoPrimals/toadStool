@@ -1,12 +1,25 @@
 # Active Technical Debt Register
 
-**Date**: July 30, 2026 — S347
+**Date**: July 30, 2026 — S349
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S349 (strandGate Deep Debt Evolution II — Wave 155k)**:
+~15 dead dependency declarations removed (`parking_lot`, `serde_yaml_ng` ×6,
+`config` ×2, `regex` ×2, `ndarray` ×2, `statrs`, `futures-intrusive`).
+`serde_yaml_ng` moved to dev-deps in `core/config`. 5 cylinder `#[allow(unsafe_code)]`
+given `reason` (S211 compliance). Silent stubs evolved to fail-closed: Terminal3270
+connect/disconnect → `not_supported`; IBM `get_system_info` → `not_supported`;
+non-Unix `probe_unix_socket` → `not_supported`; `InMemoryBackend` export test-gated;
+akida state extraction → `InvalidState`. `/run/user/{uid}` fallback consolidated
+to `get_runtime_dir()` (4 call sites eliminated). Module-local magic numbers
+extracted: BYOB web ports, container port ranges, alert thresholds, daemon config.
+Legacy symlink `toadstool.sock` fixed to point at JSON-RPC primary (S348).
+All quality gates green.
 
 **S347 (strandGate Windows Cross-Compile Fix — Wave 155j P1)**:
 `toadstool-runtime-gpu` moved from `[target.'cfg(target_os = "linux")'.dependencies]`

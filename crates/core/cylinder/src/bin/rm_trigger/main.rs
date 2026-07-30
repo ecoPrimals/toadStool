@@ -15,7 +15,10 @@
 //! Outputs structured JSON on stdout, diagnostics on stderr.
 
 // SAFETY: Raw NVIDIA RM ioctls require unsafe ioctl() calls.
-#![allow(unsafe_code)]
+#![allow(
+    unsafe_code,
+    reason = "register-manager MMIO trigger — cylinder containment zone"
+)]
 #![allow(
     clippy::borrow_as_ptr,
     clippy::needless_pass_by_value,

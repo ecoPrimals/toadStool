@@ -14,6 +14,7 @@
 //! comprehensive security isolation, resource limits, and network policies.
 
 // Module declarations
+pub mod constants;
 pub mod types;
 
 mod byob_routes;

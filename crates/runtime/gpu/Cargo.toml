@@ -18,12 +18,10 @@ tokio = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml_ng = { workspace = true }
 bytes = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
-parking_lot = "0.12"
 toadstool-sysmon = { workspace = true }
 rayon = "1.8"
 wgpu = { workspace = true, optional = true, features = ["wgsl"] }

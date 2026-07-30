@@ -95,8 +95,8 @@ impl CoordinationConnection {
 
     /// Verify a Unix domain socket is reachable by opening a connection.
     ///
-    /// Only available on Unix targets. On non-Unix builds the probe always
-    /// succeeds (Windows/WASM environments don't use Unix sockets).
+    /// Only available on Unix targets. On non-Unix builds the probe returns
+    /// an error because Unix socket IPC is unavailable on that platform.
     async fn probe_unix_socket(path: &str) -> ToadStoolResult<()> {
         #[cfg(unix)]
         {
@@ -110,7 +110,9 @@ impl CoordinationConnection {
         #[cfg(not(unix))]
         {
             let _ = path;
-            Ok(())
+            Err(ToadStoolError::not_supported(
+                "unix socket health probe not available on this platform",
+            ))
         }
     }
 }

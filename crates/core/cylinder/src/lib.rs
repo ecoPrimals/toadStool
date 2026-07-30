@@ -3,7 +3,10 @@
 //
 // Hardware driver: requires unsafe for kernel ioctl/mmap/MMIO.
 // Inherits workspace pedantic/nursery but relaxes hardware-specific patterns.
-#![allow(unsafe_code)]
+#![allow(
+    unsafe_code,
+    reason = "VFIO/MMIO/DRM hardware access — cylinder containment zone"
+)]
 #![warn(missing_docs)]
 #![allow(
     clippy::unreadable_literal,

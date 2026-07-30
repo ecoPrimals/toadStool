@@ -9,10 +9,10 @@ use crate::monitoring::types::{
     SystemHealth,
 };
 
-const ALERT_THRESHOLD_DURATION_SECS: u64 = 300;
-const ALERT_COOLDOWN_SECS: u64 = 600;
-const CRITICAL_THRESHOLD_DURATION_SECS: u64 = 60;
-const CRITICAL_COOLDOWN_SECS: u64 = 1800;
+const DEFAULT_ALERT_WINDOW_SECS: u64 = 300;
+const DEFAULT_COOLDOWN_SECS: u64 = 600;
+const DEFAULT_CRITICAL_ALERT_WINDOW_SECS: u64 = 60;
+const DEFAULT_CRITICAL_COOLDOWN_SECS: u64 = 1800;
 
 /// Returns the default set of alert rules for the monitoring system
 pub fn load_default_alert_rules() -> Vec<AlertRule> {
@@ -24,11 +24,11 @@ pub fn load_default_alert_rules() -> Vec<AlertRule> {
                 metric: "cpu_usage_percent".to_string(),
                 operator: ComparisonOperator::GreaterThan,
                 value: 90.0,
-                duration: Duration::from_secs(ALERT_THRESHOLD_DURATION_SECS),
+                duration: Duration::from_secs(DEFAULT_ALERT_WINDOW_SECS),
             },
             severity: AlertSeverity::Warning,
             enabled: true,
-            cooldown: Duration::from_secs(ALERT_COOLDOWN_SECS),
+            cooldown: Duration::from_secs(DEFAULT_COOLDOWN_SECS),
             last_triggered: None,
         },
         AlertRule {
@@ -38,11 +38,11 @@ pub fn load_default_alert_rules() -> Vec<AlertRule> {
                 metric: "memory_usage_percent".to_string(),
                 operator: ComparisonOperator::GreaterThan,
                 value: 85.0,
-                duration: Duration::from_secs(ALERT_THRESHOLD_DURATION_SECS),
+                duration: Duration::from_secs(DEFAULT_ALERT_WINDOW_SECS),
             },
             severity: AlertSeverity::Warning,
             enabled: true,
-            cooldown: Duration::from_secs(ALERT_COOLDOWN_SECS),
+            cooldown: Duration::from_secs(DEFAULT_COOLDOWN_SECS),
             last_triggered: None,
         },
         AlertRule {
@@ -52,11 +52,11 @@ pub fn load_default_alert_rules() -> Vec<AlertRule> {
                 metric: "storage_usage_percent".to_string(),
                 operator: ComparisonOperator::GreaterThan,
                 value: 95.0,
-                duration: Duration::from_secs(CRITICAL_THRESHOLD_DURATION_SECS),
+                duration: Duration::from_secs(DEFAULT_CRITICAL_ALERT_WINDOW_SECS),
             },
             severity: AlertSeverity::Critical,
             enabled: true,
-            cooldown: Duration::from_secs(CRITICAL_COOLDOWN_SECS),
+            cooldown: Duration::from_secs(DEFAULT_CRITICAL_COOLDOWN_SECS),
             last_triggered: None,
         },
     ]

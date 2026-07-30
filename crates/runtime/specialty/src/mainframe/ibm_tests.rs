@@ -201,7 +201,13 @@ async fn ibm_lifecycle_job_not_found_errors() {
         "ibm".to_string(),
         minimal_mainframe_config(LegacySystemType::IbmZSeries),
     );
-    adapter.initialize(&cfg).await.unwrap();
+    let init_err = adapter.initialize(&cfg).await.unwrap_err();
+    assert!(
+        init_err
+            .to_string()
+            .contains("3270 terminal connection not implemented"),
+        "{init_err}"
+    );
 
     let missing = Uuid::nil();
     adapter.get_job_status(missing).await.unwrap_err();
@@ -231,10 +237,20 @@ async fn ibm_system_info_and_connectivity() {
         "ibm".to_string(),
         minimal_mainframe_config(LegacySystemType::IbmSystem370),
     );
-    adapter.initialize(&cfg).await.unwrap();
-    assert!(adapter.test_connectivity().await.unwrap());
+    let init_err = adapter.initialize(&cfg).await.unwrap_err();
+    assert!(
+        init_err
+            .to_string()
+            .contains("3270 terminal connection not implemented"),
+        "{init_err}"
+    );
+    assert!(!adapter.test_connectivity().await.unwrap());
 
-    let info = adapter.get_system_info().await.unwrap();
-    assert_eq!(info.system_type, LegacySystemType::IbmZSeries);
-    adapter.shutdown().await.unwrap();
+    let info_err = adapter.get_system_info().await.unwrap_err();
+    assert!(
+        info_err
+            .to_string()
+            .contains("not connected to real hardware"),
+        "{info_err}"
+    );
 }

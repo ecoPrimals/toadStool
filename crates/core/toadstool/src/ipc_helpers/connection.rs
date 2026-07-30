@@ -4,7 +4,6 @@
 use serde_json::Value;
 use serde_json::json;
 use std::time::Duration;
-use toadstool_common::uid_detector;
 use tokio::net::UnixStream;
 use tokio::time::timeout;
 use tracing::{debug, info};
@@ -12,9 +11,8 @@ use tracing::{debug, info};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::constants::timeouts;
-use toadstool_common::interned_strings::socket_env;
 use toadstool_common::primal_sockets::{
-    SocketPathEnv, resolve_capability_socket_fallback, resolve_toadstool_socket,
+    SocketPathEnv, get_runtime_dir, resolve_capability_socket_fallback, resolve_toadstool_socket,
 };
 
 use super::framing;
@@ -35,23 +33,6 @@ pub const DISCOVERY_CAPABILITIES: &[&str] = &[
     "shader_dispatch",
     "hardware_learning",
 ];
-
-/// Get runtime directory: `$XDG_RUNTIME_DIR` → `$BIOMEOS_RUNTIME_DIR` → `/run/user/$UID` → temp dir.
-fn get_runtime_dir() -> String {
-    std::env::var(socket_env::XDG_RUNTIME_DIR)
-        .or_else(|_| std::env::var(socket_env::BIOMEOS_RUNTIME_DIR))
-        .unwrap_or_else(|_| {
-            uid_detector::get_user_id().map_or_else(
-                |_| {
-                    std::env::temp_dir()
-                        .join("biomeos-runtime")
-                        .to_string_lossy()
-                        .to_string()
-                },
-                |uid| format!("/run/user/{uid}"),
-            )
-        })
-}
 
 /// Default coordination-capability socket path.
 ///

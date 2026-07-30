@@ -273,38 +273,9 @@ impl LegacyAdapter for IBMMainframeAdapter {
 
     fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
         async {
-            // In a real implementation, this would query the mainframe system
-            Ok(SystemInfo {
-                system_name: "IBM z/OS".to_string(),
-                system_type: LegacySystemType::IbmZSeries,
-                version: "2.4".to_string(),
-                architecture: crate::LegacyArchitecture::IbmSystem360,
-                cpu_info: crate::CpuInfo {
-                    model: "IBM z14".to_string(),
-                    speed: 5_200_000_000, // 5.2 GHz
-                    cores: 32,
-                    features: vec!["z/Architecture".to_string()],
-                    usage: 25.0,
-                },
-                memory_info: crate::MemoryInfo {
-                    total: 1024 * 1024 * 1024 * 1024,    // 1 TB
-                    available: 512 * 1024 * 1024 * 1024, // 512 GB
-                    used: 512 * 1024 * 1024 * 1024,      // 512 GB
-                    memory_type: crate::MemoryType::RAM,
-                },
-                storage_info: crate::StorageInfo {
-                    total: 100 * 1024 * 1024 * 1024 * 1024,    // 100 TB
-                    available: 50 * 1024 * 1024 * 1024 * 1024, // 50 TB
-                    used: 50 * 1024 * 1024 * 1024 * 1024,      // 50 TB
-                    storage_type: crate::StorageType::HardDisk,
-                },
-                network_info: crate::NetworkInfo {
-                    interfaces: vec![],
-                    protocols: vec![crate::NetworkProtocol::TCPIP],
-                    status: crate::NetworkStatus::Online,
-                },
-                status: crate::SystemStatus::Online,
-            })
+            Err(ToadStoolError::not_supported(
+                "IBM mainframe system info not available — not connected to real hardware",
+            ))
         }
     }
 

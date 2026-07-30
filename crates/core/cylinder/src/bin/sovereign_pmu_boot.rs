@@ -7,7 +7,13 @@
 //! Usage:
 //!   sovereign_pmu_boot `<resource0>` <pmu_imem.bin> <pmu_dmem.bin> [--dry-run]
 
-#![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
+#![allow(
+    unsafe_code,
+    dead_code,
+    non_snake_case,
+    non_upper_case_globals,
+    reason = "sovereign PMU boot diagnostic binary — cylinder containment zone"
+)]
 #![allow(
     unused_variables,
     unused_assignments,

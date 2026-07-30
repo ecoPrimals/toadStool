@@ -7,7 +7,13 @@
 //!
 //! Usage: sovereign_acr_boot <resource0_path> <firmware_dir> [--dry-run]
 
-#![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
+#![allow(
+    unsafe_code,
+    dead_code,
+    non_snake_case,
+    non_upper_case_globals,
+    reason = "sovereign ACR falcon boot diagnostic binary — cylinder containment zone"
+)]
 #![allow(
     unused_variables,
     unused_assignments,

@@ -28,7 +28,6 @@ toadstool-runtime-native = { path = "../native" }
 # GPU backends (all optional, capability-based discovery)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"], optional = true }
-futures-intrusive = { version = "0.5", optional = true }
 
 # For CPU parallelism and discovery
 rayon = "1.8"
@@ -40,7 +39,7 @@ toadstool-sysmon = { path = "../../core/sysmon", optional = true }
 [features]
 default = ["cpu", "wgpu-backend"]
 cpu = []
-wgpu-backend = ["dep:wgpu", "bytemuck", "futures-intrusive"]
+wgpu-backend = ["dep:wgpu", "bytemuck"]
 hardware-learning = ["hw-learn", "toadstool-sysmon"]
 all = ["cpu", "wgpu-backend", "hardware-learning"]
 

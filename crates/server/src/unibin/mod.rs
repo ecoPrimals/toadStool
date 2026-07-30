@@ -224,9 +224,7 @@ pub async fn run_server_main(
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
     // Points at JSON-RPC (primary), NOT tarpc (binary protocol).
     let legacy_filename = format::legacy_socket_filename_for_family(&family_id);
-    let legacy_socket = jsonrpc_socket
-        .parent()
-        .map(|dir| dir.join(legacy_filename));
+    let legacy_socket = jsonrpc_socket.parent().map(|dir| dir.join(legacy_filename));
     if let Some(ref legacy) = legacy_socket
         && legacy != &jsonrpc_socket
     {

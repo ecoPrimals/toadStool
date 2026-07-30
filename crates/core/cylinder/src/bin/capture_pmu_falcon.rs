@@ -3,7 +3,13 @@
 //!
 //! Usage: capture_pmu_falcon <resource0_path> `output_dir` `rw`
 
-#![allow(unsafe_code, dead_code, non_snake_case, non_upper_case_globals)]
+#![allow(
+    unsafe_code,
+    dead_code,
+    non_snake_case,
+    non_upper_case_globals,
+    reason = "PMU falcon diagnostic binary — cylinder containment zone"
+)]
 #![allow(
     clippy::unreadable_literal,
     clippy::borrow_as_ptr,

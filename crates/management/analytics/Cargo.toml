@@ -23,7 +23,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Machine learning and analytics
-ndarray = { workspace = true }
 statrs = "0.18"
 
 # Database for storing metrics - REMOVED: Brings in ring via rustls (violates pure Rust)
@@ -35,9 +34,6 @@ statrs = "0.18"
 uuid = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
-
-# Configuration
-config = { workspace = true }
 
 [lints]
 workspace = true

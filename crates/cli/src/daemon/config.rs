@@ -8,6 +8,21 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
+/// Minimum non-privileged TCP port (ports below this require root on Unix).
+const MIN_NON_PRIVILEGED_PORT: u16 = 1024;
+/// Maximum allowed concurrent workloads for daemon validation.
+const MAX_CONCURRENT_WORKLOADS: usize = 1000;
+/// Default maximum concurrent workloads when daemon config is unset.
+const DEFAULT_MAX_CONCURRENT_WORKLOADS: usize = 10;
+/// Default workload timeout in seconds.
+const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
+/// Default resource monitoring interval in seconds.
+const DEFAULT_RESOURCE_MONITOR_INTERVAL_SECS: u64 = 30;
+/// Default heartbeat interval in seconds.
+const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 30;
+/// Default health check interval in seconds.
+const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
+
 /// Daemon configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DaemonConfig {
@@ -99,7 +114,7 @@ impl DaemonConfig {
 
     /// Validate configuration
     fn validate(&self) -> Result<()> {
-        if self.port != 0 && self.port < 1024 {
+        if self.port != 0 && self.port < MIN_NON_PRIVILEGED_PORT {
             return Err(crate::CliError::Other(
                 "Port must be 0 (OS-assigned) or >= 1024 (non-privileged)".to_string(),
             ));
@@ -111,10 +126,10 @@ impl DaemonConfig {
             ));
         }
 
-        if self.max_concurrent_workloads > 1000 {
-            return Err(crate::CliError::Other(
-                "max_concurrent_workloads too high (max: 1000)".to_string(),
-            ));
+        if self.max_concurrent_workloads > MAX_CONCURRENT_WORKLOADS {
+            return Err(crate::CliError::Other(format!(
+                "max_concurrent_workloads too high (max: {MAX_CONCURRENT_WORKLOADS})"
+            )));
         }
 
         Ok(())
@@ -123,22 +138,17 @@ impl DaemonConfig {
 
 impl Default for DaemonConfig {
     fn default() -> Self {
-        const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
-        const RESOURCE_MONITOR_INTERVAL_SECS: u64 = 30;
-        const HEARTBEAT_INTERVAL_SECS: u64 = 30;
-        const HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
-
         Self {
             port: toadstool_config::ports::daemon_port(),
             register_with_biomeos: false,
             socket_path: None,
             config_file: None,
-            max_concurrent_workloads: 10,
+            max_concurrent_workloads: DEFAULT_MAX_CONCURRENT_WORKLOADS,
             default_workload_timeout: Duration::from_secs(DEFAULT_WORKLOAD_TIMEOUT_SECS),
-            resource_monitor_interval: Duration::from_secs(RESOURCE_MONITOR_INTERVAL_SECS),
-            heartbeat_interval: Duration::from_secs(HEARTBEAT_INTERVAL_SECS),
+            resource_monitor_interval: Duration::from_secs(DEFAULT_RESOURCE_MONITOR_INTERVAL_SECS),
+            heartbeat_interval: Duration::from_secs(DEFAULT_HEARTBEAT_INTERVAL_SECS),
             biomeos_socket: None,
-            health_check_interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
+            health_check_interval: Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS),
         }
     }
 }
@@ -151,7 +161,10 @@ mod tests {
     async fn test_default_config() {
         let config = DaemonConfig::default();
         assert_eq!(config.port, toadstool_config::ports::daemon_port());
-        assert_eq!(config.max_concurrent_workloads, 10);
+        assert_eq!(
+            config.max_concurrent_workloads,
+            DEFAULT_MAX_CONCURRENT_WORKLOADS
+        );
         assert!(!config.register_with_biomeos);
     }
 

@@ -183,8 +183,20 @@ async fn terminal3270_connect_disconnect() {
     let _ = Terminal3270::default();
     let _ = format!("{:?}", t);
     let conn = minimal_mainframe_config().connection.clone();
-    t.connect(&conn).await.unwrap();
-    t.disconnect().await.unwrap();
+    let connect_err = t.connect(&conn).await.unwrap_err();
+    assert!(
+        connect_err
+            .to_string()
+            .contains("3270 terminal connection not implemented"),
+        "{connect_err}"
+    );
+    let disconnect_err = t.disconnect().await.unwrap_err();
+    assert!(
+        disconnect_err
+            .to_string()
+            .contains("3270 terminal disconnect not implemented"),
+        "{disconnect_err}"
+    );
 }
 
 #[tokio::test]

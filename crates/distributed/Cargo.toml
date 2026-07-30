@@ -52,8 +52,6 @@ thiserror = { workspace = true }
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
 toadstool-sysmon = { workspace = true }
 
-# Configuration
-config = { workspace = true }
 [[test]]
 name = "cloud_orchestrator_coverage_tests"
 required-features = ["testing"]

@@ -41,6 +41,7 @@ mod inmemory;
 #[cfg(unix)]
 mod storage;
 
+#[cfg(any(test, feature = "test-mocks"))]
 pub use inmemory::InMemoryBackend;
 #[cfg(unix)]
 pub use storage::SocketStorageBackend;

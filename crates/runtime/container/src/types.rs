@@ -9,6 +9,10 @@ use std::path::PathBuf;
 use std::time::Duration;
 use toadstool::workload::{PortMapping, RegistryAuth, VolumeMount};
 
+use crate::constants::{
+    APP_PORT_RANGE_END, APP_PORT_RANGE_START, DEV_PORT_RANGE_END, DEV_PORT_RANGE_START,
+};
+
 #[cfg(feature = "docker")]
 use bollard::API_DEFAULT_VERSION;
 
@@ -141,13 +145,6 @@ pub struct NetworkPolicy {
     pub dns_config: DnsConfig,
 }
 
-impl NetworkPolicy {
-    const APP_PORT_RANGE_START: u16 = 8000;
-    const APP_PORT_RANGE_END: u16 = 8999;
-    const DEV_PORT_RANGE_START: u16 = 3000;
-    const DEV_PORT_RANGE_END: u16 = 3999;
-}
-
 impl Default for NetworkPolicy {
     fn default() -> Self {
         Self {
@@ -155,12 +152,12 @@ impl Default for NetworkPolicy {
             allow_custom_networks: false,
             allowed_port_ranges: vec![
                 PortRange {
-                    start: Self::APP_PORT_RANGE_START,
-                    end: Self::APP_PORT_RANGE_END,
+                    start: APP_PORT_RANGE_START,
+                    end: APP_PORT_RANGE_END,
                 },
                 PortRange {
-                    start: Self::DEV_PORT_RANGE_START,
-                    end: Self::DEV_PORT_RANGE_END,
+                    start: DEV_PORT_RANGE_START,
+                    end: DEV_PORT_RANGE_END,
                 },
             ],
             dns_config: DnsConfig::default(),

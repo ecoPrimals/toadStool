@@ -82,7 +82,6 @@ pub use helpers::timeout::*;
 pub use fake;
 pub use proptest;
 pub use serde_json;
-pub use serde_yaml_ng;
 pub use tempfile;
 pub use tokio_test;
 

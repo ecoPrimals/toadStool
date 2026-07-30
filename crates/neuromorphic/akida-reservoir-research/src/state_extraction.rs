@@ -73,39 +73,22 @@ impl StateExtractor {
     ///
     /// # Errors
     ///
-    /// Returns an error if state extraction fails (currently always succeeds, but may fail when full implementation is added).
+    /// Returns an error until akida-driver exposes internal layer state extraction.
     pub fn extract_states(
         &self,
         _model: &Model,
-        result: &InferenceResult,
+        _result: &InferenceResult,
     ) -> Result<Vec<LayerActivations>> {
         debug!("Attempting to extract layer states");
 
-        // EXPERIMENTAL: Try to extract internal states
-        //
-        // The BrainChip Python SDK has methods like:
-        //   - model.forward(input, layer=N) - get output at layer N
-        //   - model.predict(input) - get all layer outputs
-        //
-        // We need to add similar functionality to our Rust driver!
+        warn!("State extraction not yet implemented in pure Rust driver");
+        warn!("Need to extend akida-driver to expose internal layer states");
 
-        // For now, we can only access the final output
-        warn!("⚠️  State extraction not yet implemented in pure Rust driver!");
-        warn!("    We can currently only access final inference output.");
-        warn!("    Need to extend akida-driver to expose internal layer states.");
-
-        // Return final output as a single "layer"
-        let final_values: Vec<f32> = result.output.iter().map(|&x| f32::from(x)).collect();
-
-        let final_layer = LayerActivations {
-            layer_idx: 0,
-            values: final_values,
-            shape: None, // Unknown without model introspection
-        };
-
-        info!("Extracted final layer: {} values", final_layer.values.len());
-
-        Ok(vec![final_layer])
+        Err(crate::error::ReservoirError::InvalidState(
+            "Akida internal layer state extraction not yet implemented — \
+             akida-driver must expose get_layer_output() and NPU layer ioctl access"
+                .to_string(),
+        ))
     }
 
     /// Extract state as ndarray for easier computation

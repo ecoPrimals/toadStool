@@ -8,6 +8,7 @@
 //! ## Zero-Copy Optimization
 //! String constants use `&'static str` for zero-cost sharing across the codebase.
 
+pub mod byob_defaults;
 pub mod compute;
 pub mod discovery_ports;
 pub mod display;

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use tracing::info;
-
 use super::super::types::{Terminal3270, Terminal3270Attributes, Terminal5250};
 
-use crate::{AuthenticationSettings, ConnectionSettings, ToadStoolResult};
+use crate::{AuthenticationSettings, ConnectionSettings, ToadStoolError, ToadStoolResult};
 use toadstool_common::interned_strings::socket_env;
 
 impl Default for Terminal3270 {
@@ -51,26 +49,23 @@ impl Terminal3270 {
     ///
     /// # Errors
     ///
-    /// Currently always returns `Ok`.
+    /// Returns an error until TN3270 transport is implemented.
     pub async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()> {
-        self.connection = settings.clone();
-        // In a real implementation, this would establish a 3270 connection
-        info!(
-            "Connected to 3270 terminal at {}:{}",
-            settings.host, settings.port
-        );
-        Ok(())
+        let _ = settings;
+        Err(ToadStoolError::not_supported(
+            "3270 terminal connection not implemented — requires TN3270 transport",
+        ))
     }
 
     /// Disconnects from the 3270 terminal session.
     ///
     /// # Errors
     ///
-    /// Currently always returns `Ok`.
+    /// Returns an error until TN3270 transport is implemented.
     pub async fn disconnect(&mut self) -> ToadStoolResult<()> {
-        self.session = None;
-        info!("Disconnected from 3270 terminal");
-        Ok(())
+        Err(ToadStoolError::not_supported(
+            "3270 terminal disconnect not implemented — requires TN3270 transport",
+        ))
     }
 }
 

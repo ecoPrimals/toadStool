@@ -75,9 +75,11 @@ pub use auth_backend::InMemoryAuthBackend;
 #[cfg(unix)]
 pub use auth_backend::SecurityBackend;
 pub use storage::*;
+#[cfg(any(test, feature = "test-mocks"))]
+pub use storage_backend::InMemoryBackend;
 #[cfg(unix)]
 pub use storage_backend::SocketStorageBackend;
-pub use storage_backend::{InMemoryBackend, StorageBackend, StorageBackendDispatch, VolumeStatus};
+pub use storage_backend::{StorageBackend, StorageBackendDispatch, VolumeStatus};
 pub use types::*;
 
 // Re-export evolved backends (RECOMMENDED for new code)

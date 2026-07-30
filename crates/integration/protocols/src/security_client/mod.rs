@@ -129,10 +129,12 @@ mod tests {
                 )
                 .await;
             assert!(result.is_err());
-            assert!(result
-                .unwrap_err()
-                .to_string()
-                .contains("standalone mode not configured"));
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("standalone mode not configured")
+            );
         })
         .await;
     }
