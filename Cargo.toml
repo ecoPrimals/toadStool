@@ -275,6 +275,7 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
+duration_suboptimal_units = "allow" # from_mins/from_hours require Rust 1.91+ (MSRV 1.85)
 
 # Cargo lints - selectively enabled (not using full cargo group
 # to avoid multiple_crate_versions blocking on transitive conflicts)
