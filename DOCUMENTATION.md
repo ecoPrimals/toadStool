@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Jul 30, 2026 — S349
+**Last Updated**: Aug 3, 2026 — S351
 
 ---
 
@@ -31,7 +31,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S345 — Jul 2026)
+## Current State (S351 — Aug 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
@@ -55,7 +55,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S345).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S351).
 
 ---
 

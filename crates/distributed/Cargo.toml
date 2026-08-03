@@ -41,7 +41,6 @@ base64 = { workspace = true }
 rand = { workspace = true }
 aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
-sha2 = { workspace = true }
 
 # Utilities
 uuid = { workspace = true }
@@ -82,6 +81,9 @@ temp-env = { workspace = true }
 toml = { workspace = true }
 anyhow = "1"
 proptest = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["humantime-serde"]
 
 [lints]
 workspace = true

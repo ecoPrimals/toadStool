@@ -20,11 +20,7 @@ tracing = { workspace = true }
 
 # ToadStool internal
 toadstool-runtime-universal = { path = "../universal" }
-toadstool-config = { path = "../../core/config" }
 toadstool-sysmon = { path = "../../core/sysmon" }
-
-# Concurrency
-futures = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

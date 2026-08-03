@@ -18,9 +18,6 @@ readme = "README.md"
 toadstool-common = { path = "../common" }
 toadstool-config = { path = "../config" }
 
-# Neuromorphic hardware (squirrel domain — optional)
-akida-driver = { path = "../../neuromorphic/akida-driver", optional = true }
-
 # Async runtime
 tokio = { workspace = true }
 futures = { workspace = true }
@@ -86,8 +83,6 @@ wasm-runtime = []
 mdns = ["dep:mdns-sd"]
 # Proptest generators for workload/resource types (`crate::proptest_strategies`).
 proptest-strategies = ["dep:proptest"]
-# Neuromorphic NPU support (squirrel domain — Akida driver)
-npu = ["dep:akida-driver"]
 
 [[test]]
 name = "biomeos_auth_coverage_tests"

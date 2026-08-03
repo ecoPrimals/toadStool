@@ -13,7 +13,6 @@ categories = ["development-tools::profiling"]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
-toadstool-management-monitoring = { path = "../monitoring" }
 
 # Async runtime
 tokio = { workspace = true }
@@ -33,7 +32,6 @@ statrs = "0.18"
 # Utilities
 uuid = { workspace = true }
 tracing = { workspace = true }
-thiserror = { workspace = true }
 
 [lints]
 workspace = true

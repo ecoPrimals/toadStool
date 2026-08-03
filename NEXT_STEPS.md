@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Jul 30, 2026 — S349 (deep debt evolution II, Wave 155k). **9,193+ lib tests, 0 failures.** ~15 dead deps removed. Silent stubs fail-closed. Hardcoding consolidated. Cylinder unsafe `reason` compliant. **S347** — Windows cross-compile fix. **S346** — security fail-closed, unsafe containment.
+**Updated**: Aug 3, 2026 — S351 (dead dependency elimination, eastGate). **9,193+ lib tests, 0 failures.** 48 dead deps removed (47→39 external, 17%). **S349** — deep debt evolution II. **S347** — Windows cross-compile fix. **S346** — security fail-closed, unsafe containment.
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (lib-only **9,193+**, 0 failures) | **112 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | unsafe contained in hw-safe/cylinder/nvpmu/runtime-gpu | **rustix 1.x workspace-wide** | **100% env centralized** | **19+ deny.toml bans** (Pure Rust Crypto standard) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Zero production files >750L** | **Zero clippy warnings** | **Zero doc warnings** | **46 crates `version.workspace = true`** | **Security fail-closed** — sandbox/PKI require explicit config (S346) | **Overstep reduced** — display + akida-driver feature-gated (S344) | **Cross-platform GPU pipeline** via wgpu (S342–S343)
-**Latest**: S349 — Deep debt evolution II. ~15 dead deps removed (parking_lot, serde_yaml_ng ×6, config ×2, regex ×2, ndarray ×2, statrs, futures-intrusive). 5 cylinder unsafe lints given reason. Silent stubs fail-closed (mainframe, probe, InMemoryBackend, akida). /run/user/{uid} consolidated. Module-local magic numbers extracted. Legacy symlink fixed (S348). S347 — Windows cross-compile fix. S346 — security fail-closed, unsafe containment.
+**Latest**: S351 — Dead dependency elimination. 48 dead deps removed across 21 crates (47→39 external, 17%): void, telnet, rexpect, nb, ebcdic, ash, flate2, tar, sha2, cortex-m, embedded-hal, base64, semver, url. Cascading toadstool/npu feature fixed. cargo-machete clean. S349 — deep debt evolution II (~15 dead deps). S347 — Windows cross-compile fix. S346 — security fail-closed, unsafe containment.
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P2: Test Coverage → 90% (D-COV) — Active Sprint (S294–S336+)
 
-**~85%+ estimated line coverage** (lib-only). **9,232 lib tests** (0 failures). Target 90%.
+**~85%+ estimated line coverage** (lib-only). **9,193+ lib tests** (0 failures). Target 90%.
 
 **S294–S298 coverage sprint** added **+174 new tests** targeting non-VFIO gaps:
 - S294: CallerContext extraction, handler glue (workload, resources, queries, state, compute), RuntimeEngineDispatch (+57)
@@ -243,7 +243,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 | Item | Status |
 |------|--------|
-| Coverage push 85%→90% | **Active sprint** — S294–S336 expanded to 9,232+ lib; remaining gap in VFIO/DRM/GPU hardware paths |
+| Coverage push 85%→90% | **Active sprint** — S294–S336 expanded to 9,193+ lib; remaining gap in VFIO/DRM/GPU hardware paths |
 | Phase D mixed command streams | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)) |
 | VFIO PBDMA dispatch | **PIPELINE WIRED, RUNLIST BLOCKED** (S258–S263; Jun 1 RCA) — channel, DMA, GPFIFO + QMD submission work on Titan V; **GP_GET never advances** because `PFIFO_RUNLIST_BASE=0` (runlist never configured). Not e2e dispatch. RCA: [HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md](infra/wateringHole/handoffs/HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md). Frontier spec: [COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md). |
 | PCIe bridge keepalive | **VALIDATED + EVOLVED** (S264→S266) — Phase 1 (S264): `pin_bridge_hierarchy()` + `SwapGuard` burst CfgRd during swaps. Phase 2 (S266): Root cause fix — PLX D3cold caused by **inactivity** (not swaps). `PlxKeepalive` (ember): continuous CfgRd every 5s on device + all upstream bridges. `PlxGuardian` (glowplug): fleet-level auto-detect via `scan_and_protect()`. 98 ember tests, 95 glowplug tests. |
@@ -342,7 +342,7 @@ after Phase D.
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 23,000+ tests (9,232+ lib-only); ~85%+ line; S294–S336 expanding coverage; remaining gap in hardware-dependent paths (VFIO, DRM, V4L2, akida); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 23,000+ tests (9,193+ lib-only); ~85%+ line; S294–S336 expanding coverage; remaining gap in hardware-dependent paths (VFIO, DRM, V4L2, akida); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)

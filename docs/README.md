@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: Jul 2026 — S336+
+**Updated**: Aug 2026 — S351
 
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub. Session trackers archived to the [ecosystem fossil record](https://github.com/ecoPrimals/fossilRecord).
 
@@ -16,8 +16,7 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 - **[../DOCUMENTATION.md](../DOCUMENTATION.md)** -- Navigation hub
 
 ### Architecture
-- **[architecture/adrs/](architecture/adrs/)** -- Architecture Decision Records
-- **[architecture/](architecture/)** -- Design patterns, migration guides
+- **[architecture/adrs/](architecture/adrs/)** -- Architecture Decision Records (4 ADRs)
 
 ### Guides
 - **[guides/TESTING.md](guides/TESTING.md)** -- Testing strategy

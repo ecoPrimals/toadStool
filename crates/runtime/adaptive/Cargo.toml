@@ -16,14 +16,12 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-uuid = { workspace = true, features = ["v4", "serde"] }
 thiserror = { workspace = true }
 
 # GPU runtime (optional — only needed for live GPU fingerprinting)
 wgpu = { workspace = true, optional = true }
 
 # ToadStool core
-toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
 
 # Pure Rust directory discovery

@@ -23,7 +23,6 @@ serde_json = { workspace = true }
 toadstool-core = { path = "../../toadstool-core" }
 
 # ToadStool runtimes
-toadstool-runtime-native = { path = "../native" }
 
 # GPU backends (all optional, capability-based discovery)
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅

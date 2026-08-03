@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: July 30, 2026 — S349
+**Date**: August 3, 2026 — S351
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -20,6 +20,8 @@ to `get_runtime_dir()` (4 call sites eliminated). Module-local magic numbers
 extracted: BYOB web ports, container port ranges, alert thresholds, daemon config.
 Legacy symlink `toadstool.sock` fixed to point at JSON-RPC primary (S348).
 All quality gates green.
+
+**S351 (eastGate Dead Dependency Elimination — Aug 3, 2026)**: 48 dead dependency declarations removed across 21 crates. External deps reduced 47→39 (17%). Notable: void, telnet, rexpect, nb, ebcdic, ash, flate2, tar, sha2, cortex-m, embedded-hal eliminated. Cascading toadstool/npu feature fixed. cargo-machete clean. All quality gates green.
 
 **S347 (strandGate Windows Cross-Compile Fix — Wave 155j P1)**:
 `toadstool-runtime-gpu` moved from `[target.'cfg(target_os = "linux")'.dependencies]`

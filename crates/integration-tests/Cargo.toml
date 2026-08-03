@@ -24,7 +24,6 @@ tokio = { workspace = true }
 
 # Common test utilities
 uuid    = { workspace = true }
-serde   = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true }

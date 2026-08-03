@@ -26,7 +26,6 @@ tracing = { workspace = true }
 toadstool-config = { path = "../../core/config" }
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
-toadstool-integration-storage = { path = "../storage" }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

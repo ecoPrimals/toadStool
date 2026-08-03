@@ -13,9 +13,7 @@ categories = ["hardware-support", "science"]
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
 toadstool-glowplug = { path = "../../core/glowplug" }
-toadstool-ember = { path = "../../core/ember" }
 tokio = { workspace = true }
-futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = { workspace = true }
@@ -26,7 +24,6 @@ toadstool-sysmon = { workspace = true }
 rayon = "1.8"
 wgpu = { workspace = true, optional = true, features = ["wgsl"] }
 vulkano = { version = "0.34", optional = true }
-ash = { version = "0.37", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-hw-safe = { path = "../../core/hw-safe" }
@@ -35,7 +32,7 @@ nvpmu = { path = "../../core/nvpmu" }
 [features]
 default = ["webgpu"]
 webgpu = ["wgpu"]
-vulkan = ["vulkano", "ash"]
+vulkan = ["vulkano"]
 ai-ml = ["webgpu"]
 all-backends = ["webgpu", "vulkan"]
 fuzz = []

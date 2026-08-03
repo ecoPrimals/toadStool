@@ -17,7 +17,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true, features = ["v5"] }
 tracing = { workspace = true }
-thiserror = { workspace = true }
 futures = { workspace = true }
 # Cache keys / sketch filenames — SHA-256 (RustCrypto), not MD5
 sha2 = { workspace = true }
@@ -26,9 +25,6 @@ sha2 = { workspace = true }
 # default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
 # Pure-Rust serial on top of OS TTY APIs; no practical no_std replacement for host USB-UART.
 serialport = { workspace = true, optional = true }
-embedded-hal = "1.0"
-rppal = { version = "0.17", optional = true }
-esp-idf-sys = { version = "0.34", optional = true }
 # Use the `cross` *binary* (`cargo install cross`) for toolchains — not the crates.io `cross` crate
 # (that crate pulls clap 3 + extra deps and is unrelated to this runtime's `Command`-based toolchains).
 
@@ -51,12 +47,5 @@ reqwest = { version = "0.13", optional = true, default-features = false, feature
 default = []
 # USB-UART serial discovery and communication (opt-in; not in `default`)
 serial-transport = ["serialport"]
-# Platform-specific features (enable as needed)
-raspberry-pi = ["rppal"]
-# ESP32 support requires esp-idf-sys (C dependency) - not in default.
-# Only available on xtensa/riscv32 targets; gated with cfg to avoid build
-# failures on x86_64/aarch64 when using `--all-features`.
-esp32 = ["esp-idf-sys"]
-all-platforms = ["raspberry-pi"]
 # Enable HTTP downloads for ESP32 (e.g. OTA firmware URLs)
 http-downloads = ["reqwest"]

@@ -10,9 +10,6 @@ keywords = ["display", "input", "drm", "evdev", "pure-rust"]
 categories = ["gui", "graphics", "hardware-support"]
 
 [dependencies]
-# Pixel format definitions (Pure Rust, cross-platform!)
-drm-fourcc = "2.2"
-
 # Serial transport (wraps edge crate's serialport capability)
 # default-features = false: avoids libudev-sys (C dep) for ecoBin pure-Rust compliance.
 # Port enumeration still works; may return less detail or stale entries.
@@ -20,7 +17,6 @@ serialport = { workspace = true, optional = true }
 
 # Async runtime
 tokio = { workspace = true }
-futures = { workspace = true }
 
 # IPC
 serde = { workspace = true }

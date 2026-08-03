@@ -27,11 +27,8 @@ tracing = { workspace = true }
 # notify removed: was unused (no Watcher implementation). When file watching is
 # needed, use rustix::fs::inotify directly (pure Rust, zero C FFI).
 # ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)
-base64 = { workspace = true }
-semver = "1.0"
-url = { workspace = true }
 
-# File system and path handling (Pure Rust Evolution - Jan 17, 2026)
+# File system and path handling (Pure Rust Evolution - Jan 17, 2026) (Pure Rust Evolution - Jan 17, 2026)
 # OLD: directories = "5.0" (pulls in dirs-sys with C FFI)
 # NEW: Pure Rust config dirs (etcetera)
 etcetera = { workspace = true }

@@ -421,8 +421,8 @@ Result: Self-organizing network confirmed
 - [Zero-Configuration Networking](https://en.wikipedia.org/wiki/Zero-configuration_networking)
 
 ### Related Documentation
-- `docs/architecture/PURE_INFANT_DISCOVERY_EVOLUTION.md`
-- `docs/architecture/INFANT_DISCOVERY.md`
+- `CAPABILITY_BASED_DISCOVERY_STANDARD.md` in wateringHole (ecosystem standard)
+- `crates/core/common/src/primal_discovery.rs` (implementation)
 
 ---
 

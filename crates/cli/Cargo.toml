@@ -148,7 +148,7 @@ gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # WebGPU + AI/ML extensions
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
 
 # NPU FEATURES: Neuromorphic accelerator support (squirrel domain)
-npu = ["dep:akida-driver", "toadstool/npu"]
+npu = ["dep:akida-driver"]
 
 # Display / hardware transport (petalTongue domain — DRM, V4L2, serial)
 display = ["dep:toadstool-display"]

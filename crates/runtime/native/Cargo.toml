@@ -15,8 +15,6 @@ toadstool = { path = "../../core/toadstool" }
 bytes = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [lints]

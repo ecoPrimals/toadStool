@@ -14,27 +14,20 @@ categories = ["development-tools::profiling"]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
-toadstool-config = { path = "../../core/config" }
 
 # Async runtime
 tokio = { workspace = true }
 
 # Serialization and configuration
 serde = { workspace = true }
-serde_json = { workspace = true }
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 
 # Collections and utilities
-indexmap = "2.0"
 uuid = { workspace = true }
 
 # Logging and tracing
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-
-# Error handling
-thiserror = { workspace = true }
 
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 # EVOLVED: procfs removed (Mar 20, 2026) — unused; toadstool-sysmon provides /proc parsing

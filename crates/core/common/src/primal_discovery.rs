@@ -304,7 +304,7 @@ impl PrimalDiscovery {
     // This module (primal_discovery.rs) is a LEGACY compatibility layer.
     // Modern code should use infant_discovery directly.
     //
-    // See: docs/architecture/INFANT_DISCOVERY.md for full architecture
+    // See: CAPABILITY_BASED_DISCOVERY_STANDARD.md in wateringHole
     // ========================================================================
 }
 
