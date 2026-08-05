@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 #![cfg(any(test, feature = "test-mocks"))]
-//! In-memory synthetic Akida backend for integration tests (no PCI or `/dev` access).
+
+//! Minimal deterministic NPU mock for integration tests.
+//!
+//! Unlike [`SoftwareBackend`](crate::backends::software::SoftwareBackend) (full
+//! f32 ESN simulation), `SyntheticNpuBackend` is a trivial pass-through that
+//! returns input as output. Use it when test code needs *any* backend but
+//! doesn't care about numerical correctness — e.g., testing model loading
+//! pipelines, backend selection logic, or multi-tenancy slot management.
+//!
+//! Ported from toadStool's `SyntheticNpuBackend`.
 
 use crate::backend::{BackendType, ModelHandle, NpuBackend};
 use crate::capabilities::{
@@ -9,7 +19,7 @@ use crate::capabilities::{
 use crate::error::Result;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-/// Deterministic NPU backend used by downstream crates' coverage tests.
+/// Deterministic NPU backend for CI and integration tests (no hardware required).
 #[derive(Debug)]
 pub struct SyntheticNpuBackend {
     caps: Capabilities,
@@ -17,7 +27,7 @@ pub struct SyntheticNpuBackend {
 }
 
 impl SyntheticNpuBackend {
-    /// Same capability profile as the historical `toadstool-core` mock (AKD1000-like).
+    /// AKD1000-like capability profile matching toadStool's coverage mock.
     #[must_use]
     pub fn coverage_default() -> Self {
         let caps = Capabilities {
@@ -78,5 +88,46 @@ impl NpuBackend for SyntheticNpuBackend {
 
     fn is_ready(&self) -> bool {
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn coverage_default_has_80_nps() {
+        let b = SyntheticNpuBackend::coverage_default();
+        assert_eq!(b.caps.npu_count, 80);
+    }
+
+    #[test]
+    fn init_returns_coverage_default() {
+        let b = SyntheticNpuBackend::init("any").unwrap();
+        assert!(b.is_ready());
+        assert_eq!(b.capabilities().npu_count, 80);
+    }
+
+    #[test]
+    fn infer_passes_through_input() {
+        let mut b = SyntheticNpuBackend::coverage_default();
+        let input = vec![1.0, 2.0, 3.0];
+        let out = b.infer(&input).unwrap();
+        assert_eq!(out, input);
+    }
+
+    #[test]
+    fn load_model_increments_handle() {
+        let mut b = SyntheticNpuBackend::coverage_default();
+        let h1 = b.load_model(&[0u8; 16]).unwrap();
+        let h2 = b.load_model(&[0u8; 16]).unwrap();
+        assert_eq!(h1.id(), 1);
+        assert_eq!(h2.id(), 2);
+    }
+
+    #[test]
+    fn measure_power_returns_fixed_value() {
+        let b = SyntheticNpuBackend::coverage_default();
+        assert!((b.measure_power().unwrap() - 1500.0).abs() < f32::EPSILON);
     }
 }

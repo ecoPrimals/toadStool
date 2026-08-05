@@ -204,13 +204,13 @@ impl NpuModelHandle {
 #[derive(Debug)]
 pub struct AkidaNpuDispatch {
     info: NpuInfo,
-    backend: akida_driver::NpuBackendDispatch,
+    backend: Box<dyn akida_driver::NpuBackend>,
 }
 
 impl AkidaNpuDispatch {
     /// Create from an already-initialized Akida backend.
     #[must_use]
-    pub fn from_backend(backend: akida_driver::NpuBackendDispatch) -> Self {
+    pub fn from_backend(backend: Box<dyn akida_driver::NpuBackend>) -> Self {
         let caps = backend.capabilities();
         let mut capabilities = vec![NpuCapability::Inference, NpuCapability::PowerMonitoring];
 

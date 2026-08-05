@@ -20,7 +20,7 @@
 
 use crate::data::{Dataset, Sample};
 use crate::{Benchmark, BenchmarkConfig, BenchmarkResult, Error, Result};
-use akida_driver::{BackendSelection, NpuBackend, NpuBackendDispatch, select_backend};
+use akida_driver::{BackendSelection, NpuBackend, select_backend};
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
@@ -51,7 +51,7 @@ impl Default for HarnessConfig {
 /// Main benchmark harness
 pub struct Harness {
     config: HarnessConfig,
-    device: NpuBackendDispatch,
+    device: Box<dyn NpuBackend>,
 }
 
 impl Harness {

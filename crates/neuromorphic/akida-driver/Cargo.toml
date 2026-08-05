@@ -10,6 +10,9 @@ keywords = ["akida", "neuromorphic", "ai", "driver", "hardware"]
 categories = ["hardware-support", "science"]
 
 [dependencies]
+# Silicon model — pure types & constants (register maps, BAR layout, NP mesh)
+akida-chip = { workspace = true }
+
 # Error handling
 thiserror = { workspace = true }
 
@@ -23,17 +26,14 @@ toadstool-common = { path = "../../core/common" }
 # Safe byte casting (replaces unsafe f32<->u8 conversions)
 bytemuck = { version = "1", features = ["derive"] }
 
-# System utilities — evolved to pure Rust (Feb 21, 2026)
-# `which` replaced by find_in_path() in setup.rs
-# `glob` replaced by read_hwmon_power() in backends/mod.rs
-
+# Async runtime (optional — only for async evolution/sentinel paths)
+tokio = { workspace = true, optional = true }
 
 # Unix-specific - Pure Rust Evolution (ecoBin compliant, Mar 2026)
-# - mmap/munmap/mlock/munlock: rustix (pure Rust)
-# - VFIO ioctls: rustix::ioctl (pure Rust, no C deps)
 [target.'cfg(unix)'.dependencies]
 rustix = { workspace = true, features = ["fs", "mm"] }
 toadstool-hw-safe = { path = "../../core/hw-safe" }
+libc = "0.2"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
@@ -42,6 +42,8 @@ criterion = { workspace = true }
 
 [features]
 default = []
+async    = ["dep:tokio"]
+kernel   = []
 test-mocks = []
 
 [[example]]
@@ -63,6 +65,42 @@ path = "examples/setup_npu.rs"
 [lib]
 crate-type = ["rlib"]
 
-[lints]
-workspace = true
+# Cannot use `workspace = true` here: workspace forbids unsafe; this crate needs targeted unsafe in
+# VFIO/mmap/DMA modules. Deny at crate level, allow only on modules that require it.
+[lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+dead_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+cast_possible_wrap = "allow"
+too_many_lines = "allow"
+type_complexity = "allow"
+struct_field_names = "allow"
+similar_names = "allow"
+many_single_char_names = "allow"
+needless_pass_by_ref_mut = "allow"
+trivially_copy_pass_by_ref = "allow"
+too_many_arguments = "allow"
+unreadable_literal = "allow"
+needless_range_loop = "allow"
+option_if_let_else = "allow"
+manual_let_else = "allow"
+assigning_clones = "allow"
+no_effect_underscore_binding = "allow"
+or_fun_call = "allow"
+unnecessary_wraps = "allow"
+needless_for_each = "allow"
+match_wildcard_for_single_variants = "allow"
+if_same_then_else = "allow"
+collection_is_never_read = "allow"
+branches_sharing_code = "allow"
 

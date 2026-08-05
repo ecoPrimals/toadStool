@@ -1,19 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Backend abstraction for NPU drivers
 //!
 //! Provides unified interface for kernel and userspace backends.
 //! Deep debt compliant: capability-based, runtime discovery, no hardcoding.
 
-#[cfg(unix)]
-use crate::backends::kernel::KernelBackend;
-#[cfg(unix)]
-use crate::backends::userspace::UserspaceBackend;
-#[cfg(target_os = "linux")]
-use crate::backends::vfio::VfioBackend;
 use crate::capabilities::Capabilities;
 use crate::error::Result;
-#[cfg(any(test, feature = "test-mocks"))]
-use crate::synthetic::SyntheticNpuBackend;
 use std::fmt::Debug;
 
 /// NPU backend trait - unified interface for kernel and userspace drivers
@@ -81,6 +74,54 @@ pub trait NpuBackend: Debug + Send + Sync {
 
     /// Check if backend is ready
     fn is_ready(&self) -> bool;
+
+    /// Verify the last model load by reading back from SRAM.
+    ///
+    /// Compares a sample of on-chip data against the original program bytes.
+    /// Returns the number of bytes verified and whether they matched.
+    ///
+    /// Default: no-op (not all backends support SRAM readback).
+    ///
+    /// # Errors
+    ///
+    /// Concrete backends return errors only when SRAM readback fails; this default
+    /// implementation always succeeds.
+    fn verify_load(&mut self, _expected: &[u8]) -> Result<LoadVerification> {
+        Ok(LoadVerification::unsupported())
+    }
+
+    /// Mutate weights directly in on-chip SRAM.
+    ///
+    /// Writes `data` at `offset` within the model's weight region,
+    /// bypassing DMA for near-zero-latency small updates.
+    /// This is the fast path for `set_variable()` — ESN readout swaps,
+    /// online learning updates, etc.
+    ///
+    /// Default: falls back to `load_model` (full DMA re-upload).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if SRAM is not accessible or offset is out of bounds.
+    fn mutate_weights(&mut self, _offset: usize, _data: &[u8]) -> Result<()> {
+        Err(crate::error::AkidaError::capability_query_failed(
+            "Direct weight mutation not supported by this backend",
+        ))
+    }
+
+    /// Read raw bytes from on-chip SRAM at a given offset.
+    ///
+    /// Used for diagnostics, verification, and state inspection.
+    ///
+    /// Default: not supported.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if SRAM is not accessible.
+    fn read_sram(&mut self, _offset: usize, _length: usize) -> Result<Vec<u8>> {
+        Err(crate::error::AkidaError::capability_query_failed(
+            "SRAM read not supported by this backend",
+        ))
+    }
 }
 
 /// Model handle returned after loading
@@ -99,257 +140,253 @@ impl ModelHandle {
     }
 }
 
-/// Backend type identifier
+/// Result of model load verification via SRAM readback.
+#[derive(Debug, Clone)]
+pub struct LoadVerification {
+    /// Whether the verification is supported by this backend.
+    pub supported: bool,
+    /// Number of bytes sampled for verification.
+    pub bytes_checked: usize,
+    /// Number of bytes that matched expected data.
+    pub bytes_matched: usize,
+    /// Whether the load is verified correct.
+    pub verified: bool,
+}
+
+impl LoadVerification {
+    /// Backend doesn't support SRAM readback.
+    pub const fn unsupported() -> Self {
+        Self {
+            supported: false,
+            bytes_checked: 0,
+            bytes_matched: 0,
+            verified: false,
+        }
+    }
+
+    /// Create a successful verification result.
+    pub const fn ok(bytes_checked: usize) -> Self {
+        Self {
+            supported: true,
+            bytes_checked,
+            bytes_matched: bytes_checked,
+            verified: true,
+        }
+    }
+
+    /// Create a failed verification result.
+    pub const fn mismatch(bytes_checked: usize, bytes_matched: usize) -> Self {
+        Self {
+            supported: true,
+            bytes_checked,
+            bytes_matched,
+            verified: false,
+        }
+    }
+}
+
+/// Backend type identifier.
+///
+/// Hardware and software backends are **parallel and complementary** — never
+/// conflated. A hardware backend talks to real silicon over PCIe; a software
+/// backend simulates the same NP dynamics on CPU. Both implement [`NpuBackend`]
+/// and produce comparable results, but they are architecturally distinct:
+///
+/// - Hardware backends are **measurement sources** (latency, power, throughput)
+/// - Software backends are **reference implementations** (deterministic, portable)
+///
+/// Use [`BackendType::is_hardware`] and [`BackendType::is_software`] to branch
+/// on the domain without matching individual variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackendType {
-    /// Kernel driver (/dev/akida*)
+    /// Kernel driver (/dev/akida*) — hardware, requires C module
     Kernel,
 
-    /// Userspace driver (mmap PCIe BARs)
+    /// Userspace driver (mmap `PCIe` BARs) — hardware, no DMA
     Userspace,
 
-    /// VFIO driver (pure Rust with DMA)
+    /// VFIO driver (pure Rust with DMA) — hardware, preferred production path
     Vfio,
+
+    /// Software (virtual NPU) — f32 CPU simulation, no hardware required.
+    /// Produces numerically comparable results to hardware (minus int4
+    /// quantization gap of ~1-3%). Never a silent fallback for hardware.
+    Software,
+}
+
+impl BackendType {
+    /// Whether this backend runs on real silicon.
+    #[must_use]
+    pub const fn is_hardware(self) -> bool {
+        matches!(self, Self::Kernel | Self::Userspace | Self::Vfio)
+    }
+
+    /// Whether this backend runs in software simulation.
+    #[must_use]
+    pub const fn is_software(self) -> bool {
+        matches!(self, Self::Software)
+    }
+
+    /// Short label for the compute domain (HW or SW).
+    #[must_use]
+    pub const fn domain(self) -> &'static str {
+        if self.is_hardware() { "HW" } else { "SW" }
+    }
 }
 
 impl std::fmt::Display for BackendType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Kernel => write!(f, "Kernel"),
-            Self::Userspace => write!(f, "Userspace"),
-            Self::Vfio => write!(f, "VFIO"),
+            Self::Kernel => write!(f, "Kernel [HW]"),
+            Self::Userspace => write!(f, "Userspace [HW]"),
+            Self::Vfio => write!(f, "VFIO [HW]"),
+            Self::Software => write!(f, "Software [SW]"),
         }
     }
 }
 
-/// Concrete Akida backend (kernel, userspace, VFIO; optional synthetic via `test-mocks`) — used instead of `Box<dyn NpuBackend>`.
-#[derive(Debug)]
-pub enum NpuBackendDispatch {
-    /// Kernel driver (`/dev/akida*`).
-    #[cfg(unix)]
-    Kernel(KernelBackend),
-    /// Userspace driver (mmap PCIe BARs).
-    #[cfg(unix)]
-    Userspace(UserspaceBackend),
-    /// VFIO driver (pure Rust with DMA).
-    #[cfg(target_os = "linux")]
-    Vfio(VfioBackend),
-    /// In-memory backend for tests and simulations (no hardware).
-    #[cfg(any(test, feature = "test-mocks"))]
-    Synthetic(SyntheticNpuBackend),
-    /// Placeholder when no platform backends are available.
-    #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-    Unsupported,
-}
-
-impl NpuBackend for NpuBackendDispatch {
-    fn init(device_id: &str) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        select_backend(BackendSelection::Auto, device_id)
-    }
-
-    fn capabilities(&self) -> &Capabilities {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.capabilities(),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.capabilities(),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.capabilities(),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.capabilities(),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => unreachable!("Unsupported backend has no capabilities"),
-        }
-    }
-
-    fn load_model(&mut self, model: &[u8]) -> Result<ModelHandle> {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.load_model(model),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.load_model(model),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.load_model(model),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.load_model(model),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => {
-                let _ = model;
-                Err(crate::error::AkidaError::capability_query_failed(
-                    "NPU backends are not available on this platform",
-                ))
-            }
-        }
-    }
-
-    fn load_reservoir(&mut self, w_in: &[f32], w_res: &[f32]) -> Result<()> {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.load_reservoir(w_in, w_res),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.load_reservoir(w_in, w_res),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.load_reservoir(w_in, w_res),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.load_reservoir(w_in, w_res),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => {
-                let _ = (w_in, w_res);
-                Err(crate::error::AkidaError::capability_query_failed(
-                    "NPU backends are not available on this platform",
-                ))
-            }
-        }
-    }
-
-    fn infer(&mut self, input: &[f32]) -> Result<Vec<f32>> {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.infer(input),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.infer(input),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.infer(input),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.infer(input),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => {
-                let _ = input;
-                Err(crate::error::AkidaError::capability_query_failed(
-                    "NPU backends are not available on this platform",
-                ))
-            }
-        }
-    }
-
-    fn measure_power(&self) -> Result<f32> {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.measure_power(),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.measure_power(),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.measure_power(),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.measure_power(),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => Err(crate::error::AkidaError::capability_query_failed(
-                "NPU backends are not available on this platform",
-            )),
-        }
-    }
-
-    fn backend_type(&self) -> BackendType {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.backend_type(),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.backend_type(),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.backend_type(),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.backend_type(),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => BackendType::Kernel,
-        }
-    }
-
-    fn is_ready(&self) -> bool {
-        match self {
-            #[cfg(unix)]
-            Self::Kernel(b) => b.is_ready(),
-            #[cfg(unix)]
-            Self::Userspace(b) => b.is_ready(),
-            #[cfg(target_os = "linux")]
-            Self::Vfio(b) => b.is_ready(),
-            #[cfg(any(test, feature = "test-mocks"))]
-            Self::Synthetic(b) => b.is_ready(),
-            #[cfg(all(not(unix), not(any(test, feature = "test-mocks"))))]
-            Self::Unsupported => false,
-        }
-    }
-}
-
-/// Backend selection strategy
+/// Backend selection strategy.
+///
+/// Hardware and software are **parallel domains** — `Auto` only searches
+/// within hardware backends. Request `Software` explicitly when you want
+/// the CPU simulation path. This prevents silent conflation of hardware
+/// measurements with software approximations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackendSelection {
-    /// Automatically select best available
+    /// Best available **hardware** backend (Kernel → VFIO → Userspace).
+    /// Never silently falls back to software.
     Auto,
 
-    /// Force kernel driver
+    /// Force kernel driver (`/dev/akida*`) — hardware.
     Kernel,
 
-    /// Force userspace driver
+    /// Force userspace driver (BAR mmap) — hardware.
     Userspace,
 
-    /// Force VFIO driver (pure Rust with DMA)
+    /// Force VFIO driver (pure Rust with DMA) — hardware.
     Vfio,
+
+    /// Force software (virtual NPU) backend — explicitly software.
+    /// Use for CI, cross-substrate comparison, and reference validation.
+    Software,
 }
 
-/// Select appropriate backend based on availability and requirements
+impl BackendSelection {
+    /// Whether this selection targets hardware backends.
+    #[must_use]
+    pub const fn is_hardware(self) -> bool {
+        matches!(self, Self::Auto | Self::Kernel | Self::Userspace | Self::Vfio)
+    }
+}
+
+/// Select appropriate backend based on availability and requirements.
 ///
-/// Deep Debt: Runtime discovery, no assumptions about environment
+/// `Auto` tries hardware backends in priority order and **never** falls
+/// back to software. Request `BackendSelection::Software` explicitly
+/// when you want the CPU simulation path.
 ///
 /// # Errors
 ///
 /// Returns error if no suitable backend can be initialized for the given device.
-#[cfg(unix)]
-pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<NpuBackendDispatch> {
+pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Box<dyn NpuBackend>> {
+    use crate::backends::kernel::KernelBackend;
+    use crate::backends::software::SoftwareBackend;
+    use crate::backends::userspace::UserspaceBackend;
+    use crate::vfio::VfioBackend;
+
     match selection {
         BackendSelection::Auto => {
-            // Try kernel first (best performance with C module)
             if let Ok(backend) = KernelBackend::init(device_id) {
-                tracing::info!("Using kernel backend for {device_id}");
-                return Ok(NpuBackendDispatch::Kernel(backend));
+                tracing::info!("Using kernel backend [HW] for {device_id}");
+                return Ok(Box::new(backend));
             }
 
-            // Try VFIO second (pure Rust with DMA)
-            #[cfg(target_os = "linux")]
             if let Ok(backend) = VfioBackend::init(device_id) {
-                tracing::info!("Using VFIO backend for {device_id}");
-                return Ok(NpuBackendDispatch::Vfio(backend));
+                tracing::info!("Using VFIO backend [HW] for {device_id}");
+                return Ok(Box::new(backend));
             }
 
-            // Fall back to userspace (pure Rust, no DMA)
-            tracing::info!("Kernel/VFIO unavailable, using userspace for {device_id}");
-            UserspaceBackend::init(device_id).map(NpuBackendDispatch::Userspace)
+            tracing::info!("Kernel/VFIO unavailable, using userspace [HW] for {device_id}");
+            UserspaceBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
         }
 
-        BackendSelection::Kernel => KernelBackend::init(device_id).map(NpuBackendDispatch::Kernel),
+        BackendSelection::Kernel => {
+            KernelBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
+        }
 
         BackendSelection::Userspace => {
-            UserspaceBackend::init(device_id).map(NpuBackendDispatch::Userspace)
+            UserspaceBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
         }
 
         BackendSelection::Vfio => {
-            #[cfg(target_os = "linux")]
-            {
-                VfioBackend::init(device_id).map(NpuBackendDispatch::Vfio)
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                Err(crate::error::AkidaError::capability_query_failed(
-                    "VFIO backend is only available on Linux",
-                ))
-            }
+            VfioBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
+        }
+
+        BackendSelection::Software => {
+            SoftwareBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
         }
     }
 }
 
-/// Select appropriate backend based on availability and requirements
-///
-/// # Errors
-///
-/// Returns error on platforms without Unix NPU backend support.
-#[cfg(not(unix))]
-pub fn select_backend(
-    _selection: BackendSelection,
-    _device_id: &str,
-) -> Result<NpuBackendDispatch> {
-    Err(crate::error::AkidaError::capability_query_failed(
-        "NPU backends are not available on this platform",
-    ))
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn model_handle_roundtrip() {
+        let h = ModelHandle::new(42);
+        assert_eq!(h.id(), 42);
+    }
+
+    #[test]
+    fn load_verification_constructors() {
+        let u = LoadVerification::unsupported();
+        assert!(!u.supported);
+        let ok = LoadVerification::ok(100);
+        assert!(ok.verified && ok.bytes_matched == 100);
+        let bad = LoadVerification::mismatch(10, 3);
+        assert!(!bad.verified && bad.bytes_matched == 3);
+    }
+
+    #[test]
+    fn backend_type_display_and_selection_software() {
+        assert!(BackendType::Software.to_string().contains("Software"));
+        let b = select_backend(BackendSelection::Software, "0").expect("software backend");
+        assert_eq!(b.backend_type(), BackendType::Software);
+    }
+
+    #[test]
+    fn backend_type_display_covers_all_variants() {
+        assert_eq!(BackendType::Kernel.to_string(), "Kernel [HW]");
+        assert_eq!(BackendType::Userspace.to_string(), "Userspace [HW]");
+        assert_eq!(BackendType::Vfio.to_string(), "VFIO [HW]");
+        assert_eq!(BackendType::Software.to_string(), "Software [SW]");
+    }
+
+    #[test]
+    fn hardware_software_domain_never_conflated() {
+        assert!(BackendType::Kernel.is_hardware());
+        assert!(BackendType::Userspace.is_hardware());
+        assert!(BackendType::Vfio.is_hardware());
+        assert!(!BackendType::Software.is_hardware());
+
+        assert!(!BackendType::Kernel.is_software());
+        assert!(BackendType::Software.is_software());
+
+        assert_eq!(BackendType::Vfio.domain(), "HW");
+        assert_eq!(BackendType::Software.domain(), "SW");
+
+        assert!(BackendSelection::Auto.is_hardware());
+        assert!(!BackendSelection::Software.is_hardware());
+    }
+
+    #[test]
+    fn software_backend_default_trait_methods() {
+        let mut b = select_backend(BackendSelection::Software, "0").expect("software");
+        let v = b.verify_load(&[1, 2, 3]).expect("default verify_load");
+        assert!(!v.supported);
+        assert!(b.mutate_weights(0, &[1]).is_err());
+        assert!(b.read_sram(0, 4).is_err());
+        let _ = v;
+    }
 }

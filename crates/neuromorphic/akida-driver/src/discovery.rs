@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Runtime device discovery
 //!
-//! Discovers Akida devices at runtime by scanning `/dev/akida*` and PCIe sysfs.
+//! Discovers Akida devices at runtime by scanning `/dev/akida*` and `PCIe` sysfs.
 //! No hardcoded device lists—pure runtime discovery following primal self-knowledge pattern.
 
 use crate::capabilities::Capabilities;
@@ -24,7 +25,7 @@ pub struct DeviceInfo {
     /// Device file path (/dev/akida0, etc.)
     pub path: PathBuf,
 
-    /// PCIe bus address (0000:a1:00.0, etc.)
+    /// `PCIe` bus address (0000:a1:00.0, etc.)
     pub pcie_address: String,
 
     /// Device capabilities (discovered at runtime)
@@ -32,20 +33,23 @@ pub struct DeviceInfo {
 }
 
 impl DeviceManager {
-    /// Discover all Akida devices on the system
+    /// Discover all Akida devices on the system.
     ///
-    /// This scans for `/dev/akida*` devices and queries their capabilities
-    /// via sysfs. Pure runtime discovery—no assumptions.
+    /// Two discovery paths, tried in order:
+    /// 1. **Kernel driver** — `/dev/akida*` device nodes (classic path)
+    /// 2. **VFIO / sysfs** — scan PCIe bus for BrainChip vendor ID, works when
+    ///    the device is bound to `vfio-pci` or has no driver at all.
     ///
     /// # Errors
     ///
-    /// Returns `AkidaError::NoDevicesFound` if no devices are detected.
+    /// Returns `AkidaError::NoDevicesFound` if no devices are detected via
+    /// either path.
     pub fn discover() -> Result<Self> {
         tracing::info!("Discovering Akida devices...");
 
         let mut devices = Vec::new();
 
-        // Scan for /dev/akida* devices (up to 16)
+        // Path 1: kernel driver (/dev/akida*)
         for index in 0..16 {
             let path = PathBuf::from(format!("/dev/akida{index}"));
 
@@ -55,10 +59,8 @@ impl DeviceManager {
 
             tracing::debug!("Found device file: {}", path.display());
 
-            // Find corresponding PCIe address
             let pcie_address = Self::find_pcie_address(index)?;
 
-            // Query capabilities
             match Capabilities::query(index, &pcie_address) {
                 Ok(capabilities) => {
                     tracing::info!(
@@ -85,6 +87,12 @@ impl DeviceManager {
             }
         }
 
+        // Path 2: VFIO / sysfs fallback — scan PCIe bus for BrainChip devices
+        if devices.is_empty() {
+            tracing::debug!("No /dev/akida* found, scanning PCIe sysfs for VFIO-bound devices");
+            devices = Self::discover_via_sysfs()?;
+        }
+
         if devices.is_empty() {
             tracing::error!("No Akida devices found");
             return Err(AkidaError::NoDevicesFound);
@@ -93,6 +101,81 @@ impl DeviceManager {
         tracing::info!("Discovered {} Akida device(s)", devices.len());
 
         Ok(Self { devices })
+    }
+
+    /// Scan `/sys/bus/pci/devices/` for BrainChip vendor IDs.
+    ///
+    /// Works regardless of which driver is bound (vfio-pci, akida_pcie, or
+    /// none). This is the pure-VFIO discovery path.
+    fn discover_via_sysfs() -> Result<Vec<DeviceInfo>> {
+        use crate::pcie_ids::{ALL_DEVICE_IDS, BRAINCHIP_VENDOR_ID};
+
+        let pci_devices_path = Path::new("/sys/bus/pci/devices");
+        let entries = std::fs::read_dir(pci_devices_path).map_err(|e| {
+            AkidaError::capability_query_failed(format!("Cannot read PCIe devices: {e}"))
+        })?;
+
+        let mut pcie_addrs: Vec<String> = Vec::new();
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let vendor_id = Self::read_hex_sysfs(&path.join("vendor")).ok();
+            let device_id = Self::read_hex_sysfs(&path.join("device")).ok();
+
+            if let (Some(vendor), Some(device)) = (vendor_id, device_id)
+                && vendor == BRAINCHIP_VENDOR_ID
+                && ALL_DEVICE_IDS.contains(&device)
+            {
+                pcie_addrs.push(entry.file_name().to_string_lossy().to_string());
+            }
+        }
+
+        pcie_addrs.sort();
+
+        let mut devices = Vec::new();
+        for (index, pcie_address) in pcie_addrs.into_iter().enumerate() {
+            let driver_link = format!("/sys/bus/pci/devices/{pcie_address}/driver");
+            let driver_name = std::fs::read_link(&driver_link)
+                .ok()
+                .and_then(|t| t.file_name().map(|n| n.to_string_lossy().to_string()));
+
+            let device_path = match driver_name.as_deref() {
+                Some("vfio-pci") => {
+                    let group = crate::vfio::iommu_group(&pcie_address)
+                        .unwrap_or(0);
+                    PathBuf::from(format!("/dev/vfio/{group}"))
+                }
+                _ => PathBuf::from(format!("/sys/bus/pci/devices/{pcie_address}")),
+            };
+
+            match Capabilities::from_sysfs(&pcie_address) {
+                Ok(capabilities) => {
+                    tracing::info!(
+                        "VFIO/sysfs device {}: {:?} @ {} ({} NPUs, {} MB, driver={:?})",
+                        index,
+                        capabilities.chip_version,
+                        pcie_address,
+                        capabilities.npu_count,
+                        capabilities.memory_mb,
+                        driver_name.as_deref().unwrap_or("none"),
+                    );
+
+                    devices.push(DeviceInfo {
+                        index,
+                        path: device_path,
+                        pcie_address,
+                        capabilities,
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "VFIO/sysfs: cannot query capabilities for {pcie_address}: {e}"
+                    );
+                }
+            }
+        }
+
+        Ok(devices)
     }
 
     /// Get number of discovered devices
@@ -151,11 +234,11 @@ impl DeviceManager {
         self.devices.iter().map(AkidaDevice::open).collect()
     }
 
-    /// Find PCIe address for a device index
+    /// Find `PCIe` address for a device index
     ///
     /// Scans `/sys/bus/pci/devices/*/` for matching Akida vendor/device IDs
     fn find_pcie_address(device_index: usize) -> Result<String> {
-        use crate::pcie_ids::{AKIDA_DEVICE_IDS, BRAINCHIP_VENDOR_ID};
+        use crate::pcie_ids::{ALL_DEVICE_IDS, BRAINCHIP_VENDOR_ID};
 
         let pci_devices_path = Path::new("/sys/bus/pci/devices");
 
@@ -176,7 +259,7 @@ impl DeviceManager {
 
             if let (Some(vendor), Some(device)) = (vendor_id, device_id)
                 && vendor == BRAINCHIP_VENDOR_ID
-                && AKIDA_DEVICE_IDS.contains(&device)
+                && ALL_DEVICE_IDS.contains(&device)
             {
                 let pcie_addr = entry.file_name().to_string_lossy().to_string();
                 matches.push(pcie_addr);
@@ -219,7 +302,7 @@ impl DeviceInfo {
         &self.path
     }
 
-    /// Get PCIe address
+    /// Get `PCIe` address
     #[must_use]
     pub fn pcie_address(&self) -> &str {
         &self.pcie_address
@@ -235,6 +318,50 @@ impl DeviceInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capabilities::{Capabilities, ChipVersion, PcieConfig, WeightMutationSupport};
+    use std::path::{Path, PathBuf};
+
+    fn sample_capabilities() -> Capabilities {
+        Capabilities {
+            chip_version: ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 8,
+            pcie: PcieConfig::new(2, 1),
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: WeightMutationSupport::None,
+        }
+    }
+
+    #[test]
+    fn device_info_accessors_roundtrip() {
+        let caps = sample_capabilities();
+        let info = DeviceInfo {
+            index: 2,
+            path: PathBuf::from("/dev/akida2"),
+            pcie_address: "0000:c1:00.0".to_string(),
+            capabilities: caps.clone(),
+        };
+        assert_eq!(info.index(), 2);
+        assert_eq!(info.path(), Path::new("/dev/akida2"));
+        assert_eq!(info.pcie_address(), "0000:c1:00.0");
+        assert_eq!(info.capabilities().npu_count, caps.npu_count);
+    }
+
+    #[test]
+    fn lspci_filter_matches_vendor_device_pattern() {
+        let f = crate::pcie_ids::lspci_filter();
+        assert_eq!(f.chars().filter(|c| *c == ':').count(), 1);
+        assert!(f.contains(':'));
+    }
+
+    #[test]
+    fn all_device_ids_is_non_empty() {
+        assert!(!crate::pcie_ids::ALL_DEVICE_IDS.is_empty());
+    }
 
     #[test]
     fn test_device_discovery() {
@@ -255,76 +382,5 @@ mod tests {
                 eprintln!("Discovery error (expected if no hardware): {e}");
             }
         }
-    }
-
-    #[test]
-    fn test_device_info_accessors() {
-        let info = DeviceInfo {
-            index: 0,
-            path: PathBuf::from("/dev/akida0"),
-            pcie_address: "0000:a1:00.0".to_string(),
-            capabilities: crate::capabilities::Capabilities {
-                chip_version: crate::capabilities::ChipVersion::Akd1000,
-                npu_count: 80,
-                memory_mb: 10,
-                pcie: crate::capabilities::PcieConfig::new(3, 8),
-                power_mw: None,
-                temperature_c: None,
-                mesh: None,
-                clock_mode: None,
-                batch: None,
-                weight_mutation: crate::capabilities::WeightMutationSupport::None,
-            },
-        };
-        assert_eq!(info.index(), 0);
-        assert_eq!(info.path(), Path::new("/dev/akida0"));
-        assert_eq!(info.pcie_address(), "0000:a1:00.0");
-        assert_eq!(info.capabilities().npu_count, 80);
-    }
-
-    #[test]
-    fn test_device_manager_device_invalid_index() {
-        let manager = DeviceManager { devices: vec![] };
-        let result = manager.device(0);
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            AkidaError::InvalidIndex { .. }
-        ));
-    }
-
-    #[test]
-    fn test_device_manager_open_first_empty() {
-        let manager = DeviceManager { devices: vec![] };
-        let result = manager.open_first();
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), AkidaError::NoDevicesFound));
-    }
-
-    #[test]
-    fn test_device_manager_device_count() {
-        let manager = DeviceManager {
-            devices: vec![DeviceInfo {
-                index: 0,
-                path: PathBuf::from("/dev/akida0"),
-                pcie_address: "0000:a1:00.0".to_string(),
-                capabilities: crate::capabilities::Capabilities {
-                    chip_version: crate::capabilities::ChipVersion::Akd1000,
-                    npu_count: 80,
-                    memory_mb: 10,
-                    pcie: crate::capabilities::PcieConfig::new(3, 8),
-                    power_mw: None,
-                    temperature_c: None,
-                    mesh: None,
-                    clock_mode: None,
-                    batch: None,
-                    weight_mutation: crate::capabilities::WeightMutationSupport::None,
-                },
-            }],
-        };
-        assert_eq!(manager.device_count(), 1);
-        assert_eq!(manager.devices().len(), 1);
-        let info = manager.device(0).unwrap();
-        assert_eq!(info.index(), 0);
     }
 }

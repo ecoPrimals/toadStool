@@ -1,120 +1,117 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![warn(missing_docs)]
 
-//! Pure Rust driver for BrainChip Akida neuromorphic processors
+//! Pure Rust driver for `BrainChip` Akida neuromorphic processors.
 //!
-//! This crate provides direct, safe access to Akida AKD1000/AKD1500 neuromorphic
-//! processors via the kernel driver at `/dev/akida*`.
+//! This crate provides the full software stack for AKD1000 / AKD1500 access.
+//! No Python. No C++ SDK. No vendor `MetaTF`.
 //!
-//! # Architecture Principles
+//! # Backend hierarchy
 //!
-//! - **Zero Mocks**: Production code only, mocks isolated to tests
-//! - **Capability-Based**: Devices discovered at runtime, no hardcoding
-//! - **Safe Rust**: Minimal unsafe, encapsulated and documented
-//! - **Idiomatic**: Modern Rust patterns, ergonomic API
-//! - **Observable**: Comprehensive tracing for debugging
+//! ```text
+//! Primary (no kernel module required):
+//!   VfioBackend  — VFIO/IOMMU + full DMA (preferred for production)
 //!
-//! # Example
+//! Fallback (when C akida_pcie module is loaded):
+//!   KernelBackend — /dev/akida* read/write
+//!
+//! Development:
+//!   UserspaceBackend — BAR mmap, no DMA
+//! ```
+//!
+//! # Quick start
 //!
 //! ```no_run
-//! use akida_driver::{DeviceManager};
+//! use akida_driver::DeviceManager;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Discover devices at runtime
-//! let manager = DeviceManager::discover()?;
-//! println!("Found {} Akida device(s)", manager.device_count());
+//! let mgr  = DeviceManager::discover()?;
+//! let caps = mgr.devices()[0].capabilities();
 //!
-//! // Query capabilities (no hardcoding)
-//! for device in manager.devices() {
-//!     let caps = device.capabilities();
-//!     println!("Device {}: {} NPUs, {} MB memory",
-//!              device.index(), caps.npu_count, caps.memory_mb);
-//! }
+//! println!("{:?} — {} NPs, {} MB SRAM, PCIe Gen{} x{}",
+//!          caps.chip_version, caps.npu_count, caps.memory_mb,
+//!          caps.pcie.generation, caps.pcie.lanes);
 //!
-//! // Use first available device
-//! let mut device = manager.open_first()?;
+//! let model_bytes = std::fs::read("model.fbz")?;
+//! let mut dev = mgr.open_first()?;
+//! dev.write(&model_bytes)?;
+//! let mut out = vec![0u8; 1024];
+//! dev.read(&mut out)?;
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Measured results (AKD1000, `PCIe` x1 Gen2, Feb 2026)
+//!
+//! | Metric | Value |
+//! |--------|-------|
+//! | DMA throughput (sustained) | 37 MB/s |
+//! | Single inference | 54 µs / 18,500 Hz |
+//! | Batch=8 | 390 µs/sample / 20,700 /s |
+//! | Energy per inference | 1.4 µJ |
+//! | 24-hour production calls (Exp 022) | 5,978 |
 
-#![deny(unsafe_code)]
-#![deny(unsafe_op_in_unsafe_fn)]
-#![allow(
-    clippy::must_use_candidate,
-    reason = "ergonomic device API — callers choose to use or discard"
-)]
-#![allow(
-    clippy::match_same_arms,
-    reason = "explicit arm listing aids hardware register clarity"
-)]
+#![warn(clippy::expect_used, clippy::unwrap_used)]
+#![warn(missing_docs)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::must_use_candidate)]
 
 mod backend;
 pub mod backends;
 mod capabilities;
-#[cfg(unix)]
 mod device;
-#[cfg(unix)]
 mod discovery;
 mod error;
-#[cfg(unix)]
+pub mod evolution;
+pub mod glowplug;
+pub mod hybrid;
 mod inference;
-#[cfg(unix)]
 mod io;
-#[cfg(unix)]
 mod loading;
-#[cfg(target_os = "linux")]
 pub mod mmio;
-#[cfg(any(test, feature = "test-mocks"))]
-mod synthetic;
-
-/// NPU hardware setup and initialization
+pub mod puf;
+pub mod sentinel;
 pub mod setup;
+pub mod sram;
+mod synthetic;
+pub mod tenancy;
+pub mod vfio;
 
-/// Hardware identification constants
+/// Hardware identification constants (re-exported from akida-chip).
 pub mod pcie_ids {
-    /// BrainChip vendor ID (`0x1E7C`)
-    pub const BRAINCHIP_VENDOR_ID: u16 = 0x1E7C;
-
-    /// Supported Akida device IDs
-    pub const AKIDA_DEVICE_IDS: &[u16] = &[
-        0xBCA1, // AKD1000
-        0xBCA2, // AKD1500
-    ];
-
-    /// Format vendor:device string for lspci
-    pub fn lspci_filter() -> String {
-        // Use first device ID for basic filtering (lspci doesn't support multiple)
-        format!("{:04x}:{:04x}", BRAINCHIP_VENDOR_ID, AKIDA_DEVICE_IDS[0])
-    }
+    pub use akida_chip::pcie::device_id;
+    pub use akida_chip::pcie::{
+        ALL_DEVICE_IDS, BRAINCHIP_VENDOR_ID, ChipVariant, MEASURED_DMA_THROUGHPUT_MB_S,
+        OPTIMAL_BATCH_SIZE, PCIE_GEN2_X1_ROUNDTRIP_US, lspci_filter,
+    };
 }
 
 pub use backend::{
-    BackendSelection, BackendType, ModelHandle, NpuBackend, NpuBackendDispatch, select_backend,
+    BackendSelection, BackendType, LoadVerification, ModelHandle, NpuBackend, select_backend,
 };
-#[cfg(unix)]
 pub use backends::UserspaceBackend;
+pub use backends::software::{SoftwareBackend, pack_software_model};
 pub use capabilities::{
     BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,
     WeightMutationSupport,
 };
-#[cfg(unix)]
 pub use device::{AkidaDevice, DeviceHandle};
-#[cfg(unix)]
 pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};
-#[cfg(unix)]
+pub use hybrid::{
+    EsnSubstrate, EsnWeights, HybridEsn, SubstrateInfo, SubstrateMode, SubstrateSelector,
+};
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
-#[cfg(unix)]
 pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
+pub use vfio::VfioBackend;
+
 #[cfg(any(test, feature = "test-mocks"))]
 pub use synthetic::SyntheticNpuBackend;
 
-/// Re-export commonly used types
+/// Commonly used types.
 pub mod prelude {
-    #[cfg(unix)]
     pub use crate::{
-        AkidaDevice, DeviceManager, InferenceConfig, InferenceExecutor, InferenceResult,
-        LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig,
+        AkidaDevice, AkidaError, Capabilities, DeviceManager, EsnSubstrate, EsnWeights, HybridEsn,
+        InferenceConfig, InferenceExecutor, InferenceResult, LoadConfig, ModelLoader, ModelProgram,
+        NpuConfig, Result, SubstrateMode, SubstrateSelector, VfioBackend,
     };
-    pub use crate::{Capabilities, Result};
 }

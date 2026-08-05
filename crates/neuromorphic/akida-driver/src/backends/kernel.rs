@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Kernel backend for NPU
 //!
 //! Wraps existing `AkidaDevice` to conform to `NpuBackend` trait.
@@ -106,20 +107,18 @@ impl NpuBackend for KernelBackend {
         // Buffer sized for typical AKD1000 max (1024 floats), matching Vfio backend.
         // device.read() returns bytes actually read; we use that to size the output.
         const MAX_INFER_OUTPUT_BYTES: usize = 4096;
-        const MAX_FLOATS: usize = MAX_INFER_OUTPUT_BYTES / std::mem::size_of::<f32>();
 
         let input_bytes = bytemuck::cast_slice::<f32, u8>(input);
 
         self.device.write(input_bytes)?;
 
-        // Read directly into f32 storage (avoids u8 buffer + cast_slice().to_vec() copy).
-        let mut output = vec![0.0f32; MAX_FLOATS];
-        let bytes_read = self
-            .device
-            .read(bytemuck::cast_slice_mut::<f32, u8>(&mut output))?;
+        let mut output_bytes = vec![0u8; MAX_INFER_OUTPUT_BYTES];
+        let bytes_read = self.device.read(&mut output_bytes)?;
 
+        // Use only bytes actually read; truncate to whole floats
         let float_bytes = (bytes_read / std::mem::size_of::<f32>()) * std::mem::size_of::<f32>();
-        output.truncate(float_bytes / std::mem::size_of::<f32>());
+        let output: Vec<f32> =
+            bytemuck::cast_slice::<u8, f32>(&output_bytes[..float_bytes]).to_vec();
 
         Ok(output)
     }

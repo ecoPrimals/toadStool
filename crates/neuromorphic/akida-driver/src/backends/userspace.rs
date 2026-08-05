@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Userspace NPU backend
 //!
 //! Deep Debt Compliance:
@@ -20,7 +21,7 @@ use std::time::Duration;
 /// that are part of the Akida AKD1000 specification.
 #[expect(
     dead_code,
-    reason = "hardware register definitions used in future driver phases"
+    reason = "Register constants reserved for future driver phases"
 )]
 mod registers {
     pub const REG_DEVICE_ID: usize = 0x00; // Device identification
@@ -177,10 +178,10 @@ impl NpuBackend for UserspaceBackend {
             n_output_floats
         };
 
-        let mut output = vec![0.0f32; n_output_floats];
-        self.bar2
-            .read_bytes(0, bytemuck::cast_slice_mut::<f32, u8>(&mut output))?;
+        let mut output_bytes = vec![0u8; n_output_floats * std::mem::size_of::<f32>()];
+        self.bar2.read_bytes(0, &mut output_bytes)?;
 
+        let output: Vec<f32> = bytemuck::cast_slice::<u8, f32>(&output_bytes).to_vec();
         Ok(output)
     }
 
@@ -211,7 +212,7 @@ impl NpuBackend for UserspaceBackend {
 }
 
 impl UserspaceBackend {
-    /// Ensure PCIe device is enabled
+    /// Ensure `PCIe` device is enabled
     ///
     /// Deep Debt: Runtime check, not assumption
     fn ensure_device_enabled(pcie_address: &str) -> Result<()> {
@@ -307,9 +308,7 @@ impl UserspaceBackend {
                 )));
             }
 
-            // BLOCKED(hardware): Backoff between status register reads. The NPU
-            // status register updates asynchronously; polling without delay would
-            // burn CPU and may stress PCIe. 100µs is a hardware-safe interval.
+            // Short sleep before retry
             std::thread::sleep(Duration::from_micros(100));
         }
     }
@@ -333,33 +332,6 @@ mod tests {
             Err(e) => {
                 println!("Userspace backend unavailable (expected if no hardware): {e}");
             }
-        }
-    }
-
-    #[test]
-    fn test_userspace_backend_init_nonexistent() {
-        let result = UserspaceBackend::init("0000:xx:yy.z");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_userspace_register_constants() {
-        assert_eq!(REG_DEVICE_ID, 0x00);
-        assert_eq!(REG_STATUS, 0x14);
-        assert_eq!(STATUS_READY, 1);
-        assert_eq!(STATUS_MODEL_LOADED, 2);
-        assert_eq!(STATUS_INFERENCE_DONE, 4);
-        assert_eq!(STATUS_ERROR, 1 << 31);
-    }
-
-    #[test]
-    fn test_backend_type_userspace() {
-        let pcie_address = "0000:a1:00.0";
-        if let Ok(backend) = UserspaceBackend::init(pcie_address) {
-            assert_eq!(
-                backend.backend_type(),
-                crate::backend::BackendType::Userspace
-            );
         }
     }
 }

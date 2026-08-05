@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Error types for Akida driver operations
 
 use std::path::PathBuf;
@@ -73,7 +74,7 @@ pub enum AkidaError {
         reason: String,
     },
 
-    /// Setup/configuration error
+    /// Setup or configuration error (permissions, VFIO binding, module loading)
     #[error("Setup failed: {reason}")]
     SetupFailed {
         /// Reason for failure
@@ -119,6 +120,68 @@ impl AkidaError {
     pub fn setup_failed(reason: impl Into<String>) -> Self {
         Self::SetupFailed {
             reason: reason.into(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn error_display_messages_contain_context() {
+        assert!(
+            AkidaError::device_not_found("/tmp/none")
+                .to_string()
+                .contains("/tmp/none")
+        );
+        assert!(AkidaError::NoDevicesFound.to_string().contains("No Akida"));
+        assert!(
+            AkidaError::InvalidIndex { index: 3, count: 1 }
+                .to_string()
+                .contains('3')
+        );
+        assert!(
+            AkidaError::transfer_failed("bad dma")
+                .to_string()
+                .contains("bad dma")
+        );
+        assert!(
+            AkidaError::capability_query_failed(" sysfs")
+                .to_string()
+                .contains("sysfs")
+        );
+        assert!(
+            AkidaError::invalid_state("idle")
+                .to_string()
+                .contains("idle")
+        );
+        assert!(
+            AkidaError::Timeout { duration_ms: 99 }
+                .to_string()
+                .contains("99")
+        );
+        assert!(
+            AkidaError::hardware_error("dmesg")
+                .to_string()
+                .contains("dmesg")
+        );
+        assert!(
+            AkidaError::setup_failed("vfio bind")
+                .to_string()
+                .contains("vfio bind")
+        );
+        let io = std::io::Error::new(std::io::ErrorKind::NotFound, "x");
+        assert!(AkidaError::from(io).to_string().contains("I/O"));
+    }
+
+    #[test]
+    fn device_not_found_preserves_path() {
+        let p = Path::new("/dev/akida0");
+        match AkidaError::device_not_found(p) {
+            AkidaError::DeviceNotFound { path } => assert_eq!(path, p),
+            _ => panic!("expected DeviceNotFound"),
         }
     }
 }

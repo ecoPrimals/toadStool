@@ -14,7 +14,7 @@
 
 use std::borrow::Cow;
 
-use akida_driver::{NpuBackendDispatch, SyntheticNpuBackend};
+use akida_driver::SyntheticNpuBackend;
 use toadstool_core::npu_dispatch::{
     AkidaNpuDispatch, DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError,
     NpuInferenceRequest, NpuInfo, NpuModelHandle,
@@ -251,9 +251,7 @@ fn npu_dispatch_dispatch_request_default() {
 
 #[test]
 fn akida_npu_dispatch_from_backend_info() {
-    let dispatch = AkidaNpuDispatch::from_backend(NpuBackendDispatch::Synthetic(
-        SyntheticNpuBackend::coverage_default(),
-    ));
+    let dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     let info = dispatch.info();
     assert!(info.name.starts_with("Akida"));
     assert_eq!(info.vendor, "brainchip");
@@ -267,9 +265,7 @@ fn akida_npu_dispatch_from_backend_info() {
 
 #[test]
 fn akida_npu_dispatch_load_and_dispatch() {
-    let mut dispatch = AkidaNpuDispatch::from_backend(NpuBackendDispatch::Synthetic(
-        SyntheticNpuBackend::coverage_default(),
-    ));
+    let mut dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     let handle = dispatch.load_model(b"fake_model_data").unwrap();
     assert_eq!(handle.id(), 1);
 
@@ -283,17 +279,13 @@ fn akida_npu_dispatch_load_and_dispatch() {
 
 #[test]
 fn akida_npu_dispatch_power_mw() {
-    let dispatch = AkidaNpuDispatch::from_backend(NpuBackendDispatch::Synthetic(
-        SyntheticNpuBackend::coverage_default(),
-    ));
+    let dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     let power = dispatch.power_mw().unwrap();
     assert!((power - 1500.0).abs() < f32::EPSILON);
 }
 
 #[test]
 fn akida_npu_dispatch_is_alive() {
-    let dispatch = AkidaNpuDispatch::from_backend(NpuBackendDispatch::Synthetic(
-        SyntheticNpuBackend::coverage_default(),
-    ));
+    let dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     assert!(dispatch.is_alive());
 }

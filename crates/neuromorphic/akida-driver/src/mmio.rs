@@ -1,35 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
+#![allow(unsafe_code, reason = "MMIO requires volatile reads/writes to hardware registers")]
+
 //! Memory-Mapped I/O for Akida NPU
 //!
 //! Provides safe abstractions for accessing Akida hardware registers.
-//! Based on VFIO region mapping via `hw-safe` shared abstractions.
+//! Based on VFIO region mapping.
 //!
-//! # Deep Debt Evolution (ecoBin compliant, Apr 2026)
+//! # Deep Debt Evolution (Feb 17, 2026)
 //!
-//! Migrated to `hw-safe::DeviceMmap` + `hw-safe::vfio_setup` — zero local
-//! `unsafe` blocks. All mmap/ioctl unsafety is contained in `hw-safe`.
+//! Evolved to use rustix for mmap/munmap while keeping libc only for VFIO ioctls.
+//! VFIO ioctls are kernel-specific and not covered by rustix's standard API.
 
-#![expect(
-    clippy::cast_possible_truncation,
-    reason = "truncation acceptable for this conversion"
-)]
+// Hardware register access requires exact type casts for mmap/ioctl APIs
+// MMIO registers are naturally aligned by hardware, so pointer casts are safe
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::ptr_as_ptr)]
+#![allow(clippy::cast_ptr_alignment)]
+#![allow(clippy::items_after_statements)] // VFIO ioctl constants near usage
 
 use crate::error::{AkidaError, Result};
-use std::os::fd::AsFd;
-use toadstool_hw_safe::volatile_mmio::MmioError;
-use toadstool_hw_safe::{DeviceMmap, VolatileMmio, vfio_setup};
+use rustix::mm::{MapFlags, ProtFlags, mmap, munmap};
+use std::fs::File;
+use std::os::unix::io::{AsFd, AsRawFd};
 
-pub use toadstool_hw_safe::volatile_mmio::MmioError as MmioAccessError;
-
-/// AKD1000 BAR regions
+/// AKD1000 BAR regions (VFIO region indices).
+///
+/// All three BARs on AKD1000 are 64-bit prefetchable. In PCI config space,
+/// each 64-bit BAR occupies two 32-bit register slots. VFIO maps the full
+/// 64-bit region at the base register index:
+///   - BAR0 (registers 0+1) → VFIO region 0
+///   - BAR2 (registers 2+3) → VFIO region 2
+///   - BAR4 (registers 4+5) → VFIO region 4
 #[derive(Debug, Clone, Copy)]
 pub enum Bar {
-    /// Control/status registers (BAR0)
+    /// Control/status registers (BAR0 — VFIO region 0, 4 MB)
     Control = 0,
-    /// Model memory (BAR1)
-    Model = 1,
-    /// Data buffers (BAR2)
-    Data = 2,
+    /// NP mesh / SRAM window (BAR2 — VFIO region 2, 4 MB)
+    Model = 2,
+    /// Secondary memory (BAR4 — VFIO region 4, 4 MB)
+    Data = 4,
 }
 
 /// AKD1000 register offsets (inferred from behavior)
@@ -98,41 +109,95 @@ pub mod regs {
     }
 }
 
-/// Mapped BAR region for MMIO access.
-///
-/// Wraps [`DeviceMmap`] — all mmap/munmap unsafe is contained in `hw-safe`.
+/// VFIO region info structure
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct VfioRegionInfo {
+    /// Size of this structure (for versioning)
+    pub argsz: u32,
+    /// Region flags (capabilities, permissions)
+    pub flags: u32,
+    /// Region index (BAR number)
+    pub index: u32,
+    /// Offset to extended capabilities
+    pub cap_offset: u32,
+    /// Size of the region in bytes
+    pub size: u64,
+    /// Offset from mmap base
+    pub offset: u64,
+}
+
+/// Mapped BAR region for MMIO access
 pub struct MappedRegion {
-    mmap: DeviceMmap,
+    /// Memory-mapped pointer
+    ptr: *mut u8,
+    /// Size of the mapping
+    size: usize,
+    /// BAR index
     bar: Bar,
 }
 
 impl std::fmt::Debug for MappedRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MappedRegion")
-            .field("ptr", &format_args!("{:p}", self.mmap.as_ptr().as_ptr()))
-            .field("size", &self.mmap.size())
+            .field("ptr", &format_args!("{:p}", self.ptr))
+            .field("size", &self.size)
             .field("bar", &self.bar)
             .finish()
     }
 }
 
+// SAFETY: Send - MappedRegion owns the mapped memory exclusively. Moving between threads
+// doesn't invalidate the mapping (mmap'd memory is process-wide). No thread-local state.
+unsafe impl Send for MappedRegion {}
+
+// SAFETY: Sync - Read operations use &self and are bounds-checked; write operations require
+// &mut self (exclusive access). Volatile MMIO reads are idempotent; concurrent reads safe.
+unsafe impl Sync for MappedRegion {}
+
 impl MappedRegion {
-    /// Map a BAR region via VFIO.
-    ///
-    /// Uses `hw-safe::vfio_setup::device_get_region_info` and `DeviceMmap`
-    /// — zero local unsafe blocks.
+    /// Map a BAR region via VFIO
     ///
     /// # Errors
     ///
-    /// Returns an error if the VFIO region info ioctl or the mmap fails.
-    pub fn map(device_fd: &impl AsFd, bar: Bar) -> Result<Self> {
-        let region_info = vfio_setup::device_get_region_info(device_fd.as_fd(), bar as u32)
-            .map_err(|e| {
-                AkidaError::capability_query_failed(format!(
-                    "Failed to get BAR{} info: {e}",
-                    bar as u32
-                ))
-            })?;
+    /// Returns an error if:
+    /// - The VFIO ioctl to get region info fails
+    /// - Memory mapping the BAR region fails
+    pub fn map(device_fd: &File, bar: Bar) -> Result<Self> {
+        // Query region info
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "Byte offset fits usize for slice indexing"
+        )]
+        let mut region_info = VfioRegionInfo {
+            argsz: std::mem::size_of::<VfioRegionInfo>() as u32,
+            index: bar as u32,
+            ..Default::default()
+        };
+
+        // VFIO_DEVICE_GET_REGION_INFO = _IO(';', 100 + 8) — VFIO uses _IO, not _IOWR
+        const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong =
+            ((b';' as libc::c_ulong) << 8) | 108;
+
+        // SAFETY: VFIO_DEVICE_GET_REGION_INFO ioctl necessary for MMIO - kernel returns BAR size/offset.
+        // Invariants: (1) device_fd valid from VFIO device open; (2) VfioRegionInfo initialized
+        // with argsz = size_of, index = bar; (3) _IOWR reads/writes region_info; (4) layout matches
+        // kernel. Caller guarantees: device fd from VFIO, bar is valid BAR index.
+        let ret = unsafe {
+            libc::ioctl(
+                device_fd.as_raw_fd(),
+                VFIO_DEVICE_GET_REGION_INFO,
+                &raw mut region_info,
+            )
+        };
+
+        if ret < 0 {
+            return Err(AkidaError::capability_query_failed(format!(
+                "Failed to get BAR{} info: {}",
+                bar as u32,
+                std::io::Error::last_os_error()
+            )));
+        }
 
         tracing::debug!(
             "BAR{}: size={:#x}, offset={:#x}, flags={:#x}",
@@ -142,64 +207,95 @@ impl MappedRegion {
             region_info.flags
         );
 
-        let mmap =
-            DeviceMmap::map_shared_rw(device_fd, region_info.offset, region_info.size as usize)
-                .map_err(|e| {
-                    AkidaError::capability_query_failed(format!(
-                        "Failed to mmap BAR{}: {e}",
-                        bar as u32
-                    ))
-                })?;
+        // SAFETY: mmap necessary for MMIO - maps BAR region into process address space.
+        // Invariants: (1) device_fd valid; (2) region_info.size/offset from successful ioctl;
+        // (3) mapping exclusive via VFIO/IOMMU; (4) ptr valid for size bytes or Err.
+        // Caller guarantees: region_info populated by kernel, device_fd open.
+        let ptr = unsafe {
+            mmap(
+                std::ptr::null_mut(),
+                region_info.size as usize,
+                ProtFlags::READ | ProtFlags::WRITE,
+                MapFlags::SHARED,
+                device_fd.as_fd(),
+                region_info.offset,
+            )
+            .map_err(|e| {
+                AkidaError::capability_query_failed(format!(
+                    "Failed to mmap BAR{}: {}",
+                    bar as u32, e
+                ))
+            })?
+        };
 
         tracing::info!(
             "Mapped BAR{} at {:p}, size={:#x}",
             bar as u32,
-            mmap.as_ptr().as_ptr(),
+            ptr,
             region_info.size
         );
 
-        Ok(Self { mmap, bar })
+        Ok(Self {
+            ptr: ptr.cast(),
+            size: region_info.size as usize,
+            bar,
+        })
     }
 
-    /// Volatile MMIO view over the BAR mapping (borrows `self`).
-    fn mmio(&self) -> VolatileMmio<'_> {
-        self.mmap.as_volatile()
+    /// Read a 32-bit register
+    ///
+    /// # Panics
+    ///
+    /// Panics if `offset + 4` exceeds the mapped region size.
+    pub fn read32(&self, offset: usize) -> u32 {
+        assert!(offset + 4 <= self.size, "Register offset out of bounds");
+        // SAFETY: read_volatile necessary for MMIO - hardware can change value.
+        // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) offset+4 <= size;
+        // (3) u32 aligned; (4) no uninit reads. Caller guarantees: offset in bounds.
+        unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u32>()) }
     }
 
-    /// Read a 32-bit register without panicking.
+    /// Write a 32-bit register
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`MmioAccessError`] if `offset + 4` exceeds the mapped region size.
-    pub fn try_read32(&self, offset: usize) -> std::result::Result<u32, MmioError> {
-        self.mmio().read_u32(offset)
+    /// Panics if `offset + 4` exceeds the mapped region size.
+    pub fn write32(&self, offset: usize, value: u32) {
+        assert!(offset + 4 <= self.size, "Register offset out of bounds");
+        // SAFETY: write_volatile necessary for MMIO - triggers hardware side effects.
+        // Invariants: (1) ptr from mmap; (2) offset+4 <= size; (3) u32 aligned.
+        // Caller guarantees: offset in bounds.
+        unsafe {
+            std::ptr::write_volatile(self.ptr.add(offset).cast::<u32>(), value);
+        }
     }
 
-    /// Write a 32-bit register without panicking.
+    /// Read a 64-bit register
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`MmioAccessError`] if `offset + 4` exceeds the mapped region size.
-    pub fn try_write32(&self, offset: usize, value: u32) -> std::result::Result<(), MmioError> {
-        self.mmio().write_u32(offset, value)
+    /// Panics if `offset + 8` exceeds the mapped region size.
+    pub fn read64(&self, offset: usize) -> u64 {
+        assert!(offset + 8 <= self.size, "Register offset out of bounds");
+        // SAFETY: read_volatile necessary for MMIO - hardware can change value.
+        // Invariants: (1) ptr from mmap; (2) offset+8 <= size; (3) u64 aligned.
+        // Caller guarantees: offset in bounds.
+        unsafe { std::ptr::read_volatile(self.ptr.add(offset).cast::<u64>()) }
     }
 
-    /// Read a 64-bit register without panicking.
+    /// Write a 64-bit register
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// Returns [`MmioAccessError`] if `offset + 8` exceeds the mapped region size.
-    pub fn try_read64(&self, offset: usize) -> std::result::Result<u64, MmioError> {
-        self.mmio().read_u64(offset)
-    }
-
-    /// Write a 64-bit register without panicking.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`MmioAccessError`] if `offset + 8` exceeds the mapped region size.
-    pub fn try_write64(&self, offset: usize, value: u64) -> std::result::Result<(), MmioError> {
-        self.mmio().write_u64(offset, value)
+    /// Panics if `offset + 8` exceeds the mapped region size.
+    pub fn write64(&self, offset: usize, value: u64) {
+        assert!(offset + 8 <= self.size, "Register offset out of bounds");
+        // SAFETY: write_volatile necessary for MMIO - triggers hardware side effects.
+        // Invariants: (1) ptr from mmap; (2) offset+8 <= size; (3) u64 aligned.
+        // Caller guarantees: offset in bounds.
+        unsafe {
+            std::ptr::write_volatile(self.ptr.add(offset).cast::<u64>(), value);
+        }
     }
 
     /// Get BAR type
@@ -208,23 +304,50 @@ impl MappedRegion {
     }
 
     /// Get region size
-    pub fn size(&self) -> usize {
-        self.mmap.size()
+    pub const fn size(&self) -> usize {
+        self.size
+    }
+}
+
+impl Drop for MappedRegion {
+    fn drop(&mut self) {
+        // SAFETY: munmap necessary - must unmap region before process ends.
+        // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) munmap with
+        // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs.
+        unsafe {
+            // Ignore error in Drop (can't propagate, would need to log)
+            let _ = munmap(self.ptr.cast(), self.size);
+        }
+        tracing::debug!("Unmapped BAR{}", self.bar as u32);
     }
 }
 
 #[cfg(test)]
 #[expect(
     clippy::assertions_on_constants,
-    reason = "compile-time assertion by design"
+    reason = "Compile-time constant validation tests"
 )]
 mod tests {
     use super::*;
 
     #[test]
     fn test_register_offsets() {
+        // Sanity check register layout
         assert_eq!(regs::DEVICE_ID, 0x0000);
         assert_eq!(regs::INFER_START, 0x0400);
         assert!(regs::status::READY != 0);
+    }
+
+    #[test]
+    fn bar_indices_match_vfio_region_convention() {
+        assert_eq!(Bar::Control as u8, 0);
+        assert_eq!(Bar::Model as u8, 2);
+        assert_eq!(Bar::Data as u8, 4);
+    }
+
+    #[test]
+    fn vfio_region_info_default_is_zeroed() {
+        let r = VfioRegionInfo::default();
+        assert_eq!(r.argsz, 0);
     }
 }

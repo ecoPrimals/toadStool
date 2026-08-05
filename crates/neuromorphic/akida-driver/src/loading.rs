@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Model loading operations
 //!
 //! Provides capability-based model loading to Akida hardware.
@@ -287,7 +288,10 @@ impl ModelLoader {
         Ok(metrics)
     }
 
-    /// Validate successful load
+    /// Validate successful load.
+    ///
+    /// Checks byte count and, if SRAM readback is available, samples
+    /// on-chip data to confirm the transfer was faithful.
     fn validate_load(
         program: &ModelProgram,
         _device: &mut AkidaDevice,
@@ -295,7 +299,6 @@ impl ModelLoader {
     ) -> Result<()> {
         debug!("Validating load...");
 
-        // Verify bytes transferred match program size
         if metrics.bytes_transferred != program.memory_bytes {
             return Err(AkidaError::transfer_failed(format!(
                 "Size mismatch: transferred {} but program is {} bytes",
@@ -303,11 +306,44 @@ impl ModelLoader {
             )));
         }
 
-        // Could add readback verification here if needed (would use _device)
-        // For now, size check is sufficient
-
-        debug!("✅ Load validated");
+        debug!("✅ Load validated (size check)");
         Ok(())
+    }
+
+    /// Validate load with SRAM readback (requires a backend with SRAM access).
+    ///
+    /// Reads a sample of on-chip data and compares it against the original
+    /// program bytes. Returns the verification result.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the SRAM readback fails (but not if the backend
+    /// simply doesn't support it — that returns `unsupported`).
+    pub fn verify_with_sram(
+        &self,
+        program: &ModelProgram,
+        backend: &mut dyn crate::NpuBackend,
+    ) -> Result<crate::LoadVerification> {
+        info!("Verifying model load via SRAM readback...");
+        let result = backend.verify_load(&program.data)?;
+
+        if result.supported {
+            if result.verified {
+                info!(
+                    "✅ SRAM readback verified: {}/{} bytes match",
+                    result.bytes_matched, result.bytes_checked
+                );
+            } else {
+                warn!(
+                    "⚠ SRAM readback MISMATCH: {}/{} bytes match",
+                    result.bytes_matched, result.bytes_checked
+                );
+            }
+        } else {
+            debug!("SRAM readback not supported by this backend");
+        }
+
+        Ok(result)
     }
 }
 
@@ -346,9 +382,8 @@ fn calculate_throughput(bytes: usize, seconds: f64) -> f64 {
 
     #[expect(
         clippy::cast_precision_loss,
-        reason = "precision loss acceptable for this conversion"
+        reason = "Progress ratio as f32 for display"
     )]
-    // Intentional: bytes to MB conversion; precision loss acceptable
     let megabytes = bytes as f64 / 1_048_576.0;
     megabytes / seconds
 }
@@ -369,5 +404,178 @@ const fn estimate_npu_requirement(memory_bytes: usize) -> u32 {
 }
 
 #[cfg(test)]
-#[path = "loading_tests.rs"]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_config_from_capabilities() {
+        let caps = Capabilities {
+            chip_version: crate::ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 10,
+            pcie: crate::PcieConfig {
+                generation: 2,
+                lanes: 1,
+                speed_gts: 5.0,
+                bandwidth_gbps: 0.5,
+            },
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
+        };
+
+        let config = LoadConfig::from_capabilities(&caps, 0);
+        assert_eq!(config.chunk_size, 4096); // 10MB device -> 4KB chunks
+    }
+
+    #[test]
+    fn test_model_program_creation() {
+        let data = vec![0x42; 1000];
+        let program = ModelProgram::new(data);
+
+        assert_eq!(program.memory_bytes, 1000);
+        assert_eq!(program.npus_required, 1); // Small program -> 1 NPU
+        assert_ne!(program.checksum, 0);
+    }
+
+    #[test]
+    fn test_program_chunking() {
+        let data = vec![0x42; 1000];
+        let program = ModelProgram::new(data);
+
+        let chunks = program.chunk(100);
+        assert_eq!(chunks.len(), 10);
+        assert_eq!(chunks[0].len(), 100);
+    }
+
+    #[test]
+    fn test_throughput_calculation() {
+        let throughput = calculate_throughput(1_048_576, 1.0);
+        assert!((throughput - 1.0).abs() < 0.01); // ~1 MB/s
+    }
+
+    #[test]
+    fn test_throughput_zero_duration() {
+        assert!((calculate_throughput(1_000_000, 0.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_validate_for_device_rejects_oversized_program() {
+        let caps = Capabilities {
+            chip_version: crate::ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 1,
+            pcie: crate::PcieConfig::new(2, 1),
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
+        };
+        let big = vec![0xABu8; 2 * 1024 * 1024];
+        let program = ModelProgram::new(big);
+        assert!(program.validate_for_device(&caps).is_err());
+    }
+
+    #[test]
+    fn test_validate_for_device_accepts_fit() {
+        let caps = Capabilities {
+            chip_version: crate::ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 10,
+            pcie: crate::PcieConfig::new(2, 1),
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
+        };
+        let program = ModelProgram::new(vec![0u8; 1024]);
+        assert!(program.validate_for_device(&caps).is_ok());
+    }
+
+    #[test]
+    fn test_model_program_npu_estimate_tiers() {
+        assert_eq!(ModelProgram::new(vec![0u8; 100]).npus_required, 1);
+        assert_eq!(ModelProgram::new(vec![0u8; 50_000]).npus_required, 10);
+        assert_eq!(ModelProgram::new(vec![0u8; 600_000]).npus_required, 40);
+    }
+
+    #[test]
+    fn test_with_npu_config_overrides_estimate() {
+        let p = ModelProgram::new(vec![0u8; 100]).with_npu_config(NpuConfig {
+            required_npus: 77,
+            execution_groups: 1,
+            memory_per_npu: 4096,
+        });
+        assert_eq!(p.npus_required, 77);
+        assert!(p.npu_config.is_some());
+    }
+
+    #[test]
+    fn test_load_config_chunk_tier_medium_memory() {
+        let caps = Capabilities {
+            chip_version: crate::ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 20,
+            pcie: crate::PcieConfig::new(2, 1),
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
+        };
+        let config = LoadConfig::from_capabilities(&caps, 0);
+        assert_eq!(config.chunk_size, 16384);
+    }
+
+    #[test]
+    fn load_config_large_memory_uses_64k_chunks() {
+        let caps = Capabilities {
+            chip_version: crate::ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 100,
+            pcie: crate::PcieConfig::new(3, 4),
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: None,
+            weight_mutation: crate::capabilities::WeightMutationSupport::None,
+        };
+        let config = LoadConfig::from_capabilities(&caps, 3);
+        assert_eq!(config.chunk_size, 65536);
+        assert_eq!(config.device_index, 3);
+        assert!(config.validate);
+    }
+
+    #[test]
+    fn estimate_npu_requirement_boundary_xlarge() {
+        assert_eq!(ModelProgram::new(vec![0u8; 2_000_000]).npus_required, 80);
+    }
+
+    #[test]
+    fn model_program_empty_chunk() {
+        let p = ModelProgram::new(Vec::<u8>::new());
+        assert!(p.chunk(256).is_empty());
+    }
+
+    #[test]
+    fn load_metrics_debug_clone() {
+        let m = LoadMetrics {
+            bytes_transferred: 100,
+            chunks_transferred: 2,
+            duration: std::time::Duration::from_millis(10),
+            throughput_mbps: 1.5,
+        };
+        let _ = format!("{m:?}");
+        let m2 = m.clone();
+        assert_eq!(m2.bytes_transferred, 100);
+    }
+}

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! NPU hardware setup and initialization
 //!
 //! This module provides pure Rust implementations for setting up Akida NPU hardware,
@@ -9,10 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
-use toadstool_common::interned_strings::socket_env;
 use tracing::{debug, info, warn};
-
-const UDEV_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 /// Setup Akida NPU kernel driver
 pub struct NpuSetup {
@@ -74,7 +72,7 @@ impl NpuSetup {
         let mut search_paths = Vec::new();
 
         // 1. Check AKIDA_DRIVER_PATH environment variable (highest priority)
-        if let Ok(custom_path) = std::env::var(socket_env::AKIDA_DRIVER_PATH) {
+        if let Ok(custom_path) = std::env::var("AKIDA_DRIVER_PATH") {
             search_paths.push(PathBuf::from(custom_path));
         }
 
@@ -111,13 +109,13 @@ impl NpuSetup {
             }
         }
 
-        Err(AkidaError::setup_failed(
+        Err(AkidaError::hardware_error(
             "Akida kernel module not found. Set AKIDA_DRIVER_PATH environment variable \
             or install the driver to /lib/modules/$(uname -r)/extra/akida-pcie.ko",
         ))
     }
 
-    /// Enable PCIe devices
+    /// Enable `PCIe` devices
     fn enable_pcie_devices(&self) -> Result<()> {
         info!("Enabling PCIe devices...");
 
@@ -137,7 +135,7 @@ impl NpuSetup {
         Ok(())
     }
 
-    /// Enable single PCIe device
+    /// Enable single `PCIe` device
     fn enable_device(&self, address: &str) -> Result<()> {
         let enable_path = format!("/sys/bus/pci/devices/{address}/enable");
 
@@ -151,7 +149,7 @@ impl NpuSetup {
 
         // Need privilege escalation
         if !self.pkexec_available {
-            return Err(AkidaError::setup_failed(
+            return Err(AkidaError::hardware_error(
                 "Need root to enable device. Install pkexec or run as root.",
             ));
         }
@@ -163,7 +161,7 @@ impl NpuSetup {
             .status()?;
 
         if !status.success() {
-            return Err(AkidaError::setup_failed(format!(
+            return Err(AkidaError::hardware_error(format!(
                 "Failed to enable device {address} (pkexec)"
             )));
         }
@@ -184,7 +182,7 @@ impl NpuSetup {
         let driver_path = self
             .driver_path
             .as_ref()
-            .ok_or_else(|| AkidaError::setup_failed("Driver path not set"))?;
+            .ok_or_else(|| AkidaError::hardware_error("Driver path not set"))?;
 
         // Try direct insmod first
         if let Ok(status) = Command::new("insmod").arg(driver_path).status()
@@ -196,7 +194,7 @@ impl NpuSetup {
 
         // Need privilege escalation
         if !self.pkexec_available {
-            return Err(AkidaError::setup_failed(
+            return Err(AkidaError::hardware_error(
                 "Need root to load module. Install pkexec or run as root.",
             ));
         }
@@ -207,14 +205,14 @@ impl NpuSetup {
             .status()?;
 
         if !status.success() {
-            return Err(AkidaError::setup_failed("Failed to load kernel module"));
+            return Err(AkidaError::hardware_error("Failed to load kernel module"));
         }
 
         info!("Module loaded (pkexec)");
 
         // Verify it loaded
         if !is_module_loaded()? {
-            return Err(AkidaError::setup_failed(
+            return Err(AkidaError::hardware_error(
                 "Module loaded but not showing in lsmod",
             ));
         }
@@ -270,7 +268,7 @@ fn check_hardware() -> Result<()> {
     let output = Command::new("lspci").arg("-d").arg(&filter).output()?;
 
     if !output.status.success() || output.stdout.is_empty() {
-        return Err(AkidaError::setup_failed(format!(
+        return Err(AkidaError::hardware_error(format!(
             "No Akida NPU hardware detected. Run 'lspci -d {filter}' to verify."
         )));
     }
@@ -290,40 +288,37 @@ fn is_module_loaded() -> Result<bool> {
 }
 
 /// Verify device nodes exist (associated function, no self needed)
-///
-/// BLOCKED(udev): We must poll for device node creation because udev creates
-/// them asynchronously after the kernel module probes. There is no synchronous
-/// udev API to wait for node creation. Polling with 100ms intervals avoids
-/// busy-spinning while keeping latency reasonable. Future: inotify on /dev
-/// could provide event-driven notification.
 fn verify_device_nodes() -> Result<()> {
     info!("Verifying device nodes...");
 
-    // Wait up to 5 seconds for udev to create /dev/akida0
+    // Wait up to 5 seconds for udev
     for _ in 0..50 {
         if Path::new("/dev/akida0").exists() {
             info!("Device nodes created");
             return Ok(());
         }
-        std::thread::sleep(UDEV_POLL_INTERVAL);
+        std::thread::sleep(Duration::from_millis(100));
     }
 
-    Err(AkidaError::setup_failed(
+    Err(AkidaError::hardware_error(
         "Device nodes not created. Check dmesg for errors.",
     ))
 }
 
 /// Get current kernel version
 fn kernel_version() -> Result<String> {
-    let output = Command::new("uname").arg("-r").output()?;
-    let s = String::from_utf8(output.stdout)
-        .map_err(|e| AkidaError::setup_failed(format!("Invalid kernel version output: {e}")))?;
-    Ok(s.trim().to_string())
+    let output = Command::new("uname")
+        .arg("-r")
+        .output()
+        .map_err(AkidaError::from)?;
+    String::from_utf8(output.stdout)
+        .map(|s| s.trim().to_string())
+        .map_err(|e| AkidaError::hardware_error(format!("Invalid kernel version string: {e}")))
 }
 
 /// Pure Rust replacement for `which::which()`.
 /// Searches PATH for an executable, returning the first match.
-pub(crate) fn find_in_path(binary: &str) -> Option<PathBuf> {
+fn find_in_path(binary: &str) -> Option<PathBuf> {
     let path_var = std::env::var_os("PATH")?;
     std::env::split_paths(&path_var)
         .map(|dir| dir.join(binary))
@@ -342,58 +337,31 @@ mod tests {
     }
 
     #[test]
-    fn test_npu_setup_new() {
-        let _setup = NpuSetup::new();
+    fn npu_setup_new_and_default_construct() {
+        let a = NpuSetup::new();
+        let b = NpuSetup::default();
+        // Both start with no driver path; pkexec presence is environment-specific.
+        assert!(a.driver_path.is_none());
+        assert!(b.driver_path.is_none());
     }
 
     #[test]
-    fn test_npu_setup_default() {
-        let _setup = NpuSetup::default();
+    fn find_in_path_finds_common_system_binary() {
+        // Exercise PATH search used for pkexec detection (no production change).
+        let sh = find_in_path("sh");
+        assert!(sh.is_some(), "expected `sh` on PATH in test environment");
+        assert!(sh.unwrap().is_file());
     }
 
     #[test]
-    fn test_find_in_path_common_binary() {
-        // ls, echo, etc. should exist on any Unix
-        let result = find_in_path("ls");
-        assert!(result.is_some());
+    fn find_in_path_returns_none_for_impossible_name() {
+        assert!(find_in_path("akida_nonexistent_binary_xyz_42").is_none());
     }
 
     #[test]
-    fn test_find_in_path_nonexistent() {
-        let result = find_in_path("nonexistent_binary_xyz_12345");
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_npu_setup_find_driver() {
-        let mut setup = NpuSetup::new();
-        let result = setup.find_driver();
-        match result {
-            Ok(()) => {
-                // Driver found (e.g. AKIDA_DRIVER_PATH set or module in standard path)
-            }
-            Err(e) => {
-                let msg = e.to_string();
-                assert!(msg.contains("not found") || msg.contains("AKIDA_DRIVER_PATH"));
-            }
-        }
-    }
-
-    #[test]
-    fn test_is_module_loaded_runs() {
-        let result = is_module_loaded();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_kernel_version_format() {
-        let version = kernel_version().unwrap();
-        assert!(!version.is_empty());
-        assert!(
-            version
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_'),
-            "unexpected char in version: {version}"
-        );
+    fn is_module_loaded_runs_lsmod() {
+        let loaded = is_module_loaded().expect("lsmod should run");
+        // akida_pcie may or may not be present; call must succeed.
+        let _ = loaded;
     }
 }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Akida device handle and operations
 //!
 //! # Evolution (Feb 12, 2026)
@@ -13,7 +14,7 @@ use std::path::Path;
 
 use crate::discovery::DeviceInfo;
 use crate::error::{AkidaError, Result};
-use crate::io;
+use crate::io::IoHandle;
 
 /// Akida device handle
 ///
@@ -24,7 +25,7 @@ pub struct AkidaDevice {
     /// Device information
     info: DeviceInfo,
 
-    /// Underlying device handle (owns the fd)
+    /// Underlying device handle
     handle: DeviceHandle,
 }
 
@@ -53,6 +54,12 @@ impl AkidaDevice {
         })
     }
 
+    /// Borrow an I/O handle for device read/write operations.
+    /// The handle borrows the device's file descriptor — zero unsafe.
+    fn io(&self) -> IoHandle<'_> {
+        IoHandle::new(&self.handle.file)
+    }
+
     /// Get device index
     #[must_use]
     pub const fn index(&self) -> usize {
@@ -79,7 +86,7 @@ impl AkidaDevice {
     ///
     /// Returns error if transfer fails or times out.
     pub fn write(&mut self, data: &[u8]) -> Result<usize> {
-        io::device_write(&self.handle.file, data)
+        self.io().write(data)
     }
 
     /// Read data from device
@@ -90,7 +97,7 @@ impl AkidaDevice {
     ///
     /// Returns error if transfer fails or times out.
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
-        io::device_read(&self.handle.file, buffer)
+        self.io().read(buffer)
     }
 
     /// Get raw file descriptor (for advanced use)
@@ -110,7 +117,7 @@ impl DeviceHandle {
         // SAFETY: OFlags::NONBLOCK.bits() is always a valid i32 value (flag bits are small positive values)
         #[expect(
             clippy::cast_possible_wrap,
-            reason = "OFlags::NONBLOCK bits are small positive values that fit in i32"
+            reason = "Hardware returns signed offset in u32 wire format"
         )]
         let nonblock_flag = OFlags::NONBLOCK.bits() as i32;
 

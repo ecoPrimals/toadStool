@@ -178,6 +178,9 @@ humantime-serde = "1.1"
 
 # System monitoring — Pure Rust via /proc (replaces sysinfo)
 toadstool-sysmon = { path = "crates/core/sysmon" }
+
+# Akida silicon model — pure types & constants, zero deps, shared with rustChip
+akida-chip = { path = "../../infra/rustChip/crates/akida-chip" }
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon (pure Rust /proc, zero C)
 # EVOLVED: psutil removed (Feb 14, 2026) - unused
 
