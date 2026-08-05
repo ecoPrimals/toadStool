@@ -130,7 +130,7 @@ fn ensure_biomeos_directory_permissions() {
     let perms = std::fs::metadata(&biomeos_dir)
         .expect("metadata read")
         .permissions();
-    assert_eq!(perms.mode() & 0o777, 0o700);
+    assert_eq!(perms.mode() & 0o777, 0o750);
 }
 
 #[test]

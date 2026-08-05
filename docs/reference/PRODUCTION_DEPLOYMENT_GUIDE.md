@@ -257,11 +257,10 @@ Wants=beardog.service songbird.service
 Type=notify
 NotifyAccess=main
 User=toadstool
-Group=toadstool
+Group=biomeos
 
 Environment=BIOMEOS_SOCKET_DIR=/run/biomeos
 Environment=TOADSTOOL_FAMILY_ID=nat0
-Environment=TOADSTOOL_SOCKET_MODE=0660
 
 RuntimeDirectory=biomeos
 RuntimeDirectoryMode=0750

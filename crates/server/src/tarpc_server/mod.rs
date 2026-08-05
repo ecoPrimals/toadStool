@@ -169,7 +169,7 @@ impl ToadStoolTarpcServer {
             .and_then(|s| {
                 u32::from_str_radix(s.trim_start_matches("0o").trim_start_matches('0'), 8).ok()
             })
-            .unwrap_or(0o600);
+            .unwrap_or(0o660);
             let mut perms = tokio::fs::metadata(socket_path)
                 .await
                 .map_err(|e| ServerError::Internal(e.to_string()))?
