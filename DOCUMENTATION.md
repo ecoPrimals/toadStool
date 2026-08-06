@@ -53,7 +53,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V. Frontier: FECS PENDING_CTX_RELOAD.
 - **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans. Unused `cc`/`bindgen` removed (S320+).
 - **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
-- **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
+- **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute.tarpc.sock` (tarpc hot-path, C2 pattern).
 
 See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S351).
 

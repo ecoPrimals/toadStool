@@ -14,7 +14,7 @@ ToadStool binds **two Unix sockets** plus an optional TCP listener:
 | Transport | Path | Protocol | Use case |
 |-----------|------|----------|----------|
 | JSON-RPC (primary) | `$XDG_RUNTIME_DIR/biomeos/compute.sock` | JSON-RPC 2.0 (newline-delimited) | External clients, `socat`, springs, biomeOS Neural API |
-| tarpc (hot-path) | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` | tarpc binary (Tokio codec) | High-perf primal-to-primal IPC (Rust-to-Rust) |
+| tarpc (hot-path) | `$XDG_RUNTIME_DIR/biomeos/compute.tarpc.sock` | tarpc binary (Tokio codec) | High-perf primal-to-primal IPC (Rust-to-Rust, C2 pattern) |
 | TCP (optional) | `127.0.0.1:<port>` (loopback default; `--bind 0.0.0.0` for all interfaces) | JSON-RPC 2.0 | Cross-host access (`--port`) |
 
 The two protocols use **separate sockets** to avoid bind collision and allow independent

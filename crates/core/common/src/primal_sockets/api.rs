@@ -73,7 +73,7 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 /// Get ToadStool tarpc (hot-path) socket path.
 ///
 /// tarpc uses a separate socket from JSON-RPC to avoid bind collision.
-/// Convention: `compute-tarpc.sock` or `compute-{family_id}-tarpc.sock`.
+/// C2 dual-socket pattern: `compute.tarpc.sock` or `compute-{fid}.tarpc.sock`.
 /// Override via `TOADSTOOL_TARPC_SOCKET`.
 #[must_use]
 pub fn get_toadstool_tarpc_socket_path() -> PathBuf {

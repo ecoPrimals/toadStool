@@ -206,8 +206,8 @@ fn test_resolve_toadstool_tarpc_socket_default_family() {
     };
     let path = resolve_toadstool_tarpc_socket(&env);
     assert!(
-        path.to_string_lossy().ends_with("compute-tarpc.sock"),
-        "expected compute-tarpc.sock, got: {}",
+        path.to_string_lossy().ends_with("compute.tarpc.sock"),
+        "expected compute.tarpc.sock, got: {}",
         path.display()
     );
 }
@@ -221,8 +221,8 @@ fn test_resolve_toadstool_tarpc_socket_custom_family() {
     };
     let path = resolve_toadstool_tarpc_socket(&env);
     assert!(
-        path.to_string_lossy().ends_with("compute-nat0-tarpc.sock"),
-        "expected compute-nat0-tarpc.sock, got: {}",
+        path.to_string_lossy().ends_with("compute-nat0.tarpc.sock"),
+        "expected compute-nat0.tarpc.sock, got: {}",
         path.display()
     );
 }

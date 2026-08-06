@@ -127,12 +127,12 @@ For backward compatibility, the binary auto-detects its invocation name:
 | Socket | Default Path | Protocol |
 |--------|-------------|----------|
 | JSON-RPC (primary) | `$XDG_RUNTIME_DIR/biomeos/compute.sock` | JSON-RPC 2.0 NDJSON |
-| tarpc (hot-path) | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` | tarpc binary codec |
+| tarpc (hot-path) | `$XDG_RUNTIME_DIR/biomeos/compute.tarpc.sock` | tarpc binary codec |
 | TCP (optional) | `127.0.0.1:<port>` | JSON-RPC 2.0 (when `--port` set) |
 
 With `--family-id nat0`:
 - `compute-nat0.sock`
-- `compute-nat0-tarpc.sock`
+- `compute-nat0.tarpc.sock`
 
 ### Socket Path Resolution Order
 

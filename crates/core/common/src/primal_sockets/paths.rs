@@ -241,9 +241,8 @@ pub fn resolve_toadstool_socket(env: &SocketPathEnv) -> PathBuf {
 
 /// Pure logic: resolve toadstool tarpc socket (secondary, hot-path protocol).
 ///
-/// tarpc uses a separate socket to avoid bind collision with the JSON-RPC
-/// primary listener. Convention: `compute-tarpc.sock` (or
-/// `compute-{family_id}-tarpc.sock` for non-default families).
+/// C2 dual-socket pattern: tarpc on `compute.tarpc.sock` (or
+/// `compute-{family_id}.tarpc.sock` for non-default families).
 #[must_use]
 pub fn resolve_toadstool_tarpc_socket(env: &SocketPathEnv) -> PathBuf {
     if let Some(ref socket) = env.toadstool_tarpc_socket {
@@ -252,9 +251,9 @@ pub fn resolve_toadstool_tarpc_socket(env: &SocketPathEnv) -> PathBuf {
     let family_id = resolve_family_id(env);
     let domain = crate::constants::primal_identity::CAPABILITY_DOMAIN;
     let filename = if family_id.is_empty() || family_id == "default" {
-        format!("{domain}-tarpc.sock")
+        format!("{domain}.tarpc.sock")
     } else {
-        format!("{domain}-{family_id}-tarpc.sock")
+        format!("{domain}-{family_id}.tarpc.sock")
     };
     resolve_biomeos_dir(env).join(filename)
 }

@@ -53,7 +53,7 @@ capabilities = [
 ]
 
 # Transport: Unix socket (XDG-compliant biomeOS standard)
-# Socket path: $XDG_RUNTIME_DIR/biomeos/compute.sock (JSON-RPC) + compute-tarpc.sock (tarpc)
+# Socket path: $XDG_RUNTIME_DIR/biomeos/compute.sock (JSON-RPC) + compute.tarpc.sock (tarpc, C2)
 # Env override: TOADSTOOL_SOCKET
 protocols = ["unix-socket", "json-rpc-2.0", "tarpc"]
 # Note: WebSocket removed (was C-FFI tungstenite/ring). Use compute.status polling.

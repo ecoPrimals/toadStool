@@ -25,9 +25,9 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 - **ecoBin grade**: v3.0 (zero application-level C dependencies)
 - **Sockets** (dual-socket pattern):
   - `$XDG_RUNTIME_DIR/biomeos/compute.sock` — JSON-RPC 2.0 primary (biomeOS routes here)
-  - `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` — tarpc hot-path (Rust-to-Rust peers)
+  - `$XDG_RUNTIME_DIR/biomeos/compute.tarpc.sock` — tarpc hot-path (Rust-to-Rust peers)
   - Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET` env vars
-  - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock`
+  - Family: `compute-{family_id}.sock` / `compute-{family_id}.tarpc.sock`
 - **Peer primals**: Resolved at runtime via capability IDs and Unix-socket discovery (e.g. `capability.discover`, `resolve_capability_socket_fallback`) — not hardcoded URLs or legacy per-primal env manifests
 - **Discovery hierarchy** (primalSpring cross-cutting): coordination service `ipc.resolve` → biomeOS `capability.discover` → UDS filesystem convention → socket registry → TCP probing. toadStool implements tiers 1–4; TCP probing (tier 5) not used for local IPC
 - **Wave 8 Compute Trio** (S235–S263): `compute.dispatch.submit` trio-standard IPC contract. Phase A–D complete. **112 JSON-RPC methods** (direct, including bare `"health"` S315).

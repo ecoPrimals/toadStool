@@ -56,15 +56,15 @@ pub fn socket_filename_for_family(family_id: &str) -> String {
 
 /// tarpc socket filename (separate from JSON-RPC to avoid bind collision).
 ///
-/// JSON-RPC is the primary protocol on `{domain}.sock`; tarpc uses
-/// `{domain}-tarpc.sock` so both listeners can coexist.
+/// C2 dual-socket pattern: JSON-RPC on `{domain}.sock`, tarpc on
+/// `{domain}.tarpc.sock`. Multi-family: `{domain}-{fid}.tarpc.sock`.
 #[must_use]
 pub fn tarpc_socket_filename_for_family(family_id: &str) -> String {
     let domain = toadstool_common::constants::primal_identity::CAPABILITY_DOMAIN;
     if family_id.is_empty() || family_id == "default" {
-        format!("{domain}-tarpc.sock")
+        format!("{domain}.tarpc.sock")
     } else {
-        format!("{domain}-{family_id}-tarpc.sock")
+        format!("{domain}-{family_id}.tarpc.sock")
     }
 }
 
@@ -206,14 +206,14 @@ mod tests {
 
     #[test]
     fn tarpc_socket_filename_for_family_empty() {
-        assert_eq!(tarpc_socket_filename_for_family(""), "compute-tarpc.sock");
+        assert_eq!(tarpc_socket_filename_for_family(""), "compute.tarpc.sock");
     }
 
     #[test]
     fn tarpc_socket_filename_for_family_default() {
         assert_eq!(
             tarpc_socket_filename_for_family("default"),
-            "compute-tarpc.sock"
+            "compute.tarpc.sock"
         );
     }
 
@@ -221,7 +221,7 @@ mod tests {
     fn tarpc_socket_filename_for_family_custom() {
         assert_eq!(
             tarpc_socket_filename_for_family("nat0"),
-            "compute-nat0-tarpc.sock"
+            "compute-nat0.tarpc.sock"
         );
     }
 

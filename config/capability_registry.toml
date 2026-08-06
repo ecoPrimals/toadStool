@@ -8,7 +8,7 @@ primal = "toadstool"
 version = "0.2.0"
 protocol = "jsonrpc-2.0"
 transport = ["uds", "tcp"]
-sockets = ["compute.sock", "compute-tarpc.sock"]
+sockets = ["compute.sock", "compute.tarpc.sock"]
 license = "AGPL-3.0-or-later"
 
 [capabilities.compute]

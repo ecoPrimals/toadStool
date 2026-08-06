@@ -28,7 +28,7 @@ The server binds two Unix sockets:
 | Socket | Path | Protocol |
 |--------|------|----------|
 | JSON-RPC | `$XDG_RUNTIME_DIR/biomeos/compute.sock` | JSON-RPC 2.0 (newline-delimited) |
-| tarpc | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` | tarpc binary codec |
+| tarpc | `$XDG_RUNTIME_DIR/biomeos/compute.tarpc.sock` | tarpc binary codec |
 
 If `--port <PORT>` is specified, it also listens on TCP (JSON-RPC, not HTTP).
 

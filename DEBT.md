@@ -1090,7 +1090,7 @@ Files: `primal_discovery_complete/mod.rs`, `byob/config.rs`, `policies/types.rs`
 ### D-TARPC-CLIENT-SOCKET — RESOLVED S203j
 **Crate**: `client` | **Audit**: primalSpring downstream (socket unification)
 `ToadStoolTarpcClient::discover()` resolved to the JSON-RPC socket (`compute.sock`)
-instead of the tarpc socket (`compute-tarpc.sock`). Client connections to the wrong
+instead of the tarpc socket (`compute.tarpc.sock`). Client connections to the wrong
 socket got binary/JSON protocol mismatch errors.
 **Fix**: Added `resolve_toadstool_tarpc_socket` to `primal_sockets` (mirrors server's
 `tarpc_socket_filename_for_family` convention), interned `TOADSTOOL_TARPC_SOCKET` env
@@ -1210,10 +1210,10 @@ JSON-RPC and tarpc servers both bound the same `compute.sock` — tarpc's
 JSON-RPC listener. Clients connecting to `compute.sock` would reach the
 tarpc binary framing, not JSON-RPC.
 **Fix**: Separated socket paths: JSON-RPC primary on `compute.sock`,
-tarpc secondary on `compute-tarpc.sock`. New `tarpc_socket_filename_for_family`
+tarpc secondary on `compute.tarpc.sock`. New `tarpc_socket_filename_for_family`
 helper generates family-scoped tarpc socket names. Cleanup at shutdown handles
 both sockets. This also resolves the barraCuda namespace conflict: toadStool
-claims `compute.sock` / `compute-tarpc.sock`, leaving `compute-math.sock`
+claims `compute.sock` / `compute.tarpc.sock`, leaving `compute-math.sock`
 available for barraCuda.
 Files: `unibin/mod.rs`, `unibin/format.rs`.
 

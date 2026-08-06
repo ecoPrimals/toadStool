@@ -170,6 +170,7 @@ pub(crate) async fn identity_get(
         "hardware_learning",
     ];
 
+    let domain = toadstool_common::constants::CAPABILITY_DOMAIN;
     Ok(serde_json::json!({
         "primal": toadstool_common::constants::PRIMAL_NAME,
         "version": version,
@@ -179,7 +180,8 @@ pub(crate) async fn identity_get(
         "capabilities": capabilities,
         "methods": semantic_methods,
         "transport": "unix-socket",
-        "socket_name": format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN),
+        "socket_name": format!("{domain}.sock"),
+        "tarpc_socket_name": format!("{domain}.tarpc.sock"),
     }))
 }
 

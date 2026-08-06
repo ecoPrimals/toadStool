@@ -212,13 +212,22 @@ pub async fn run_server_main(
     // JSON-RPC (primary) uses the pre-bound socket path from above.
     let jsonrpc_socket = jsonrpc_socket_path;
 
-    // tarpc (secondary) uses a separate socket to avoid bind collision (LD-05):
-    //   compute-tarpc.sock / compute-{fid}-tarpc.sock
-    let tarpc_filename = format::tarpc_socket_filename_for_family(&family_id);
-    let tarpc_socket_path = jsonrpc_socket.parent().map_or_else(
-        || jsonrpc_socket.with_extension("tarpc.sock"),
-        |dir| dir.join(tarpc_filename),
-    );
+    // tarpc (secondary) — C2 dual-socket pattern (LD-05):
+    //   compute.tarpc.sock / compute-{fid}.tarpc.sock
+    // Honor TOADSTOOL_TARPC_SOCKET if set (parity with client resolution).
+    let tarpc_socket_path =
+        std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_TARPC_SOCKET)
+            .ok()
+            .map_or_else(
+                || {
+                    let tarpc_filename = format::tarpc_socket_filename_for_family(&family_id);
+                    jsonrpc_socket.parent().map_or_else(
+                        || jsonrpc_socket.with_extension("tarpc.sock"),
+                        |dir| dir.join(tarpc_filename),
+                    )
+                },
+                PathBuf::from,
+            );
 
     // Legacy symlink: toadstool.sock → compute.sock for callers still using
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
@@ -246,6 +255,25 @@ pub async fn run_server_main(
                         .unwrap_or_default()
                         .to_string_lossy()
                 );
+            }
+        }
+    }
+
+    // C2 migration symlink: compute-tarpc.sock → compute.tarpc.sock
+    // Clients using the pre-C2 naming can still discover the tarpc endpoint.
+    #[cfg(unix)]
+    if let Some(dir) = tarpc_socket_path.parent() {
+        let domain = toadstool_common::constants::primal_identity::CAPABILITY_DOMAIN;
+        let old_name = if family_id.is_empty() || family_id == "default" {
+            format!("{domain}-tarpc.sock")
+        } else {
+            format!("{domain}-{family_id}-tarpc.sock")
+        };
+        let old_path = dir.join(&old_name);
+        if old_path != tarpc_socket_path {
+            let _ = std::fs::remove_file(&old_path);
+            if let Err(e) = std::os::unix::fs::symlink(&tarpc_socket_path, &old_path) {
+                warn!("Could not create tarpc compat symlink {old_name}: {e}");
             }
         }
     }
@@ -452,6 +480,20 @@ pub async fn run_server_main(
         && let Err(e) = tokio::fs::remove_file(legacy).await
     {
         warn!("Failed to remove legacy symlink: {}", e);
+    }
+    // Clean up C2 migration tarpc compat symlink
+    #[cfg(unix)]
+    if let Some(dir) = tarpc_socket_path.parent() {
+        let domain = toadstool_common::constants::primal_identity::CAPABILITY_DOMAIN;
+        let old_name = if family_id.is_empty() || family_id == "default" {
+            format!("{domain}-tarpc.sock")
+        } else {
+            format!("{domain}-{family_id}-tarpc.sock")
+        };
+        let old_path = dir.join(old_name);
+        if old_path.symlink_metadata().is_ok() {
+            let _ = tokio::fs::remove_file(&old_path).await;
+        }
     }
 
     info!("ToadStool server stopped");
