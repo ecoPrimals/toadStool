@@ -14,8 +14,11 @@ use toadstool_integration_protocols::tarpc_service::ToadStoolComputeRpc;
 use super::ToadStoolTarpcServer;
 
 /// Run tarpc on an already-connected byte stream (length-delimited JSON).
+///
+/// `pub(crate)` so the G65 negotiation path in `pure_jsonrpc::connection::unix`
+/// can route negotiated tarpc connections here.
 #[cfg(unix)]
-pub(super) async fn serve_on_tarpc_channel<S>(server: ToadStoolTarpcServer, stream: S)
+pub(crate) async fn serve_on_tarpc_channel<S>(server: ToadStoolTarpcServer, stream: S)
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin + 'static,
 {
@@ -34,7 +37,7 @@ where
 /// Like [`serve_on_tarpc_channel`] but closes the connection if no RPC arrives
 /// within `idle_timeout`. The timer resets after each RPC, so active connections
 /// are never killed — only truly idle ones.
-pub(super) async fn serve_on_tarpc_channel_with_idle_timeout<S>(
+pub(crate) async fn serve_on_tarpc_channel_with_idle_timeout<S>(
     server: ToadStoolTarpcServer,
     stream: S,
     idle_timeout: std::time::Duration,

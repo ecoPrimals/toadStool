@@ -8,9 +8,9 @@ use tracing::{error, info, warn};
 use crate::CoordinatorExecutor;
 use crate::errors::{ServerError, ServerResult};
 use crate::glowplug_client::discover_gpu_bdfs;
-use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp};
 #[cfg(unix)]
-use crate::pure_jsonrpc::{serve_unix, serve_unix_prebound};
+use crate::pure_jsonrpc::serve_unix_g65;
+use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch};
 
 use super::capabilities;
@@ -334,28 +334,43 @@ async fn try_unix_servers(
         tracing::debug!("Socket cleanup: {e}");
     }
 
-    info!("✅ ToadStool server ready (Unix sockets)");
-    info!("   Socket (JSON-RPC): {:?}", jsonrpc_socket);
-    info!("   Socket (tarpc): {:?}", socket_path);
+    info!("✅ ToadStool server ready (Unix sockets — G65 protocol negotiation)");
+    info!("   Socket (G65 primary): {:?}", jsonrpc_socket);
+    info!("   Socket (tarpc compat, deprecated): {:?}", socket_path);
 
     write_fleet_file(&discover_gpu_bdfs());
 
+    // G65: the primary socket now serves both JSON-RPC and tarpc via
+    // protocol negotiation. The tarpc server is cloned into the accept loop.
     let jsonrpc_handler = Arc::clone(jsonrpc_handler);
+    let g65_tarpc = server.clone();
     if let Some(listener) = jsonrpc_listener {
         tokio::spawn(async move {
-            if let Err(e) = serve_unix_prebound(jsonrpc_handler, listener).await {
-                error!("JSON-RPC server error: {}", e);
+            if let Err(e) = serve_unix_g65(jsonrpc_handler, g65_tarpc, listener).await {
+                error!("G65 server error: {}", e);
             }
         });
     } else {
         let jsonrpc_socket_clone = jsonrpc_socket.clone();
         tokio::spawn(async move {
-            if let Err(e) = serve_unix(jsonrpc_handler, jsonrpc_socket_clone).await {
-                error!("JSON-RPC server error: {}", e);
+            // Bind a new listener for G65
+            match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_clone).await {
+                Ok(listener) => {
+                    if let Err(e) =
+                        serve_unix_g65(jsonrpc_handler, g65_tarpc, Arc::new(listener)).await
+                    {
+                        error!("G65 server error: {}", e);
+                    }
+                }
+                Err(e) => error!("G65 socket bind error: {}", e),
             }
         });
     }
 
+    // C2 backward compat: keep the .tarpc.sock listener for existing clients
+    // that connect directly to the tarpc socket path. This will be removed
+    // once all consumers migrate to G65 negotiation on the primary socket.
+    info!("   (C2 compat) tarpc-only listener on {:?}", socket_path);
     server.clone().serve_unix(socket_path).await?;
     Ok(())
 }

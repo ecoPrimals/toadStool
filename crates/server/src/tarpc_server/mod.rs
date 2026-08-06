@@ -8,6 +8,9 @@ mod connection;
 mod dispatch;
 mod executor;
 
+#[cfg(unix)]
+pub(crate) use connection::serve_on_tarpc_channel;
+
 pub use dispatch::WorkloadExecutorDispatch;
 #[cfg(test)]
 pub use executor::TestWorkloadDouble;

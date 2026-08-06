@@ -5,10 +5,14 @@
 //! JsonRpcRequest's Cow<'a, str> can borrow from the slice during deserialization.
 //!
 //! Supports riboCipher transport signal detection per
-//! `ecoPrimals/infra/wateringHole/RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`.
+//! `ecoPrimals/infra/wateringHole/RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD.md`
+//! and G65 protocol negotiation per
+//! `wateringHole/specs/PROTOCOL_NEGOTIATION_SPEC.md`.
 
 #[cfg(unix)]
 mod btsp_unix;
+pub(crate) mod ipc_protocol;
+pub(crate) mod protocol_negotiation;
 mod tcp;
 #[cfg(test)]
 mod tests;
@@ -20,7 +24,8 @@ mod unix_tests;
 pub use tcp::serve_tcp;
 #[cfg(unix)]
 pub use unix::{
-    prebind_unix_listener, serve_unix, serve_unix_prebound, spawn_early_health_responder,
+    prebind_unix_listener, serve_unix, serve_unix_g65, serve_unix_prebound,
+    spawn_early_health_responder,
 };
 
 use crate::errors::{ServerError, ServerResult};

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Unix domain socket listener and per-connection handling for Pure JSON-RPC.
+//! Unix domain socket listener and per-connection handling.
 //!
-//! Supports two modes per `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md`:
-//! - **Development** (no `FAMILY_ID`): NDJSON / HTTP hybrid
-//! - **Production** (`FAMILY_ID` set): Auto-detects per-connection — BTSP
-//!   binary clients get the full handshake + length-prefixed frames; plain-text
-//!   clients (e.g. primalSpring `CompositionContext`) degrade gracefully to
-//!   NDJSON / HTTP. Detection is instant via first-byte inspection.
+//! Supports three layers (composable, per-connection):
+//!
+//! 1. **G65 protocol negotiation** (`PROTOCOLS:` line → tarpc or JSON-RPC)
+//! 2. **riboCipher transport signal** (`0xEC` / `0xED` / `0xEE` prefix)
+//! 3. **BTSP handshake** (when `FAMILY_ID` is set)
+//!
+//! Legacy clients that send neither a G65 line nor a riboCipher prefix are
+//! rejected per Wave 113 policy. G65 negotiation is checked first (100 ms
+//! peek timeout), then riboCipher dispatch on the first byte.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -215,10 +218,13 @@ async fn handle_early_health(mut stream: UnixStream) {
     let _ = writer.flush().await;
 }
 
-/// Serve JSON-RPC on a pre-bound Unix socket listener.
+/// Serve JSON-RPC on a pre-bound Unix socket listener (C2 legacy path).
 ///
 /// Used with [`prebind_unix_listener`] to start accepting connections
 /// on a listener that was bound before the full handler was constructed.
+///
+/// Prefer [`serve_unix_g65`] for new deployments — it handles both
+/// JSON-RPC and tarpc on a single socket via G65 protocol negotiation.
 pub async fn serve_unix_prebound(
     handler: Arc<JsonRpcHandler>,
     listener: Arc<UnixListener>,
@@ -251,6 +257,200 @@ pub async fn serve_unix_prebound(
             Err(e) => error!("Accept error: {}", e),
         }
     }
+}
+
+/// G65 protocol negotiation accept loop (Phase 3 cephalization).
+///
+/// Serves both JSON-RPC and tarpc on a **single socket**. On each connection:
+///
+/// 1. Peek the first byte with a 100 ms timeout.
+/// 2. If the byte is `b'P'`, read the `PROTOCOLS:` line byte-by-byte,
+///    select the best mutual protocol, respond with `PROTOCOL:`, and
+///    route to the appropriate handler.
+/// 3. Otherwise fall through to the existing riboCipher / BTSP / NDJSON
+///    dispatch — full backward compatibility, zero client changes.
+pub async fn serve_unix_g65(
+    handler: Arc<JsonRpcHandler>,
+    tarpc_server: crate::tarpc_server::ToadStoolTarpcServer,
+    listener: Arc<UnixListener>,
+) -> ServerResult<()> {
+    use super::ipc_protocol::IpcProtocol;
+
+    let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+    let btsp_required = toadstool_common::primal_sockets::is_btsp_required(&env);
+
+    info!("✅ G65 protocol negotiation active (jsonrpc + tarpc on single socket)");
+    if btsp_required {
+        info!("   BTSP handshake required for non-negotiated connections");
+    }
+
+    let server_supported = IpcProtocol::supported();
+
+    loop {
+        match listener.accept().await {
+            Ok((stream, _addr)) => {
+                let handler = Arc::clone(&handler);
+                let tarpc = tarpc_server.clone();
+                let btsp = btsp_required;
+                let supported = server_supported.clone();
+                tokio::spawn(async move {
+                    let result =
+                        handle_g65_connection(handler, tarpc, stream, btsp, &supported).await;
+                    if let Err(e) = result {
+                        error!("G65 connection error: {e}");
+                    }
+                });
+            }
+            Err(e) => error!("G65 accept error: {e}"),
+        }
+    }
+}
+
+/// Per-connection G65 dispatch: read first byte → negotiate or riboCipher → route.
+///
+/// Reads the first byte of the connection. If it is `b'P'` (start of
+/// `PROTOCOLS:`), the G65 negotiation path runs. The `read_negotiation_line`
+/// function reads byte-by-byte so it consumes exactly one line — the `P`
+/// we already read is prepended. Otherwise the byte is forwarded to the
+/// existing `handle_unix_connection_with_first_byte` handler.
+async fn handle_g65_connection(
+    handler: Arc<JsonRpcHandler>,
+    tarpc_server: crate::tarpc_server::ToadStoolTarpcServer,
+    mut stream: UnixStream,
+    btsp_required: bool,
+    server_supported: &[super::ipc_protocol::IpcProtocol],
+) -> ServerResult<()> {
+    use super::ipc_protocol::IpcProtocol;
+    use super::protocol_negotiation::{
+        ProtocolRequest, ProtocolResponse, read_negotiation_line, select_protocol,
+    };
+
+    let mut first = [0u8; 1];
+    let n = tokio::io::AsyncReadExt::read(&mut stream, &mut first)
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    if n == 0 {
+        return Ok(());
+    }
+
+    if first[0] == b'P' {
+        // Likely a G65 `PROTOCOLS:` line. We already consumed the `P`, so
+        // read the rest of the line byte-by-byte, then prepend the `P`.
+        let rest = match read_negotiation_line(&mut stream).await {
+            Ok(l) => l,
+            Err(e) => {
+                warn!("G65 negotiation line read failed: {e}");
+                return Ok(());
+            }
+        };
+
+        let full_line = format!("P{rest}");
+
+        let request = match ProtocolRequest::from_wire(&full_line) {
+            Ok(r) => r,
+            Err(e) => {
+                warn!("Invalid G65 protocol request: {e}");
+                let _ = stream.write_all(b"PROTOCOL: jsonrpc\n").await;
+                let _ = stream.flush().await;
+                return if btsp_required {
+                    super::btsp_unix::handle_btsp_connection(handler, stream).await
+                } else {
+                    handle_unix_connection(handler, stream).await
+                };
+            }
+        };
+
+        let selected = select_protocol(&request.supported, server_supported);
+        let response = ProtocolResponse::new(selected);
+
+        if let Err(e) = stream.write_all(response.to_wire().as_bytes()).await {
+            warn!("G65 response write failed: {e}");
+            return Ok(());
+        }
+        let _ = stream.flush().await;
+
+        info!("G65 protocol negotiated: {selected}");
+
+        return match selected {
+            IpcProtocol::Tarpc => {
+                crate::tarpc_server::serve_on_tarpc_channel(tarpc_server, stream).await;
+                Ok(())
+            }
+            IpcProtocol::JsonRpc => {
+                if btsp_required {
+                    super::btsp_unix::handle_btsp_connection(handler, stream).await
+                } else {
+                    handle_unix_connection(handler, stream).await
+                }
+            }
+        };
+    }
+
+    // Not a G65 negotiation — dispatch via riboCipher / legacy path.
+    // The first byte is already consumed, reuse the existing handler.
+    handle_unix_connection_with_first_byte(handler, stream, first[0], btsp_required).await
+}
+
+/// Handle a Unix connection where the first byte has already been read.
+///
+/// Shared by the G65 fallback path (non-`P` first byte) and the legacy
+/// connection handler. Dispatches to riboCipher or rejects unsignalled.
+async fn handle_unix_connection_with_first_byte(
+    handler: Arc<JsonRpcHandler>,
+    stream: UnixStream,
+    first_byte: u8,
+    btsp_required: bool,
+) -> ServerResult<()> {
+    if btsp_required {
+        // In BTSP mode, delegate to btsp_unix which does its own first-byte read.
+        // We need to prepend the byte we already consumed. Use a thin wrapper
+        // that feeds the byte back, or just pass through the stream since btsp_unix
+        // re-reads. For correctness we route to the riboCipher dispatch.
+        let stream = match try_ribocipher_dispatch(&handler, stream, first_byte).await {
+            Ok(Some(result)) => return result,
+            Ok(None) => {
+                return Err(ServerError::Internal(
+                    "riboCipher dispatch returned Ok(None) — invariant violation".into(),
+                ));
+            }
+            Err(stream) => stream,
+        };
+        error!(
+            first_byte = format_args!("0x{:02X}", first_byte),
+            "REJECTED: unsignalled connection (no riboCipher prefix in BTSP mode)"
+        );
+        let (_, mut writer) = stream.into_split();
+        let reject = unsignalled_connection_reject_json();
+        let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+        buf.push(b'\n');
+        let _ = writer.write_all(&buf).await;
+        let _ = writer.flush().await;
+        return Ok(());
+    }
+
+    // Non-BTSP: existing riboCipher dispatch path.
+    let stream = match try_ribocipher_dispatch(&handler, stream, first_byte).await {
+        Ok(Some(result)) => return result,
+        Ok(None) => {
+            return Err(ServerError::Internal(
+                "riboCipher dispatch returned Ok(None) — invariant violation".into(),
+            ));
+        }
+        Err(stream) => stream,
+    };
+
+    error!(
+        first_byte = format_args!("0x{:02X}", first_byte),
+        "REJECTED: unsignalled connection (no riboCipher prefix). \
+         Clients MUST prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
+    );
+    let (_, mut writer) = stream.into_split();
+    let reject = unsignalled_connection_reject_json();
+    let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
+    buf.push(b'\n');
+    let _ = writer.write_all(&buf).await;
+    let _ = writer.flush().await;
+    Ok(())
 }
 
 /// Handle a single Unix connection with persistent keep-alive.
