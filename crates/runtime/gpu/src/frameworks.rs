@@ -309,14 +309,11 @@ impl ParallelComputeFramework for WebGpuFramework {
 
     async fn get_device_usage(&self, device_id: &DeviceId) -> ToadStoolResult<DeviceUsage> {
         let _ = device_id;
-        Ok(DeviceUsage {
-            gpu_utilization_percent: 0.0,
-            memory_utilization_percent: 0.0,
-            memory_used_bytes: 0,
-            temperature_celsius: None,
-            power_usage_watts: None,
-            active_sessions: 0,
-        })
+        Err(ToadStoolError::not_supported(
+            "wgpu does not expose runtime device utilization metrics; \
+             use platform-native monitoring (nvidia-smi, rocm-smi) via compute.hardware.status"
+                .to_string(),
+        ))
     }
 
     fn supports_recursion(&self) -> bool {
@@ -403,7 +400,9 @@ impl ParallelComputeFramework for FallbackFramework {
 
     async fn get_device_usage(&self, device_id: &DeviceId) -> ToadStoolResult<DeviceUsage> {
         let _ = device_id;
-        Ok(DeviceUsage::default())
+        Err(ToadStoolError::not_supported(
+            "fallback framework does not support device utilization metrics".to_string(),
+        ))
     }
 
     fn supports_recursion(&self) -> bool {

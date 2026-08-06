@@ -182,18 +182,6 @@ impl NaturalLanguageConfig {
         info!("✅ Configuration generated successfully");
         config
     }
-
-    /// Validate and optimize generated configuration
-    ///
-    /// NOTE: Pass-through implementation - configuration validation happens
-    /// elsewhere in the pipeline. Reserved for future optimization passes.
-    #[expect(dead_code, reason = "Reserved: future config optimization passes")]
-    #[expect(clippy::unused_self, reason = "reserved for future optimization logic")]
-    const fn validate_and_optimize(&self, config: ToadStoolConfig) -> ToadStoolConfig {
-        // Configuration is validated during generation and by config module
-        // This method is reserved for future optimization logic
-        config
-    }
 }
 
 impl Default for NaturalLanguageConfig {

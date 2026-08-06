@@ -37,7 +37,8 @@ pub async fn execute_transport_command(action: &TransportCommands) -> Result<()>
     {
         let _ = action;
         Err(CliError::Other(
-            "Transport commands require the 'display' feature (petalTongue domain)".into(),
+            "Transport commands require the 'display' feature (hardware transport capability)"
+                .into(),
         ))
     }
 

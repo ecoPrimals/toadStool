@@ -196,7 +196,9 @@ pub(crate) async fn primal_announce(
     bound_socket: Option<&std::path::Path>,
 ) -> JsonRpcResult {
     let methods = all_callable_methods(semantic_registry);
-    let socket_name = format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN);
+    let domain = toadstool_common::constants::CAPABILITY_DOMAIN;
+    let socket_name = format!("{domain}.sock");
+    let tarpc_socket_name = format!("{domain}.tarpc.sock");
     let socket = if let Some(path) = bound_socket {
         path.to_string_lossy().into_owned()
     } else {
@@ -219,6 +221,7 @@ pub(crate) async fn primal_announce(
         "transport": ["uds", "tcp"],
         "socket": socket,
         "socket_name": socket_name,
+        "tarpc_socket_name": tarpc_socket_name,
         "signal_tiers": ["node"],
         "cost_hints": {
             "compute": 100.0,

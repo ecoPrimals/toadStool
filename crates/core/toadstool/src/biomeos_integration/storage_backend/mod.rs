@@ -37,6 +37,7 @@ use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use crate::ToadStoolError;
 use crate::ToadStoolResult;
 
+#[cfg(any(test, feature = "test-mocks"))]
 mod inmemory;
 #[cfg(unix)]
 mod storage;

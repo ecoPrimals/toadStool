@@ -238,6 +238,11 @@ pub struct DeviceUsage {
 }
 
 impl Default for DeviceUsage {
+    /// Returns an **unmeasured** sentinel: all numeric fields zero, optional fields `None`.
+    ///
+    /// Callers **must not** treat zeros as "GPU is idle"; they mean "no measurement taken."
+    /// Wire a platform-native probe (nvidia-smi, rocm-smi, or `wgpu` metrics) before
+    /// using these values for scheduling or telemetry.
     fn default() -> Self {
         Self {
             gpu_utilization_percent: 0.0,

@@ -102,13 +102,20 @@ impl RuntimeEngine for UniversalGpuEngine {
         matches!(workload_type, WorkloadType::Gpu)
     }
 
+    /// Returns **unmeasured** placeholder metrics.
+    ///
+    /// CPU/memory/storage/network fields are zero because the GPU engine
+    /// delegates compute to the device, not the host. GPU metrics are also
+    /// zero because wgpu does not expose runtime utilization; real telemetry
+    /// requires platform-native probes (nvidia-smi, rocm-smi) via
+    /// `compute.hardware.status`.
     fn get_metrics(
         &self,
     ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         async {
             Ok(RuntimeMetrics {
                 cpu: toadstool::resources::CpuMetrics {
-                    usage_percent: 0.0, // GPU doesn't use CPU metrics
+                    usage_percent: 0.0,
                     cores_used: 0.0,
                     cpu_time_seconds: 0.0,
                 },

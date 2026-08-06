@@ -291,7 +291,8 @@ impl IntelligentAnalyticsEngine {
     )]
     async fn export_to_webhook(&self, _webhook: &WebhookConfig) -> ToadStoolResult<()> {
         Err(ToadStoolError::not_supported(
-            "Webhook export requires songBird IPC integration".to_string(),
+            "Webhook export requires a coordination service with webhook.export capability"
+                .to_string(),
         ))
     }
 }

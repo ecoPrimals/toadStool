@@ -409,7 +409,7 @@ impl DistributedGpuScheduler {
 
         Err(ToadStoolError::not_supported(format!(
             "Remote GPU execution to {address} not yet implemented. \
-             Use local execution or await biomeOS tower integration."
+             Use local execution or discover a remote compute service via coordination."
         )))
     }
 }
