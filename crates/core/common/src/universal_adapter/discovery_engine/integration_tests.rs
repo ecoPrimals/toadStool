@@ -19,7 +19,7 @@ async fn test_empty_discovery() {
 #[tokio::test]
 async fn test_discovery_engine_new_with_custom_sources() {
     let sources: Vec<DiscoverySourceDispatch> = vec![DiscoverySourceDispatch::Environment(
-        EnvironmentSource::new(),
+        EnvironmentSource::from_config(EnvironmentProviderConfig::default()),
     )];
     let engine = DiscoveryEngine::new(sources).unwrap();
     let providers = engine.discover_all().await.unwrap();
@@ -30,7 +30,7 @@ async fn test_discovery_engine_new_with_custom_sources() {
 async fn test_add_source() {
     let mut engine = DiscoveryEngine::empty();
     engine.add_source(DiscoverySourceDispatch::Environment(
-        EnvironmentSource::new(),
+        EnvironmentSource::from_config(EnvironmentProviderConfig::default()),
     ));
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 0);
