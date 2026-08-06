@@ -77,6 +77,17 @@ pub enum DispatchTrustLevel {
     MutuallyAuthenticated,
 }
 
+impl DispatchTrustLevel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Anonymous => "anonymous",
+            Self::LocalTransport => "local_transport",
+            Self::BtspVerified => "btsp_verified",
+            Self::MutuallyAuthenticated => "mutually_authenticated",
+        }
+    }
+}
+
 /// Per-connection transport hints for provenance extraction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ConnectionTrustHints {

@@ -4,35 +4,54 @@ use std::borrow::Cow;
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 
-pub(super) fn resolve_dispatch_bdf(params: &serde_json::Value) -> Result<String, JsonRpcError> {
-    if let Some(bdf) = params.get("bdf").and_then(serde_json::Value::as_str) {
-        return Ok(bdf.to_string());
-    }
-
-    let gpus = toadstool_sysmon::discover_gpus();
-    if let Some(vfio_gpu) = gpus.iter().find(|g| g.driver == "vfio-pci") {
-        return Ok(vfio_gpu.pci_slot.clone());
-    }
-    gpus.first()
-        .map(|g| g.pci_slot.clone())
-        .ok_or_else(|| JsonRpcError::internal_error("No GPUs found for dispatch"))
-}
-
-pub(super) fn detect_dispatch_mode<'a>(params: &'a serde_json::Value, bdf: &str) -> Cow<'a, str> {
-    if let Some(mode) = params
+/// Resolve BDF and dispatch mode from request params with a single GPU scan.
+///
+/// Previous implementation called `discover_gpus()` twice (once per function).
+/// This unified version scans once and derives both values.
+pub(super) fn resolve_dispatch_target<'a>(
+    params: &'a serde_json::Value,
+) -> Result<(String, Cow<'a, str>), JsonRpcError> {
+    let explicit_mode = params
         .get("dispatch_mode")
-        .and_then(serde_json::Value::as_str)
-    {
-        return Cow::Borrowed(mode);
+        .and_then(serde_json::Value::as_str);
+
+    if let Some(bdf) = params.get("bdf").and_then(serde_json::Value::as_str) {
+        let mode = if let Some(m) = explicit_mode {
+            Cow::Borrowed(m)
+        } else {
+            let gpus = toadstool_sysmon::discover_gpus();
+            if gpus
+                .iter()
+                .any(|g| g.pci_slot == bdf && g.driver == "vfio-pci")
+            {
+                Cow::Borrowed("vfio")
+            } else {
+                Cow::Borrowed("drm")
+            }
+        };
+        return Ok((bdf.to_string(), mode));
     }
 
     let gpus = toadstool_sysmon::discover_gpus();
-    if gpus
+
+    let bdf = if let Some(vfio_gpu) = gpus.iter().find(|g| g.driver == "vfio-pci") {
+        vfio_gpu.pci_slot.clone()
+    } else {
+        gpus.first()
+            .map(|g| g.pci_slot.clone())
+            .ok_or_else(|| JsonRpcError::internal_error("No GPUs found for dispatch"))?
+    };
+
+    let mode = if let Some(m) = explicit_mode {
+        Cow::Borrowed(m)
+    } else if gpus
         .iter()
         .any(|g| g.pci_slot == bdf && g.driver == "vfio-pci")
     {
         Cow::Borrowed("vfio")
     } else {
         Cow::Borrowed("drm")
-    }
+    };
+
+    Ok((bdf, mode))
 }

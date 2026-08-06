@@ -8,7 +8,7 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use super::DispatchHandler;
-use super::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
+use super::routing::resolve_dispatch_target;
 use super::submit_params::enforce_envelope;
 use super::types::{DispatchJob, DispatchStatus};
 use crate::pure_jsonrpc::handler::method_gate::CallerContext;
@@ -59,8 +59,10 @@ impl DispatchHandler {
             ));
         }
 
-        let bdf = resolve_dispatch_bdf(p)?;
-        let dispatch_mode = detect_dispatch_mode(p, &bdf);
+        let (bdf, dispatch_mode) = resolve_dispatch_target(p)?;
+
+        self.pre_dispatch_resource_check(&bdf, Some(ctx), Some(p))
+            .await?;
 
         #[cfg(target_os = "linux")]
         let thermal = super::super::hw_learn::check_thermal_for_bdf_pub(&bdf);

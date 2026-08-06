@@ -4,7 +4,7 @@
 use base64::Engine;
 
 use super::{submit_params, test_handler};
-use crate::pure_jsonrpc::handler::dispatch::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
+use crate::pure_jsonrpc::handler::dispatch::routing::resolve_dispatch_target;
 use crate::pure_jsonrpc::handler::dispatch::submit_params::{
     enforce_envelope, resolve_binary_param, resolve_buffers, resolve_shader_info,
     resolve_workgroup_size,
@@ -77,17 +77,19 @@ fn resolve_shader_info_accepts_coral_reef_field_aliases() {
 }
 
 #[test]
-fn detect_dispatch_mode_honors_explicit_mode_string() {
-    let params = serde_json::json!({ "dispatch_mode": "passthrough" });
-    assert_eq!(detect_dispatch_mode(&params, "0000:03:00.0"), "passthrough");
+fn resolve_dispatch_target_honors_explicit_mode_string() {
+    let params = serde_json::json!({ "bdf": "0000:03:00.0", "dispatch_mode": "passthrough" });
+    let (bdf, mode) = resolve_dispatch_target(&params).expect("target");
+    assert_eq!(bdf, "0000:03:00.0");
+    assert_eq!(&*mode, "passthrough");
 }
 
 #[test]
-fn detect_dispatch_mode_non_string_falls_back_to_auto_detect() {
-    let params = serde_json::json!({ "dispatch_mode": 42 });
-    let mode = detect_dispatch_mode(&params, "0000:03:00.0");
+fn resolve_dispatch_target_non_string_mode_falls_back_to_auto_detect() {
+    let params = serde_json::json!({ "bdf": "0000:03:00.0", "dispatch_mode": 42 });
+    let (_, mode) = resolve_dispatch_target(&params).expect("target");
     assert!(
-        mode == "vfio" || mode == "drm",
+        &*mode == "vfio" || &*mode == "drm",
         "non-string dispatch_mode should auto-detect, got {mode}"
     );
 }
@@ -205,9 +207,9 @@ async fn dispatch_submit_with_context_envelope_rejects_all_limits() {
 }
 
 #[test]
-fn resolve_dispatch_bdf_uses_explicit_bdf() {
+fn resolve_dispatch_target_uses_explicit_bdf() {
     let params = serde_json::json!({ "bdf": "0000:ab:00.0" });
-    let bdf = resolve_dispatch_bdf(&params).expect("bdf");
+    let (bdf, _) = resolve_dispatch_target(&params).expect("target");
     assert_eq!(bdf, "0000:ab:00.0");
 }
 

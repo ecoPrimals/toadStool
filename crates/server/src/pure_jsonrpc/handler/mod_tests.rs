@@ -249,52 +249,62 @@ use super::method_gate::{ConnectionTrustHints, DispatchTrustLevel};
 use super::{extract_caller_context, resolve_local_gate_id};
 use toadstool_common::interned_strings::socket_env;
 
+fn test_gate_id() -> Option<std::sync::Arc<str>> {
+    resolve_local_gate_id().map(|s| std::sync::Arc::from(s.as_str()))
+}
+
 #[test]
 fn extract_caller_context_anonymous_connection_yields_anonymous_context() {
-    let ctx = extract_caller_context(ConnectionTrustHints::default());
+    let ctx = extract_caller_context(ConnectionTrustHints::default(), None);
     assert_eq!(ctx.trust_level, DispatchTrustLevel::Anonymous);
     assert!(ctx.gate_id.is_none());
 }
 
 #[test]
 fn extract_caller_context_btsp_verified_sets_trust_level() {
-    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_BTSP);
+    let gid = test_gate_id();
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_BTSP, gid.as_ref());
     assert_eq!(ctx.trust_level, DispatchTrustLevel::BtspVerified);
 }
 
 #[test]
 fn extract_caller_context_btsp_verified_gate_id_matches_resolve_local_gate_id() {
-    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_BTSP);
+    let gid = test_gate_id();
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_BTSP, gid.as_ref());
     assert_eq!(ctx.gate_id, resolve_local_gate_id());
 }
 
 #[test]
 fn extract_caller_context_mutually_authenticated_sets_trust_level() {
-    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_MUTUAL_BTSP);
+    let gid = test_gate_id();
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_MUTUAL_BTSP, gid.as_ref());
     assert_eq!(ctx.trust_level, DispatchTrustLevel::MutuallyAuthenticated);
 }
 
 #[test]
 fn extract_caller_context_mutually_authenticated_gate_id_matches_resolve_local_gate_id() {
-    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_MUTUAL_BTSP);
+    let gid = test_gate_id();
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_MUTUAL_BTSP, gid.as_ref());
     assert_eq!(ctx.gate_id, resolve_local_gate_id());
 }
 
 #[test]
 fn extract_caller_context_unix_local_sets_local_transport() {
-    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_LOCAL);
+    let gid = test_gate_id();
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_LOCAL, gid.as_ref());
     assert_eq!(ctx.trust_level, DispatchTrustLevel::LocalTransport);
 }
 
 #[test]
 fn extract_caller_context_unix_local_gate_id_matches_resolve_local_gate_id() {
-    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_LOCAL);
+    let gid = test_gate_id();
+    let ctx = extract_caller_context(ConnectionTrustHints::UNIX_LOCAL, gid.as_ref());
     assert_eq!(ctx.gate_id, resolve_local_gate_id());
 }
 
 #[test]
 fn extract_caller_context_anonymous_tcp_has_no_gate_id() {
-    let ctx = extract_caller_context(ConnectionTrustHints::TCP);
+    let ctx = extract_caller_context(ConnectionTrustHints::TCP, None);
     assert_eq!(ctx.trust_level, DispatchTrustLevel::Anonymous);
     assert!(ctx.gate_id.is_none());
 }

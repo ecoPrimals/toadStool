@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::DispatchHandler;
-use super::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
+use super::routing::resolve_dispatch_target;
 use super::submit_params::{
     enforce_envelope, resolve_binary_param, resolve_buffers, resolve_workgroup_size,
 };
@@ -165,8 +165,10 @@ impl DispatchHandler {
 
         let shader_info = p.get("shader_info").cloned();
 
-        let bdf = resolve_dispatch_bdf(p)?;
-        let dispatch_mode = detect_dispatch_mode(p, &bdf);
+        let (bdf, dispatch_mode) = resolve_dispatch_target(p)?;
+
+        self.pre_dispatch_resource_check(&bdf, Some(ctx), Some(p))
+            .await?;
 
         #[cfg(target_os = "linux")]
         let thermal = super::super::hw_learn::check_thermal_for_bdf_pub(&bdf);

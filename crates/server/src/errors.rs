@@ -134,7 +134,6 @@ impl From<ToadStoolError> for ServerError {
             ToadStoolError::Network(_) => ServerError::Network(error.to_string()),
             ToadStoolError::System(_) => ServerError::Internal(error.to_string()),
             ToadStoolError::Integration(_) => ServerError::Internal(error.to_string()),
-            // Lightweight variants added in Session 24 (error_context.rs helpers)
             ToadStoolError::Runtime(_) => ServerError::Execution(error.to_string()),
             ToadStoolError::NotFound(_) => ServerError::NotFound(error.to_string()),
         }

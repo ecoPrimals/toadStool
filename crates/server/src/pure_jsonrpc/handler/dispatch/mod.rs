@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Sovereign dispatch handler — accepts compiled GPU binaries from visualization service
-//! and routes them to the target GPU via VFIO or DRM.
+//! Sovereign dispatch handler — the canonical GPU dispatch surface.
 //!
-//! This is the missing link in the sovereign compute pipeline:
-//! WGSL → visualization service compile → **toadStool dispatch** → GPU result
+//! Accepts compiled GPU binaries and routes them to the target GPU via VFIO,
+//! DRM, or wgpu. Handles both direct submit (`compute.dispatch.submit`) and
+//! shader pipeline (`shader.dispatch`) paths.
 //!
-//! Includes pipeline dispatch (`compute.dispatch.pipeline.*`) for ordered multi-stage
-//! workloads — resolves neuralSpring upstream gap for ML inference scheduling.
+//! Includes pipeline dispatch (`compute.dispatch.pipeline.*`) for ordered
+//! multi-stage workloads with DAG-based dependency resolution.
 
 mod capabilities;
 mod dag;

@@ -93,6 +93,8 @@ pub struct JsonRpcHandler {
     pub(super) glowplug: SharedGlowPlugClient,
     /// Actual bound JSON-RPC UDS path (set at server startup).
     bound_socket_path: Option<Arc<PathBuf>>,
+    /// Cached at init — avoids re-reading env vars on every request.
+    pub(super) local_gate_id: Option<Arc<str>>,
 }
 
 impl JsonRpcHandler {
@@ -108,10 +110,11 @@ impl JsonRpcHandler {
         ready: Arc<AtomicBool>,
         bound_socket_path: Option<Arc<PathBuf>>,
     ) -> Self {
-        let local_gate_id = std::env::var(socket_env::TOADSTOOL_GATE_ID)
+        let local_gate_id: Arc<str> = std::env::var(socket_env::TOADSTOOL_GATE_ID)
             .or_else(|_| std::env::var(socket_env::HOSTNAME))
             .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
-            .unwrap_or_else(|_| String::from("local"));
+            .unwrap_or_else(|_| String::from("local"))
+            .into();
         let gate_ownership = Arc::new(crate::cross_gate::GateOwnership::new(&local_gate_id));
 
         let gate = match std::env::var(socket_env::TOADSTOOL_AUTH_MODE)
@@ -206,6 +209,7 @@ impl JsonRpcHandler {
             #[cfg(target_os = "linux")]
             glowplug: glowplug_client::create_glowplug_client(),
             bound_socket_path,
+            local_gate_id: Some(local_gate_id),
         }
     }
 
@@ -307,17 +311,24 @@ impl JsonRpcHandler {
 /// Defaults to anonymous. Unix connections without BTSP get
 /// [`DispatchTrustLevel::LocalTransport`]. Completed BTSP handshakes set
 /// [`DispatchTrustLevel::BtspVerified`] (crypto provider JH-1 will add mutual auth).
-pub(super) fn extract_caller_context(conn: ConnectionTrustHints) -> CallerContext {
+///
+/// `cached_gate_id` is resolved once at handler init — avoids re-reading
+/// env vars on every request.
+pub(super) fn extract_caller_context(
+    conn: ConnectionTrustHints,
+    cached_gate_id: Option<&Arc<str>>,
+) -> CallerContext {
     let mut ctx = CallerContext::anonymous();
+    let gate_id = cached_gate_id.map(std::string::ToString::to_string);
     if conn.mutually_authenticated {
         ctx.trust_level = DispatchTrustLevel::MutuallyAuthenticated;
-        ctx.gate_id = resolve_local_gate_id();
+        ctx.gate_id = gate_id;
     } else if conn.btsp_verified {
         ctx.trust_level = DispatchTrustLevel::BtspVerified;
-        ctx.gate_id = resolve_local_gate_id();
+        ctx.gate_id = gate_id;
     } else if conn.transport == ConnectionTransport::Unix {
         ctx.trust_level = DispatchTrustLevel::LocalTransport;
-        ctx.gate_id = resolve_local_gate_id();
+        ctx.gate_id = gate_id;
     }
     ctx
 }

@@ -169,11 +169,8 @@ impl DispatchTelemetryRecord {
     }
 
     /// Serialize caller trust level for telemetry (snake_case, matches JSON-RPC).
-    pub fn trust_level_from_caller(ctx: &CallerContext) -> String {
-        serde_json::to_value(ctx.trust_level)
-            .ok()
-            .and_then(|v| v.as_str().map(str::to_owned))
-            .unwrap_or_else(|| String::from("anonymous"))
+    pub fn trust_level_from_caller(ctx: &CallerContext) -> &'static str {
+        ctx.trust_level.as_str()
     }
 
     fn default_empty() -> Self {
@@ -239,7 +236,7 @@ pub fn emit_dispatch_completion_telemetry(p: &DispatchTelemetryEmit<'_>) {
         &crate::pure_jsonrpc::handler::resolve_local_gate_id().unwrap_or_default(),
     );
     telemetry.gate_of_origin.clone_from(&p.ctx.gate_id);
-    telemetry.trust_level = DispatchTelemetryRecord::trust_level_from_caller(p.ctx);
+    DispatchTelemetryRecord::trust_level_from_caller(p.ctx).clone_into(&mut telemetry.trust_level);
     p.dispatch_mode.clone_into(&mut telemetry.dispatch_mode);
     telemetry.dispatch_ms = p.dispatch_ms;
     telemetry.readback_ms = p.readback_ms;

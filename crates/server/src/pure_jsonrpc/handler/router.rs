@@ -33,7 +33,7 @@ impl JsonRpcHandler {
         params: Option<&serde_json::Value>,
         conn: super::ConnectionTrustHints,
     ) -> JsonRpcResult {
-        let caller_ctx = extract_caller_context(conn);
+        let caller_ctx = extract_caller_context(conn, self.local_gate_id.as_ref());
 
         self.gate.check_with_context(method, &caller_ctx)?;
 
