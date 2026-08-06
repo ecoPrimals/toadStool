@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: August 3, 2026 — S351
+**Date**: August 6, 2026 — S355
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -8,18 +8,16 @@ with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
 
-**S349 (strandGate Deep Debt Evolution II — Wave 155k)**:
-~15 dead dependency declarations removed (`parking_lot`, `serde_yaml_ng` ×6,
-`config` ×2, `regex` ×2, `ndarray` ×2, `statrs`, `futures-intrusive`).
-`serde_yaml_ng` moved to dev-deps in `core/config`. 5 cylinder `#[allow(unsafe_code)]`
-given `reason` (S211 compliance). Silent stubs evolved to fail-closed: Terminal3270
-connect/disconnect → `not_supported`; IBM `get_system_info` → `not_supported`;
-non-Unix `probe_unix_socket` → `not_supported`; `InMemoryBackend` export test-gated;
-akida state extraction → `InvalidState`. `/run/user/{uid}` fallback consolidated
-to `get_runtime_dir()` (4 call sites eliminated). Module-local magic numbers
-extracted: BYOB web ports, container port ranges, alert thresholds, daemon config.
-Legacy symlink `toadstool.sock` fixed to point at JSON-RPC primary (S348).
-All quality gates green.
+**S355 (eastGate Deep Debt — Aug 6, 2026)**: 3 hardcoded primal name violations
+replaced with capability-based strings (songBird→coordination.webhook.export,
+petalTongue→hardware transport, biomeOS tower→coordination.discover). `tarpc_socket_name`
+added to `primal.announce` (C2 parity with `identity.get`). `InMemoryBackend` module
+gated behind `cfg(test)`. `get_device_usage()` evolved from fake zeros to `not_supported`.
+Dead `validate_and_optimize` deleted. 9,008 tests, 0 failures.
+
+**S352-S354 (eastGate — Aug 4-5, 2026)**: Socket permissions 0o660 (B1/B2). C5 workspace
+build blocker (neuromorphic exclusion). C2 dual-socket naming (`compute.tarpc.sock`).
+8 orphan files deleted (1,382 lines).
 
 **S351 (eastGate Dead Dependency Elimination — Aug 3, 2026)**: 48 dead dependency declarations removed across 21 crates. External deps reduced 47→39 (17%). Notable: void, telnet, rexpect, nb, ebcdic, ash, flate2, tar, sha2, cortex-m, embedded-hal eliminated. Cascading toadstool/npu feature fixed. cargo-machete clean. All quality gates green.
 

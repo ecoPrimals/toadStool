@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: Aug 3, 2026 — S351 (dead dependency elimination, eastGate). **9,193+ lib tests, 0 failures.** 48 dead deps removed (47→39 external, 17%). **S349** — deep debt evolution II. **S347** — Windows cross-compile fix. **S346** — security fail-closed, unsafe containment.
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (lib-only **9,193+**, 0 failures) | **112 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | unsafe contained in hw-safe/cylinder/nvpmu/runtime-gpu | **rustix 1.x workspace-wide** | **100% env centralized** | **19+ deny.toml bans** (Pure Rust Crypto standard) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Zero production files >750L** | **Zero clippy warnings** | **Zero doc warnings** | **46 crates `version.workspace = true`** | **Security fail-closed** — sandbox/PKI require explicit config (S346) | **Overstep reduced** — display + akida-driver feature-gated (S344) | **Cross-platform GPU pipeline** via wgpu (S342–S343)
-**Latest**: S351 — Dead dependency elimination. 48 dead deps removed across 21 crates (47→39 external, 17%): void, telnet, rexpect, nb, ebcdic, ash, flate2, tar, sha2, cortex-m, embedded-hal, base64, semver, url. Cascading toadstool/npu feature fixed. cargo-machete clean. S349 — deep debt evolution II (~15 dead deps). S347 — Windows cross-compile fix. S346 — security fail-closed, unsafe containment.
+**Updated**: Aug 6, 2026 — S355 (deep debt: hardcoded primal names, fake data, C2 announce parity). **9,008+ lib tests, 0 failures.**
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (lib-only **9,008+**, 0 failures) | **112 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | unsafe contained in hw-safe/cylinder/nvpmu/runtime-gpu | **rustix 1.x workspace-wide** | **100% env centralized** | **19+ deny.toml bans** (Pure Rust Crypto standard) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Zero production files >750L** | **Zero clippy warnings** | **Zero doc warnings** | **46 crates `version.workspace = true`** | **Security fail-closed** — sandbox/PKI require explicit config (S346) | **C2 dual-socket naming** (S354) | **Zero hardcoded primal name violations** (S355)
+**Latest**: S355 — 3 hardcoded primal name violations replaced with capability strings. `tarpc_socket_name` added to `primal.announce`. Fake `get_device_usage()` zeros → `not_supported`. Dead code removed. S354 — C2 dual-socket naming. S353 — C5 neuromorphic workspace fix. S352 — socket permissions 0o660. S351 — 48 dead deps eliminated.
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P2: Test Coverage → 90% (D-COV) — Active Sprint (S294–S336+)
 
-**~85%+ estimated line coverage** (lib-only). **9,193+ lib tests** (0 failures). Target 90%.
+**~85%+ estimated line coverage** (lib-only). **9,008+ lib tests** (0 failures). Target 90%.
 
 **S294–S298 coverage sprint** added **+174 new tests** targeting non-VFIO gaps:
 - S294: CallerContext extraction, handler glue (workload, resources, queries, state, compute), RuntimeEngineDispatch (+57)

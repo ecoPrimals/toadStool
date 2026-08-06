@@ -1,12 +1,12 @@
 # Testing Guide
 
-**Last Updated**: Jul 2026 — S336+
+**Last Updated**: Aug 2026 — S355
 
 ## Quick Status
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Lib-Only Tests** | **9,232+ (S336)** | Unlimited parallelism; 0 failures |
+| **Lib-Only Tests** | **9,008+ (S355)** | Unlimited parallelism; 0 failures |
 | **Workspace Tests** | **23,000+ (default features)** | +1,289 behind `legacy-coordination` feature |
 | **Ignored Tests** | **~222 `#[ignore]`** | GPU/hardware tests requiring real devices |
 | **Line Coverage** | **~85%+ (lib-only)** | ~185K production lines. Gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |

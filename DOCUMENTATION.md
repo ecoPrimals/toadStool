@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Aug 3, 2026 — S351
+**Last Updated**: Aug 6, 2026 — S355
 
 ---
 
@@ -31,31 +31,22 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S351 — Aug 2026)
+## Current State (S355 — Aug 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,332 tests** (9,232 lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes. **S344**: deny.toml expanded (19+ bans), overstep reduced (display/akida feature-gated), crypto best-effort, socket centralization, MMIO consolidation. **S343**: wgpu into system queries + dispatch. **S342**: cross-platform GPU fallback.
+- **9,008+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes.
 - **112 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
-- **100% SPDX AGPL-3.0-or-later** headers across all `.rs` files (S320+).
-- **Zero-copy dispatch** (S320+) — `Arc<EncryptionKey>` cache, pipeline first-stage borrow, `binary_size` telemetry, error consolidation.
-- **riboCipher genetics** — CLEAR `0xEC` + MitoBeacon `0xED` accepted on all accept loops (S311+S320). REJECT on unsignalled (Wave 113). Nuclear `0xEE` deferred to Wave 115.
-- **gRPC + OpenCL DELETED** (S319) — enum variants, config, stubs, detection all removed (−458 lines).
-- **Bare `"health"` method** (S315) — returns `{status, primal, version}` per GuideStone standard.
-- **Zero hardcoded cross-primal names** — `LEGACY_*_PASCAL` constants for wire compat (S320+).
-- **Zero production files >750L** — `warm_swap.rs` 818L → 479L + 305L catalyst helpers (S320+). `reagent/mod.rs` 704L → 3 files (S321). S322: mmio 689→612, trials 697→467. S323: method_gate 644→279, job 652→277, shader_dispatch 590→471, submit 642→487+174, cpu_resource 675→536+154.
-- **Env centralization complete** (S321) — zero production raw `env::var("...")` literals; `TOADSTOOL_RM_TRIGGER_BIN` + `TOADSTOOL_FORENSICS_LOG` added to `socket_env`.
-- **Duration dedup** (S321) — `CPU_USAGE_SAMPLE_WINDOW` unified across 5 crates; 8 additional named constants.
-- **Dep unification** (S321) — `bytes`/`ruzstd`/`serialport`/`ndarray` workspace-unified; zero version drift.
-- **TOADSTOOL-AUTO-REGISTER** (S309, Wave 111) — PCI sysfs GPU/NPU in `ipc.register` + `primal.announce`.
-- **PRIMAL-SOCKET-CLEANUP** (S308, Wave 107) — `BIOMEOS_SOCKET_DIR` wired; zero `/tmp` writes.
-- **Coverage Push I–IV** (S294–S298) — +174 tests, `--socket` wired, `--headless` mode, musl-static VPS binary.
-- **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V. Frontier: FECS PENDING_CTX_RELOAD.
-- **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans. Unused `cc`/`bindgen` removed (S320+).
-- **44 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
-- **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute.tarpc.sock` (tarpc hot-path, C2 pattern).
+- **138 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
+- **Zero hardcoded primal name violations** (S355) — last 3 violations replaced with capability-based strings.
+- **C2 dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute.tarpc.sock` (tarpc hot-path). `primal.announce` and `identity.get` both advertise tarpc socket (S354-S355).
+- **Socket permissions** — `0o660` default (group-writable, S352). Directory `0o750` (group-traversable).
+- **Zero production files >750L**. All large files refactored via smart splits.
+- **Zero dead deps** — S351: 48 eliminated (47→39 external, 17%). Neuromorphic crates excluded from default workspace (S353, C5).
+- **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans.
+- **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V.
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S351).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S355).
 
 ---
 

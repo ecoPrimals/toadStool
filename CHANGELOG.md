@@ -5,7 +5,38 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Jul 27, 2026 (Sessions 43-343+)
+## [Unreleased] - Aug 6, 2026 (Sessions 43-355+)
+
+### Session S355 (Aug 6, 2026) — Deep Debt: Hardcoded Primal Names, Fake Data, Dead Code, C2 Announce Parity
+
+- **3 hardcoded primal name violations replaced** — `songBird IPC integration` → `coordination service with webhook.export capability`, `petalTongue domain` → `hardware transport capability`, `biomeOS tower integration` → `remote compute service via coordination`.
+- **C2 announce parity** — `tarpc_socket_name` added to `primal.announce` JSON response, matching `identity.get` for full dual-socket advertising.
+- **Fake data evolved** — `WebGpuFramework::get_device_usage()` and `FallbackFramework::get_device_usage()` now return `not_supported` instead of misleading zeros. `DeviceUsage::default()` documented as unmeasured sentinel. `RuntimeMetrics` in GPU engine documented as unmeasured placeholder.
+- **Dead code removed** — `validate_and_optimize()` no-op deleted from `NaturalLanguageConfig`. `InMemoryBackend` module gated behind `#[cfg(any(test, feature = "test-mocks"))]`.
+- **Quality gates** — 9,008 lib tests, 0 failures. Zero clippy warnings, zero fmt diff.
+
+### Session S354 (Aug 5, 2026) — C2 Dual-Socket Naming Alignment (G64 Cephalization)
+
+- **tarpc socket naming** — `compute-tarpc.sock` → `compute.tarpc.sock` per Wave 156j C2 standard. Family variant: `compute-{fid}.tarpc.sock`.
+- **Server env var** — `TOADSTOOL_TARPC_SOCKET` honored for tarpc socket path.
+- **Backward-compat symlink** — old naming symlinked during startup, cleaned on shutdown.
+- **identity.get advertises tarpc** — `tarpc_socket_name` field added to JSON response.
+- **All docs updated** — README, CONTEXT, PRODUCTION_DEPLOYMENT_GUIDE, SERVER_METHODS, CONSTANTS_REFERENCE, primal-capabilities.toml, capability_registry.toml.
+
+### Session S353 (Aug 4, 2026) — C5 Workspace Build Blocker + Orphan Cleanup
+
+- **C5 resolved** — 6 neuromorphic crates excluded from default workspace (`akida-chip` path dep biomeGate-local). Build on biomeGate with `cargo build -p akida-driver`.
+- **`AkidaNpuDispatch` moved** — adapter code moved conceptually to `akida-driver` crate. `toadstool-core` no longer depends on `akida-driver`.
+- **8 orphan files deleted** — 1,382 lines of dead code removed (templates/types.rs, channel_layout.rs, devinit_ops.rs, steps.rs, hw_learn_distill.rs, gpu/memory/mod.rs, sovereign/handoff.rs, sovereign/probe.rs).
+- **`unimplemented!()` removed** — cylinder test stub replaced with `&HardwareCapabilities::UNKNOWN`.
+- **Scripts updated** — `run-coverage.sh` and `run-hardware-tests.sh` exclude neuromorphic crates.
+
+### Session S352 (Aug 4, 2026) — Systemd Socket Permissions (B1/B2)
+
+- **Directory permissions** — `ensure_biomeos_directory` changed from `0o700` to `0o750` (group-traversable).
+- **Socket permissions** — default socket mode changed from `0o600` to `0o660` (group-writable) in both JSON-RPC and tarpc listeners.
+- **Systemd guidance** — `PRODUCTION_DEPLOYMENT_GUIDE.md` updated: `Group=biomeos`, `TOADSTOOL_SOCKET_MODE=0660` now default.
+- **Quality gates** — All tests pass with updated permission assertions.
 
 ### Session S343 (Jul 27, 2026) — Cross-Platform GPU Pipeline: wgpu → System Queries → Dispatch
 
