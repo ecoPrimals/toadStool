@@ -86,8 +86,8 @@ etcetera = { workspace = true }
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
 toadstool-sysmon = { workspace = true }
 
-# Neuromorphic hardware
-akida-driver = { path = "../neuromorphic/akida-driver", optional = true }
+# Neuromorphic hardware — excluded from default workspace (requires rustChip/akida-chip on biomeGate)
+# akida-driver = { path = "../neuromorphic/akida-driver", optional = true }
 
 # Terminal UI and formatting
 colored = "2.0"
@@ -148,7 +148,8 @@ gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # WebGPU + AI/ML extensions
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
 
 # NPU FEATURES: Neuromorphic accelerator support (squirrel domain)
-npu = ["dep:akida-driver"]
+# Full: npu = ["dep:akida-driver"]  — blocked on C5 (rustChip → Forgejo)
+npu = []
 
 # Display / hardware transport (petalTongue domain — DRM, V4L2, serial)
 display = ["dep:toadstool-display"]

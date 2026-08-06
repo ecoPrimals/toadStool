@@ -17,7 +17,6 @@
 
 mod bar2_init;
 pub mod devinit;
-mod devinit_ops;
 pub mod fecs;
 pub mod glowplug;
 pub mod hbm2_training;

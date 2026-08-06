@@ -30,8 +30,8 @@ pub use npu_controller::{
     ProxyFeature, ProxyFeatureSet, SafetyClamp, SuggestionSource,
 };
 pub use npu_dispatch::{
-    AkidaNpuDispatch, DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError,
-    NpuInferenceRequest, NpuInfo, NpuModelHandle,
+    DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError, NpuInferenceRequest, NpuInfo,
+    NpuModelHandle,
 };
 pub use silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,

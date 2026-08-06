@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Comprehensive coverage tests for NPU dispatch module.
+//! Requires the `akida` feature (akida-driver + rustChip/akida-chip).
+#![cfg(feature = "akida")]
 #![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
@@ -9,8 +12,6 @@
     clippy::default_trait_access,
     clippy::items_after_statements
 )]
-//! Comprehensive coverage tests for NPU dispatch module
-//! Target: exercise all types, error variants, and trait behavior.
 
 use std::borrow::Cow;
 
@@ -251,7 +252,8 @@ fn npu_dispatch_dispatch_request_default() {
 
 #[test]
 fn akida_npu_dispatch_from_backend_info() {
-    let dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
+    let dispatch =
+        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     let info = dispatch.info();
     assert!(info.name.starts_with("Akida"));
     assert_eq!(info.vendor, "brainchip");
@@ -265,7 +267,8 @@ fn akida_npu_dispatch_from_backend_info() {
 
 #[test]
 fn akida_npu_dispatch_load_and_dispatch() {
-    let mut dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
+    let mut dispatch =
+        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     let handle = dispatch.load_model(b"fake_model_data").unwrap();
     assert_eq!(handle.id(), 1);
 
@@ -279,13 +282,15 @@ fn akida_npu_dispatch_load_and_dispatch() {
 
 #[test]
 fn akida_npu_dispatch_power_mw() {
-    let dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
+    let dispatch =
+        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     let power = dispatch.power_mw().unwrap();
     assert!((power - 1500.0).abs() < f32::EPSILON);
 }
 
 #[test]
 fn akida_npu_dispatch_is_alive() {
-    let dispatch = AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
+    let dispatch =
+        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
     assert!(dispatch.is_alive());
 }

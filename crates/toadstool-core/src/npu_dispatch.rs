@@ -24,8 +24,6 @@
 use std::borrow::Cow;
 use std::fmt::Debug;
 
-use akida_driver::NpuBackend;
-
 /// Capability flags that an NPU may advertise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -197,113 +195,7 @@ impl NpuModelHandle {
     }
 }
 
-/// Adapter: wraps an `akida_driver::NpuBackend` as a generic `NpuDispatch`.
-///
-/// This is the bridge between toadStool's generic dispatch layer and the
-/// Akida-specific driver.
-#[derive(Debug)]
-pub struct AkidaNpuDispatch {
-    info: NpuInfo,
-    backend: Box<dyn akida_driver::NpuBackend>,
-}
-
-impl AkidaNpuDispatch {
-    /// Create from an already-initialized Akida backend.
-    #[must_use]
-    pub fn from_backend(backend: Box<dyn akida_driver::NpuBackend>) -> Self {
-        let caps = backend.capabilities();
-        let mut capabilities = vec![NpuCapability::Inference, NpuCapability::PowerMonitoring];
-
-        if caps.weight_mutation != akida_driver::WeightMutationSupport::None {
-            capabilities.push(NpuCapability::OnChipLearning);
-        }
-        if caps.batch.as_ref().is_some_and(|b| b.max_batch > 1) {
-            capabilities.push(NpuCapability::BatchInference);
-        }
-        capabilities.push(NpuCapability::ReservoirComputing);
-
-        let name = format!("Akida {:?}", caps.chip_version);
-        let vendor = "brainchip".to_string();
-
-        let info = NpuInfo {
-            name,
-            vendor,
-            processing_elements: caps.npu_count,
-            memory_bytes: u64::from(caps.memory_mb) * 1024 * 1024,
-            capabilities,
-        };
-
-        Self { info, backend }
-    }
-
-    /// Discover and initialize the best available Akida backend.
-    ///
-    /// # Errors
-    /// Returns error if no Akida device is found or initialization fails.
-    pub fn discover(device_id: &str) -> Result<Self, NpuDispatchError> {
-        let backend = akida_driver::select_backend(akida_driver::BackendSelection::Auto, device_id)
-            .map_err(|e| NpuDispatchError::DeviceNotReady {
-                reason: e.to_string(),
-            })?;
-        Ok(Self::from_backend(backend))
-    }
-}
-
-impl NpuDispatch for AkidaNpuDispatch {
-    fn info(&self) -> &NpuInfo {
-        &self.info
-    }
-
-    fn load_model(&mut self, model_data: &[u8]) -> Result<NpuModelHandle, NpuDispatchError> {
-        let handle =
-            self.backend
-                .load_model(model_data)
-                .map_err(|e| NpuDispatchError::ModelLoadFailed {
-                    reason: e.to_string(),
-                })?;
-        Ok(NpuModelHandle::new(handle.id()))
-    }
-
-    fn dispatch(
-        &mut self,
-        _model: NpuModelHandle,
-        input: Cow<'_, [f32]>,
-    ) -> Result<DispatchResult, NpuDispatchError> {
-        let start = std::time::Instant::now();
-        let output = self
-            .backend
-            .infer(&input)
-            .map_err(|e| NpuDispatchError::DispatchFailed {
-                reason: e.to_string(),
-            })?;
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "truncation acceptable for this conversion"
-        )]
-        let latency_us = (start.elapsed().as_nanos() as u64).div_ceil(1000);
-
-        let power_mw = self.backend.measure_power().ok();
-
-        Ok(DispatchResult {
-            output,
-            latency_us,
-            power_mw,
-        })
-    }
-
-    fn power_mw(&self) -> Result<f32, NpuDispatchError> {
-        self.backend
-            .measure_power()
-            .map_err(|e| NpuDispatchError::DispatchFailed {
-                reason: e.to_string(),
-            })
-    }
-
-    fn is_alive(&self) -> bool {
-        self.backend.is_ready()
-    }
-}
-
-#[cfg(test)]
-#[path = "npu_dispatch_tests.rs"]
-mod npu_dispatch_tests;
+// AkidaNpuDispatch adapter (bridges NpuBackend → NpuDispatch) lives in the
+// akida-driver crate under crates/neuromorphic/ — excluded from default workspace
+// because it requires rustChip/akida-chip (biomeGate-local, C5 blocker).
+// Build on biomeGate with: cargo build -p akida-driver

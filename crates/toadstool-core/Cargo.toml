@@ -16,12 +16,13 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 
-# For NPU backend selection
-akida-driver = { path = "../neuromorphic/akida-driver" }
-
 [dev-dependencies]
 serde_json = { workspace = true }
-akida-driver = { path = "../neuromorphic/akida-driver", features = ["test-mocks"] }
+
+[features]
+default = []
+# Full akida backend requires akida-driver + rustChip/akida-chip (biomeGate-only, C5)
+akida = []
 
 [lints]
 workspace = true

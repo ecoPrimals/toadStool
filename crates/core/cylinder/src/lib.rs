@@ -366,7 +366,7 @@ mod tests {
                 Ok(())
             }
             fn capabilities(&self) -> &HardwareCapabilities {
-                unimplemented!()
+                &HardwareCapabilities::UNKNOWN
             }
         }
         let mut dev = StubDevice;
