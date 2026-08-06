@@ -91,7 +91,7 @@ gets optimal allocation by default.
 
 ### 3.1 Kernel Driver Manager
 
-**Location**: `crates/neuromorphic/akida-driver/src/kernel/`
+**Location**: `crates/neuromorphic/akida-driver/src/backends/kernel.rs` (excluded from default workspace — C5)
 
 **Responsibilities**:
 - Initialize NPU devices via kernel module
@@ -199,7 +199,7 @@ impl SandboxedTenantDriver {
 
 ### 3.4 Resource Orchestrator
 
-**Location**: `crates/neuromorphic/akida-orchestrator/`
+**Location**: `crates/neuromorphic/akida-driver/` (orchestration folded into driver; excluded from default workspace — C5)
 
 **Responsibilities**:
 - Tenant lifecycle management

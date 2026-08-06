@@ -392,7 +392,7 @@ cargo test --features cloud-tpu  # Requires actual TPU
 
 - [Cargo Features Documentation](https://doc.rust-lang.org/cargo/reference/features.html)
 - [Conditional Compilation](https://doc.rust-lang.org/reference/conditional-compilation.html)
-- Implementation: `crates/barracuda/src/device/tpu.rs`
+- Implementation: `ecoPrimals/barraCuda/crates/barracuda/src/device/tpu.rs` (budded S93)
 
 ---
 

@@ -190,10 +190,9 @@ cpu-nodes.toadstool.internal  → [192.168.1.20, 192.168.1.21]
 
 ```rust
 // Service discovery implementation
-// Location: crates/core/common/src/service_discovery.rs
+// Location: crates/core/common/src/capability_discovery/ (renamed S266)
 
 pub struct ServiceDiscovery {
-    discovery_channel: Arc<DiscoveryChannel>,
     cache: Arc<RwLock<DiscoveryCache>>,
 }
 
@@ -411,9 +410,9 @@ Result: Self-organizing network confirmed
 ## References
 
 ### Implementation
-- **Core**: `crates/core/common/src/service_discovery.rs`
+- **Core**: `crates/core/common/src/capability_discovery/` (renamed from `service_discovery.rs` — S266)
 - **Types**: `crates/core/common/src/capabilities.rs`
-- **Discovery Protocol**: `crates/core/common/src/discovery_channel.rs`
+- **Primal Discovery**: `crates/core/common/src/primal_discovery.rs`
 
 ### Theory
 - [Service Discovery Patterns](https://microservices.io/patterns/service-registry.html)

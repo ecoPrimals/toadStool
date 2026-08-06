@@ -213,15 +213,15 @@ proprietary (PTXAS already does this — we're matching it at source level).
 ### Phase 2 — `LatencyModel` Trait + Measured Models (Q1 2026)
 
 **What to build**:
-- `pub trait LatencyModel` in `crates/barracuda/src/device/capabilities.rs`
+- `pub trait LatencyModel` in barraCuda (`ecoPrimals/barraCuda/`) — budded S93
 - `Sm70LatencyModel`, `Rdna2LatencyModel`, `ConservativeModel` implementations
 - `GpuDriverProfile::latency_model() -> Box<dyn LatencyModel>` method
 - `MeasuredModel`: constructed from `bench_f64_builtins` output, stored
   in `F64BuiltinCapabilities` (already probed at runtime)
 
 **Files**:
-- `crates/barracuda/src/device/latency.rs` (new)
-- `crates/barracuda/src/device/capabilities.rs` (extend)
+- barraCuda `src/device/latency.rs` (budded S93)
+- barraCuda `src/device/capabilities.rs` (budded S93)
 
 **Outcome**: Every `GpuDriverProfile` can answer "how many cycles does an
 f64 FMA take on this specific GPU?" — grounded in measurement, not assumption.
@@ -231,7 +231,7 @@ f64 FMA take on this specific GPU?" — grounded in measurement, not assumption.
 ### Phase 3 — `WgslDependencyGraph` + Reorderer (Q2 2026)
 
 **What to build**:
-- `crates/barracuda/src/shaders/optimizer/mod.rs` (new crate module)
+- barraCuda `src/shaders/optimizer/mod.rs` (budded S93)
 - `WgslDependencyGraph` — parses `let` bindings, builds DAG
 - `IlpReorderer` — topological sort guided by `LatencyModel`
 - `WgslLoopUnroller` — unrolls annotated bounded loops
@@ -255,7 +255,7 @@ automatically from the `@ilp_region` annotation alone.
 ### Phase 4 — naga-IR Optimizer + SPIR-V Passthrough ✅ (Feb 25, 2026)
 
 **What was built**:
-- `SovereignCompiler` in `crates/barracuda/src/shaders/sovereign/`
+- `SovereignCompiler` in barraCuda `src/shaders/sovereign/` (budded S93)
 - `naga 22.1` direct dependency — parse WGSL via `naga::front::wgsl::parse_str()`
 - FMA fusion: walk `naga::Arena<Expression>`, detect `Mul(a,b) + c` with
   single-consumer multiply, replace with `Math { fun: Fma }` — addresses

@@ -546,33 +546,21 @@ The following modules were refactored from single-file layouts into multi-file m
 
 ---
 
-### 7.5 `barracuda::device`
+### 7.5 `barracuda::device` — *budded to barraCuda primal (S93)*
 
-**Location**: `crates/barracuda/src/device/`
+**Location**: `ecoPrimals/barraCuda/crates/barracuda/src/device/`
 
-**Structure** (refactored from `unified.rs`):
-- `device_types.rs` — Device type definitions (new)
-- `routing.rs` — Device routing logic (new)
-- `capabilities.rs` — Extended device capabilities
-- `unified.rs` — Unified device interface (retained, delegates to above)
-- `mod.rs` — Module root, re-exports
-
-**Purpose**: GPU device abstraction; types, routing, and capabilities split from unified module for clarity.
+> **Note**: This module was transferred to the barraCuda primal in S93.
+> See the [barraCuda repository](https://github.com/ecoPrimals/barraCuda) for current types.
 
 ---
 
-### 7.6 `barracuda::shaders::precision`
+### 7.6 `barracuda::shaders::precision` — *budded to barraCuda primal (S93)*
 
-**Location**: `crates/barracuda/src/shaders/precision/`
+**Location**: `ecoPrimals/barraCuda/crates/barracuda/src/shaders/precision/`
 
-**Structure**:
-- `mod.rs` — Module root, precision types and re-exports
-- `compiler.rs` — Precision shader compilation (split from mod)
-- `polyfill.rs` — Precision polyfills for WGSL (split from mod)
-- `math_f64.rs`, `templates.rs`, `cpu.rs` — Supporting modules
-- `precision_tests.rs`, `precision_chaos_tests.rs` — Tests
-
-**Purpose**: Shader precision handling; compiler and polyfill logic extracted from monolithic mod.
+> **Note**: This module was transferred to the barraCuda primal in S93.
+> See the [barraCuda repository](https://github.com/ecoPrimals/barraCuda) for current types.
 
 ---
 

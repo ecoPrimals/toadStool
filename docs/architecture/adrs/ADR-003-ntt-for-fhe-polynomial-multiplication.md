@@ -344,13 +344,13 @@ Speedup:    ~107x (excellent scaling!)
 - Number Theoretic Transform
 - [NTT-based FHE](https://eprint.iacr.org/2016/504.pdf)
 
-### Implementation
-- Shaders: `crates/barracuda/src/ops/fhe_ntt.wgsl`, `fhe_intt.wgsl`
-- Rust: `crates/barracuda/src/ops/fhe_ntt.rs`, `fhe_intt.rs`
-- Tests: `tests/fhe/` (modular: ntt, intt, pointwise, fast_poly_mul, error_handling, performance)
+### Implementation (budded to barraCuda primal — S93)
+- Shaders: `ecoPrimals/barraCuda/crates/barracuda/src/ops/fhe_ntt.wgsl`, `fhe_intt.wgsl`
+- Rust: `ecoPrimals/barraCuda/crates/barracuda/src/ops/fhe_ntt.rs`, `fhe_intt.rs`
+- Tests: `ecoPrimals/barraCuda/tests/fhe/`
 
 ### Benchmarks
-- `crates/barracuda/examples/fhe_ntt_validation.rs`
+- `ecoPrimals/barraCuda/crates/barracuda/examples/fhe_ntt_validation.rs`
 - CPU baseline: 794.77ms for N=4096 (measured)
 - GPU target: ~14ms (56x speedup)
 

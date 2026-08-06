@@ -45,6 +45,8 @@ install_binary() {
         cp "$PLASMIDBIN_PATH" "$INSTALL_DIR/bin/"
     else
         log_info "plasmidBin binary not found, building locally (development mode)..."
+        # NOTE: akida-setup is excluded from default workspace (C5: requires rustChip on biomeGate).
+        # On biomeGate, uncomment neuromorphic crates in root Cargo.toml first.
         cd "$SCRIPT_DIR/.." && cargo build --release -p akida-setup
         mkdir -p "$INSTALL_DIR/bin"
         cp "$SCRIPT_DIR/../target/release/akida-setup" "$INSTALL_DIR/bin/"

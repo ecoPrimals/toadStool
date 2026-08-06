@@ -42,7 +42,7 @@ BarraCuda now includes a pure-GPU f64 math library (`math_f64.wgsl`) that implem
 
 ### 1. Pure-GPU Math Library (math_f64.wgsl)
 
-Located at: `crates/barracuda/src/shaders/math/math_f64.wgsl`
+Located at: barraCuda `src/shaders/math/math_f64.wgsl` (budded to `ecoPrimals/barraCuda/` — S93)
 
 **27+ functions implemented:**
 

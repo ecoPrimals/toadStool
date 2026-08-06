@@ -1,5 +1,9 @@
 # barraCuda Primal Budding — Architecture Spec
 
+> **HISTORICAL DOCUMENT** — Records the S88–S93 budding of `crates/barracuda/` into
+> the separate `ecoPrimals/barraCuda/` primal. Paths referencing `crates/barracuda/`
+> below are pre-budding locations; current code lives in the barraCuda repository.
+
 **Date**: March 2–3, 2026 (Session 88–93)
 **Status**: Phase 5 complete — zero cross-dependencies, fully untangled. Phases 1-4 remaining: owned by barraCuda team (S93).
 **Classification**: Core architecture evolution

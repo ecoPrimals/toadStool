@@ -503,7 +503,7 @@ pub struct TenantAllocation {
 ## 11. RELATED SPECIFICATIONS
 
 - **Security Sandbox**: `crates/security/sandbox/` (existing)
-- **Barracuda GPU**: `crates/barracuda/` (existing)
+- **Barracuda GPU**: `ecoPrimals/barraCuda/` (separate primal — budded S93)
 - **Universal Compute**: `specs/UNIVERSAL_COMPUTE_ORCHESTRATOR.md`
 
 ---
