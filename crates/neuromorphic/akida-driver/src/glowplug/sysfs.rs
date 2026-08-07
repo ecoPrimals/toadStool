@@ -12,8 +12,8 @@
 //! cannot be killed — even SIGKILL is deferred. To survive this, risky
 //! sysfs writes use a short-lived child process with a timeout.
 
-use crate::error::AkidaError;
 use crate::Result;
+use crate::error::AkidaError;
 use std::time::Duration;
 
 const SYSFS_WRITE_TIMEOUT: Duration = Duration::from_secs(10);
@@ -81,10 +81,13 @@ pub fn read_power_state(bdf: &str) -> Option<String> {
 /// Empty values are written as `"\n"` because the kernel ignores
 /// zero-byte writes (the sysfs store function is never invoked).
 pub fn sysfs_write_direct(path: &str, value: &str) -> Result<()> {
-    let bytes: &[u8] = if value.is_empty() { b"\n" } else { value.as_bytes() };
-    std::fs::write(path, bytes).map_err(|e| {
-        AkidaError::hardware_error(format!("sysfs write to {path}: {e}"))
-    })
+    let bytes: &[u8] = if value.is_empty() {
+        b"\n"
+    } else {
+        value.as_bytes()
+    };
+    std::fs::write(path, bytes)
+        .map_err(|e| AkidaError::hardware_error(format!("sysfs write to {path}: {e}")))
 }
 
 /// Process-isolated sysfs write with D-state protection.
@@ -101,7 +104,8 @@ fn guarded_sysfs_write(path: &str, value: &str, timeout: Duration) -> Result<()>
 
     let mut child = Command::new("/usr/bin/env")
         .args([
-            "sh", "-c",
+            "sh",
+            "-c",
             "printf '%s' \"$1\" > \"$2\"",
             "sysfs_write",
             value,
@@ -136,7 +140,9 @@ fn guarded_sysfs_write(path: &str, value: &str, timeout: Duration) -> Result<()>
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
                     tracing::error!(
-                        path, value, timeout_secs = timeout.as_secs(),
+                        path,
+                        value,
+                        timeout_secs = timeout.as_secs(),
                         pid = child.id(),
                         "sysfs write TIMED OUT — child likely in D-state, killing"
                     );
@@ -150,7 +156,8 @@ fn guarded_sysfs_write(path: &str, value: &str, timeout: Duration) -> Result<()>
                     });
                     if !reaped {
                         tracing::warn!(
-                            path, pid = child.id(),
+                            path,
+                            pid = child.id(),
                             "sysfs write child still in D-state — abandoning zombie"
                         );
                     }

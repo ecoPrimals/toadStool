@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-#![allow(unsafe_code, reason = "VFIO ioctls require raw syscalls via libc::ioctl")]
+#![allow(
+    unsafe_code,
+    reason = "VFIO ioctls require raw syscalls via libc::ioctl"
+)]
 
 //! VFIO ioctl numbers, layouts, and low-level ioctl wrappers.
 

@@ -85,9 +85,11 @@
 use crate::error::{AkidaError, Result};
 use tracing::{debug, info};
 
+#[cfg(unix)]
 mod hardware;
 mod software;
 
+#[cfg(unix)]
 use hardware::HardwareEsnExecutor;
 use software::SoftwareEsnExecutor;
 
@@ -342,19 +344,21 @@ pub struct HybridEsn {
     /// Software backend — always present (fallback + current primary)
     sw_backend: SoftwareEsnExecutor,
     /// Hardware backend — present only when hardware is available and validated
+    #[cfg(unix)]
     hw_backend: Option<HardwareEsnExecutor>,
 }
 
 impl std::fmt::Debug for HybridEsn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HybridEsn")
-            .field("reservoir_dim", &self.weights.reservoir_dim)
+        let mut s = f.debug_struct("HybridEsn");
+        s.field("reservoir_dim", &self.weights.reservoir_dim)
             .field("input_dim", &self.weights.input_dim)
             .field("output_dim", &self.weights.output_dim)
             .field("mode", &self.mode)
-            .field("sw_backend", &self.sw_backend)
-            .field("hw_backend", &self.hw_backend)
-            .finish()
+            .field("sw_backend", &self.sw_backend);
+        #[cfg(unix)]
+        s.field("hw_backend", &self.hw_backend);
+        s.finish()
     }
 }
 
@@ -420,6 +424,7 @@ impl HybridEsn {
             weights,
             mode: SubstrateMode::PureSoftware,
             sw_backend,
+            #[cfg(unix)]
             hw_backend: None,
         })
     }
@@ -439,6 +444,7 @@ impl HybridEsn {
             weights,
             mode: SubstrateMode::PureSoftware,
             sw_backend,
+            #[cfg(unix)]
             hw_backend: None,
         })
     }
@@ -454,6 +460,7 @@ impl HybridEsn {
     /// # Errors
     ///
     /// Returns error if device is incompatible with the loaded weights.
+    #[cfg(unix)]
     pub fn with_hardware_linear(mut self, device: crate::device::AkidaDevice) -> Result<Self> {
         let hw = HardwareEsnExecutor::new_linear(device, &self.weights);
         self.hw_backend = Some(hw);
@@ -473,6 +480,7 @@ impl HybridEsn {
     /// # Errors
     ///
     /// Returns error if device cannot be initialized.
+    #[cfg(unix)]
     pub fn with_hardware_native(mut self, device: crate::device::AkidaDevice) -> Result<Self> {
         let hw = HardwareEsnExecutor::new_native(device, &self.weights);
         self.hw_backend = Some(hw);
@@ -483,7 +491,10 @@ impl HybridEsn {
 
     /// Downgrade to software mode (e.g., hardware device lost or being reconfigured).
     pub fn to_software_mode(&mut self) {
-        self.hw_backend = None;
+        #[cfg(unix)]
+        {
+            self.hw_backend = None;
+        }
         self.mode = SubstrateMode::PureSoftware;
         info!("HybridEsn: downgraded to PureSoftware mode");
     }
@@ -512,19 +523,19 @@ impl EsnSubstrate for HybridEsn {
         match self.mode {
             SubstrateMode::PureSoftware => self.sw_backend.step(input),
             SubstrateMode::HardwareLinear | SubstrateMode::HardwareNative => {
+                #[cfg(unix)]
                 if let Some(hw) = self.hw_backend.as_mut() {
-                    hw.step(input)
-                } else {
-                    // Fallback: hardware selected but device not initialized
-                    debug!("HybridEsn: hw_backend missing, falling back to software");
-                    self.sw_backend.step(input)
+                    return hw.step(input);
                 }
+                debug!("HybridEsn: hw_backend missing, falling back to software");
+                self.sw_backend.step(input)
             }
         }
     }
 
     fn reset(&mut self) {
         self.sw_backend.reset();
+        #[cfg(unix)]
         if let Some(hw) = self.hw_backend.as_mut() {
             hw.reset();
         }
@@ -533,10 +544,13 @@ impl EsnSubstrate for HybridEsn {
     fn reservoir_state(&self) -> Vec<f32> {
         match self.mode {
             SubstrateMode::PureSoftware => self.sw_backend.reservoir_state(),
-            _ => self
-                .hw_backend
-                .as_ref()
-                .map_or_else(|| self.sw_backend.reservoir_state(), |hw| hw.state.clone()),
+            _ => {
+                #[cfg(unix)]
+                if let Some(hw) = self.hw_backend.as_ref() {
+                    return hw.state.clone();
+                }
+                self.sw_backend.reservoir_state()
+            }
         }
     }
 

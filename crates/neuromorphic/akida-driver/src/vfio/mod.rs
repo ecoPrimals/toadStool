@@ -292,7 +292,9 @@ impl VfioBackend {
                 std::thread::sleep(std::time::Duration::from_millis(50));
             }
             Err(e) => {
-                tracing::debug!("VFIO_DEVICE_RESET not supported: {e} (continuing with soft reset)");
+                tracing::debug!(
+                    "VFIO_DEVICE_RESET not supported: {e} (continuing with soft reset)"
+                );
                 std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }
@@ -302,7 +304,8 @@ impl VfioBackend {
 
         // Step 2: Soft reset via CONTROL register
         tracing::debug!("Writing CONTROL.RESET");
-        self.control_regs.write32(regs::CONTROL, regs::control::RESET);
+        self.control_regs
+            .write32(regs::CONTROL, regs::control::RESET);
         std::thread::sleep(std::time::Duration::from_millis(20));
 
         let post_soft_status = self.control_regs.read32(regs::STATUS);
@@ -310,7 +313,8 @@ impl VfioBackend {
 
         // Step 3: Enable the device
         tracing::debug!("Writing CONTROL.ENABLE");
-        self.control_regs.write32(regs::CONTROL, regs::control::ENABLE);
+        self.control_regs
+            .write32(regs::CONTROL, regs::control::ENABLE);
         std::thread::sleep(std::time::Duration::from_millis(20));
 
         // Step 4: Poll for READY
@@ -424,7 +428,9 @@ impl NpuBackend for VfioBackend {
         // Bring device to READY state (reset + enable)
         match backend.reset_and_enable() {
             Ok(()) => tracing::info!("Device is READY"),
-            Err(e) => tracing::warn!("Device init sequence incomplete: {e} (hardware may need manual init)"),
+            Err(e) => tracing::warn!(
+                "Device init sequence incomplete: {e} (hardware may need manual init)"
+            ),
         }
 
         Ok(backend)

@@ -141,8 +141,7 @@ impl DeviceManager {
 
             let device_path = match driver_name.as_deref() {
                 Some("vfio-pci") => {
-                    let group = crate::vfio::iommu_group(&pcie_address)
-                        .unwrap_or(0);
+                    let group = crate::vfio::iommu_group(&pcie_address).unwrap_or(0);
                     PathBuf::from(format!("/dev/vfio/{group}"))
                 }
                 _ => PathBuf::from(format!("/sys/bus/pci/devices/{pcie_address}")),
@@ -168,9 +167,7 @@ impl DeviceManager {
                     });
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "VFIO/sysfs: cannot query capabilities for {pcie_address}: {e}"
-                    );
+                    tracing::warn!("VFIO/sysfs: cannot query capabilities for {pcie_address}: {e}");
                 }
             }
         }

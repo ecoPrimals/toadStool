@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-#![allow(unsafe_code, reason = "DMA buffers require mmap, mlock, and IOMMU mapping")]
+#![allow(
+    unsafe_code,
+    reason = "DMA buffers require mmap, mlock, and IOMMU mapping"
+)]
 
 //! DMA buffer management for VFIO-based NPU access.
 //!

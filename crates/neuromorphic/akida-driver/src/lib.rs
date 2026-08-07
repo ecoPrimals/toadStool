@@ -55,25 +55,41 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::must_use_candidate)]
 
+// Platform-agnostic modules (available on all targets)
 mod backend;
 pub mod backends;
 mod capabilities;
-mod device;
-mod discovery;
 mod error;
 pub mod evolution;
-pub mod glowplug;
 pub mod hybrid;
-mod inference;
-mod io;
-mod loading;
-pub mod mmio;
-pub mod puf;
 pub mod sentinel;
-pub mod setup;
-pub mod sram;
 mod synthetic;
+
+// Hardware modules — unix-only bandaid (#[cfg(unix)]).
+// Proper platform abstraction: G68 PLATFORM SUBSTRATE spec.
+#[cfg(unix)]
+mod device;
+#[cfg(unix)]
+mod discovery;
+#[cfg(unix)]
+pub mod glowplug;
+#[cfg(unix)]
+mod inference;
+#[cfg(unix)]
+mod io;
+#[cfg(unix)]
+mod loading;
+#[cfg(unix)]
+pub mod mmio;
+#[cfg(unix)]
+pub mod puf;
+#[cfg(unix)]
+pub mod setup;
+#[cfg(unix)]
+pub mod sram;
+#[cfg(unix)]
 pub mod tenancy;
+#[cfg(unix)]
 pub mod vfio;
 
 /// Hardware identification constants (re-exported from akida-chip).
@@ -85,23 +101,29 @@ pub mod pcie_ids {
     };
 }
 
-pub use backend::{
-    BackendSelection, BackendType, LoadVerification, ModelHandle, NpuBackend, select_backend,
-};
+#[cfg(unix)]
+pub use backend::select_backend;
+pub use backend::{BackendSelection, BackendType, LoadVerification, ModelHandle, NpuBackend};
+#[cfg(unix)]
 pub use backends::UserspaceBackend;
 pub use backends::software::{SoftwareBackend, pack_software_model};
 pub use capabilities::{
     BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,
     WeightMutationSupport,
 };
+#[cfg(unix)]
 pub use device::{AkidaDevice, DeviceHandle};
+#[cfg(unix)]
 pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};
 pub use hybrid::{
     EsnSubstrate, EsnWeights, HybridEsn, SubstrateInfo, SubstrateMode, SubstrateSelector,
 };
+#[cfg(unix)]
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
+#[cfg(unix)]
 pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
+#[cfg(unix)]
 pub use vfio::VfioBackend;
 
 #[cfg(any(test, feature = "test-mocks"))]
@@ -110,8 +132,13 @@ pub use synthetic::SyntheticNpuBackend;
 /// Commonly used types.
 pub mod prelude {
     pub use crate::{
-        AkidaDevice, AkidaError, Capabilities, DeviceManager, EsnSubstrate, EsnWeights, HybridEsn,
-        InferenceConfig, InferenceExecutor, InferenceResult, LoadConfig, ModelLoader, ModelProgram,
-        NpuConfig, Result, SubstrateMode, SubstrateSelector, VfioBackend,
+        AkidaError, Capabilities, EsnSubstrate, EsnWeights, HybridEsn, Result, SubstrateMode,
+        SubstrateSelector,
+    };
+
+    #[cfg(unix)]
+    pub use crate::{
+        AkidaDevice, DeviceManager, InferenceConfig, InferenceExecutor, InferenceResult,
+        LoadConfig, ModelLoader, ModelProgram, NpuConfig, VfioBackend,
     };
 }

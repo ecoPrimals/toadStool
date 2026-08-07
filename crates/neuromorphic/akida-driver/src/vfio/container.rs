@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-#![allow(unsafe_code, reason = "VFIO container setup requires raw fd ownership transfer")]
+#![allow(
+    unsafe_code,
+    reason = "VFIO container setup requires raw fd ownership transfer"
+)]
 
 //! VFIO container and IOMMU group setup.
 

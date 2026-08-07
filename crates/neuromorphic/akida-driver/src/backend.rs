@@ -275,7 +275,10 @@ impl BackendSelection {
     /// Whether this selection targets hardware backends.
     #[must_use]
     pub const fn is_hardware(self) -> bool {
-        matches!(self, Self::Auto | Self::Kernel | Self::Userspace | Self::Vfio)
+        matches!(
+            self,
+            Self::Auto | Self::Kernel | Self::Userspace | Self::Vfio
+        )
     }
 }
 
@@ -288,6 +291,7 @@ impl BackendSelection {
 /// # Errors
 ///
 /// Returns error if no suitable backend can be initialized for the given device.
+#[cfg(unix)]
 pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Box<dyn NpuBackend>> {
     use crate::backends::kernel::KernelBackend;
     use crate::backends::software::SoftwareBackend;

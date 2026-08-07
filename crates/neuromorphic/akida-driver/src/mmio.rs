@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-#![allow(unsafe_code, reason = "MMIO requires volatile reads/writes to hardware registers")]
+#![allow(
+    unsafe_code,
+    reason = "MMIO requires volatile reads/writes to hardware registers"
+)]
 
 //! Memory-Mapped I/O for Akida NPU
 //!
@@ -176,8 +179,7 @@ impl MappedRegion {
         };
 
         // VFIO_DEVICE_GET_REGION_INFO = _IO(';', 100 + 8) — VFIO uses _IO, not _IOWR
-        const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong =
-            ((b';' as libc::c_ulong) << 8) | 108;
+        const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong = ((b';' as libc::c_ulong) << 8) | 108;
 
         // SAFETY: VFIO_DEVICE_GET_REGION_INFO ioctl necessary for MMIO - kernel returns BAR size/offset.
         // Invariants: (1) device_fd valid from VFIO device open; (2) VfioRegionInfo initialized

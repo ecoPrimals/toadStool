@@ -17,8 +17,8 @@
 use super::lifecycle::{NpuLifecycle, detect_lifecycle};
 use super::swap;
 use super::sysfs;
-use crate::vfio::VfioBackend;
 use crate::NpuBackend;
+use crate::vfio::VfioBackend;
 use std::time::Instant;
 
 /// Result of the full sovereign boot sequence.
@@ -271,7 +271,11 @@ pub fn sovereign_boot_with_lifecycle(bdf: &str, lifecycle: &dyn NpuLifecycle) ->
     let firmware_alive = probe_firmware(bdf).unwrap_or(false);
     steps.push(BootStep {
         name: "verify_firmware".into(),
-        status: if firmware_alive { StepStatus::Ok } else { StepStatus::Failed },
+        status: if firmware_alive {
+            StepStatus::Ok
+        } else {
+            StepStatus::Failed
+        },
         detail: Some(if firmware_alive {
             "firmware alive — mailbox registers match documented values".into()
         } else {

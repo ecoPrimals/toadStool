@@ -96,10 +96,16 @@ pub fn swap_to_driver(
     let success = to_driver.as_deref() == Some(target);
 
     if success {
-        tracing::info!(bdf, target, duration_ms = start.elapsed().as_millis(), "swap complete");
+        tracing::info!(
+            bdf,
+            target,
+            duration_ms = start.elapsed().as_millis(),
+            "swap complete"
+        );
     } else {
         tracing::warn!(
-            bdf, target,
+            bdf,
+            target,
             actual = to_driver.as_deref().unwrap_or("none"),
             "swap: target driver not bound after sequence"
         );
