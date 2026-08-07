@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests extracted from unix.rs (S334).
 
+use super::dispatch::{
+    format_http_response_header, parse_http_header_field, unsignalled_connection_reject_json,
+};
 use super::ribocipher;
 use super::unix::*;
 

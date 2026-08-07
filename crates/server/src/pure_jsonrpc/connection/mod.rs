@@ -12,7 +12,9 @@
 #[cfg(unix)]
 mod btsp_unix;
 mod dispatch;
+#[cfg(unix)]
 pub(crate) mod ipc_protocol;
+#[cfg(unix)]
 pub(crate) mod protocol_negotiation;
 mod tcp;
 #[cfg(test)]

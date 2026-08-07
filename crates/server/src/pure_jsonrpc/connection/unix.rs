@@ -632,37 +632,3 @@ pub(crate) fn early_health_response(
         }
     }
 }
-
-/// Error payload returned when a connection lacks a riboCipher signal prefix.
-pub(crate) fn unsignalled_connection_reject_json() -> serde_json::Value {
-    serde_json::json!({
-        "jsonrpc": "2.0",
-        "error": {
-            "code": -32600,
-            "message": "Connection rejected: missing riboCipher signal. Prepend [0xEC, 0x01]."
-        },
-        "id": null
-    })
-}
-
-/// Parse a single `Name: value` HTTP header line into normalized key/value pair.
-pub(crate) fn parse_http_header_field(line: &str) -> Option<(String, String)> {
-    let (name, value) = line.split_once(':')?;
-    Some((name.trim().to_lowercase(), value.trim().to_string()))
-}
-
-/// Format an HTTP/1.1 JSON response header block for Unix keep-alive connections.
-pub(crate) fn format_http_response_header(body_len: usize, closing: bool) -> String {
-    let conn_header = if closing {
-        "Connection: close"
-    } else {
-        "Connection: keep-alive"
-    };
-    format!(
-        "HTTP/1.1 200 OK\r\n\
-         Content-Type: application/json\r\n\
-         Content-Length: {body_len}\r\n\
-         {conn_header}\r\n\
-         \r\n"
-    )
-}

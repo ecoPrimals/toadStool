@@ -8,6 +8,7 @@ use tracing::info;
 #[cfg(unix)]
 use tracing::{error, warn};
 
+#[cfg(unix)]
 use crate::errors::{ServerError, ServerResult};
 use toadstool_integration_protocols::tarpc_service::ToadStoolComputeRpc;
 
