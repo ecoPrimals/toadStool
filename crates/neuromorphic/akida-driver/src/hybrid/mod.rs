@@ -87,246 +87,18 @@ use tracing::{debug, info};
 
 #[cfg(unix)]
 mod hardware;
+mod selector;
 mod software;
+mod substrate;
+mod weights;
 
 #[cfg(unix)]
 use hardware::HardwareEsnExecutor;
 use software::SoftwareEsnExecutor;
 
-// ── Substrate mode ────────────────────────────────────────────────────────────
-
-/// Which substrate is currently executing the ESN.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SubstrateMode {
-    /// Pure CPU f32 with tanh activation (`SoftwareBackend`).
-    /// Available today. Accuracy: hotSpring's validated software performance.
-    PureSoftware,
-
-    /// AKD1000 hardware linear transform + host tanh activation.
-    /// Pending `metalForge/experiments/004_HYBRID_TANH` validation.
-    /// Accuracy: same as software (tanh preserved). Throughput: 18,500 Hz.
-    HardwareLinear,
-
-    /// AKD1000 hardware with bounded `ReLU` (SDK default mode).
-    /// Requires purpose-designed reservoir weights (MetaTF-trained).
-    /// Accuracy: 86.1% on QCD (3.6% below software tanh).
-    HardwareNative,
-}
-
-impl SubstrateMode {
-    /// Human-readable description for logging and toadStool telemetry.
-    #[must_use]
-    pub const fn description(&self) -> &'static str {
-        match self {
-            Self::PureSoftware => "CPU f32 + tanh  (~800 Hz, ~44 mJ/inf)",
-            Self::HardwareLinear => "AKD1000 linear + host tanh  (18,500 Hz, 1.4 µJ/inf)",
-            Self::HardwareNative => "AKD1000 bounded ReLU  (18,500 Hz, 1.4 µJ/inf, -3.6% acc)",
-        }
-    }
-
-    /// Whether this substrate preserves tanh-trained weight accuracy.
-    #[must_use]
-    pub const fn is_tanh_accurate(&self) -> bool {
-        matches!(self, Self::PureSoftware | Self::HardwareLinear)
-    }
-}
-
-// ── ESN substrate trait — what hotSpring and toadStool program against ────────
-
-/// Unified interface for ESN inference across all substrates.
-///
-/// hotSpring implements its simulation runner against this trait.
-/// toadStool's substrate dispatch uses this trait for NPU-aware scheduling.
-///
-/// All implementors must preserve the temporal state between calls — a `step()`
-/// call advances the reservoir state, and the next call sees the updated state.
-/// Call `reset()` to clear state between independent sequences.
-pub trait EsnSubstrate: Send + Sync {
-    /// Advance reservoir by one timestep and return readout.
-    ///
-    /// `input` must have length == `input_dim()`.
-    /// Returns `output_dim()` float values.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if input dimension mismatches or substrate is not ready.
-    fn step(&mut self, input: &[f32]) -> Result<Vec<f32>>;
-
-    /// Process a sequence of inputs, returning the final readout.
-    ///
-    /// Equivalent to calling `step()` `inputs.len() / input_dim()` times.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if input length is not a multiple of `input_dim()`.
-    fn run_sequence(&mut self, inputs: &[f32]) -> Result<Vec<f32>> {
-        let is = self.input_dim();
-        if !inputs.len().is_multiple_of(is) {
-            return Err(AkidaError::capability_query_failed(format!(
-                "run_sequence: input length {} not divisible by input_dim {}",
-                inputs.len(),
-                is
-            )));
-        }
-        let mut out = vec![0.0f32; self.output_dim()];
-        for chunk in inputs.chunks(is) {
-            out = self.step(chunk)?;
-        }
-        Ok(out)
-    }
-
-    /// Reset reservoir state to zero (start of new sequence).
-    fn reset(&mut self);
-
-    /// Current reservoir state vector (for cross-substrate comparison / debug).
-    fn reservoir_state(&self) -> Vec<f32>;
-
-    /// Input dimension (number of floats expected per `step()` call).
-    fn input_dim(&self) -> usize;
-
-    /// Reservoir dimension (number of NPs / simulated neurons).
-    fn reservoir_dim(&self) -> usize;
-
-    /// Output dimension (number of floats returned per `step()` call).
-    fn output_dim(&self) -> usize;
-
-    /// Which substrate is executing this instance.
-    fn substrate_mode(&self) -> SubstrateMode;
-
-    /// Estimated throughput in inferences/second.
-    ///
-    /// Used by toadStool's scheduler to select the fastest available substrate.
-    fn estimated_hz(&self) -> f64 {
-        match self.substrate_mode() {
-            SubstrateMode::PureSoftware => 800.0,
-            SubstrateMode::HardwareLinear | SubstrateMode::HardwareNative => 18_500.0,
-        }
-    }
-
-    /// Estimated energy per inference in µJ.
-    fn estimated_energy_uj(&self) -> f64 {
-        match self.substrate_mode() {
-            SubstrateMode::PureSoftware => 44_000.0, // ~44 mJ
-            SubstrateMode::HardwareLinear | SubstrateMode::HardwareNative => 1.4,
-        }
-    }
-}
-
-// ── Weight container — what hotSpring produces ────────────────────────────────
-
-/// ESN weight matrices exported from hotSpring (or any training framework).
-///
-/// All weights are in tanh-training format (f32, row-major).
-/// No quantization, no bounded-ReLU re-optimization required.
-#[derive(Debug, Clone)]
-pub struct EsnWeights {
-    /// Input projection: `[reservoir_dim × input_dim]` row-major
-    pub w_in: Vec<f32>,
-    /// Recurrent weights: `[reservoir_dim × reservoir_dim]` row-major
-    pub w_res: Vec<f32>,
-    /// Readout weights: `[output_dim × reservoir_dim]` row-major
-    pub w_out: Vec<f32>,
-    /// Input dimensionality
-    pub input_dim: usize,
-    /// Reservoir dimensionality (number of NPs on hardware)
-    pub reservoir_dim: usize,
-    /// Output dimensionality
-    pub output_dim: usize,
-    /// Leak rate α ∈ (0, 1]
-    pub leak_rate: f32,
-}
-
-impl EsnWeights {
-    /// Construct from raw weight slices.
-    ///
-    /// Validates dimensions before accepting.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if slice lengths are inconsistent with declared dimensions.
-    pub fn new(
-        w_in: Vec<f32>,
-        w_res: Vec<f32>,
-        w_out: Vec<f32>,
-        input_dim: usize,
-        reservoir_dim: usize,
-        output_dim: usize,
-        leak_rate: f32,
-    ) -> Result<Self> {
-        if w_in.len() != reservoir_dim * input_dim {
-            return Err(AkidaError::capability_query_failed(format!(
-                "w_in: expected {}×{}={}, got {}",
-                reservoir_dim,
-                input_dim,
-                reservoir_dim * input_dim,
-                w_in.len()
-            )));
-        }
-        if w_res.len() != reservoir_dim * reservoir_dim {
-            return Err(AkidaError::capability_query_failed(format!(
-                "w_res: expected {}²={}, got {}",
-                reservoir_dim,
-                reservoir_dim * reservoir_dim,
-                w_res.len()
-            )));
-        }
-        if w_out.len() != output_dim * reservoir_dim {
-            return Err(AkidaError::capability_query_failed(format!(
-                "w_out: expected {}×{}={}, got {}",
-                output_dim,
-                reservoir_dim,
-                output_dim * reservoir_dim,
-                w_out.len()
-            )));
-        }
-        if !(0.0..=1.0).contains(&leak_rate) {
-            return Err(AkidaError::capability_query_failed(format!(
-                "leak_rate {leak_rate} must be in (0, 1]"
-            )));
-        }
-        Ok(Self {
-            w_in,
-            w_res,
-            w_out,
-            input_dim,
-            reservoir_dim,
-            output_dim,
-            leak_rate,
-        })
-    }
-
-    /// Spectral radius of `w_res` (rough estimate via power iteration).
-    ///
-    /// An ESN with tanh needs spectral radius < 1 for echo state property.
-    /// Hardware ESNs may use higher values (bounded `ReLU` prevents explosion).
-    /// After hybrid migration, ensure spectral radius < 1.
-    #[must_use]
-    pub fn spectral_radius_estimate(&self, iters: usize) -> f32 {
-        let rs = self.reservoir_dim;
-        let mut v = vec![1.0f32 / (rs as f32).sqrt(); rs];
-        for _ in 0..iters {
-            let mut mv = vec![0.0f32; rs];
-            for (i, mv_slot) in mv.iter_mut().enumerate() {
-                for (j, vj) in v.iter().enumerate().take(rs) {
-                    *mv_slot += self.w_res[i * rs + j] * vj;
-                }
-            }
-            let norm = mv.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-10);
-            for (vi, mvi) in v.iter_mut().zip(mv.iter()) {
-                *vi = mvi / norm;
-            }
-            let rayleigh: f32 = v
-                .iter()
-                .enumerate()
-                .map(|(i, &vi)| vi * mv[i].max(-norm).min(norm))
-                .sum();
-            if rayleigh.abs() > 0.0 {
-                return rayleigh.abs();
-            }
-        }
-        1.0
-    }
-}
+pub use selector::SubstrateSelector;
+pub use substrate::{EsnSubstrate, SubstrateInfo, SubstrateMode};
+pub use weights::EsnWeights;
 
 // ── HybridEsn — the main interface ───────────────────────────────────────────
 
@@ -377,8 +149,6 @@ impl HybridEsn {
         w_out: &[f32],
         leak_rate: f32,
     ) -> Result<Self> {
-        // Infer dimensions from slice sizes
-        // w_res must be square: rs×rs
         let rs_sq = w_res.len();
         let reservoir_dim = (rs_sq as f64).sqrt().round() as usize;
         if reservoir_dim * reservoir_dim != rs_sq {
@@ -568,111 +338,6 @@ impl EsnSubstrate for HybridEsn {
     }
 }
 
-// ── SubstrateSelector — toadStool's dispatch point ───────────────────────────
-
-/// Substrate information returned to toadStool's scheduler.
-#[derive(Debug, Clone)]
-pub struct SubstrateInfo {
-    /// Which mode is active.
-    pub mode: SubstrateMode,
-    /// Estimated throughput in inferences/second.
-    pub est_hz: f64,
-    /// Estimated energy per inference in µJ.
-    pub est_energy_uj: f64,
-    /// Whether tanh-trained weights are fully accurate on this substrate.
-    pub tanh_accurate: bool,
-    /// Number of NPs consumed (0 if software).
-    pub npu_nps: usize,
-}
-
-/// Runtime substrate selector for toadStool's NPU dispatch system.
-///
-/// Discovers available substrates at construction time and selects the
-/// optimal one (hardware if present, software if not). toadStool calls
-/// `esn_step()` without knowing which substrate is executing.
-///
-/// ```no_run
-/// use akida_driver::SubstrateSelector;
-///
-/// # let (w_in, w_res, w_out) = (vec![0.1f32; 128*4], vec![0.05f32; 128*128], vec![0.2f32; 128]);
-/// # let features = vec![0.0f32; 4];
-/// let mut selector = SubstrateSelector::for_weights(
-///     &w_in, &w_res, &w_out, 0.3,
-/// )?;
-/// println!("Substrate: {}", selector.active_substrate().mode.description());
-///
-/// let prediction = selector.esn_step(&features)?;
-/// # Ok::<(), akida_driver::AkidaError>(())
-/// ```
-pub struct SubstrateSelector {
-    esn: HybridEsn,
-}
-
-impl SubstrateSelector {
-    /// Build a selector with the given weights, auto-discovering hardware.
-    ///
-    /// Tries hardware discovery; falls back to software if no NPU found.
-    ///
-    /// # Errors
-    ///
-    /// Returns error only if weights are invalid. Hardware unavailability is
-    /// silently handled by falling back to software.
-    pub fn for_weights(w_in: &[f32], w_res: &[f32], w_out: &[f32], leak_rate: f32) -> Result<Self> {
-        let esn = HybridEsn::from_weights(w_in, w_res, w_out, leak_rate)?;
-        // Hardware upgrade deferred until Exp 004 validates the path.
-        // Uncomment once validated:
-        //
-        // if let Ok(mgr) = crate::discovery::DeviceManager::discover() {
-        //     if let Ok(dev) = mgr.open_first() {
-        //         esn = esn.with_hardware_linear(dev)?;
-        //     }
-        // }
-        Ok(Self { esn })
-    }
-
-    /// Build from a pre-constructed `HybridEsn`.
-    #[must_use]
-    pub const fn from_esn(esn: HybridEsn) -> Self {
-        Self { esn }
-    }
-
-    /// Active substrate information for toadStool's scheduler/telemetry.
-    #[must_use]
-    pub fn active_substrate(&self) -> SubstrateInfo {
-        let mode = self.esn.mode().clone();
-        SubstrateInfo {
-            est_hz: self.esn.estimated_hz(),
-            est_energy_uj: self.esn.estimated_energy_uj(),
-            tanh_accurate: mode.is_tanh_accurate(),
-            npu_nps: match &mode {
-                SubstrateMode::PureSoftware => 0,
-                _ => self.esn.weights().reservoir_dim,
-            },
-            mode,
-        }
-    }
-
-    /// Single-step inference — dispatches to the active substrate.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the active substrate fails.
-    pub fn esn_step(&mut self, input: &[f32]) -> Result<Vec<f32>> {
-        self.esn.step(input)
-    }
-
-    /// Reset reservoir state (call between independent input sequences).
-    pub fn reset(&mut self) {
-        self.esn.reset();
-    }
-
-    /// Expose the inner `HybridEsn` for direct access if needed.
-    #[must_use]
-    pub const fn inner(&mut self) -> &mut HybridEsn {
-        &mut self.esn
-    }
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -721,17 +386,14 @@ mod tests {
 
     #[test]
     fn tanh_mode_is_accurate() {
-        // PureSoftware must use tanh — verify states are in (-1, 1)
         let (w_in, w_res, w_out) = tiny_weights(64, 8, 2);
         let mut esn = HybridEsn::from_weights(&w_in, &w_res, &w_out, 0.3).unwrap();
-        // Drive with large inputs to saturate tanh
         for _ in 0..20 {
             let _ = esn
                 .step(&[10.0, -10.0, 10.0, -10.0, 10.0, -10.0, 10.0, -10.0])
                 .unwrap();
         }
         let state = esn.reservoir_state();
-        // tanh saturates at ±1: all states must be in (-1, 1)
         for &s in &state {
             assert!(s > -1.0 && s < 1.0, "tanh state {s} out of (-1,1)");
         }
@@ -749,17 +411,6 @@ mod tests {
 
     #[test]
     fn approach_b_scale_trick_non_degenerate() {
-        // Validates the core guarantee of Approach B:
-        // hardware-linear (scale trick) must produce non-degenerate reservoir states.
-        //
-        // Approach B does NOT match software tanh outputs — documented limitation.
-        // The bounded ReLU LOWER clamp (clips negatives to 0) causes state divergence.
-        // This is why Approach A (FlatBuffer threshold override) is the full solution.
-        //
-        // What Approach B DOES guarantee:
-        // 1. Reservoir is non-degenerate (states are non-zero and bounded)
-        // 2. Results are deterministic
-        // 3. Positive pre-activations are correctly recovered via tanh(hw_out/ε)
         let rs = 32;
         let is = 4;
         let os = 1;
@@ -785,32 +436,28 @@ mod tests {
             w_res: w_res.clone(),
             w_in_scaled: w_in.iter().map(|x| x * eps).collect(),
             w_res_scaled: w_res.iter().map(|x| x * eps).collect(),
-            scale,
+            scale: ScaleTrickConfig::from_weights(&w_in, &w_res),
             _device: Box::new(()),
         };
 
         let input = vec![0.5f32, -0.3, 0.8, -0.1];
 
-        // Drive 30 steps
         let mut outputs = vec![];
         for _ in 0..30 {
             let out = hw_exec.step(&input).unwrap();
             outputs.push(out[0]);
         }
 
-        // 1. Non-degenerate: state RMS must be > 0.001 (reservoir is alive)
         let state_rms = (hw_exec.state.iter().map(|x| x * x).sum::<f32>() / rs as f32).sqrt();
         assert!(
             state_rms > 0.001,
             "Approach B reservoir degenerated: state RMS = {state_rms:.5}"
         );
 
-        // 2. Bounded: all states in reasonable range (tanh keeps them < 1)
         for &s in &hw_exec.state {
             assert!(s.abs() < 2.0, "Approach B state {s:.4} out of bounds");
         }
 
-        // 3. Deterministic: same input sequence produces same outputs
         let mut hw_exec2 = HardwareEsnExecutor {
             reservoir_dim: rs,
             input_dim: is,
@@ -840,8 +487,6 @@ mod tests {
 
     #[test]
     fn hardware_native_has_bounded_relu_saturation() {
-        // HardwareNative should saturate near 0 with large negative inputs
-        // (bounded ReLU clips at 0, unlike tanh which would return -1)
         let rs = 16;
         let is = 2;
         let os = 1;
@@ -866,11 +511,9 @@ mod tests {
             _device: Box::new(()),
         };
         let _ = weights;
-        // Drive with large negative input — bounded ReLU should keep state near 0
         for _ in 0..20 {
             let _ = hw_exec.step(&[-100.0, -100.0]).unwrap();
         }
-        // State should be near 0 (bounded ReLU clips negatives; no saturation at -1)
         for &s in &hw_exec.state {
             assert!(s >= 0.0, "bounded ReLU state {s} should be non-negative");
         }
@@ -882,12 +525,11 @@ mod tests {
         let mut esn_step = HybridEsn::from_weights(&w_in, &w_res, &w_out, 0.3).unwrap();
         let mut esn_seq = HybridEsn::from_weights(&w_in, &w_res, &w_out, 0.3).unwrap();
 
-        let input = vec![0.1f32, -0.2, 0.3, 0.4, 0.5, -0.1, 0.2, -0.3]; // 2 frames
+        let input = vec![0.1f32, -0.2, 0.3, 0.4, 0.5, -0.1, 0.2, -0.3];
         let out_step_1 = esn_step.step(&input[0..4]).unwrap();
         let out_step_2 = esn_step.step(&input[4..8]).unwrap();
         let out_seq = esn_seq.run_sequence(&input).unwrap();
 
-        // Both should produce the same final output
         assert!(
             (out_step_2[0] - out_seq[0]).abs() < 1e-6,
             "step={} seq={}",
@@ -899,13 +541,7 @@ mod tests {
 
     #[test]
     fn weight_dimension_validation() {
-        // Wrong w_in size should fail
-        let result = HybridEsn::from_weights(
-            &[0.1f32; 31], // should be 32×4=128
-            &[0.0f32; 1024],
-            &[0.2f32; 32],
-            0.3,
-        );
+        let result = HybridEsn::from_weights(&[0.1f32; 31], &[0.0f32; 1024], &[0.2f32; 32], 0.3);
         assert!(result.is_err(), "mismatched w_in should fail");
     }
 
@@ -924,7 +560,6 @@ mod tests {
 
     #[test]
     fn esn_weights_spectral_radius() {
-        // Identity-scaled w_res (small values) → spectral radius < 1
         let rs = 16;
         let w_res: Vec<f32> = (0..rs * rs)
             .map(|i| if i % (rs + 1) == 0 { 0.5f32 } else { 0.0 })
