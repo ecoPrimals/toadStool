@@ -11,6 +11,7 @@
 
 #[cfg(unix)]
 mod btsp_unix;
+mod dispatch;
 pub(crate) mod ipc_protocol;
 pub(crate) mod protocol_negotiation;
 mod tcp;

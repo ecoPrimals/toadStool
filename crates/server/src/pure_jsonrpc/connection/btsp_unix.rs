@@ -20,8 +20,6 @@ use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 
 #[cfg(feature = "btsp")]
 use super::process_request;
-#[cfg(feature = "btsp")]
-use super::unix::handle_ndjson_unix;
 use super::unix::{is_plaintext_protocol_byte, try_ribocipher_dispatch};
 
 /// Handle an incoming connection on a BTSP-enabled socket (production mode).
@@ -173,10 +171,26 @@ async fn handle_post_handshake_session(
             handle_encrypted_session(handler, reader, writer, keys).await
         }
         btsp::NegotiateOutcome::NullCipher => {
-            handle_ndjson_unix(handler, reader, writer, String::new()).await
+            super::dispatch::handle_ndjson(
+                &handler,
+                reader,
+                writer,
+                String::new(),
+                ConnectionTrustHints::UNIX_LOCAL,
+                None,
+            )
+            .await
         }
         btsp::NegotiateOutcome::NotNegotiate => {
-            handle_ndjson_unix(handler, reader, writer, first_line).await
+            super::dispatch::handle_ndjson(
+                &handler,
+                reader,
+                writer,
+                first_line,
+                ConnectionTrustHints::UNIX_LOCAL,
+                None,
+            )
+            .await
         }
     }
 }

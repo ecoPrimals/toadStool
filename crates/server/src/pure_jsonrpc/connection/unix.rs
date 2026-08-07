@@ -11,18 +11,15 @@
 //! rejected per Wave 113 policy. G65 negotiation is checked first (100 ms
 //! peek timeout), then riboCipher dispatch on the first byte.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{error, info, warn};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::JsonRpcHandler;
 use crate::pure_jsonrpc::handler::ConnectionTrustHints;
-
-use super::process_request;
 
 /// Serve JSON-RPC on a Unix socket.
 ///
@@ -420,11 +417,7 @@ async fn handle_unix_connection_with_first_byte(
             "REJECTED: unsignalled connection (no riboCipher prefix in BTSP mode)"
         );
         let (_, mut writer) = stream.into_split();
-        let reject = unsignalled_connection_reject_json();
-        let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
-        buf.push(b'\n');
-        let _ = writer.write_all(&buf).await;
-        let _ = writer.flush().await;
+        let _ = super::dispatch::write_reject_response(&mut writer).await;
         return Ok(());
     }
 
@@ -445,11 +438,7 @@ async fn handle_unix_connection_with_first_byte(
          Clients MUST prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
     );
     let (_, mut writer) = stream.into_split();
-    let reject = unsignalled_connection_reject_json();
-    let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
-    buf.push(b'\n');
-    let _ = writer.write_all(&buf).await;
-    let _ = writer.flush().await;
+    let _ = super::dispatch::write_reject_response(&mut writer).await;
     Ok(())
 }
 
@@ -487,11 +476,7 @@ pub(super) async fn handle_unix_connection(
          Clients MUST prepend [0xEC, 0x01] per RIBOCIPHER_TRANSPORT_SIGNAL_STANDARD."
     );
     let (_, mut writer) = stream.into_split();
-    let reject = unsignalled_connection_reject_json();
-    let mut buf = serde_json::to_vec(&reject).unwrap_or_default();
-    buf.push(b'\n');
-    let _ = writer.write_all(&buf).await;
-    let _ = writer.flush().await;
+    let _ = super::dispatch::write_reject_response(&mut writer).await;
     Ok(())
 }
 
@@ -566,141 +551,24 @@ pub(super) async fn try_ribocipher_dispatch(
 }
 
 /// Handle a riboCipher clear-signalled Unix connection, routed by protocol type.
+///
+/// Delegates to `dispatch::handle_ribocipher_clear` (G66 transport abstraction).
 async fn handle_ribocipher_clear_unix(
     handler: Arc<JsonRpcHandler>,
     stream: UnixStream,
     protocol_type: u8,
 ) -> ServerResult<()> {
-    use super::ribocipher::protocol_type as pt;
-
-    match protocol_type {
-        pt::PROBE => {
-            let (_, mut writer) = stream.into_split();
-            let response =
-                serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":null});
-            let mut buf = serde_json::to_vec(&response).unwrap_or_default();
-            buf.push(b'\n');
-            let _ = writer.write_all(&buf).await;
-            let _ = writer.flush().await;
-            Ok(())
-        }
-        pt::NDJSON_JSONRPC => {
-            let (reader, mut writer) = stream.into_split();
-            let mut reader = BufReader::new(reader);
-            handle_ndjson_unix(handler, &mut reader, &mut writer, String::new()).await
-        }
-        pt::HTTP => {
-            let (reader, mut writer) = stream.into_split();
-            let mut reader = BufReader::new(reader);
-            let mut first_line = String::new();
-            let n = reader
-                .read_line(&mut first_line)
-                .await
-                .map_err(|e| ServerError::Network(e.to_string()))?;
-            if n == 0 {
-                return Ok(());
-            }
-            handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await
-        }
-        unknown => {
-            warn!(
-                protocol_type = format_args!("0x{:02X}", unknown),
-                "riboCipher: unsupported protocol type — closing"
-            );
-            Ok(())
-        }
-    }
-}
-
-/// HTTP/1.1 keep-alive loop: process multiple HTTP requests on a single connection.
-///
-/// Defaults to keep-alive per HTTP/1.1 spec. Closes only when the client sends
-/// `Connection: close` or the connection reaches EOF.
-pub(super) async fn handle_http_keepalive_unix(
-    handler: Arc<JsonRpcHandler>,
-    reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
-    writer: &mut tokio::net::unix::OwnedWriteHalf,
-    first_request_line: String,
-) -> ServerResult<()> {
-    let mut request_line = first_request_line;
-    loop {
-        let (headers, body) = read_http_request_continuation_unix(reader).await?;
-        let response_body =
-            process_request(&handler, &body, ConnectionTrustHints::UNIX_LOCAL).await?;
-
-        let client_wants_close = headers
-            .get("connection")
-            .is_some_and(|v| v.eq_ignore_ascii_case("close"));
-
-        write_http_response_unix(writer, &response_body, client_wants_close).await?;
-
-        if client_wants_close {
-            break;
-        }
-
-        request_line.clear();
-        let n = reader
-            .read_line(&mut request_line)
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
-        if n == 0 {
-            break;
-        }
-        let trimmed = request_line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if !trimmed.starts_with("POST")
-            && !trimmed.starts_with("GET")
-            && !trimmed.starts_with("HTTP")
-        {
-            break;
-        }
-    }
-    Ok(())
-}
-
-/// NDJSON persistent session: one JSON-RPC request per line, responses delimited by newlines.
-pub(super) async fn handle_ndjson_unix(
-    handler: Arc<JsonRpcHandler>,
-    reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
-    writer: &mut tokio::net::unix::OwnedWriteHalf,
-    first_line: String,
-) -> ServerResult<()> {
-    let mut line = first_line;
-    loop {
-        let trimmed = line.trim();
-        if !trimmed.is_empty() {
-            let response_body = process_request(
-                &handler,
-                trimmed.as_bytes(),
-                ConnectionTrustHints::UNIX_LOCAL,
-            )
-            .await?;
-            writer
-                .write_all(&response_body)
-                .await
-                .map_err(|e| ServerError::Network(e.to_string()))?;
-            writer
-                .write_all(b"\n")
-                .await
-                .map_err(|e| ServerError::Network(e.to_string()))?;
-            writer
-                .flush()
-                .await
-                .map_err(|e| ServerError::Network(e.to_string()))?;
-        }
-
-        line.clear();
-        let n = reader
-            .read_line(&mut line)
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
-        if n == 0 {
-            break;
-        }
-    }
-    Ok(())
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    super::dispatch::handle_ribocipher_clear(
+        handler,
+        &mut reader,
+        &mut writer,
+        protocol_type,
+        ConnectionTrustHints::UNIX_LOCAL,
+        None,
+    )
+    .await
 }
 
 /// Returns `true` when a byte indicates a plain-text protocol
@@ -797,59 +665,4 @@ pub(crate) fn format_http_response_header(body_len: usize, closing: bool) -> Str
          {conn_header}\r\n\
          \r\n"
     )
-}
-
-async fn read_http_request_continuation_unix(
-    reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
-) -> ServerResult<(HashMap<String, String>, Vec<u8>)> {
-    let mut headers = HashMap::new();
-    let mut line = String::new();
-
-    loop {
-        line.clear();
-        let n = reader
-            .read_line(&mut line)
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
-        if n == 0 || line == "\r\n" || line == "\n" {
-            break;
-        }
-        if let Some((name, value)) = parse_http_header_field(&line) {
-            headers.insert(name, value);
-        }
-    }
-
-    let content_length: usize = headers
-        .get("content-length")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-
-    let mut body = vec![0u8; content_length];
-    reader
-        .read_exact(&mut body)
-        .await
-        .map_err(|e| ServerError::Network(e.to_string()))?;
-
-    Ok((headers, body))
-}
-
-async fn write_http_response_unix(
-    writer: &mut tokio::net::unix::OwnedWriteHalf,
-    body: &[u8],
-    closing: bool,
-) -> ServerResult<()> {
-    let header = format_http_response_header(body.len(), closing);
-    writer
-        .write_all(header.as_bytes())
-        .await
-        .map_err(|e| ServerError::Network(e.to_string()))?;
-    writer
-        .write_all(body)
-        .await
-        .map_err(|e| ServerError::Network(e.to_string()))?;
-    writer
-        .flush()
-        .await
-        .map_err(|e| ServerError::Network(e.to_string()))?;
-    Ok(())
 }
