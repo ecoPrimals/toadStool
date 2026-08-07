@@ -77,14 +77,10 @@ echo "  help    - Show help"
 
     fs::write(&script_path, toadstool_script).await?;
 
-    // Make executable on Unix systems
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&script_path).await?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&script_path, perms).await?;
-    }
+    toadstool_common::platform::set_access(
+        &script_path,
+        toadstool_common::platform::PlatformAccess::Executable,
+    )?;
 
     info!("✅ Core components installed");
     Ok(())

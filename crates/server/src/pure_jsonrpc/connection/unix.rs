@@ -68,7 +68,6 @@ pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResul
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
         let mode =
             std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SOCKET_MODE)
                 .ok()
@@ -76,13 +75,8 @@ pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResul
                     u32::from_str_radix(s.trim_start_matches("0o").trim_start_matches('0'), 8).ok()
                 })
                 .unwrap_or(0o660);
-        let mut perms = tokio::fs::metadata(socket_path)
-            .await
-            .map_err(|e| ServerError::Internal(e.to_string()))?
-            .permissions();
-        perms.set_mode(mode);
-        tokio::fs::set_permissions(socket_path, perms)
-            .await
+        let access = toadstool_common::platform::PlatformAccess::Custom(mode);
+        toadstool_common::platform::set_access(socket_path, access)
             .map_err(|e| ServerError::Internal(e.to_string()))?;
         info!("Set JSON-RPC socket permissions to {mode:04o}");
     }

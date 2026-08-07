@@ -238,30 +238,26 @@ pub async fn run_server_main(
         && legacy != &jsonrpc_socket
     {
         let _ = std::fs::remove_file(legacy);
-        #[cfg(unix)]
-        {
-            if let Err(e) = std::os::unix::fs::symlink(&jsonrpc_socket, legacy) {
-                warn!(
-                    "Could not create legacy symlink {} → {}: {e}",
-                    legacy.display(),
-                    jsonrpc_socket.display()
-                );
-            } else {
-                info!(
-                    "Legacy symlink: {} → {}",
-                    legacy.display(),
-                    jsonrpc_socket
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                );
-            }
+        if let Err(e) = toadstool_common::platform::platform_link(&jsonrpc_socket, legacy) {
+            warn!(
+                "Could not create legacy symlink {} → {}: {e}",
+                legacy.display(),
+                jsonrpc_socket.display()
+            );
+        } else {
+            info!(
+                "Legacy symlink: {} → {}",
+                legacy.display(),
+                jsonrpc_socket
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+            );
         }
     }
 
     // C2 migration symlink: compute-tarpc.sock → compute.tarpc.sock
     // Clients using the pre-C2 naming can still discover the tarpc endpoint.
-    #[cfg(unix)]
     if let Some(dir) = tarpc_socket_path.parent() {
         let domain = toadstool_common::constants::primal_identity::CAPABILITY_DOMAIN;
         let old_name = if family_id.is_empty() || family_id == "default" {
@@ -272,7 +268,8 @@ pub async fn run_server_main(
         let old_path = dir.join(&old_name);
         if old_path != tarpc_socket_path {
             let _ = std::fs::remove_file(&old_path);
-            if let Err(e) = std::os::unix::fs::symlink(&tarpc_socket_path, &old_path) {
+            if let Err(e) = toadstool_common::platform::platform_link(&tarpc_socket_path, &old_path)
+            {
                 warn!("Could not create tarpc compat symlink {old_name}: {e}");
             }
         }

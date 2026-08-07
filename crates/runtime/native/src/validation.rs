@@ -23,15 +23,22 @@ pub fn resolve_executable(
 
             #[cfg(unix)]
             {
-                use std::os::unix::fs::PermissionsExt;
-                let metadata = std::fs::metadata(path)
-                    .map_err(|e| ToadStoolError::io(format!("Failed to read metadata: {e}")))?;
-                let permissions = metadata.permissions();
-                if permissions.mode() & 0o111 == 0 {
-                    return Err(ToadStoolError::permission_denied(format!(
-                        "File is not executable: {}",
-                        path.display()
-                    )));
+                match toadstool::common::platform::check_access(
+                    path,
+                    toadstool::common::platform::PlatformAccess::Executable,
+                ) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        return Err(ToadStoolError::permission_denied(format!(
+                            "File is not executable: {}",
+                            path.display()
+                        )));
+                    }
+                    Err(e) => {
+                        return Err(ToadStoolError::io(format!(
+                            "Failed to check permissions: {e}"
+                        )));
+                    }
                 }
             }
 

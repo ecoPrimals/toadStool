@@ -216,16 +216,16 @@ fn probe_keyring(name: &str) -> Option<SecretString> {
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        let meta = std::fs::metadata(&path).ok()?;
-        let mode = meta.permissions().mode() & 0o777;
-        if mode != 0o600 {
-            tracing::warn!(
-                path = %path.display(),
-                mode = format!("{mode:o}"),
-                "credentials file has unsafe permissions (need 0600), skipping"
-            );
-            return None;
+        match crate::platform::check_access(&path, crate::platform::PlatformAccess::OwnerOnly) {
+            Ok(true) => {}
+            Ok(false) => {
+                tracing::warn!(
+                    path = %path.display(),
+                    "credentials file has unsafe permissions (need owner-only), skipping"
+                );
+                return None;
+            }
+            Err(_) => return None,
         }
     }
 

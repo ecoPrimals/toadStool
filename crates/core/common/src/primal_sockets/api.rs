@@ -26,12 +26,10 @@ pub fn get_biomeos_dir() -> PathBuf {
 pub fn ensure_biomeos_dir() -> std::io::Result<PathBuf> {
     let biomeos_dir = get_biomeos_dir();
     std::fs::create_dir_all(&biomeos_dir)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o700);
-        std::fs::set_permissions(&biomeos_dir, perms)?;
-    }
+    crate::platform::set_access(
+        &biomeos_dir,
+        crate::platform::PlatformAccess::OwnerExclusive,
+    )?;
     Ok(biomeos_dir)
 }
 

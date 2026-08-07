@@ -22,16 +22,11 @@ pub fn ensure_biomeos_directory(runtime_dir: &Path) -> ServerResult<PathBuf> {
 
     std::fs::create_dir_all(&biomeos_dir).map_err(|e| ServerError::Internal(e.to_string()))?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        // 0o750: owner rwx, group rx — allows membrane composition peers
-        // (running as the same group) to traverse the directory and connect
-        // to sockets. Without group access, cell boot fails (B1/B2 Wave 156e).
-        let perms = std::fs::Permissions::from_mode(0o750);
-        std::fs::set_permissions(&biomeos_dir, perms)
-            .map_err(|e| ServerError::Internal(e.to_string()))?;
-    }
+    toadstool_common::platform::set_access(
+        &biomeos_dir,
+        toadstool_common::platform::PlatformAccess::OwnerFullGroupTraverse,
+    )
+    .map_err(|e| ServerError::Internal(e.to_string()))?;
 
     info!("✅ biomeos directory ensured: {}", biomeos_dir.display());
     Ok(biomeos_dir)
@@ -160,13 +155,11 @@ pub fn get_socket_path(
     let tmp_biomeos = std::env::temp_dir().join("biomeos");
     std::fs::create_dir_all(&tmp_biomeos).map_err(|e| ServerError::Internal(e.to_string()))?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o750);
-        std::fs::set_permissions(&tmp_biomeos, perms)
-            .map_err(|e| ServerError::Internal(e.to_string()))?;
-    }
+    toadstool_common::platform::set_access(
+        &tmp_biomeos,
+        toadstool_common::platform::PlatformAccess::OwnerFullGroupTraverse,
+    )
+    .map_err(|e| ServerError::Internal(e.to_string()))?;
 
     let socket_filename = socket_filename_for_family(family_id);
     let tmp_path = tmp_biomeos.join(socket_filename);

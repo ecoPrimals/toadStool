@@ -94,7 +94,10 @@ async fn create_capability_symlinks(socket_path: &Path) {
         return;
     }
     let target = socket_path.to_path_buf();
-    let _ = tokio::task::spawn_blocking(move || std::os::unix::fs::symlink(&target, &legacy)).await;
+    let _ = tokio::task::spawn_blocking(move || {
+        toadstool_common::platform::platform_link(&target, &legacy)
+    })
+    .await;
 }
 
 /// Connect to Unix socket

@@ -95,13 +95,10 @@ pub fn rules_installed() -> bool {
 /// Returns an error if the chmod fails (likely not root).
 pub fn set_bar0_permissions(bdf: &str, mode: u32) -> io::Result<()> {
     let path = toadstool_common::sysfs_paths::sysfs_pci_device_file(bdf, "resource0");
-    let metadata = fs::metadata(&path)?;
-    let mut perms = metadata.permissions();
-    {
-        use std::os::unix::fs::PermissionsExt;
-        perms.set_mode(mode);
-    }
-    fs::set_permissions(&path, perms)?;
+    toadstool_common::platform::set_access(
+        path.as_ref(),
+        toadstool_common::platform::PlatformAccess::Custom(mode),
+    )?;
     tracing::info!("Set {path} to mode {mode:o}");
     Ok(())
 }
