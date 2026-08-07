@@ -7,9 +7,6 @@ use crate::permissions::list_device_nodes;
 use std::fs;
 use std::time::Duration;
 
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-
 /// Verify complete setup
 pub fn verify_setup(devices: &[AkidaDevice]) -> Result<()> {
     // Poll for device nodes (udev creates them asynchronously). Return as soon
@@ -87,9 +84,11 @@ fn verify_device_nodes() -> Result<()> {
     // Check permissions
     #[cfg(unix)]
     for node in &nodes {
-        let metadata = fs::metadata(node)?;
-        let permissions = metadata.permissions();
-        if permissions.mode() & 0o666 != 0o666 {
+        use std::path::Path;
+        if !toadstool_common::platform::check_access(
+            Path::new(node),
+            toadstool_common::platform::PlatformAccess::Custom(0o666),
+        )? {
             return Err(SetupError::Setup(format!(
                 "Incorrect permissions on {node}"
             )));

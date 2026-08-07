@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S358 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S359 | v0.2.0
 
 ---
 
@@ -308,6 +308,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S359 (Aug 7, 2026)**: **G68 L2 Convergence** — Final 2 `PermissionsExt` violations migrated (akida-setup permissions + verification). `check_access` for `Custom` mode now uses bitmask semantics (all required bits present) instead of exact match. `missing_docs` warning on BTSP non-Unix stub resolved. Zero `PermissionsExt` usage remains in production code. G68 L2: **COMPLIANT**. L3 (11 device backends in cylinder/hw-safe/nvpmu/akida-driver) — glacial scope.
 - **S358 (Aug 7, 2026)**: **G68 Platform Substrate Abstraction (L1+L2)** — New `toadstool-common::platform` module with `platform_link()` (L1) and `PlatformAccess` enum + `set_access()`/`check_access()` (L2). Replaces 10 scattered inline `#[cfg(unix)]` blocks across 11 files. Unix: mode bits + symlink. Windows: best-effort ACL + symlink_file/dir. 3 symlink sites + 7 permission sites migrated. L3 (device backends) unchanged — already gated.
 - **S357 (Aug 7, 2026)**: **akida-driver cross-arch — `#[cfg(unix)]` bandaid** — All hardware-dependent modules (device, io, mmio, vfio, discovery, inference, loading, sram, puf, glowplug, setup, tenancy) gated with `#[cfg(unix)]`. Platform-agnostic modules (backend traits, capabilities, hybrid ESN, sentinel, evolution, software backend) available on all targets. Windows cross-compile (toadstool-cli) PASS. Proper fix: G68 Platform Substrate Abstraction.
 - **S355 (Aug 6, 2026)**: **Deep Debt — Hardcoded Primal Names, Fake Data, Dead Code, C2 Announce Parity** — 3 hardcoded primal name violations replaced with capability-based strings (songBird→coordination.webhook.export, petalTongue→hardware transport, biomeOS tower→coordination.discover). `tarpc_socket_name` added to `primal.announce` (C2 parity with `identity.get`). `InMemoryBackend` module gated behind `cfg(test)`. `get_device_usage()` evolved from fake zeros to `not_supported` with guidance. `DeviceUsage::default()` documented as unmeasured sentinel. Dead `validate_and_optimize` deleted. 9,008 tests, 0 failures.

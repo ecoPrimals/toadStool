@@ -105,6 +105,7 @@ fn check_access_impl(path: &Path, required: PlatformAccess) -> std::io::Result<b
     let actual_mode = metadata.permissions().mode() & 0o7777;
     let required_mode = required.to_mode();
 
+    #[allow(clippy::verbose_bit_mask)]
     Ok(match required {
         // For OwnerOnly: ensure no group/world bits are set
         PlatformAccess::OwnerOnly => actual_mode & 0o077 == 0,
@@ -112,6 +113,8 @@ fn check_access_impl(path: &Path, required: PlatformAccess) -> std::io::Result<b
         PlatformAccess::OwnerExclusive => actual_mode & 0o077 == 0,
         // For Executable: ensure at least one execute bit is set
         PlatformAccess::Executable => actual_mode & 0o111 != 0,
+        // For Custom: check that all required bits are present
+        PlatformAccess::Custom(mode) => actual_mode & mode == mode,
         // For others: exact match on relevant bits
         _ => actual_mode == required_mode,
     })

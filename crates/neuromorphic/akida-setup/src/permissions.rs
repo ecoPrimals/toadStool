@@ -6,8 +6,6 @@ use crate::error::{Result, SetupError};
 #[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(unix)]
 use std::path::Path;
 
 #[cfg(unix)]
@@ -112,10 +110,10 @@ pub fn setup_pcie_permissions(_pcie_address: &str) -> Result<()> {
 /// Set file permissions
 #[cfg(unix)]
 fn set_file_permissions(path: &Path, mode: u32) -> Result<()> {
-    let metadata = fs::metadata(path)?;
-    let mut permissions = metadata.permissions();
-    permissions.set_mode(mode);
-    fs::set_permissions(path, permissions)?;
+    toadstool_common::platform::set_access(
+        path,
+        toadstool_common::platform::PlatformAccess::Custom(mode),
+    )?;
     Ok(())
 }
 

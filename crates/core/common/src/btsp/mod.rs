@@ -37,6 +37,7 @@ pub use phase3::{NegotiateParams, NegotiateResponse, Phase3Error, Phase3SessionK
 pub use relay::relay_json_line_handshake;
 
 #[cfg(not(unix))]
+/// Stub for non-Unix platforms where BTSP relay is unavailable.
 pub async fn relay_json_line_handshake<S>(
     _stream: &mut S,
     _first_line: &str,
