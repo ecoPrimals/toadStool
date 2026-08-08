@@ -4,13 +4,13 @@
 //!
 //! # Evolution (Feb 12, 2026)
 //!
-//! Evolved from `libc` constants to `rustix::fs::OFlags` for pure Rust.
+//! Evolved from `libc` constants to G68 `LinuxDeviceFile` backend trait.
 
-use rustix::fs::OFlags;
-use std::fs::{File, OpenOptions};
-use std::os::unix::fs::OpenOptionsExt;
+use std::fs::File;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
+use toadstool_common::platform::DeviceFile;
+use toadstool_hw_safe::LinuxDeviceFile;
 
 use crate::discovery::DeviceInfo;
 use crate::error::{AkidaError, Result};
@@ -114,18 +114,8 @@ impl DeviceHandle {
             return Err(AkidaError::device_not_found(path));
         }
 
-        // SAFETY: OFlags::NONBLOCK.bits() is always a valid i32 value (flag bits are small positive values)
-        #[expect(
-            clippy::cast_possible_wrap,
-            reason = "Hardware returns signed offset in u32 wire format"
-        )]
-        let nonblock_flag = OFlags::NONBLOCK.bits() as i32;
-
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .custom_flags(nonblock_flag) // Match Python SDK behavior, using rustix
-            .open(path)?;
+        let fd = LinuxDeviceFile.open(path, true, true)?;
+        let file = File::from(fd);
 
         Ok(Self { file })
     }

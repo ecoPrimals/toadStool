@@ -20,7 +20,9 @@
 
 use crate::data::{Dataset, Sample};
 use crate::{Benchmark, BenchmarkConfig, BenchmarkResult, Error, Result};
-use akida_driver::{BackendSelection, NpuBackend, select_backend};
+#[cfg(unix)]
+use akida_driver::select_backend;
+use akida_driver::{BackendSelection, NpuBackend};
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
@@ -78,12 +80,23 @@ impl Harness {
             config.device_id
         );
 
-        let device = select_backend(config.backend, &config.device_id)
-            .map_err(|e| Error::HardwareInit(e.to_string()))?;
+        #[cfg(not(unix))]
+        {
+            let _ = &config;
+            return Err(Error::HardwareInit(
+                "NeuroBench harness requires Unix (NPU hardware access)".into(),
+            ));
+        }
 
-        info!("Using {:?} backend", device.backend_type());
+        #[cfg(unix)]
+        {
+            let device = select_backend(config.backend, &config.device_id)
+                .map_err(|e| Error::HardwareInit(e.to_string()))?;
 
-        Ok(Self { config, device })
+            info!("Using {:?} backend", device.backend_type());
+
+            Ok(Self { config, device })
+        }
     }
 
     /// Run a benchmark with real dataset
