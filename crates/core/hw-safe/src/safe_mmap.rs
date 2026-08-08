@@ -3,16 +3,14 @@
 
 //! RAII memory-mapped file region.
 //!
-//! [`SafeMmapRegion`] wraps `rustix::mm::mmap`/`munmap` for device BAR files,
+//! [`SafeMmapRegion`] wraps `mmap`/`munmap` for device BAR files,
 //! sysfs resource files, and similar file-backed hardware mappings. The mapping
 //! lifetime (munmap on drop) is managed by the RAII struct.
 //!
-//! This replaces the duplicate mmap patterns in:
-//! - `akida-driver` `MmapRegion`
-//! - `nvpmu` `Bar0Access`
-//! - `display` V4L2 device mappings
+//! On non-Linux platforms, construction returns [`MmapError::Unsupported`].
 
 use std::fs::File;
+#[cfg(target_os = "linux")]
 use std::os::fd::AsFd;
 use std::path::Path;
 use std::ptr::NonNull;
@@ -51,6 +49,9 @@ pub enum MmapError {
         /// Path with null mmap result.
         path: String,
     },
+    /// Platform does not support memory mapping.
+    #[error("mmap not supported on this platform")]
+    Unsupported,
 }
 
 /// RAII memory-mapped file region.
@@ -74,7 +75,8 @@ impl SafeMmapRegion {
     /// # Errors
     ///
     /// Returns an error if the file cannot be opened, has zero size, or
-    /// the mmap syscall fails.
+    /// the mmap syscall fails. Returns [`MmapError::Unsupported`] on non-Linux.
+    #[cfg(target_os = "linux")]
     pub fn map_shared_rw(path: &Path) -> Result<Self, MmapError> {
         let (file, size) = Self::open_validated(path, true)?;
         let path_str = path.display().to_string();
@@ -105,12 +107,19 @@ impl SafeMmapRegion {
         })
     }
 
+    /// Non-Linux stub.
+    #[cfg(not(target_os = "linux"))]
+    pub fn map_shared_rw(_path: &Path) -> Result<Self, MmapError> {
+        Err(MmapError::Unsupported)
+    }
+
     /// Map a file as a shared read-only memory region.
     ///
     /// # Errors
     ///
     /// Returns an error if the file cannot be opened, has zero size, or
-    /// the mmap syscall fails.
+    /// the mmap syscall fails. Returns [`MmapError::Unsupported`] on non-Linux.
+    #[cfg(target_os = "linux")]
     pub fn map_shared_ro(path: &Path) -> Result<Self, MmapError> {
         let (file, size) = Self::open_validated(path, false)?;
         let path_str = path.display().to_string();
@@ -141,9 +150,16 @@ impl SafeMmapRegion {
         })
     }
 
+    /// Non-Linux stub.
+    #[cfg(not(target_os = "linux"))]
+    pub fn map_shared_ro(_path: &Path) -> Result<Self, MmapError> {
+        Err(MmapError::Unsupported)
+    }
+
     /// Create from an anonymous mapping (no backing file).
     ///
     /// Used by [`super::platform_backends::LinuxMemoryMapper::map_anonymous`].
+    #[cfg(target_os = "linux")]
     pub(crate) fn from_anonymous(ptr: NonNull<u8>, size: usize) -> Self {
         let file = std::fs::File::open("/dev/null").expect("/dev/null must exist on Linux");
         Self {
@@ -153,6 +169,7 @@ impl SafeMmapRegion {
         }
     }
 
+    #[cfg(target_os = "linux")]
     fn open_validated(path: &Path, writable: bool) -> Result<(File, usize), MmapError> {
         let path_str = path.display().to_string();
         let file = std::fs::OpenOptions::new()
@@ -206,10 +223,13 @@ impl SafeMmapRegion {
 
 impl Drop for SafeMmapRegion {
     fn drop(&mut self) {
-        // SAFETY: ptr and size from a successful mmap in constructor;
-        // Drop runs exactly once; no outstanding borrows possible.
-        unsafe {
-            let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
+        #[cfg(target_os = "linux")]
+        {
+            // SAFETY: ptr and size from a successful mmap in constructor;
+            // Drop runs exactly once; no outstanding borrows possible.
+            unsafe {
+                let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
+            }
         }
     }
 }

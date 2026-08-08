@@ -7,61 +7,70 @@
 //! crate in the workspace uses `#![forbid(unsafe_code)]` and depends on
 //! this crate for hardware-level operations.
 //!
-//! ## What lives here
+//! ## Cross-Platform Architecture
 //!
-//! - [`SafeMmapRegion`] — RAII memory-mapped file region (mmap/munmap)
-//! - [`VolatileMmio`] — bounds-checked volatile MMIO register access
+//! The crate is structured in layers:
+//!
+//! **Layer 0 — Pure Rust (all platforms):**
 //! - [`AlignedAlloc`] — heap allocation with arbitrary alignment
+//! - [`VolatileMmio`] — bounds-checked volatile MMIO register access
+//! - [`ExclusivePtr`](exclusive_ptr) — ownership-tracked raw pointer
+//! - [`ContiguousBytes`] — trait for contiguous memory regions
+//!
+//! **Layer 1 — Memory management (Linux, with cross-platform stubs):**
+//! - [`SafeMmapRegion`] — RAII memory-mapped file region
+//! - [`DeviceMmap`] — RAII device fd mmap with offset
 //! - [`LockedMemory`] — mlock/munlock for DMA-safe and secure memory
+//! - [`HugePageMemory`] — locked huge-page allocation
 //!
-//! ## Design principle
+//! **Layer 2 — Device backends (Linux-only kernel ABI):**
+//! - [`vfio_setup`] — VFIO container/group/device ioctls
+//! - [`vfio_dma`] — VFIO IOMMU DMA map/unmap
+//! - [`drm_ioctl`] — DRM ioctl execution
+//! - [`platform_backends`] — process, socket, filesystem operations
 //!
-//! Each type encapsulates the minimum unsafe needed for its operation.
-//! The public API is entirely safe. All `unsafe` blocks have `// SAFETY:`
-//! comments documenting invariants.
-//!
-//! The goal is to reduce this crate's unsafe surface to the irreducible
-//! minimum (~26 operations), then iterate each one toward pure Rust
-//! alternatives (e.g. `memmap2` for mmap, `aligned-vec` for allocation).
+//! On non-Linux targets, Layer 1 types exist but constructors return
+//! `Err(Unsupported)`. Layer 2 modules are conditionally compiled.
 
-#[cfg(target_os = "linux")]
+// ── Layer 0: Pure Rust (unconditional) ───────────────────────────────────
+
 pub mod aligned_alloc;
-#[cfg(target_os = "linux")]
 mod contiguous;
-#[cfg(target_os = "linux")]
+mod exclusive_ptr;
+pub mod volatile_mmio;
+
+pub use aligned_alloc::AlignedAlloc;
+pub use contiguous::ContiguousBytes;
+pub use volatile_mmio::MmioError;
+pub use volatile_mmio::VolatileMmio;
+
+pub(crate) use exclusive_ptr::ExclusivePtr;
+
+// ── Layer 1: Memory management (types unconditional, impl gated) ─────────
+
 pub mod device_mmap;
+pub mod huge_page;
+pub mod locked_memory;
+pub mod safe_mmap;
+
+pub use device_mmap::DeviceMmap;
+pub use huge_page::HugePageMemory;
+pub use locked_memory::LockedMemory;
+pub use safe_mmap::SafeMmapRegion;
+
+// ── Layer 2: Device backends (Linux kernel ABI) ──────────────────────────
+
 #[cfg(target_os = "linux")]
 pub mod drm_ioctl;
 #[cfg(target_os = "linux")]
-mod exclusive_ptr;
-#[cfg(target_os = "linux")]
-pub mod huge_page;
-#[cfg(target_os = "linux")]
-pub mod locked_memory;
-#[cfg(target_os = "linux")]
-pub mod safe_mmap;
+pub mod platform_backends;
 #[cfg(target_os = "linux")]
 pub mod systemd_fds;
 #[cfg(target_os = "linux")]
 pub mod vfio_dma;
 #[cfg(target_os = "linux")]
 pub mod vfio_setup;
-#[cfg(target_os = "linux")]
-pub mod volatile_mmio;
 
-#[cfg(target_os = "linux")]
-pub mod platform_backends;
-
-#[cfg(target_os = "linux")]
-pub use aligned_alloc::AlignedAlloc;
-#[cfg(target_os = "linux")]
-pub use contiguous::ContiguousBytes;
-#[cfg(target_os = "linux")]
-pub use device_mmap::DeviceMmap;
-#[cfg(target_os = "linux")]
-pub use huge_page::HugePageMemory;
-#[cfg(target_os = "linux")]
-pub use locked_memory::LockedMemory;
 #[cfg(target_os = "linux")]
 pub use platform_backends::{
     ForkResult, FsStats, LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier,
@@ -72,12 +81,3 @@ pub use platform_backends::{
     send_signal, sendmsg_with_fds, unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap,
     waitpid_nohang,
 };
-#[cfg(target_os = "linux")]
-pub use safe_mmap::SafeMmapRegion;
-#[cfg(target_os = "linux")]
-pub use volatile_mmio::MmioError;
-#[cfg(target_os = "linux")]
-pub use volatile_mmio::VolatileMmio;
-
-#[cfg(target_os = "linux")]
-pub(crate) use exclusive_ptr::ExclusivePtr;

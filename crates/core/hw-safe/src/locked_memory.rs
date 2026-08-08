@@ -15,8 +15,7 @@
 //! - Locked into physical RAM (`mlock`) so the kernel will not page it out
 //! - Automatically unlocked (`munlock`) and freed on drop
 //!
-//! This eliminates the duplicate mlock/munlock patterns in `nvpmu::dma` and
-//! `akida-driver::backends::vfio::dma`.
+//! On non-Linux platforms, construction returns [`LockError::Unsupported`].
 
 use super::aligned_alloc::{AlignedAlloc, AllocError};
 
@@ -29,6 +28,9 @@ pub enum LockError {
     /// `mlock` syscall failed (e.g. `RLIMIT_MEMLOCK` exceeded).
     #[error("mlock failed: {0}")]
     Mlock(std::io::Error),
+    /// Platform does not support memory locking.
+    #[error("memory locking not supported on this platform")]
+    Unsupported,
 }
 
 /// RAII locked memory buffer — aligned, pinned in RAM, zeroed on drop.
@@ -47,6 +49,8 @@ impl LockedMemory {
     ///
     /// Returns [`LockError::Alloc`] if the allocation fails, or
     /// [`LockError::Mlock`] if locking fails (e.g. `RLIMIT_MEMLOCK`).
+    /// On non-Linux platforms, returns [`LockError::Unsupported`].
+    #[cfg(target_os = "linux")]
     pub fn new(size: usize, align: usize) -> Result<Self, LockError> {
         let inner = AlignedAlloc::new(size, align)?;
 
@@ -59,6 +63,16 @@ impl LockedMemory {
         }
 
         Ok(Self { inner })
+    }
+
+    /// Allocate `size` bytes with `align` alignment and lock them into RAM.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LockError::Unsupported`] on non-Linux platforms.
+    #[cfg(not(target_os = "linux"))]
+    pub fn new(_size: usize, _align: usize) -> Result<Self, LockError> {
+        Err(LockError::Unsupported)
     }
 
     /// Allocate with page alignment (4096) — the common case for DMA buffers.
@@ -99,6 +113,8 @@ impl LockedMemory {
 ///
 /// `ptr` and `len` must describe a valid, page-aligned allocation.
 /// Logs a warning on failure rather than panicking; this is advisory.
+/// No-op on non-Linux platforms.
+#[cfg(target_os = "linux")]
 pub fn madvise_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
     use rustix::mm::{Advice, madvise};
 
@@ -120,14 +136,21 @@ pub fn madvise_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
     }
 }
 
+/// No-op on non-Linux platforms.
+#[cfg(not(target_os = "linux"))]
+pub fn madvise_dontdump(_ptr: std::ptr::NonNull<u8>, _len: usize) {}
+
 impl Drop for LockedMemory {
     fn drop(&mut self) {
-        // SAFETY: same address range passed to `mlock` in `new()`; rustix `munlock` documents the
-        // same provenance requirements as `mlock`. `Drop` runs once; no `&self` borrows remain.
-        unsafe {
-            let _ = rustix::mm::munlock(self.inner.as_ptr().as_ptr().cast(), self.inner.size());
+        #[cfg(target_os = "linux")]
+        {
+            // SAFETY: same address range passed to `mlock` in `new()`; rustix `munlock` documents
+            // the same provenance requirements as `mlock`. `Drop` runs once; no `&self` borrows remain.
+            unsafe {
+                let _ = rustix::mm::munlock(self.inner.as_ptr().as_ptr().cast(), self.inner.size());
+            }
         }
-        // AlignedAlloc's own Drop handles deallocation.
+        // AlignedAlloc's own Drop handles deallocation on all platforms.
     }
 }
 

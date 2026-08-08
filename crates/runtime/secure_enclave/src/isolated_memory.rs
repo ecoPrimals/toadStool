@@ -36,6 +36,7 @@ fn map_lock_error(e: LockError) -> Error {
     match e {
         LockError::Alloc(a) => Error::memory_allocation(a.to_string()),
         LockError::Mlock(io) => Error::memory_lock(format!("mlock failed: {io}")),
+        LockError::Unsupported => Error::memory_lock("memory locking unsupported".to_string()),
     }
 }
 

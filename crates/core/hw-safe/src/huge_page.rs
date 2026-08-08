@@ -9,10 +9,10 @@
 //! [`HugePageMemory`] allocates memory via `mmap_anonymous` with `MAP_HUGETLB`,
 //! locks it into RAM via `mlock`, and cleans up on drop. This removes the need
 //! for consumers to write inline `mmap_anonymous`/`mlock`/`munmap` unsafe blocks.
+//!
+//! On non-Linux platforms, construction returns [`HugePageError::Unsupported`].
 
 use std::ptr::NonNull;
-
-use rustix::mm::{MapFlags, ProtFlags, mlock, mmap_anonymous, munlock, munmap};
 
 use crate::ExclusivePtr;
 use crate::contiguous::ContiguousBytes;
@@ -36,6 +36,7 @@ impl HugePageSize {
         }
     }
 
+    #[cfg(target_os = "linux")]
     fn log2(self) -> u32 {
         match self {
             Self::Huge2M => 21,
@@ -62,6 +63,9 @@ pub enum HugePageError {
     /// `mmap_anonymous` succeeded but returned a null pointer.
     #[error("mmap_anonymous returned null pointer")]
     NullPointer,
+    /// Platform does not support huge page allocation.
+    #[error("huge pages not supported on this platform")]
+    PlatformUnsupported,
 }
 
 /// RAII huge-page memory — `mmap_anonymous` + `MAP_HUGETLB` + `mlock`.
@@ -83,7 +87,11 @@ impl HugePageMemory {
     /// - `size` is 0
     /// - `MAP_HUGETLB` flags are unavailable
     /// - `mmap_anonymous` or `mlock` fails
+    /// - Platform does not support huge pages (non-Linux)
+    #[cfg(target_os = "linux")]
     pub fn new(size: usize, page_size: HugePageSize) -> Result<Self, HugePageError> {
+        use rustix::mm::{MapFlags, ProtFlags, mlock, mmap_anonymous, munmap};
+
         if size == 0 {
             return Err(HugePageError::ZeroSize);
         }
@@ -126,6 +134,12 @@ impl HugePageMemory {
         })
     }
 
+    /// Non-Linux stub — returns [`HugePageError::PlatformUnsupported`].
+    #[cfg(not(target_os = "linux"))]
+    pub fn new(_size: usize, _page_size: HugePageSize) -> Result<Self, HugePageError> {
+        Err(HugePageError::PlatformUnsupported)
+    }
+
     /// Allocation size in bytes (rounded up to page boundary).
     #[must_use]
     pub const fn size(&self) -> usize {
@@ -153,11 +167,14 @@ impl HugePageMemory {
 
 impl Drop for HugePageMemory {
     fn drop(&mut self) {
-        // SAFETY: `ptr`/`size` match the still-mapped region from `new()`; rustix `munlock`/`munmap`
-        // require the same provenance as the original mapping syscalls.
-        unsafe {
-            let _ = munlock(self.ptr.as_ptr().cast(), self.size);
-            let _ = munmap(self.ptr.as_ptr().cast(), self.size);
+        #[cfg(target_os = "linux")]
+        {
+            // SAFETY: `ptr`/`size` match the still-mapped region from `new()`; rustix `munlock`/`munmap`
+            // require the same provenance as the original mapping syscalls.
+            unsafe {
+                let _ = rustix::mm::munlock(self.ptr.as_ptr().cast(), self.size);
+                let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
+            }
         }
     }
 }

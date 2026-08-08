@@ -6,15 +6,13 @@
 
 //! RAII device memory mapping for file-descriptor-based hardware regions.
 //!
-//! [`DeviceMmap`] wraps `rustix::mm::mmap`/`munmap` for device BAR files,
+//! [`DeviceMmap`] wraps `mmap`/`munmap` for device BAR files,
 //! V4L2 video buffers, and similar fd-based hardware mappings where the
 //! mapping offset comes from a kernel ioctl rather than a file-system path.
 //!
-//! This replaces the duplicate mmap/munmap + `unsafe impl Send` patterns in:
-//! - `nvpmu::vfio` BAR0 mapping
-//! - `akida-driver::mmio` BAR mapping
-//! - `display::v4l2` capture buffer mapping
+//! On non-Linux platforms, construction returns [`DeviceMmapError::Unsupported`].
 
+#[cfg(target_os = "linux")]
 use std::os::fd::{AsFd, AsRawFd};
 use std::ptr::NonNull;
 
@@ -34,6 +32,9 @@ pub enum DeviceMmapError {
     /// mmap succeeded but returned a null pointer.
     #[error("device mmap returned null pointer")]
     NullPointer,
+    /// Platform does not support device memory mapping.
+    #[error("device mmap not supported on this platform")]
+    Unsupported,
 }
 
 /// RAII memory-mapped device region.
@@ -60,6 +61,8 @@ impl DeviceMmap {
     ///
     /// Returns [`DeviceMmapError::ZeroSize`] if `size == 0`, or
     /// [`DeviceMmapError::MmapFailed`] if the kernel rejects the mapping.
+    /// Returns [`DeviceMmapError::Unsupported`] on non-Linux.
+    #[cfg(target_os = "linux")]
     pub fn map_shared_rw(fd: impl AsFd, offset: u64, size: usize) -> Result<Self, DeviceMmapError> {
         if size == 0 {
             return Err(DeviceMmapError::ZeroSize);
@@ -102,12 +105,24 @@ impl DeviceMmap {
         })
     }
 
+    /// Non-Linux stub.
+    #[cfg(not(target_os = "linux"))]
+    pub fn map_shared_rw(
+        _fd: impl std::any::Any,
+        _offset: u64,
+        _size: usize,
+    ) -> Result<Self, DeviceMmapError> {
+        Err(DeviceMmapError::Unsupported)
+    }
+
     /// Map a device fd at `offset` as a shared read-only region of `size` bytes.
     ///
     /// # Errors
     ///
     /// Returns [`DeviceMmapError::ZeroSize`] if `size == 0`, or
     /// [`DeviceMmapError::MmapFailed`] if the kernel rejects the mapping.
+    /// Returns [`DeviceMmapError::Unsupported`] on non-Linux.
+    #[cfg(target_os = "linux")]
     pub fn map_shared_ro(fd: impl AsFd, offset: u64, size: usize) -> Result<Self, DeviceMmapError> {
         if size == 0 {
             return Err(DeviceMmapError::ZeroSize);
@@ -147,6 +162,16 @@ impl DeviceMmap {
             ptr: ExclusivePtr::new(ptr),
             size,
         })
+    }
+
+    /// Non-Linux stub.
+    #[cfg(not(target_os = "linux"))]
+    pub fn map_shared_ro(
+        _fd: impl std::any::Any,
+        _offset: u64,
+        _size: usize,
+    ) -> Result<Self, DeviceMmapError> {
+        Err(DeviceMmapError::Unsupported)
     }
 
     /// Size of the mapped region in bytes.
@@ -191,10 +216,13 @@ impl DeviceMmap {
 
 impl Drop for DeviceMmap {
     fn drop(&mut self) {
-        // SAFETY: ptr and size from successful mmap in constructor;
-        // Drop runs exactly once; no outstanding slice borrows possible.
-        unsafe {
-            let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
+        #[cfg(target_os = "linux")]
+        {
+            // SAFETY: ptr and size from successful mmap in constructor;
+            // Drop runs exactly once; no outstanding slice borrows possible.
+            unsafe {
+                let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
+            }
         }
     }
 }

@@ -21,6 +21,9 @@ pub(crate) fn device_mmap_err_to_io(
             std::io::ErrorKind::OutOfMemory,
             "mmap returned null pointer",
         ),
+        toadstool_hw_safe::device_mmap::DeviceMmapError::Unsupported => {
+            std::io::Error::new(std::io::ErrorKind::Unsupported, "device mmap unsupported")
+        }
     }
 }
 
