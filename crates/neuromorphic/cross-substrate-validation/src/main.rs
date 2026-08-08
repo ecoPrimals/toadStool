@@ -14,25 +14,25 @@
 //!
 //! **Deep Debt**: Complete implementation, no mocks!
 
-#[cfg(not(unix))]
+#[cfg(not(target_os = "linux"))]
 fn main() {
     eprintln!("cross-substrate-benchmark requires Unix (Akida hardware and unix IPC)");
     std::process::exit(1);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use akida_driver::DeviceManager;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use akida_models::Model;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use std::time::Instant;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use toadstool_runtime_universal::{
     ComputeUnitType, OperationType, UniversalRuntime, WorkloadBuilder,
 };
 
 /// Typed error for cross-substrate benchmarks.
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[derive(Debug, thiserror::Error)]
 enum BenchError {
     #[error("compute: {0}")]
@@ -45,7 +45,7 @@ enum BenchError {
     Other(String),
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[tokio::main]
 async fn main() -> Result<(), BenchError> {
     // Initialize logging
@@ -172,7 +172,7 @@ async fn main() -> Result<(), BenchError> {
     Ok(())
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 struct BenchmarkResult {
     time_us: f64,
     throughput: f64,
@@ -182,7 +182,7 @@ struct BenchmarkResult {
 // Note: The cpu_result variable was declared but defined in a scope that doesn't exist here.
 // I need to restructure this code properly.
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 async fn benchmark_cpu(
     runtime: &UniversalRuntime,
     input: &[f32],
@@ -215,7 +215,7 @@ async fn benchmark_cpu(
     })
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 async fn benchmark_gpu(
     runtime: &UniversalRuntime,
     index: usize,
@@ -247,7 +247,7 @@ async fn benchmark_gpu(
     })
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 async fn benchmark_neuromorphic(
     manager: &DeviceManager,
     _input_size: usize,
@@ -283,7 +283,7 @@ async fn benchmark_neuromorphic(
     })
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn validate_output(expected: &[f32], actual: &[f32]) -> String {
     if expected.len() != actual.len() {
         return "❌ Size mismatch".to_string();

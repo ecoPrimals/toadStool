@@ -95,7 +95,7 @@ impl MeshTopology {
     /// the actual functional NP count. Assumes AKD1000 5x8x2 geometry
     /// when only the count is available (geometry requires sysfs or
     /// deeper probing).
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub fn from_bar0(sram: &crate::sram::SramAccessor) -> Option<Self> {
         let np_reg = sram.read_np_count().ok()?;
         if np_reg == 0 || np_reg > 1000 {
@@ -585,7 +585,7 @@ impl Capabilities {
     /// # Errors
     ///
     /// Returns error if BAR0 cannot be mapped or key registers are unreadable.
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub fn from_bar0(pcie_address: &str) -> Result<Self> {
         use crate::sram::SramAccessor;
 

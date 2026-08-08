@@ -246,7 +246,7 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
     let ioctl = RmRawIoctl::<{ CARD_INFO_OP }> {
         ptr: ci_buf.as_mut_ptr(),
     };
-    let (rc, errno) = match unsafe { raw_ioctl(fd, ioctl) } {
+    let (rc, errno): (i32, i32) = match unsafe { raw_ioctl(fd, ioctl) } {
         Ok(v) => (v, 0),
         Err(e) => (-1, e.raw_os_error()),
     };
@@ -340,7 +340,7 @@ fn run_attach_gpus_to_fd(fd: &impl AsFd, gpu_id: u32) -> serde_json::Value {
     let ioctl = RmRawIoctl::<{ ATTACH_OP }> {
         ptr: attach_buf.as_mut_ptr().cast(),
     };
-    let (rc, errno) = match unsafe { raw_ioctl(fd, ioctl) } {
+    let (rc, errno): (i32, i32) = match unsafe { raw_ioctl(fd, ioctl) } {
         Ok(v) => (v, 0),
         Err(e) => (-1, e.raw_os_error()),
     };

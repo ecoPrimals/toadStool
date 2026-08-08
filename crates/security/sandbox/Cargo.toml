@@ -35,6 +35,8 @@ tracing = { workspace = true }
 # EVOLVED: rustix removed (Aug 7, 2026) — migrated to hw-safe platform backends
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-hw-safe = { path = "../../core/hw-safe" }
+
+[target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 # Pure Rust seccomp-BPF compile/install (Firecracker); optional — see `seccomp` feature.
 seccompiler = { version = "0.5", optional = true }
 

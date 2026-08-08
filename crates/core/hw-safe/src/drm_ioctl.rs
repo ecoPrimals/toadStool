@@ -92,8 +92,8 @@ unsafe impl Ioctl for DrmIoctlCmd {
 #[cfg(target_os = "linux")]
 #[expect(
     clippy::cast_possible_truncation,
-    reason = "DRM ioctls encode into 32-bit values"
+    reason = "DRM ioctls encode into Opcode-width values"
 )]
 const fn ioctl_nr_to_opcode(nr: u64) -> Opcode {
-    nr as u32
+    nr as Opcode
 }

@@ -365,7 +365,10 @@ impl LinuxSandboxManager {
             return Ok(());
         }
 
-        #[cfg(feature = "seccomp")]
+        #[cfg(all(
+            feature = "seccomp",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ))]
         {
             match apply_seccomp_allow_baseline() {
                 Ok(()) => info!(
@@ -444,7 +447,10 @@ impl LinuxSandboxManager {
     }
 }
 
-#[cfg(feature = "seccomp")]
+#[cfg(all(
+    feature = "seccomp",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
 fn apply_seccomp_allow_baseline() -> Result<(), seccompiler::Error> {
     use std::collections::BTreeMap;
 

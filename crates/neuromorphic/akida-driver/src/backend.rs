@@ -291,7 +291,7 @@ impl BackendSelection {
 /// # Errors
 ///
 /// Returns error if no suitable backend can be initialized for the given device.
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Box<dyn NpuBackend>> {
     use crate::backends::kernel::KernelBackend;
     use crate::backends::software::SoftwareBackend;

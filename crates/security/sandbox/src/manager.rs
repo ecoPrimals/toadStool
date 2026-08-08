@@ -365,6 +365,9 @@ impl SandboxManager for CrossPlatformSandboxManager {
         #[cfg(windows)]
         let usage = self.windows_manager.monitor_sandbox(sandbox_id).await?;
 
+        #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+        let usage = ResourceUsage::default();
+
         // Update stored resource usage
         {
             let mut sandboxes = self.sandboxes.write().await;
@@ -416,6 +419,9 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         #[cfg(windows)]
         let logs = self.windows_manager.get_sandbox_logs(sandbox_id).await?;
+
+        #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+        let logs = Vec::new();
 
         Ok(logs)
     }

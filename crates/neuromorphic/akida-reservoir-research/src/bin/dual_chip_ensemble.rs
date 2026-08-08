@@ -3,20 +3,20 @@
 //!
 //! Runs two reservoirs in parallel and concatenates their states.
 
-#[cfg(not(unix))]
+#[cfg(not(target_os = "linux"))]
 fn main() {
     eprintln!("dual-chip-ensemble requires Unix (Akida hardware)");
     std::process::exit(1);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use akida_reservoir_research::ReservoirResult as Result;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use akida_reservoir_research::ensemble::{DualChipEnsemble, EnsembleConfig};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use tracing::info;
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging

@@ -20,7 +20,7 @@
 
 use crate::data::{Dataset, Sample};
 use crate::{Benchmark, BenchmarkConfig, BenchmarkResult, Error, Result};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use akida_driver::select_backend;
 use akida_driver::{BackendSelection, NpuBackend};
 use std::time::Instant;
@@ -80,7 +80,7 @@ impl Harness {
             config.device_id
         );
 
-        #[cfg(not(unix))]
+        #[cfg(not(target_os = "linux"))]
         {
             let _ = &config;
             return Err(Error::HardwareInit(
@@ -88,7 +88,7 @@ impl Harness {
             ));
         }
 
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         {
             let device = select_backend(config.backend, &config.device_id)
                 .map_err(|e| Error::HardwareInit(e.to_string()))?;

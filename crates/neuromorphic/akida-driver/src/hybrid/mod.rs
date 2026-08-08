@@ -85,14 +85,14 @@
 use crate::error::{AkidaError, Result};
 use tracing::{debug, info};
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod hardware;
 mod selector;
 mod software;
 mod substrate;
 mod weights;
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use hardware::HardwareEsnExecutor;
 use software::SoftwareEsnExecutor;
 
@@ -116,7 +116,7 @@ pub struct HybridEsn {
     /// Software backend — always present (fallback + current primary)
     sw_backend: SoftwareEsnExecutor,
     /// Hardware backend — present only when hardware is available and validated
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     hw_backend: Option<HardwareEsnExecutor>,
 }
 
@@ -128,7 +128,7 @@ impl std::fmt::Debug for HybridEsn {
             .field("output_dim", &self.weights.output_dim)
             .field("mode", &self.mode)
             .field("sw_backend", &self.sw_backend);
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         s.field("hw_backend", &self.hw_backend);
         s.finish()
     }
@@ -194,7 +194,7 @@ impl HybridEsn {
             weights,
             mode: SubstrateMode::PureSoftware,
             sw_backend,
-            #[cfg(unix)]
+            #[cfg(target_os = "linux")]
             hw_backend: None,
         })
     }
@@ -214,7 +214,7 @@ impl HybridEsn {
             weights,
             mode: SubstrateMode::PureSoftware,
             sw_backend,
-            #[cfg(unix)]
+            #[cfg(target_os = "linux")]
             hw_backend: None,
         })
     }
@@ -230,7 +230,7 @@ impl HybridEsn {
     /// # Errors
     ///
     /// Returns error if device is incompatible with the loaded weights.
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub fn with_hardware_linear(mut self, device: crate::device::AkidaDevice) -> Result<Self> {
         let hw = HardwareEsnExecutor::new_linear(device, &self.weights);
         self.hw_backend = Some(hw);
@@ -250,7 +250,7 @@ impl HybridEsn {
     /// # Errors
     ///
     /// Returns error if device cannot be initialized.
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub fn with_hardware_native(mut self, device: crate::device::AkidaDevice) -> Result<Self> {
         let hw = HardwareEsnExecutor::new_native(device, &self.weights);
         self.hw_backend = Some(hw);
@@ -261,7 +261,7 @@ impl HybridEsn {
 
     /// Downgrade to software mode (e.g., hardware device lost or being reconfigured).
     pub fn to_software_mode(&mut self) {
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         {
             self.hw_backend = None;
         }
@@ -293,7 +293,7 @@ impl EsnSubstrate for HybridEsn {
         match self.mode {
             SubstrateMode::PureSoftware => self.sw_backend.step(input),
             SubstrateMode::HardwareLinear | SubstrateMode::HardwareNative => {
-                #[cfg(unix)]
+                #[cfg(target_os = "linux")]
                 if let Some(hw) = self.hw_backend.as_mut() {
                     return hw.step(input);
                 }
@@ -305,7 +305,7 @@ impl EsnSubstrate for HybridEsn {
 
     fn reset(&mut self) {
         self.sw_backend.reset();
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         if let Some(hw) = self.hw_backend.as_mut() {
             hw.reset();
         }
@@ -315,7 +315,7 @@ impl EsnSubstrate for HybridEsn {
         match self.mode {
             SubstrateMode::PureSoftware => self.sw_backend.reservoir_state(),
             _ => {
-                #[cfg(unix)]
+                #[cfg(target_os = "linux")]
                 if let Some(hw) = self.hw_backend.as_ref() {
                     return hw.state.clone();
                 }

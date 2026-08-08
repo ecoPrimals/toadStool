@@ -65,31 +65,30 @@ pub mod hybrid;
 pub mod sentinel;
 mod synthetic;
 
-// Hardware modules — unix-only bandaid (#[cfg(unix)]).
-// Proper platform abstraction: G68 PLATFORM SUBSTRATE spec.
-#[cfg(unix)]
+// Hardware modules — Linux-only (VFIO/sysfs kernel interfaces).
+#[cfg(target_os = "linux")]
 mod device;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod discovery;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod glowplug;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod inference;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod io;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod loading;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod mmio;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod puf;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod setup;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod sram;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod tenancy;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod vfio;
 
 /// Hardware identification constants (re-exported from akida-chip).
@@ -101,29 +100,29 @@ pub mod pcie_ids {
     };
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use backend::select_backend;
 pub use backend::{BackendSelection, BackendType, LoadVerification, ModelHandle, NpuBackend};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use backends::UserspaceBackend;
 pub use backends::software::{SoftwareBackend, pack_software_model};
 pub use capabilities::{
     BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,
     WeightMutationSupport,
 };
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use device::{AkidaDevice, DeviceHandle};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};
 pub use hybrid::{
     EsnSubstrate, EsnWeights, HybridEsn, SubstrateInfo, SubstrateMode, SubstrateSelector,
 };
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub use vfio::VfioBackend;
 
 #[cfg(any(test, feature = "test-mocks"))]
@@ -136,7 +135,7 @@ pub mod prelude {
         SubstrateSelector,
     };
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub use crate::{
         AkidaDevice, DeviceManager, InferenceConfig, InferenceExecutor, InferenceResult,
         LoadConfig, ModelLoader, ModelProgram, NpuConfig, VfioBackend,

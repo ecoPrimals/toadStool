@@ -82,7 +82,7 @@ fn verify_device_nodes() -> Result<()> {
     }
 
     // Check permissions
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     for node in &nodes {
         use std::path::Path;
         if !toadstool_common::platform::check_access(

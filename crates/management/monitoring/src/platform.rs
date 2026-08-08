@@ -244,10 +244,10 @@ async fn measure_macos_resources(
     }
 
     let cpu_percent: f64 = fields[1]
-        .parse()
+        .parse::<f64>()
         .map_err(|e| ResourceMonitorError::ParseError(e.to_string()))?;
     let rss_kb: u64 = fields[2]
-        .parse()
+        .parse::<u64>()
         .map_err(|e| ResourceMonitorError::ParseError(e.to_string()))?;
 
     // Network monitoring for macOS (simplified)

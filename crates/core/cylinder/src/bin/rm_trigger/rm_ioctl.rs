@@ -46,7 +46,7 @@ pub struct NvGpfifoScheduleParams {
 
 pub const fn iowr(magic: u8, nr: u8, size: usize) -> Opcode {
     let dir: u32 = 3;
-    (dir << 30) | ((size as u32 & 0x3FFF) << 16) | ((magic as u32) << 8) | nr as u32
+    ((dir << 30) | ((size as u32 & 0x3FFF) << 16) | ((magic as u32) << 8) | nr as u32) as Opcode
 }
 
 pub const RM_ALLOC_OP: Opcode = iowr(
