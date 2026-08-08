@@ -141,6 +141,18 @@ impl SafeMmapRegion {
         })
     }
 
+    /// Create from an anonymous mapping (no backing file).
+    ///
+    /// Used by [`super::platform_backends::LinuxMemoryMapper::map_anonymous`].
+    pub(crate) fn from_anonymous(ptr: NonNull<u8>, size: usize) -> Self {
+        let file = std::fs::File::open("/dev/null").expect("/dev/null must exist on Linux");
+        Self {
+            ptr: ExclusivePtr::new(ptr),
+            size,
+            _file: file,
+        }
+    }
+
     fn open_validated(path: &Path, writable: bool) -> Result<(File, usize), MmapError> {
         let path_str = path.display().to_string();
         let file = std::fs::OpenOptions::new()
@@ -207,6 +219,20 @@ impl std::fmt::Debug for SafeMmapRegion {
         f.debug_struct("SafeMmapRegion")
             .field("size", &self.size)
             .finish_non_exhaustive()
+    }
+}
+
+impl toadstool_common::platform::MappedMemory for SafeMmapRegion {
+    fn as_ptr(&self) -> *const u8 {
+        self.ptr.as_non_null().as_ptr()
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.ptr.as_non_null().as_ptr()
+    }
+
+    fn len(&self) -> usize {
+        self.size
     }
 }
 

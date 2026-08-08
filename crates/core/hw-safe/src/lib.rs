@@ -50,6 +50,9 @@ pub mod vfio_setup;
 pub mod volatile_mmio;
 
 #[cfg(target_os = "linux")]
+pub mod platform_backends;
+
+#[cfg(target_os = "linux")]
 pub use aligned_alloc::AlignedAlloc;
 #[cfg(target_os = "linux")]
 pub use contiguous::ContiguousBytes;
@@ -59,6 +62,8 @@ pub use device_mmap::DeviceMmap;
 pub use huge_page::HugePageMemory;
 #[cfg(target_os = "linux")]
 pub use locked_memory::LockedMemory;
+#[cfg(target_os = "linux")]
+pub use platform_backends::{LinuxMemoryMapper, LinuxPinnedMemory};
 #[cfg(target_os = "linux")]
 pub use safe_mmap::SafeMmapRegion;
 #[cfg(target_os = "linux")]
