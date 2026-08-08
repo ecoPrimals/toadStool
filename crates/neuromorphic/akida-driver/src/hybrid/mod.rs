@@ -271,7 +271,7 @@ impl HybridEsn {
 
     /// Current operating mode.
     #[must_use]
-    pub const fn mode(&self) -> &SubstrateMode {
+    pub const fn substrate_mode(&self) -> &SubstrateMode {
         &self.mode
     }
 
@@ -356,7 +356,7 @@ mod tests {
     fn hybrid_esn_constructs_and_runs() {
         let (w_in, w_res, w_out) = tiny_weights(32, 4, 1);
         let mut esn = HybridEsn::from_weights(&w_in, &w_res, &w_out, 0.3).unwrap();
-        assert_eq!(esn.mode(), &SubstrateMode::PureSoftware);
+        assert_eq!(esn.substrate_mode(), &SubstrateMode::PureSoftware);
         assert_eq!(esn.input_dim(), 4);
         assert_eq!(esn.reservoir_dim(), 32);
         assert_eq!(esn.output_dim(), 1);

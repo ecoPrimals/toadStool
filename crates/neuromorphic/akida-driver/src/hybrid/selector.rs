@@ -52,7 +52,7 @@ impl SubstrateSelector {
     /// Active substrate information for toadStool's scheduler/telemetry.
     #[must_use]
     pub fn active_substrate(&self) -> SubstrateInfo {
-        let mode = self.esn.mode().clone();
+        let mode = self.esn.substrate_mode().clone();
         SubstrateInfo {
             est_hz: self.esn.estimated_hz(),
             est_energy_uj: self.esn.estimated_energy_uj(),
