@@ -8,10 +8,9 @@
 //!
 //! Provides a safe API for executing DRM ioctls with runtime-determined
 //! opcodes. Used by `hw-learn` for nouveau init recipe steps.
-
-use rustix::fd::{AsFd, OwnedFd};
-use rustix::ioctl::{Ioctl, IoctlOutput, Opcode};
-use std::ffi::CString;
+//!
+//! [`DrmIoctlResult`] is available on all platforms. Ioctl functions are
+//! Linux-only (gated internally).
 
 /// Result of a single DRM ioctl execution.
 #[derive(Debug)]
@@ -22,7 +21,15 @@ pub struct DrmIoctlResult {
     pub detail: String,
 }
 
+#[cfg(target_os = "linux")]
+use rustix::fd::{AsFd, OwnedFd};
+#[cfg(target_os = "linux")]
+use rustix::ioctl::{Ioctl, IoctlOutput, Opcode};
+#[cfg(target_os = "linux")]
+use std::ffi::CString;
+
 /// Open a DRM device by path (e.g. `/dev/dri/card0`).
+#[cfg(target_os = "linux")]
 pub fn open_drm_device(path: &str) -> Result<OwnedFd, String> {
     let cpath = CString::new(path).map_err(|e| e.to_string())?;
     rustix::fs::open(
@@ -37,6 +44,7 @@ pub fn open_drm_device(path: &str) -> Result<OwnedFd, String> {
 ///
 /// The `args` are copied into a mutable buffer (DRM ioctls may mutate the arg).
 /// Returns `Ok(())` on success, `Err(errno)` on failure.
+#[cfg(target_os = "linux")]
 pub fn execute_drm_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(), i32> {
     let mut buf = if args.is_empty() {
         vec![0u8; 256]
@@ -55,11 +63,13 @@ pub fn execute_drm_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(),
     unsafe { rustix::ioctl::ioctl(fd.as_fd(), ioctl) }.map_err(rustix::io::Errno::raw_os_error)
 }
 
+#[cfg(target_os = "linux")]
 struct DrmIoctlCmd {
     opcode: Opcode,
     arg: *mut u8,
 }
 
+#[cfg(target_os = "linux")]
 // SAFETY: DRM ioctl with runtime opcode; caller verifies fd and arg validity.
 unsafe impl Ioctl for DrmIoctlCmd {
     type Output = ();
@@ -79,6 +89,7 @@ unsafe impl Ioctl for DrmIoctlCmd {
     }
 }
 
+#[cfg(target_os = "linux")]
 #[expect(
     clippy::cast_possible_truncation,
     reason = "DRM ioctls encode into 32-bit values"

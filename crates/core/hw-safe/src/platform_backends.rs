@@ -5,19 +5,27 @@
 //!
 //! Provides concrete `MemoryMapper` and `PinnedMemory` implementations using
 //! `rustix` syscalls. These are the "L3 backend" for the G68 platform traits.
+//!
+//! Data-only types (`WaitResult`, `FsStats`, `UnixAddr`) are available on all
+//! platforms. All functions and trait impls are Linux-only (gated internally).
 
+#[cfg(target_os = "linux")]
 use std::path::Path;
 
+#[cfg(target_os = "linux")]
 use toadstool_common::platform;
 
+#[cfg(target_os = "linux")]
 use crate::safe_mmap::{MmapError, SafeMmapRegion};
 
 /// Linux memory mapper — creates [`SafeMmapRegion`] handles from file paths.
 ///
 /// Implements [`platform::MemoryMapper`] using `rustix::mm::mmap`.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxMemoryMapper;
 
+#[cfg(target_os = "linux")]
 impl platform::MemoryMapper for LinuxMemoryMapper {
     type Mapping = SafeMmapRegion;
     type Error = MmapError;
@@ -70,9 +78,11 @@ impl platform::MemoryMapper for LinuxMemoryMapper {
 /// Linux memory pinner — mlock/munlock for DMA-safe page pinning.
 ///
 /// Implements [`platform::PinnedMemory`] using `rustix::mm::mlock`/`munlock`.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxPinnedMemory;
 
+#[cfg(target_os = "linux")]
 impl platform::PinnedMemory for LinuxPinnedMemory {
     type Error = std::io::Error;
 
@@ -104,14 +114,17 @@ impl platform::PinnedMemory for LinuxPinnedMemory {
 ///
 /// Implements [`platform::EventNotifier`] using `rustix::event::eventfd`/`poll`.
 /// Used by VFIO IRQ wiring and NVPmu interrupt handling.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxEventNotifier;
 
 /// Opaque event handle wrapping a Linux eventfd.
+#[cfg(target_os = "linux")]
 pub struct LinuxEvent {
     fd: rustix::fd::OwnedFd,
 }
 
+#[cfg(target_os = "linux")]
 impl std::fmt::Debug for LinuxEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::os::fd::AsFd;
@@ -121,6 +134,7 @@ impl std::fmt::Debug for LinuxEvent {
     }
 }
 
+#[cfg(target_os = "linux")]
 impl LinuxEvent {
     /// Access the underlying fd for integration with external epoll/VFIO wiring.
     pub fn as_fd(&self) -> std::os::fd::BorrowedFd<'_> {
@@ -141,10 +155,13 @@ impl LinuxEvent {
 }
 
 // SAFETY: OwnedFd is Send; eventfd has no thread-local state.
+#[cfg(target_os = "linux")]
 unsafe impl Send for LinuxEvent {}
 // SAFETY: eventfd read/write are atomic; concurrent poll is safe.
+#[cfg(target_os = "linux")]
 unsafe impl Sync for LinuxEvent {}
 
+#[cfg(target_os = "linux")]
 impl platform::EventNotifier for LinuxEventNotifier {
     type Error = std::io::Error;
     type Event = LinuxEvent;
@@ -196,9 +213,11 @@ impl platform::EventNotifier for LinuxEventNotifier {
 ///
 /// Implements [`platform::DeviceFile`] for opening `/dev/*` nodes with
 /// appropriate `O_RDWR | O_CLOEXEC` (and optionally `O_NONBLOCK`).
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxDeviceFile;
 
+#[cfg(target_os = "linux")]
 impl platform::DeviceFile for LinuxDeviceFile {
     type Error = std::io::Error;
     type Handle = rustix::fd::OwnedFd;
@@ -234,9 +253,11 @@ impl platform::DeviceFile for LinuxDeviceFile {
 /// Linux system parameters — clock ticks, page size, huge pages.
 ///
 /// Implements [`platform::SystemParameters`] via `rustix::param`.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxSystemParameters;
 
+#[cfg(target_os = "linux")]
 impl platform::SystemParameters for LinuxSystemParameters {
     fn clock_ticks_per_second(&self) -> u64 {
         rustix::param::clock_ticks_per_second()
@@ -254,9 +275,11 @@ impl platform::SystemParameters for LinuxSystemParameters {
 /// Linux privilege probe — capability-based privilege checking.
 ///
 /// Implements [`platform::PrivilegeProbe`] using `rustix::thread::capabilities`.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxPrivilegeProbeBackend;
 
+#[cfg(target_os = "linux")]
 impl platform::PrivilegeProbe for LinuxPrivilegeProbeBackend {
     fn has_privilege(&self, privilege: &str) -> bool {
         let Ok(caps) = rustix::thread::capabilities(None) else {
@@ -319,9 +342,11 @@ impl platform::PrivilegeProbe for LinuxPrivilegeProbeBackend {
 /// Linux filesystem isolation — mount namespace operations.
 ///
 /// Implements [`platform::FilesystemIsolation`] using `rustix::mount`.
+#[cfg(target_os = "linux")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct LinuxFilesystemIsolation;
 
+#[cfg(target_os = "linux")]
 impl platform::FilesystemIsolation for LinuxFilesystemIsolation {
     type Error = std::io::Error;
 
@@ -372,8 +397,10 @@ impl platform::FilesystemIsolation for LinuxFilesystemIsolation {
 ///
 /// Provides `read`, `write`, and `poll` wrappers using `rustix::io` so that
 /// consumer crates don't need to depend on rustix directly.
+#[cfg(target_os = "linux")]
 pub struct LinuxDeviceIo;
 
+#[cfg(target_os = "linux")]
 impl LinuxDeviceIo {
     /// Read from a borrowed file descriptor into `buf`.
     ///
@@ -425,6 +452,7 @@ impl LinuxDeviceIo {
 /// - `device_fd` is a valid VFIO device file descriptor
 /// - `size` and `offset` were obtained from a valid VFIO_DEVICE_GET_REGION_INFO ioctl
 /// - The returned pointer is not used after [`vfio_bar_unmap`] is called
+#[cfg(target_os = "linux")]
 pub unsafe fn vfio_bar_map(
     device_fd: std::os::fd::BorrowedFd<'_>,
     size: usize,
@@ -453,6 +481,7 @@ pub unsafe fn vfio_bar_map(
 /// - `ptr` was obtained from a previous call to [`vfio_bar_map`]
 /// - `size` matches the size used in the original mapping
 /// - No references to the mapped memory exist after this call
+#[cfg(target_os = "linux")]
 pub unsafe fn vfio_bar_unmap(ptr: *mut u8, size: usize) -> std::io::Result<()> {
     // SAFETY: caller guarantees ptr and size are from a previous vfio_bar_map.
     unsafe { rustix::mm::munmap(ptr.cast(), size).map_err(std::io::Error::from) }
@@ -468,6 +497,7 @@ pub unsafe fn vfio_bar_unmap(ptr: *mut u8, size: usize) -> std::io::Result<()> {
 /// - `ptr` is valid for `len` bytes
 /// - The memory region was properly allocated
 /// - `unlock_memory` is called before freeing the allocation
+#[cfg(target_os = "linux")]
 pub unsafe fn lock_memory(ptr: *mut u8, len: usize) -> std::io::Result<()> {
     // SAFETY: caller guarantees ptr is valid for len bytes.
     unsafe { rustix::mm::mlock(ptr.cast(), len).map_err(std::io::Error::from) }
@@ -479,6 +509,7 @@ pub unsafe fn lock_memory(ptr: *mut u8, len: usize) -> std::io::Result<()> {
 ///
 /// The caller must ensure:
 /// - `ptr` and `len` match a previous call to [`lock_memory`]
+#[cfg(target_os = "linux")]
 pub unsafe fn unlock_memory(ptr: *mut u8, len: usize) -> std::io::Result<()> {
     // SAFETY: caller guarantees ptr/len match a prior lock_memory call.
     unsafe { rustix::mm::munlock(ptr.cast(), len).map_err(std::io::Error::from) }
@@ -489,11 +520,13 @@ pub unsafe fn unlock_memory(ptr: *mut u8, len: usize) -> std::io::Result<()> {
 /// Create a pipe with `O_CLOEXEC` flag.
 ///
 /// Returns `(read_end, write_end)` as owned file descriptors.
+#[cfg(target_os = "linux")]
 pub fn pipe_cloexec() -> std::io::Result<(std::os::fd::OwnedFd, std::os::fd::OwnedFd)> {
     rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC).map_err(std::io::Error::from)
 }
 
 /// Result of a `fork()` system call.
+#[cfg(target_os = "linux")]
 pub enum ForkResult {
     /// This is the child process.
     Child,
@@ -510,6 +543,7 @@ pub enum ForkResult {
 ///
 /// `fork()` in a multi-threaded program is inherently unsafe. The caller must
 /// ensure the child only performs async-signal-safe operations.
+#[cfg(target_os = "linux")]
 pub unsafe fn fork() -> std::io::Result<ForkResult> {
     // SAFETY: caller guarantees async-signal-safe usage in child.
     match unsafe { rustix::runtime::kernel_fork() } {
@@ -520,11 +554,13 @@ pub unsafe fn fork() -> std::io::Result<ForkResult> {
 }
 
 /// Exit all threads in the current process (child exit after fork).
+#[cfg(target_os = "linux")]
 pub fn exit_group(code: i32) -> ! {
     rustix::runtime::exit_group(code)
 }
 
 /// Send SIGKILL to a process.
+#[cfg(target_os = "linux")]
 pub fn kill_process(pid: rustix::process::Pid) -> std::io::Result<()> {
     rustix::process::kill_process(pid, rustix::process::Signal::KILL).map_err(std::io::Error::from)
 }
@@ -533,6 +569,7 @@ pub fn kill_process(pid: rustix::process::Pid) -> std::io::Result<()> {
 ///
 /// Returns `Some((exit_code, signaled))` if the child exited/was signaled,
 /// `None` if still running.
+#[cfg(target_os = "linux")]
 pub fn waitpid_nohang(pid: rustix::process::Pid) -> std::io::Result<Option<WaitResult>> {
     match rustix::process::waitpid(Some(pid), rustix::process::WaitOptions::NOHANG) {
         Ok(Some((_pid, status))) => {
@@ -561,6 +598,7 @@ pub enum WaitResult {
 }
 
 /// Re-export of `rustix::process::Pid` for process management.
+#[cfg(target_os = "linux")]
 pub use rustix::process::Pid;
 
 // ─── Ioctl Infrastructure Re-exports ─────────────────────────────────────────
@@ -569,6 +607,7 @@ pub use rustix::process::Pid;
 ///
 /// Consumer crates implement these traits on their device-specific adapter
 /// types without importing rustix directly.
+#[cfg(target_os = "linux")]
 pub mod ioctl_infra {
     pub use rustix::io::Errno;
     pub use rustix::io::Result as IoResult;
@@ -581,6 +620,7 @@ pub mod ioctl_infra {
 ///
 /// Returns `(bytes_read, received_fds)`. Up to `max_fds` file descriptors
 /// will be extracted from the ancillary control message.
+#[cfg(target_os = "linux")]
 pub fn recv_with_fds(
     sock: impl std::os::fd::AsFd,
     buf: &mut [u8],
@@ -613,6 +653,7 @@ pub fn recv_with_fds(
 
 // ─── Extended Device I/O ─────────────────────────────────────────────────────
 
+#[cfg(target_os = "linux")]
 impl LinuxDeviceIo {
     /// Positional read from a file descriptor (does not change file offset).
     #[inline]
@@ -642,6 +683,7 @@ impl LinuxDeviceIo {
 /// # Safety
 ///
 /// The caller must ensure `fd` is valid and `size`/`offset` describe a valid region.
+#[cfg(target_os = "linux")]
 pub unsafe fn mmap_device(
     fd: std::os::fd::BorrowedFd<'_>,
     size: usize,
@@ -673,6 +715,7 @@ pub unsafe fn mmap_device(
 /// # Safety
 ///
 /// The caller must ensure `ptr` and `size` match a previous `mmap_device` call.
+#[cfg(target_os = "linux")]
 pub unsafe fn munmap_device(ptr: *mut u8, size: usize) -> std::io::Result<()> {
     // SAFETY: caller guarantees ptr/size from prior mmap.
     unsafe { rustix::mm::munmap(ptr.cast(), size).map_err(std::io::Error::from) }
@@ -683,6 +726,7 @@ pub unsafe fn munmap_device(ptr: *mut u8, size: usize) -> std::io::Result<()> {
 /// Create a character device node at `path`.
 ///
 /// Wraps `mknodat(CWD, ...)` with `CharacterDevice` type.
+#[cfg(target_os = "linux")]
 pub fn mknod_char(path: &Path, mode: u32, major: u32, minor: u32) -> std::io::Result<()> {
     rustix::fs::mknodat(
         rustix::fs::CWD,
@@ -695,6 +739,7 @@ pub fn mknod_char(path: &Path, mode: u32, major: u32, minor: u32) -> std::io::Re
 }
 
 /// Open a file with specified flags (wraps `rustix::fs::open`).
+#[cfg(target_os = "linux")]
 pub fn open_path(path: &Path, rdwr: bool, sync: bool) -> std::io::Result<std::os::fd::OwnedFd> {
     let mut flags = rustix::fs::OFlags::CLOEXEC;
     if rdwr {
@@ -711,6 +756,7 @@ pub fn open_path(path: &Path, rdwr: bool, sync: bool) -> std::io::Result<std::os
 // ─── Kernel Module Loading ───────────────────────────────────────────────────
 
 /// Load a kernel module from an open `.ko` file via `finit_module(2)`.
+#[cfg(target_os = "linux")]
 pub fn finit_module(
     ko_file: &impl std::os::fd::AsFd,
     params: &std::ffi::CStr,
@@ -720,6 +766,7 @@ pub fn finit_module(
 }
 
 /// Unload a kernel module by name via `delete_module(2)`.
+#[cfg(target_os = "linux")]
 pub fn delete_module(name: &std::ffi::CStr, flags: i32) -> std::io::Result<()> {
     rustix::system::delete_module(name, flags).map_err(std::io::Error::from)
 }
@@ -727,6 +774,7 @@ pub fn delete_module(name: &std::ffi::CStr, flags: i32) -> std::io::Result<()> {
 // ─── Clock ───────────────────────────────────────────────────────────────────
 
 /// Get monotonic clock time in nanoseconds.
+#[cfg(target_os = "linux")]
 pub fn clock_monotonic_ns() -> u64 {
     let ts = rustix::time::clock_gettime(rustix::time::ClockId::Monotonic);
     ts.tv_sec as u64 * 1_000_000_000 + ts.tv_nsec as u64
@@ -748,6 +796,7 @@ pub struct FsStats {
 }
 
 /// Query filesystem statistics for a path (wraps `statvfs`).
+#[cfg(target_os = "linux")]
 pub fn fs_stats(path: &Path) -> std::io::Result<FsStats> {
     let st = rustix::fs::statvfs(path).map_err(std::io::Error::from)?;
     Ok(FsStats {
@@ -761,6 +810,7 @@ pub fn fs_stats(path: &Path) -> std::io::Result<FsStats> {
 // ─── Unix Socket sendmsg with FD passing ─────────────────────────────────────
 
 /// Create a Unix DGRAM socket.
+#[cfg(target_os = "linux")]
 pub fn unix_dgram_socket() -> std::io::Result<std::os::fd::OwnedFd> {
     rustix::net::socket(
         rustix::net::AddressFamily::UNIX,
@@ -779,6 +829,7 @@ pub enum UnixAddr {
 }
 
 /// Send a message with optional file descriptors (SCM_RIGHTS) over a Unix socket.
+#[cfg(target_os = "linux")]
 pub fn sendmsg_with_fds(
     sock: impl std::os::fd::AsFd,
     addr: &UnixAddr,
@@ -825,6 +876,7 @@ pub fn sendmsg_with_fds(
 // ─── File Seek ───────────────────────────────────────────────────────────────
 
 /// Seek to the end of a file descriptor.
+#[cfg(target_os = "linux")]
 pub fn seek_end(fd: std::os::fd::BorrowedFd<'_>) -> std::io::Result<u64> {
     rustix::fs::seek(fd, rustix::fs::SeekFrom::End(0)).map_err(std::io::Error::from)
 }
@@ -832,11 +884,13 @@ pub fn seek_end(fd: std::os::fd::BorrowedFd<'_>) -> std::io::Result<u64> {
 // ─── Process Utilities ───────────────────────────────────────────────────────
 
 /// Get the current process ID.
+#[cfg(target_os = "linux")]
 pub fn getpid() -> Pid {
     rustix::process::getpid()
 }
 
 /// Send a signal to a process (more general than kill_process which sends SIGKILL).
+#[cfg(target_os = "linux")]
 pub fn send_signal(pid: Pid, sig: i32) -> std::io::Result<()> {
     let signal = match sig {
         2 => rustix::process::Signal::INT,

@@ -30,7 +30,8 @@
 //! - [`platform_backends`] — process, socket, filesystem operations
 //!
 //! On non-Linux targets, Layer 1 types exist but constructors return
-//! `Err(Unsupported)`. Layer 2 modules are conditionally compiled.
+//! `Err(Unsupported)`. Layer 2 modules exist on all platforms (types are
+//! unconditional), but functions are internally `#[cfg(target_os = "linux")]`.
 
 // ── Layer 0: Pure Rust (unconditional) ───────────────────────────────────
 
@@ -58,26 +59,25 @@ pub use huge_page::HugePageMemory;
 pub use locked_memory::LockedMemory;
 pub use safe_mmap::SafeMmapRegion;
 
-// ── Layer 2: Device backends (Linux kernel ABI) ──────────────────────────
+// ── Layer 2: Device backends (types unconditional, impl Linux-gated) ──────
 
-#[cfg(target_os = "linux")]
 pub mod drm_ioctl;
-#[cfg(target_os = "linux")]
 pub mod platform_backends;
-#[cfg(target_os = "linux")]
-pub mod systemd_fds;
-#[cfg(target_os = "linux")]
 pub mod vfio_dma;
-#[cfg(target_os = "linux")]
 pub mod vfio_setup;
 
 #[cfg(target_os = "linux")]
+pub mod systemd_fds;
+
+// Cross-platform re-exports from Layer 2 (data-only types).
+pub use platform_backends::{FsStats, UnixAddr, WaitResult};
+
+#[cfg(target_os = "linux")]
 pub use platform_backends::{
-    ForkResult, FsStats, LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier,
+    ForkResult, LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier,
     LinuxFilesystemIsolation, LinuxMemoryMapper, LinuxPinnedMemory, LinuxPrivilegeProbeBackend,
-    LinuxSystemParameters, Pid, UnixAddr, WaitResult, clock_monotonic_ns, delete_module,
-    exit_group, finit_module, fork, fs_stats, getpid, ioctl_infra, kill_process, lock_memory,
-    mknod_char, mmap_device, munmap_device, open_path, pipe_cloexec, recv_with_fds, seek_end,
-    send_signal, sendmsg_with_fds, unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap,
-    waitpid_nohang,
+    LinuxSystemParameters, Pid, clock_monotonic_ns, delete_module, exit_group, finit_module, fork,
+    fs_stats, getpid, ioctl_infra, kill_process, lock_memory, mknod_char, mmap_device,
+    munmap_device, open_path, pipe_cloexec, recv_with_fds, seek_end, send_signal, sendmsg_with_fds,
+    unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap, waitpid_nohang,
 };

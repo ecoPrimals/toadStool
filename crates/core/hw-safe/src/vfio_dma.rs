@@ -9,16 +9,23 @@
 //! Provides a single implementation of VFIO IOMMU DMA map/unmap ioctls
 //! so that `nvpmu` and `akida-driver` share the same kernel ABI structs
 //! and unsafe ioctl wrappers instead of duplicating them.
+//!
+//! Types, constants, and `page_align_up` are available on all platforms.
+//! Ioctl functions are Linux-only (gated internally).
 
+#[cfg(target_os = "linux")]
 use std::os::fd::BorrowedFd;
 
+#[cfg(target_os = "linux")]
 use rustix::ioctl::{self, Ioctl, IoctlOutput, Opcode, opcode};
 
 /// VFIO ioctl type byte (Linux kernel ABI: `';'` = 0x3B).
 pub const VFIO_TYPE: u8 = b';';
 /// VFIO ioctl base number (kernel ABI: first VFIO opcode = 100).
 pub const VFIO_BASE: u8 = 100;
+#[cfg(target_os = "linux")]
 const OP_IOMMU_MAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 13);
+#[cfg(target_os = "linux")]
 const OP_IOMMU_UNMAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 14);
 
 /// VFIO DMA mapping request sent to the kernel via ioctl.
@@ -59,8 +66,10 @@ pub mod flags {
     pub const READ_WRITE: u32 = READ | WRITE;
 }
 
+#[cfg(target_os = "linux")]
 struct DmaMapIoctl<'a>(&'a VfioDmaMap);
 
+#[cfg(target_os = "linux")]
 // SAFETY: we provide a valid repr(C) struct pointer to the kernel and
 // the ioctl number matches the VFIO spec (VFIO_IOMMU_MAP_DMA).
 unsafe impl Ioctl for DmaMapIoctl<'_> {
@@ -86,8 +95,10 @@ unsafe impl Ioctl for DmaMapIoctl<'_> {
     }
 }
 
+#[cfg(target_os = "linux")]
 struct DmaUnmapIoctl<'a>(&'a VfioDmaUnmap);
 
+#[cfg(target_os = "linux")]
 // SAFETY: same rationale as DmaMapIoctl (VFIO_IOMMU_UNMAP_DMA).
 unsafe impl Ioctl for DmaUnmapIoctl<'_> {
     type Output = ();
@@ -112,7 +123,7 @@ unsafe impl Ioctl for DmaUnmapIoctl<'_> {
     }
 }
 
-/// Single ioctl dispatch for VFIO DMA operations.
+#[cfg(target_os = "linux")]
 fn do_ioctl<I: Ioctl>(fd: BorrowedFd<'_>, cmd: I) -> std::io::Result<I::Output> {
     // SAFETY: callers construct `cmd` from VFIO kernel-ABI types with
     // compile-time opcodes. `fd` is a valid VFIO container fd.
@@ -131,6 +142,7 @@ fn do_ioctl<I: Ioctl>(fd: BorrowedFd<'_>, cmd: I) -> std::io::Result<I::Output> 
 /// - `container_fd` is an open VFIO container with an attached IOMMU.
 /// - `map.vaddr` points to allocated memory of at least `map.size` bytes.
 /// - The IOVA range `[map.iova, map.iova + map.size)` is not already mapped.
+#[cfg(target_os = "linux")]
 pub unsafe fn dma_map(container_fd: BorrowedFd<'_>, map: &VfioDmaMap) -> std::io::Result<()> {
     do_ioctl(container_fd, DmaMapIoctl(map))
 }
@@ -145,6 +157,7 @@ pub unsafe fn dma_map(container_fd: BorrowedFd<'_>, map: &VfioDmaMap) -> std::io
 ///
 /// The caller must ensure `container_fd` is valid and `unmap.iova`/`size`
 /// correspond to a previously mapped region.
+#[cfg(target_os = "linux")]
 pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
     do_ioctl(container_fd, DmaUnmapIoctl(unmap))
 }
@@ -157,6 +170,7 @@ pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> s
 /// # Errors
 ///
 /// Returns an I/O error if the VFIO ioctl fails.
+#[cfg(target_os = "linux")]
 #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
 pub fn dma_map_locked(
     container_fd: BorrowedFd<'_>,
@@ -182,6 +196,7 @@ pub fn dma_map_locked(
 /// # Errors
 ///
 /// Returns an I/O error if the VFIO ioctl fails.
+#[cfg(target_os = "linux")]
 #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
 pub fn dma_unmap_region(
     container_fd: BorrowedFd<'_>,
@@ -208,6 +223,7 @@ pub fn dma_unmap_region(
 /// # Errors
 ///
 /// Returns an I/O error if the VFIO ioctl fails.
+#[cfg(target_os = "linux")]
 #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
 pub fn dma_map_huge(
     container_fd: BorrowedFd<'_>,

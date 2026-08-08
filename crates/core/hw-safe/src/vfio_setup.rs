@@ -7,26 +7,39 @@
 //! setup ioctls so that `nvpmu` and `akida-driver` share the same kernel ABI
 //! structs and unsafe ioctl wrappers instead of duplicating them.
 //!
-//! Each public function encapsulates one or two `unsafe` ioctl calls.
-//! Callers never need to write `unsafe` for VFIO setup operations.
+//! Types and constants are available on all platforms. Ioctl functions are
+//! Linux-only (gated internally).
 
+#[cfg(target_os = "linux")]
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, OwnedFd};
 
+#[cfg(target_os = "linux")]
 use rustix::ioctl::{self, Ioctl, IoctlOutput, Opcode, opcode};
 
 // ── VFIO ioctl opcodes (from Linux UAPI) ──────────────────────────────
 
+#[cfg(target_os = "linux")]
 const VFIO_TYPE: u8 = b';';
+#[cfg(target_os = "linux")]
 const VFIO_BASE: u8 = 100;
 
+#[cfg(target_os = "linux")]
 const OP_GET_API_VERSION: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE);
+#[cfg(target_os = "linux")]
 const OP_CHECK_EXTENSION: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 1);
+#[cfg(target_os = "linux")]
 const OP_SET_IOMMU: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 2);
+#[cfg(target_os = "linux")]
 const OP_GROUP_GET_STATUS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 3);
+#[cfg(target_os = "linux")]
 const OP_GROUP_SET_CONTAINER: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 4);
+#[cfg(target_os = "linux")]
 const OP_GROUP_GET_DEVICE_FD: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 6);
+#[cfg(target_os = "linux")]
 const OP_DEVICE_GET_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 7);
+#[cfg(target_os = "linux")]
 const OP_DEVICE_GET_REGION_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 8);
+#[cfg(target_os = "linux")]
 const OP_DEVICE_RESET: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 11);
 
 // ── Public ABI constants ──────────────────────────────────────────────
@@ -86,11 +99,13 @@ pub struct VfioRegionInfo {
 
 // ── Generic ioctl adapters ────────────────────────────────────────────
 
+#[cfg(target_os = "linux")]
 /// Ioctl adapter for VFIO commands that return an i32.
 struct VfioReturnIoctl<const OP: Opcode> {
     arg: usize,
 }
 
+#[cfg(target_os = "linux")]
 // SAFETY: VFIO no-arg or integer-arg ioctl; opcode is compile-time constant.
 // output_from_ptr wraps kernel return code without pointer dereference.
 unsafe impl<const OP: Opcode> Ioctl for VfioReturnIoctl<OP> {
@@ -114,11 +129,13 @@ unsafe impl<const OP: Opcode> Ioctl for VfioReturnIoctl<OP> {
     }
 }
 
+#[cfg(target_os = "linux")]
 /// Ioctl adapter for VFIO commands that read/write a repr(C) struct.
 struct VfioPtrIoctl<const OP: Opcode, T> {
     ptr: *mut T,
 }
 
+#[cfg(target_os = "linux")]
 // SAFETY: opcode is compile-time VFIO constant; T is repr(C) matching kernel ABI.
 // IS_MUTATING=true since the kernel writes back into the struct.
 unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
@@ -147,14 +164,12 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
 // Each function encapsulates one unsafe ioctl call. Callers deal only
 // with safe Rust types. Errors are returned as `std::io::Result`.
 
+#[cfg(target_os = "linux")]
 fn io_err(e: rustix::io::Errno) -> std::io::Error {
     e.into()
 }
 
-/// Single ioctl dispatch point for all VFIO operations.
-///
-/// Centralizes the `unsafe { ioctl::ioctl }` call so that every public VFIO
-/// wrapper is safe code. Audit this one site for ioctl safety.
+#[cfg(target_os = "linux")]
 fn do_ioctl<I: Ioctl>(fd: BorrowedFd<'_>, cmd: I) -> std::io::Result<I::Output> {
     // SAFETY: all callers in this module construct `cmd` from VFIO kernel-ABI
     // types with compile-time opcodes. `fd` comes from the caller's valid
@@ -167,6 +182,7 @@ fn do_ioctl<I: Ioctl>(fd: BorrowedFd<'_>, cmd: I) -> std::io::Result<I::Output> 
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 pub fn get_api_version(container: BorrowedFd<'_>) -> std::io::Result<i32> {
     do_ioctl(container, VfioReturnIoctl::<OP_GET_API_VERSION> { arg: 0 })
 }
@@ -176,6 +192,7 @@ pub fn get_api_version(container: BorrowedFd<'_>) -> std::io::Result<i32> {
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 pub fn check_extension(container: BorrowedFd<'_>, extension: u32) -> std::io::Result<i32> {
     do_ioctl(
         container,
@@ -190,6 +207,7 @@ pub fn check_extension(container: BorrowedFd<'_>, extension: u32) -> std::io::Re
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 pub fn set_iommu(container: BorrowedFd<'_>, iommu_type: u32) -> std::io::Result<()> {
     do_ioctl(
         container,
@@ -205,6 +223,7 @@ pub fn set_iommu(container: BorrowedFd<'_>, iommu_type: u32) -> std::io::Result<
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 #[expect(
     clippy::cast_possible_truncation,
     reason = "truncation acceptable for this conversion"
@@ -228,6 +247,7 @@ pub fn group_get_status(group: BorrowedFd<'_>) -> std::io::Result<VfioGroupStatu
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 pub fn group_set_container(group: BorrowedFd<'_>, container: impl AsFd) -> std::io::Result<()> {
     let container_fd = container.as_fd().as_raw_fd();
     do_ioctl(
@@ -247,6 +267,7 @@ pub fn group_set_container(group: BorrowedFd<'_>, container: impl AsFd) -> std::
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 pub fn group_get_device_fd(
     group: BorrowedFd<'_>,
     bdf: &std::ffi::CStr,
@@ -266,6 +287,7 @@ pub fn group_get_device_fd(
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 #[expect(
     clippy::cast_possible_truncation,
     reason = "truncation acceptable for this conversion"
@@ -289,6 +311,7 @@ pub fn device_get_info(device: BorrowedFd<'_>) -> std::io::Result<VfioDeviceInfo
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 #[expect(
     clippy::cast_possible_truncation,
     reason = "truncation acceptable for this conversion"
@@ -319,6 +342,7 @@ pub fn device_get_region_info(
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
+#[cfg(target_os = "linux")]
 pub fn device_reset(device: BorrowedFd<'_>) -> std::io::Result<()> {
     do_ioctl(device, VfioReturnIoctl::<OP_DEVICE_RESET> { arg: 0 })?;
     Ok(())
