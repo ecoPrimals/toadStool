@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-#![allow(
-    unsafe_code,
-    reason = "VFIO container setup requires raw fd ownership transfer"
-)]
-
 //! VFIO container and IOMMU group setup.
 
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+use std::os::unix::io::{AsRawFd, RawFd};
 
 use crate::error::{AkidaError, Result};
 
@@ -107,15 +102,12 @@ impl VfioGroup {
             AkidaError::capability_query_failed(format!("Invalid PCIe address: {e}"))
         })?;
 
-        let device_fd = ioctl_vfio_group_get_device_fd(self.file.as_raw_fd(), &pcie_address_cstr)?;
-
-        // SAFETY: `device_fd` from VFIO ioctl; ownership transferred.
-        let device = unsafe { File::from_raw_fd(device_fd) };
-        Ok(device)
+        let owned_fd = ioctl_vfio_group_get_device_fd(self.file.as_raw_fd(), &pcie_address_cstr)?;
+        Ok(File::from(owned_fd))
     }
 }
 
 /// Query VFIO device info via ioctl.
 pub(super) fn query_device_info(device: &File) -> Result<VfioDeviceInfo> {
-    ioctl_vfio_device_get_info(device.as_raw_fd())
+    ioctl_vfio_device_get_info(device)
 }

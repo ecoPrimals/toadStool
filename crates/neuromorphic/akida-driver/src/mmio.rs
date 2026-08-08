@@ -25,7 +25,7 @@
 
 use crate::error::{AkidaError, Result};
 use std::fs::File;
-use std::os::unix::io::{AsFd, AsRawFd};
+use std::os::unix::io::AsFd;
 use toadstool_hw_safe::{vfio_bar_map, vfio_bar_unmap};
 
 /// AKD1000 BAR regions (VFIO region indices).
@@ -112,24 +112,6 @@ pub mod regs {
     }
 }
 
-/// VFIO region info structure
-#[repr(C)]
-#[derive(Debug, Default)]
-pub struct VfioRegionInfo {
-    /// Size of this structure (for versioning)
-    pub argsz: u32,
-    /// Region flags (capabilities, permissions)
-    pub flags: u32,
-    /// Region index (BAR number)
-    pub index: u32,
-    /// Offset to extended capabilities
-    pub cap_offset: u32,
-    /// Size of the region in bytes
-    pub size: u64,
-    /// Offset from mmap base
-    pub offset: u64,
-}
-
 /// Mapped BAR region for MMIO access
 pub struct MappedRegion {
     /// Memory-mapped pointer
@@ -167,39 +149,14 @@ impl MappedRegion {
     /// - The VFIO ioctl to get region info fails
     /// - Memory mapping the BAR region fails
     pub fn map(device_fd: &File, bar: Bar) -> Result<Self> {
-        // Query region info
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "Byte offset fits usize for slice indexing"
-        )]
-        let mut region_info = VfioRegionInfo {
-            argsz: std::mem::size_of::<VfioRegionInfo>() as u32,
-            index: bar as u32,
-            ..Default::default()
-        };
-
-        // VFIO_DEVICE_GET_REGION_INFO = _IO(';', 100 + 8) — VFIO uses _IO, not _IOWR
-        const VFIO_DEVICE_GET_REGION_INFO: libc::c_ulong = ((b';' as libc::c_ulong) << 8) | 108;
-
-        // SAFETY: VFIO_DEVICE_GET_REGION_INFO ioctl necessary for MMIO - kernel returns BAR size/offset.
-        // Invariants: (1) device_fd valid from VFIO device open; (2) VfioRegionInfo initialized
-        // with argsz = size_of, index = bar; (3) _IOWR reads/writes region_info; (4) layout matches
-        // kernel. Caller guarantees: device fd from VFIO, bar is valid BAR index.
-        let ret = unsafe {
-            libc::ioctl(
-                device_fd.as_raw_fd(),
-                VFIO_DEVICE_GET_REGION_INFO as _,
-                &raw mut region_info,
-            )
-        };
-
-        if ret < 0 {
-            return Err(AkidaError::capability_query_failed(format!(
-                "Failed to get BAR{} info: {}",
-                bar as u32,
-                std::io::Error::last_os_error()
-            )));
-        }
+        let region_info =
+            toadstool_hw_safe::vfio_setup::device_get_region_info(device_fd.as_fd(), bar as u32)
+                .map_err(|e| {
+                    AkidaError::capability_query_failed(format!(
+                        "Failed to get BAR{} info: {}",
+                        bar as u32, e
+                    ))
+                })?;
 
         tracing::debug!(
             "BAR{}: size={:#x}, offset={:#x}, flags={:#x}",
@@ -327,6 +284,7 @@ impl Drop for MappedRegion {
 )]
 mod tests {
     use super::*;
+    use toadstool_hw_safe::vfio_setup::VfioRegionInfo;
 
     #[test]
     fn test_register_offsets() {

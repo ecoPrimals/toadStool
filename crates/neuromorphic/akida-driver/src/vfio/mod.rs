@@ -286,7 +286,7 @@ impl VfioBackend {
         tracing::info!("Starting device reset-and-enable (pre-STATUS={pre_status:#010x})");
 
         // Step 1: Try VFIO bus-level reset (best-effort)
-        match ioctl_vfio_device_reset(self.device.as_raw_fd()) {
+        match ioctl_vfio_device_reset(&self.device) {
             Ok(()) => {
                 tracing::info!("VFIO_DEVICE_RESET succeeded");
                 std::thread::sleep(std::time::Duration::from_millis(50));

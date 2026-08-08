@@ -27,6 +27,7 @@ const OP_GROUP_SET_CONTAINER: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 4);
 const OP_GROUP_GET_DEVICE_FD: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 6);
 const OP_DEVICE_GET_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 7);
 const OP_DEVICE_GET_REGION_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 8);
+const OP_DEVICE_RESET: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 11);
 
 // ── Public ABI constants ──────────────────────────────────────────────
 
@@ -308,6 +309,19 @@ pub fn device_get_region_info(
         },
     )?;
     Ok(info)
+}
+
+/// `VFIO_DEVICE_RESET` — reset a device through the VFIO subsystem.
+///
+/// Not all devices support this; the kernel returns an error for
+/// devices without reset capability.
+///
+/// # Errors
+///
+/// Returns I/O error if the ioctl fails.
+pub fn device_reset(device: BorrowedFd<'_>) -> std::io::Result<()> {
+    do_ioctl(device, VfioReturnIoctl::<OP_DEVICE_RESET> { arg: 0 })?;
+    Ok(())
 }
 
 #[cfg(test)]

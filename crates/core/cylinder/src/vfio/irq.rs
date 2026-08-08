@@ -22,7 +22,7 @@
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd, RawFd};
 
 use toadstool_common::platform::EventNotifier;
-use toadstool_hw_safe::{LinuxDeviceIo, LinuxEvent, LinuxEventNotifier};
+use toadstool_hw_safe::{LinuxDeviceIo, LinuxEventNotifier};
 
 use crate::error::DriverError;
 use crate::vfio::ioctl;
