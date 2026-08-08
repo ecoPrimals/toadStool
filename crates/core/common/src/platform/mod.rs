@@ -25,6 +25,7 @@ pub mod links;
 
 pub use access::{PlatformAccess, check_access, set_access};
 pub use device_io::{
-    DeviceFile, EventNotifier, MappedMemory, MemoryMapper, PinnedMemory, ProcessIsolation,
+    DeviceFile, DeviceIoctl, EventNotifier, FdPassing, FilesystemIsolation, MappedMemory,
+    MemoryMapper, PinnedMemory, PrivilegeProbe, ProcessIsolation, SystemParameters,
 };
 pub use links::platform_link;

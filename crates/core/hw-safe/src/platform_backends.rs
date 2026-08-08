@@ -224,3 +224,23 @@ impl platform::DeviceFile for LinuxDeviceFile {
         rustix::io::write(handle, buf).map_err(std::io::Error::from)
     }
 }
+
+/// Linux system parameters — clock ticks, page size, huge pages.
+///
+/// Implements [`platform::SystemParameters`] via `rustix::param`.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct LinuxSystemParameters;
+
+impl platform::SystemParameters for LinuxSystemParameters {
+    fn clock_ticks_per_second(&self) -> u64 {
+        rustix::param::clock_ticks_per_second()
+    }
+
+    fn page_size(&self) -> usize {
+        rustix::param::page_size()
+    }
+
+    fn huge_page_size(&self) -> Option<usize> {
+        Some(2 * 1024 * 1024)
+    }
+}

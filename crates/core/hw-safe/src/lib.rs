@@ -65,6 +65,7 @@ pub use locked_memory::LockedMemory;
 #[cfg(target_os = "linux")]
 pub use platform_backends::{
     LinuxDeviceFile, LinuxEvent, LinuxEventNotifier, LinuxMemoryMapper, LinuxPinnedMemory,
+    LinuxSystemParameters,
 };
 #[cfg(target_os = "linux")]
 pub use safe_mmap::SafeMmapRegion;

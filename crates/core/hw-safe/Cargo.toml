@@ -18,7 +18,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rustix = { workspace = true, features = ["mm", "fs", "event", "time"] }
+rustix = { workspace = true, features = ["mm", "fs", "event", "time", "param"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }
