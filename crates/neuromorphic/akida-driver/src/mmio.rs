@@ -188,7 +188,7 @@ impl MappedRegion {
         let ret = unsafe {
             libc::ioctl(
                 device_fd.as_raw_fd(),
-                VFIO_DEVICE_GET_REGION_INFO,
+                VFIO_DEVICE_GET_REGION_INFO as _,
                 &raw mut region_info,
             )
         };
