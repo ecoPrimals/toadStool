@@ -18,23 +18,15 @@ readme = "README.md"
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 thiserror = { workspace = true }
-# once_cell removed: evolved to std::sync::LazyLock (Rust 1.80+)
 tracing = { workspace = true }
-# validator removed: was declared but unused in source. If validation is
-# needed, use manual validation or add back as validator 0.20+ (fixes idna vuln).
-# notify removed: was unused (no Watcher implementation). When file watching is
-# needed, use rustix::fs::inotify directly (pure Rust, zero C FFI).
-# ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)
 
-# File system and path handling (Pure Rust Evolution - Jan 17, 2026) (Pure Rust Evolution - Jan 17, 2026)
-# OLD: directories = "5.0" (pulls in dirs-sys with C FFI)
-# NEW: Pure Rust config dirs (etcetera)
-etcetera = { workspace = true }
+# File system and path handling (native only — no filesystem on WASM)
+etcetera = { workspace = true, optional = true }
 
 # Internal dependencies
-toadstool-common = { path = "../common" }
+toadstool-common = { path = "../common", default-features = false }
 
 # Note: mDNS discovery available via toadstool crate (when needed for tests)
 # Production code uses cache-based discovery; full mDNS via toadstool::discovery
@@ -48,7 +40,8 @@ approx = "0.5"
 # num_cpus removed: use std::thread::available_parallelism() instead (pure Rust, no FFI)
 
 [features]
-default = []
+default = ["runtime"]
+runtime = ["dep:tokio", "dep:etcetera", "toadstool-common/runtime"]
 
 [lints]
 workspace = true

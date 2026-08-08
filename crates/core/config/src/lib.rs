@@ -40,14 +40,18 @@ pub mod builder; // ✅ NEW: Unified configuration builders
 pub mod config_utils;
 pub mod constants;
 pub mod defaults;
+#[cfg(feature = "runtime")]
 pub mod discovery_client_dispatch;
 pub mod discovery_defaults;
+#[cfg(feature = "runtime")]
 pub mod discovery_integration;
 pub mod env_config;
-pub mod mdns_discovery; // ✅ Phase 4: mDNS service discovery
+#[cfg(feature = "runtime")]
+pub mod mdns_discovery; // Phase 4: mDNS service discovery (requires async runtime)
 pub mod network_config;
 pub mod ports;
 pub mod primal_capabilities; // ✅ NEW: Universal capability-based discovery
+#[cfg(feature = "runtime")]
 pub use discovery_client_dispatch::DiscoveryClientDispatch;
 pub mod runtime_defaults;
 pub mod services;

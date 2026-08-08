@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! TOML loading and serde schema for `primal-capabilities.toml`.
 
+#[cfg(feature = "runtime")]
 use etcetera::BaseStrategy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -224,8 +225,7 @@ impl PrimalCapabilitiesRegistry {
         }
 
         // Try config directory (Pure Rust Evolution - Jan 17, 2026)
-        // OLD: directories::ProjectDirs (pulled in dirs-sys)
-        // NEW: etcetera (100% Pure Rust!)
+        #[cfg(feature = "runtime")]
         if let Ok(strategy) = etcetera::choose_base_strategy() {
             let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
             let config_path = strategy

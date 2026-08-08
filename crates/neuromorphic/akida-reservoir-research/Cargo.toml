@@ -12,15 +12,18 @@ categories = ["science", "hardware-support"]
 [dependencies]
 akida-models = { path = "../akida-models" }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rand_distr = "0.4"
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 akida-driver = { path = "../akida-driver" }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 
 [lib]
 name = "akida_reservoir_research"
@@ -29,6 +32,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "test-state-extraction"
 path = "src/bin/test_state_extraction.rs"
+required-features = ["runtime"]
 
 [[bin]]
 name = "generate-reservoir"
@@ -37,6 +41,11 @@ path = "src/bin/generate_reservoir.rs"
 [[bin]]
 name = "dual-chip-ensemble"
 path = "src/bin/dual_chip_ensemble.rs"
+required-features = ["runtime"]
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio"]
 
 [lints]
 workspace = true
