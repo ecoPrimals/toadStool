@@ -1,41 +1,67 @@
 # toadStool Cross-Architecture Support
 
-**Status**: 15/15 targets pass `cargo check --workspace`
+**Status**: 16/16 native targets pass `cargo check --workspace`
 **Sprint**: S369 — First primal to full cross-arch compilation
+**Philosophy**: If it can run a bin, we can run primals on it.
+
+## Node Atomic Fleet — Actual Hardware
+
+| Hardware | Target | Status |
+|----------|--------|--------|
+| Development (x86_64 Linux) | `x86_64-unknown-linux-gnu` | ✓ Primary |
+| Mac M4 Mini | `aarch64-apple-darwin` | ✓ |
+| Pixel 8 (GrapheneOS) | `aarch64-linux-android` | ✓ |
+| iPhone XS | `aarch64-apple-ios` | ✓ |
+| Milk-V Jupiter 2 (RISC-V vector) | `riscv64gc-unknown-linux-gnu` | ✓ |
+| Steam Deck (SteamOS) | `x86_64-unknown-linux-gnu` | ✓ |
+| Raspberry Pi | `aarch64-unknown-linux-gnu` | ✓ |
+| WebGPU/Browser | `wasm32-unknown-unknown` | Compute subset* |
+| Cloud/WASI edge | `wasm32-wasip1` | Compute subset* |
+
+*WASM targets: tokio networking (mio/socket2) unavailable. Compute-only crates pass.
+Full WASM support requires feature-gating the async networking stack.
 
 ## Supported Architectures
 
 ### Tier 1 — Primary (CI-validated, depot builds)
 
-| Target | OS | Arch | Notes |
-|--------|----|----- |-------|
-| `x86_64-unknown-linux-gnu` | Linux | x86_64 | Primary development |
+| Target | OS | Arch | Hardware |
+|--------|----|------|----------|
+| `x86_64-unknown-linux-gnu` | Linux | x86_64 | Dev, Steam Deck, servers |
 | `x86_64-unknown-linux-musl` | Linux | x86_64 | Static deploy binaries |
-| `aarch64-unknown-linux-gnu` | Linux | ARM64 | Graviton, RPi 5, Jetson |
+| `aarch64-unknown-linux-gnu` | Linux | ARM64 | Raspberry Pi, Graviton |
 | `aarch64-unknown-linux-musl` | Linux | ARM64 | Static ARM deploy |
 | `x86_64-pc-windows-gnu` | Windows | x86_64 | Desktop compute nodes |
-| `x86_64-apple-darwin` | macOS | x86_64 | Intel Mac dev |
-| `aarch64-apple-darwin` | macOS | ARM64 | Apple Silicon dev |
+| `x86_64-apple-darwin` | macOS | x86_64 | Intel Mac |
+| `aarch64-apple-darwin` | macOS | ARM64 | Mac M4 Mini |
+| `aarch64-apple-ios` | iOS | ARM64 | iPhone XS |
 
 ### Tier 2 — Extended (type-checks, future depot)
 
-| Target | OS | Arch | Notes |
-|--------|----|----- |-------|
+| Target | OS | Arch | Hardware |
+|--------|----|------|----------|
 | `x86_64-pc-windows-msvc` | Windows | x86_64 | MSVC toolchain |
 | `aarch64-pc-windows-gnullvm` | Windows | ARM64 | Snapdragon compute |
-| `aarch64-linux-android` | Android | ARM64 | Pixel / mobile edge |
+| `aarch64-linux-android` | Android | ARM64 | Pixel 8 (GrapheneOS) |
 | `armv7-unknown-linux-gnueabihf` | Linux | ARM32 | IoT edge nodes |
-| `riscv64gc-unknown-linux-gnu` | Linux | RISC-V 64 | SiFive, StarFive |
+| `riscv64gc-unknown-linux-gnu` | Linux | RISC-V 64 | Milk-V Jupiter 2 |
 | `powerpc64le-unknown-linux-gnu` | Linux | POWER9/10 | IBM HPC |
 | `s390x-unknown-linux-gnu` | Linux | IBM Z | Mainframe compute |
 | `loongarch64-unknown-linux-gnu` | Linux | LoongArch | Loongson sovereign |
+
+### Tier 3 — Compute Subset (WASM, future full support)
+
+| Target | Runtime | Blocked By |
+|--------|---------|------------|
+| `wasm32-unknown-unknown` | Browser/WebGPU | tokio/mio/socket2 (no OS sockets) |
+| `wasm32-wasip1` | WASI edge | socket2/polling |
 
 ## Architecture Decisions
 
 ### Hardware-dependent code layering
 
 ```
-Layer 0 (Pure Rust)     — unconditional, all platforms
+Layer 0 (Pure Rust)     — unconditional, all platforms (including WASM)
 Layer 1 (Memory Mgmt)   — types unconditional, constructors return Err(Unsupported) on non-Linux
 Layer 2 (Kernel ABI)    — types unconditional, functions #[cfg(target_os = "linux")]
 systemd_fds             — #[cfg(target_os = "linux")] at module level
@@ -58,7 +84,7 @@ fallback stubs that return appropriate errors.
 ## Running the cross-arch check
 
 ```bash
-# Full sweep (all 15 targets)
+# Full sweep (all 16 native targets)
 ./scripts/cross-arch-check.sh
 
 # Quick check (Tier 1 only)
@@ -73,8 +99,9 @@ rustup target add \
     aarch64-unknown-linux-gnu aarch64-unknown-linux-musl \
     x86_64-pc-windows-gnu x86_64-pc-windows-msvc \
     x86_64-apple-darwin aarch64-apple-darwin \
-    aarch64-linux-android aarch64-pc-windows-gnullvm \
-    armv7-unknown-linux-gnueabihf riscv64gc-unknown-linux-gnu \
-    powerpc64le-unknown-linux-gnu s390x-unknown-linux-gnu \
-    loongarch64-unknown-linux-gnu
+    aarch64-apple-ios aarch64-linux-android \
+    aarch64-pc-windows-gnullvm armv7-unknown-linux-gnueabihf \
+    riscv64gc-unknown-linux-gnu powerpc64le-unknown-linux-gnu \
+    s390x-unknown-linux-gnu loongarch64-unknown-linux-gnu \
+    wasm32-unknown-unknown wasm32-wasip1
 ```
