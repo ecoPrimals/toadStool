@@ -5,7 +5,29 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 6, 2026 (Sessions 43-355+)
+## [Unreleased] - Aug 8, 2026 (Sessions 43-365+)
+
+### Session S365 (Aug 7-8, 2026) — G68 Complete: Platform Containment (0 rustix outside hw-safe)
+
+- **G68 platform abstraction COMPLETE** — All `rustix::` code imports now live exclusively in `toadstool-hw-safe`. Zero platform-specific syscall leakage to consumer crates.
+- **20+ new hw-safe APIs** — LinuxPrivilegeProbeBackend, LinuxFilesystemIsolation, LinuxDeviceIo (read/write/pread/pwrite/poll), vfio_bar_map/unmap, mmap_device/munmap_device, lock/unlock_memory, pipe_cloexec, fork/exit_group/kill_process/waitpid, recv_with_fds/sendmsg_with_fds, mknod_char, open_path, fs_stats, clock_monotonic_ns, seek_end, ioctl_infra re-exports.
+- **30+ files migrated** across 9 crates (sandbox, akida-driver, cylinder, nvpmu, display, sysmon, monitoring, server, cli).
+- **Architecture impact** — New platforms (darwinGate, riscGate) implement hw-safe backends only; no consumer crate modifications needed.
+
+### Session S364 (Aug 7, 2026) — G68 L3 Full Trait Surface (6 New Abstractions)
+
+- **6 new cross-platform traits** — DeviceIoctl, PrivilegeProbe, FilesystemIsolation, FdPassing, SystemParameters.
+- **LinuxSystemParameters** implemented via rustix::param.
+
+### Session S363 (Aug 7, 2026) — Windows Cross-Compile + Akida DeviceFile Migration
+
+- **neurobench-runner** gated behind `#[cfg(unix)]` for Windows.
+- **akida-driver** migrated to LinuxDeviceFile trait. 15/15 cross-arch.
+
+### Session S362 (Aug 7, 2026) — G68 L3 Full Migration (DeviceFile + EventNotifier)
+
+- **LinuxDeviceFile** and **LinuxEventNotifier** complete in hw-safe.
+- **DRM/V4L2 device open** migrated to trait dispatch.
 
 ### Session S355 (Aug 6, 2026) — Deep Debt: Hardcoded Primal Names, Fake Data, Dead Code, C2 Announce Parity
 

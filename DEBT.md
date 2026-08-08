@@ -1,12 +1,18 @@
 # Active Technical Debt Register
 
-**Date**: August 6, 2026 — S355
+**Date**: August 8, 2026 — S365
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S365 (strandGate G68 Complete — Aug 7-8, 2026)**: All `rustix::` syscall imports
+now confined exclusively to `toadstool-hw-safe`. 30+ files migrated across 9 crates.
+20+ new hw-safe APIs cover every Linux syscall pattern. Platform isolation is complete:
+new architectures implement hw-safe backends, no consumer crate modification needed.
+G68 violations: 0 (was 25+).
 
 **S355 (eastGate Deep Debt — Aug 6, 2026)**: 3 hardcoded primal name violations
 replaced with capability-based strings (songBird→coordination.webhook.export,
