@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S361 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S362 | v0.2.0
 
 ---
 
@@ -308,6 +308,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S362 (Aug 7, 2026)**: **G68 L3 Full Migration — DeviceFile + EventNotifier + Deep Debt** — All 5 L3 backend trait implementations complete in `hw-safe`: `LinuxMemoryMapper`, `LinuxPinnedMemory`, `LinuxDeviceFile` (device node open with CLOEXEC/NONBLOCK), `LinuxEventNotifier` (eventfd + poll for VFIO IRQ wiring). DRM device open and V4L2 device open migrated from raw `rustix::fs::open` to `LinuxDeviceFile` (zero direct rustix in display device open). `ProcessIsolation` trait documented as intentionally unimplemented at trait level (async-signal-safety constraints in fork isolation require lower-level pipe-based API — existing `cylinder::vfio::isolation` is the concrete impl). L3 audit conclusion: remaining 8 rustix sites are irreducible (VFIO ioctls, DMA alloc/mlock, V4L2 ioctls, sandbox mount/caps/proc) — all properly contained in designated unsafe crates with `// SAFETY:` justifications. No files >800L. Full quality gates pass.
 - **S361 (Aug 7, 2026)**: **G68 L3 Implementation Exemplar** — `hw-safe` crate now provides concrete Linux implementations of the L3 backend traits: `LinuxMemoryMapper` (file + anonymous mmap) and `LinuxPinnedMemory` (mlock/munlock with safe `&[u8]` API). `SafeMmapRegion` implements `platform::MappedMemory`. Pattern established for cylinder, akida-driver, display to follow. Scanner L2 false positive documented (`.mode()` on `SubstrateMode` is not filesystem permissions).
 - **S360 (Aug 7, 2026)**: **G68 L3 Backend Traits + Deep Debt Refactor** — New `platform::device_io` module defines trait abstractions for all hardware I/O (MappedMemory, MemoryMapper, PinnedMemory, DeviceFile, EventNotifier, ProcessIsolation). Safe API surface with unsafe contained in hardware crate implementations. `akida-driver` hybrid module refactored from 995L monolith into 4 focused submodules (weights, substrate, selector, core). Full audit: all unsafe is hardware-mandated in designated crates, all production stubs are fail-closed, no overstep remains, no mocks in production, all external deps are pure Rust (rustix). 1,807 tests pass.
 - **S359 (Aug 7, 2026)**: **G68 L2 Convergence** — Final 2 `PermissionsExt` violations migrated (akida-setup permissions + verification). `check_access` for `Custom` mode now uses bitmask semantics (all required bits present) instead of exact match. `missing_docs` warning on BTSP non-Unix stub resolved. Zero `PermissionsExt` usage remains in production code. G68 L2: **COMPLIANT**. L3 (11 device backends in cylinder/hw-safe/nvpmu/akida-driver) — glacial scope.

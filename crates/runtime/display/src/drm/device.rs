@@ -5,10 +5,12 @@
 
 use crate::{DisplayError, Result};
 use drm::Device as DrmDeviceTrait;
-use rustix::fd::OwnedFd;
+use std::os::fd::OwnedFd;
 use std::os::unix::io::{AsFd, BorrowedFd};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use toadstool_common::platform::DeviceFile;
+use toadstool_hw_safe::LinuxDeviceFile;
 
 /// DRM device handle
 ///
@@ -90,15 +92,10 @@ impl Device {
 
         tracing::info!("Opening DRM device: {}", path.display());
 
-        // Open device with rustix (Pure Rust!)
-        let fd = rustix::fs::open(
-            &path,
-            rustix::fs::OFlags::RDWR | rustix::fs::OFlags::CLOEXEC,
-            rustix::fs::Mode::empty(),
-        )
-        .map_err(|e| {
+        // Open device with LinuxDeviceFile (G68 L3 compliant)
+        let fd = LinuxDeviceFile.open(&path, true, false).map_err(|e| {
             tracing::error!("Failed to open {}: {}", path.display(), e);
-            DisplayError::OpenFailed(std::io::Error::from_raw_os_error(e.raw_os_error()))
+            DisplayError::OpenFailed(e)
         })?;
 
         let fd = Arc::new(fd);

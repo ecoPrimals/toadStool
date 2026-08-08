@@ -8,10 +8,11 @@
 //! file contains zero `unsafe` blocks.
 
 use crate::{DisplayError, Result};
-use rustix::fd::OwnedFd;
-use rustix::fs;
+use std::os::fd::OwnedFd;
 use std::os::unix::io::{AsFd, BorrowedFd};
 use std::path::{Path, PathBuf};
+use toadstool_common::platform::DeviceFile;
+use toadstool_hw_safe::LinuxDeviceFile;
 
 use super::ioctl;
 use super::types::*;
@@ -85,14 +86,9 @@ impl CaptureDevice {
             return Err(DisplayError::DeviceNotFound(path));
         }
 
-        let fd = fs::open(
-            &path,
-            fs::OFlags::RDWR | fs::OFlags::NONBLOCK | fs::OFlags::CLOEXEC,
-            fs::Mode::empty(),
-        )
-        .map_err(|e| {
-            DisplayError::OpenFailed(std::io::Error::from_raw_os_error(e.raw_os_error()))
-        })?;
+        let fd = LinuxDeviceFile
+            .open(&path, true, true)
+            .map_err(DisplayError::OpenFailed)?;
 
         Ok(Self {
             path,

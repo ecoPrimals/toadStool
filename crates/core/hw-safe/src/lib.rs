@@ -63,7 +63,9 @@ pub use huge_page::HugePageMemory;
 #[cfg(target_os = "linux")]
 pub use locked_memory::LockedMemory;
 #[cfg(target_os = "linux")]
-pub use platform_backends::{LinuxMemoryMapper, LinuxPinnedMemory};
+pub use platform_backends::{
+    LinuxDeviceFile, LinuxEvent, LinuxEventNotifier, LinuxMemoryMapper, LinuxPinnedMemory,
+};
 #[cfg(target_os = "linux")]
 pub use safe_mmap::SafeMmapRegion;
 #[cfg(target_os = "linux")]

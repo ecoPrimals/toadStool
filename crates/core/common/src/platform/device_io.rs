@@ -4,8 +4,8 @@
 //!
 //! Abstract interfaces for hardware device operations that use platform-specific
 //! syscalls (ioctl, mmap, eventfd, etc.). These traits define the contract;
-//! concrete implementations live in the hardware crates (`cylinder`, `hw-safe`,
-//! `nvpmu`, `akida-driver`) behind `#[cfg(unix)]`.
+//! concrete implementations live in the hardware crates (`hw-safe`) behind
+//! `#[cfg(target_os = "linux")]`.
 //!
 //! ## Design Principle
 //!
@@ -14,6 +14,17 @@
 //! 1. **Mockability** — inject test doubles without `#[cfg(test)]` pollution
 //! 2. **Documentation** — the trait surface documents what operations exist
 //! 3. **Future portability** — if a platform gains support, add an impl
+//!
+//! ## Implementation Status
+//!
+//! | Trait | Concrete impl | Location |
+//! |-------|--------------|----------|
+//! | [`MappedMemory`] | `SafeMmapRegion` | `hw-safe/safe_mmap.rs` |
+//! | [`MemoryMapper`] | `LinuxMemoryMapper` | `hw-safe/platform_backends.rs` |
+//! | [`PinnedMemory`] | `LinuxPinnedMemory` | `hw-safe/platform_backends.rs` |
+//! | [`DeviceFile`] | `LinuxDeviceFile` | `hw-safe/platform_backends.rs` |
+//! | [`EventNotifier`] | `LinuxEventNotifier` | `hw-safe/platform_backends.rs` |
+//! | [`ProcessIsolation`] | `fork_isolated_raw` (pipe-based) | `cylinder/vfio/isolation.rs` |
 //!
 //! ## Categories
 //!
@@ -157,6 +168,14 @@ pub trait EventNotifier: Send + Sync {
 ///
 /// Used by cylinder's guarded sysfs writes and kmod loading where a crash
 /// in the child should not take down the parent.
+///
+/// # Implementation Note
+///
+/// This trait defines the contract for testability and documentation purposes.
+/// The actual Linux implementation (`fork_isolated_raw` in `cylinder::vfio::isolation`)
+/// uses a lower-level pipe-based interface because the child process must be
+/// async-signal-safe (no heap allocation after fork). The `Box<dyn FnOnce>`
+/// interface here is suitable for high-level orchestration and test doubles.
 pub trait ProcessIsolation: Send + Sync {
     /// Error type for process operations.
     type Error: std::error::Error + Send + Sync + 'static;
