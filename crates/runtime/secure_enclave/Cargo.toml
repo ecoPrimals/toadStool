@@ -11,7 +11,7 @@ categories = ["cryptography", "no-std"]
 
 [dependencies]
 # Core ToadStool
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 
 # Compression (Pure Rust Evolution - Jan 17, 2026)
 # OLD: zstd, lz4 (both pulled in C dependencies via zstd-sys, lz4-sys)

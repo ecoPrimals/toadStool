@@ -4,7 +4,9 @@
 //! This module provides `From` implementations to convert common error types
 //! from the standard library and external crates into ToadStool error types.
 
-use super::types::{ExecutionError, SystemError, ToadStoolError};
+use super::types::{SystemError, ToadStoolError};
+#[cfg(feature = "runtime")]
+use super::types::ExecutionError;
 
 // ============================================================================
 // Standard Error Conversions
@@ -48,6 +50,7 @@ impl From<serde_json::Error> for SystemError {
 // Tokio Error Conversions
 // ============================================================================
 
+#[cfg(feature = "runtime")]
 impl From<tokio::time::error::Elapsed> for ToadStoolError {
     fn from(err: tokio::time::error::Elapsed) -> Self {
         ExecutionError::Timeout {
@@ -58,12 +61,14 @@ impl From<tokio::time::error::Elapsed> for ToadStoolError {
     }
 }
 
+#[cfg(feature = "runtime")]
 impl From<tokio::task::JoinError> for ToadStoolError {
     fn from(err: tokio::task::JoinError) -> Self {
         Self::Runtime(format!("Task join failed: {err}"))
     }
 }
 
+#[cfg(feature = "runtime")]
 impl From<tokio::sync::broadcast::error::RecvError> for ToadStoolError {
     fn from(err: tokio::sync::broadcast::error::RecvError) -> Self {
         Self::Runtime(format!("Broadcast receive failed: {err}"))

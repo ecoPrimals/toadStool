@@ -1,25 +1,22 @@
 # toadStool Cross-Architecture Support
 
-**Status**: 16/16 native targets pass `cargo check --workspace`
-**Sprint**: S369 — First primal to full cross-arch compilation
+**Status**: 16/16 native targets + 10/48 crates on WASM (Tier 3 active)
+**Sprint**: S370 — Tier 3 WASM compute subset achieved
 **Philosophy**: If it can run a bin, we can run primals on it.
 
 ## Node Atomic Fleet — Actual Hardware
 
 | Hardware | Target | Status |
 |----------|--------|--------|
-| Development (x86_64 Linux) | `x86_64-unknown-linux-gnu` | ✓ Primary |
-| Mac M4 Mini | `aarch64-apple-darwin` | ✓ |
-| Pixel 8 (GrapheneOS) | `aarch64-linux-android` | ✓ |
-| iPhone XS | `aarch64-apple-ios` | ✓ |
-| Milk-V Jupiter 2 (RISC-V vector) | `riscv64gc-unknown-linux-gnu` | ✓ |
-| Steam Deck (SteamOS) | `x86_64-unknown-linux-gnu` | ✓ |
-| Raspberry Pi | `aarch64-unknown-linux-gnu` | ✓ |
-| WebGPU/Browser | `wasm32-unknown-unknown` | Compute subset* |
-| Cloud/WASI edge | `wasm32-wasip1` | Compute subset* |
-
-*WASM targets: tokio networking (mio/socket2) unavailable. Compute-only crates pass.
-Full WASM support requires feature-gating the async networking stack.
+| Development (x86_64 Linux) | `x86_64-unknown-linux-gnu` | Primary |
+| Mac M4 Mini | `aarch64-apple-darwin` | Full workspace |
+| Pixel 8 (GrapheneOS) | `aarch64-linux-android` | Full workspace |
+| iPhone XS | `aarch64-apple-ios` | Full workspace |
+| Milk-V Jupiter 2 (RISC-V vector) | `riscv64gc-unknown-linux-gnu` | Full workspace |
+| Steam Deck (SteamOS) | `x86_64-unknown-linux-gnu` | Full workspace |
+| Raspberry Pi | `aarch64-unknown-linux-gnu` | Full workspace |
+| WebGPU/Browser | `wasm32-unknown-unknown` | 10 crates (compute subset) |
+| Cloud/WASI edge | `wasm32-wasip1` | 10 crates (compute subset) |
 
 ## Supported Architectures
 
@@ -49,12 +46,35 @@ Full WASM support requires feature-gating the async networking stack.
 | `s390x-unknown-linux-gnu` | Linux | IBM Z | Mainframe compute |
 | `loongarch64-unknown-linux-gnu` | Linux | LoongArch | Loongson sovereign |
 
-### Tier 3 — Compute Subset (WASM, future full support)
+### Tier 3 — Compute Subset (WASM — 10 crates pass)
 
-| Target | Runtime | Blocked By |
-|--------|---------|------------|
-| `wasm32-unknown-unknown` | Browser/WebGPU | tokio/mio/socket2 (no OS sockets) |
-| `wasm32-wasip1` | WASI edge | socket2/polling |
+| Target | Runtime | Crates |
+|--------|---------|--------|
+| `wasm32-unknown-unknown` | Browser/WebGPU | 10/48 (compute core) |
+| `wasm32-wasip1` | WASI edge/cloud | 10/48 (compute core) |
+
+**Crates passing on WASM** (compute subset):
+- `toadstool-hw-safe` — safe hardware abstraction layer
+- `toadstool-core` — core hardware infrastructure types
+- `toadstool-sysmon` — system monitoring types
+- `toadstool-management-resources` — resource management types
+- `toadstool-runtime-secure-enclave` — enclave computation types
+- `hw-learn` — vendor-neutral GPU hardware learning
+- `nvpmu` — NVIDIA power management logic
+- `akida-chip` — NPU chip abstraction
+- `akida-models` — NPU model loading/inference
+- `akida-setup` — NPU setup utilities
+
+**Key: `toadstool-common` `runtime` feature**
+
+The `runtime` feature (default-enabled) gates tokio and all async networking.
+Crates that only need types/traits/constants from `common` use `default-features = false`
+to avoid pulling in tokio/mio/socket2 which cannot compile on WASM.
+
+**What won't compile on WASM** (requires OS networking/processes):
+- Server, client, CLI — fundamentally need TCP/Unix sockets
+- Runtime orchestration — needs process control
+- All integration/testing crates — need full OS
 
 ## Architecture Decisions
 

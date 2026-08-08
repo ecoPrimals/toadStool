@@ -17,6 +17,7 @@
 //! - **Discovery-Based**: Socket paths from environment/runtime
 
 mod api;
+#[cfg(feature = "runtime")]
 mod discovery;
 mod env;
 mod paths;
@@ -30,6 +31,7 @@ pub use api::{
     get_nucleus_socket_path, get_routing_socket_path, get_runtime_dir,
     get_socket_path_for_capability, get_toadstool_socket_path, get_toadstool_tarpc_socket_path,
 };
+#[cfg(feature = "runtime")]
 pub use discovery::{
     SocketDiscoveryError, discover_coordination_socket, discover_crypto_socket,
     discover_socket_for_capability, discover_storage_socket,

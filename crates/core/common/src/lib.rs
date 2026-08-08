@@ -21,7 +21,9 @@ use uuid::Uuid;
 pub mod auth;
 #[cfg(feature = "btsp")]
 pub mod btsp;
+#[cfg(feature = "runtime")]
 pub mod capability_discovery; // NEW: Pure infant discovery API (modern interface)
+#[cfg(feature = "runtime")]
 pub mod capability_provider; // NEW: Deep Debt - Capability-based service provider abstraction
 pub mod config_bases;
 pub mod constants; // Ecosystem constants: JSON-RPC codes, timeouts, network defaults
@@ -30,8 +32,10 @@ pub mod error;
 pub mod error_codes;
 #[cfg(test)]
 mod error_codes_tests;
+#[cfg(feature = "runtime")]
 pub mod infant_discovery;
 pub mod interned_strings; // NEW: Zero-allocation string constants
+#[cfg(feature = "runtime")]
 pub mod modern_utils;
 pub mod os_keyring;
 pub mod pci; // Shared PCI vendor IDs and related constants
@@ -39,37 +43,42 @@ pub mod pci_discovery; // Unified PCI sysfs scanner (GPU + NPU + any accelerator
 pub mod platform; // G68 Platform Substrate: cross-platform links + access control
 pub mod platform_paths; // NEW: Platform-agnostic path resolution (ecoBin v2.0)
 // primal_capabilities module removed S203g — zero external callers, replaced by infant_discovery
+#[cfg(feature = "runtime")]
 pub mod primal_discovery; // NEW: Runtime capability-based primal discovery
-#[cfg(feature = "mdns")]
+#[cfg(all(feature = "runtime", feature = "mdns"))]
 pub mod primal_discovery_complete; // Complete capability-based discovery with mDNS
-#[cfg(feature = "mdns")]
+#[cfg(all(feature = "runtime", feature = "mdns"))]
 pub mod primal_discovery_mdns; // mDNS integration adapter
 pub mod primal_identity;
+#[cfg(feature = "runtime")]
 pub mod primal_integration; // NEW: Self-knowledge only architecture
 pub mod primal_sockets;
+#[cfg(feature = "runtime")]
 pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
 pub mod runtime_ports; // NEW: Deep Debt compliant dynamic port discovery
 pub mod secret_string; // Zero-leakage secret wrapper + credential resolution chain
 pub mod self_identity; // Self-aware primal identity and capability discovery
+#[cfg(feature = "runtime")]
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
 pub mod sysfs_paths; // Linux sysfs path helpers (PCI, module, class)
 pub mod system_time_serde; // Serde for std::time::SystemTime (Unix timestamp)
 pub mod transport_endpoint; // sourDough-compatible TransportEndpoint (Wave 100 transport evolution)
 #[cfg(unix)]
 pub mod uid_detector; // NEW: Pure Rust unix socket path discovery (100% pure Rust!)
+#[cfg(feature = "runtime")]
 pub mod universal_adapter;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "runtime"))]
 pub mod unix_jsonrpc_client;
-#[cfg(not(unix))]
+#[cfg(not(all(unix, feature = "runtime")))]
 #[path = "unix_jsonrpc_client_stub.rs"]
 pub mod unix_jsonrpc_client;
-#[cfg(not(unix))]
+#[cfg(not(all(unix, feature = "runtime")))]
 pub mod unix_jsonrpc {
     //! Alias for [`super::unix_jsonrpc_client`] (stub on non-Unix platforms).
     pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "runtime"))]
 pub mod unix_jsonrpc {
     //! Alias for [`super::unix_jsonrpc_client`] (BearDog / security IPC naming in phase handoffs).
     pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
@@ -95,9 +104,16 @@ pub struct ToadStoolId(Uuid);
 
 impl ToadStoolId {
     /// Generate a new random ID
+    #[cfg(feature = "runtime")]
     #[must_use]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
+    }
+
+    /// Create from an existing UUID
+    #[must_use]
+    pub const fn from_uuid(id: Uuid) -> Self {
+        Self(id)
     }
 
     /// Get the inner UUID
@@ -107,6 +123,7 @@ impl ToadStoolId {
     }
 }
 
+#[cfg(feature = "runtime")]
 impl Default for ToadStoolId {
     fn default() -> Self {
         Self::new()
@@ -114,6 +131,7 @@ impl Default for ToadStoolId {
 }
 
 /// Generate a unique ID for `ToadStool` resources
+#[cfg(feature = "runtime")]
 #[must_use]
 pub fn generate_id() -> Uuid {
     Uuid::new_v4()

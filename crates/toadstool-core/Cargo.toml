@@ -11,7 +11,7 @@ keywords = ["hardware", "infrastructure", "compute", "npu"]
 categories = ["hardware-support", "development-tools"]
 
 [dependencies]
-toadstool-common = { path = "../core/common" }
+toadstool-common = { path = "../core/common", default-features = false }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }

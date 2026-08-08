@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Non-Unix stub for the Unix-only `unix_jsonrpc_client` module.
+//! Non-Unix/non-runtime stub for the Unix-only `unix_jsonrpc_client` module.
 //!
-//! Unix domain sockets are unavailable on Windows and other non-Unix targets.
+//! Unix domain sockets are unavailable on Windows, WASM, and other non-Unix targets.
 //! This module preserves the public API so cross-compiled crates compile; calls
 //! fail at runtime with a clear platform error.
 
@@ -29,6 +29,7 @@ impl UnixJsonRpcClient {
     }
 
     /// Always fails on non-Unix platforms.
+    #[allow(clippy::unused_async)]
     pub async fn call(&self, _method: &str, _params: Value) -> ToadStoolResult<Value> {
         let _ = &self.socket_path;
         Err(platform_unavailable())
@@ -41,11 +42,13 @@ pub struct ConnectedJsonRpcClient;
 
 impl ConnectedJsonRpcClient {
     /// Always fails on non-Unix platforms.
+    #[allow(clippy::unused_async)]
     pub async fn connect(_socket_path: impl AsRef<Path>) -> ToadStoolResult<Self> {
         Err(platform_unavailable())
     }
 
     /// Always fails on non-Unix platforms.
+    #[allow(clippy::unused_async)]
     pub async fn call(&mut self, _method: &str, _params: Value) -> ToadStoolResult<Value> {
         Err(platform_unavailable())
     }

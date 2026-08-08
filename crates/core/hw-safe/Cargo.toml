@@ -13,7 +13,7 @@ keywords = ["hardware", "mmap", "mmio", "unsafe", "wrapper"]
 categories.workspace = true
 
 [dependencies]
-toadstool-common = { path = "../common" }
+toadstool-common = { path = "../common", default-features = false }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 

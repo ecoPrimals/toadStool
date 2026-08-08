@@ -11,7 +11,7 @@ categories = ["development-tools"]
 
 [dependencies]
 serde = { workspace = true }
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 toadstool-sysmon = { workspace = true }
 
 [lints]

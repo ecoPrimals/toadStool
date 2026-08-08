@@ -14,24 +14,20 @@ categories.workspace = true
 readme = "README.md"
 
 [dependencies]
-# Core dependencies
+# Core dependencies (always available — types, traits, error handling)
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true }
+uuid = { version = "1.7", features = ["serde"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 humantime-serde = { workspace = true }
 zeroize = { version = "1.7", features = ["derive"] }
-
-# EVOLVED: Pure Rust UID detection (removed libc dependency!)
-# libc = "0.2"  # NO LONGER NEEDED - using pure Rust uid_detector!
-
-# Infant discovery dependencies
-tokio = { workspace = true }
 toml = { workspace = true }
 base64 = { workspace = true }
 semver = { version = "1.0.27", features = ["serde"] }
+
+# Runtime dependencies (async networking, IPC — requires OS sockets/threads)
+tokio = { workspace = true, optional = true }
 
 # mDNS bootstrap discovery (Songbird's domain; cold-start only)
 mdns-sd = { version = "0.10", optional = true }
@@ -53,11 +49,13 @@ temp-env = { workspace = true }
 toadstool = { path = "../toadstool", features = ["proptest-strategies"] }
 
 [features]
-default = ["mdns", "btsp"]
+default = ["runtime", "mdns", "btsp"]
+# Async runtime (tokio) — requires OS-level sockets/threads. Enables async discovery, IPC, UUID generation.
+runtime = ["dep:tokio", "uuid/v4"]
 # mDNS bootstrap discovery (Songbird's domain; use for cold-start only)
-mdns = ["dep:mdns-sd"]
+mdns = ["runtime", "dep:mdns-sd"]
 # BTSP handshake for production socket authentication
-btsp = ["dep:x25519-dalek", "dep:hkdf", "dep:hmac", "dep:sha2", "dep:chacha20poly1305", "dep:rand"]
+btsp = ["runtime", "dep:x25519-dalek", "dep:hkdf", "dep:hmac", "dep:sha2", "dep:chacha20poly1305", "dep:rand"]
 
 [lints]
 workspace = true

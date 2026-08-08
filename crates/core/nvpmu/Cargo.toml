@@ -10,7 +10,7 @@ keywords = ["gpu", "nvidia", "power-management", "pmu"]
 categories = ["hardware-support", "science"]
 
 [dependencies]
-toadstool-common = { path = "../common" }
+toadstool-common = { path = "../common", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
