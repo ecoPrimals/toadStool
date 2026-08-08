@@ -5,7 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use rustix::param::clock_ticks_per_second;
+use toadstool_common::platform::SystemParameters;
+use toadstool_hw_safe::LinuxSystemParameters;
 
 use super::constants::CGROUP2_FS_ROOT;
 use crate::types::ResourceUsage;
@@ -178,7 +179,7 @@ impl JiffiesCpuSampler {
         let now = Instant::now();
         let pct = match (self.last_jiffies, self.last_instant) {
             (Some(pj), Some(pi)) => {
-                let hz = clock_ticks_per_second().max(1) as f64;
+                let hz = LinuxSystemParameters.clock_ticks_per_second().max(1) as f64;
                 let dt = now.duration_since(pi).as_secs_f64();
                 if dt <= f64::EPSILON {
                     return Some(0.0);

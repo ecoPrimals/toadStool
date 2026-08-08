@@ -6,6 +6,8 @@
 
 //! PMC (Power Management Controller) — engine enables and boot identity.
 
+use std::os::fd::AsFd;
+
 /// Chip identity and strap configuration read at boot.
 pub const BOOT0: u32 = 0x0000_0000;
 /// PMC master interrupt status.
@@ -122,20 +124,11 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
 
     // SAFETY: f is a valid sysfs BAR0 resource0; 0x1000 covers PMC interrupt registers;
     // MAP_SHARED with READ|WRITE is required for MMIO quench writes.
-    let map = unsafe {
-        rustix::mm::mmap(
-            std::ptr::null_mut(),
-            0x1000,
-            rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-            rustix::mm::MapFlags::SHARED,
-            &f,
-            0,
-        )
-    };
+    let map = unsafe { toadstool_hw_safe::mmap_device(f.as_fd(), 0x1000, 0, true) };
 
     match map {
         Ok(ptr) => {
-            let base = ptr.cast::<u8>();
+            let base = ptr;
             // SAFETY: all offsets are within the 0x1000 mapped BAR0 page.
             let old_en = unsafe {
                 std::ptr::read_volatile(base.add(profile.intr_en_readable as usize).cast::<u32>())
@@ -159,7 +152,7 @@ pub fn quench_interrupts(bdf: &str, profile: &InterruptProfile, context: &str) {
             };
 
             // SAFETY: unmapping the 0x1000 BAR0 page mapped above.
-            let _ = unsafe { rustix::mm::munmap(ptr, 0x1000) };
+            let _ = unsafe { toadstool_hw_safe::munmap_device(ptr, 0x1000) };
 
             tracing::info!(
                 bdf,

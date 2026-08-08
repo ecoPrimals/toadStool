@@ -13,11 +13,11 @@
 
 use std::os::unix::io::{AsFd, AsRawFd};
 
-use rustix::ioctl;
+use toadstool_hw_safe::ioctl_infra as ioctl;
 
 use super::types::*;
 
-fn ioctl_err(e: rustix::io::Errno) -> std::io::Error {
+fn ioctl_err(e: toadstool_hw_safe::ioctl_infra::Errno) -> std::io::Error {
     std::io::Error::from_raw_os_error(e.raw_os_error())
 }
 

@@ -19,6 +19,8 @@ use std::borrow::Cow;
 use std::os::fd::BorrowedFd;
 use std::sync::Arc;
 
+use toadstool_hw_safe::mmap_device;
+
 use crate::error::DriverError;
 use crate::mmio_region::MmioRegion;
 use crate::vfio::DmaBackend;
@@ -179,21 +181,12 @@ fn map_bar_from_fd(
 
     // SAFETY: device fd is valid (held by anchor); region offset from kernel;
     // size verified non-zero; MAP_SHARED for MMIO semantics.
-    let raw_ptr = unsafe {
-        rustix::mm::mmap(
-            std::ptr::null_mut(),
-            region_size,
-            rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-            rustix::mm::MapFlags::SHARED,
-            device_fd,
-            region_info.offset,
-        )
+    let raw_ptr = unsafe { mmap_device(device_fd, region_size, region_info.offset, true) }
         .map_err(|e| {
             DriverError::MmapFailed(Cow::Owned(format!(
                 "BAR{bar_index} mmap failed for {bdf}: {e}"
             )))
-        })?
-    };
+        })?;
 
     if raw_ptr.is_null() {
         return Err(DriverError::MmapFailed(Cow::Owned(format!(
@@ -201,7 +194,7 @@ fn map_bar_from_fd(
         ))));
     }
 
-    let base_ptr = raw_ptr.cast::<u8>();
+    let base_ptr = raw_ptr;
 
     tracing::info!(
         bdf,

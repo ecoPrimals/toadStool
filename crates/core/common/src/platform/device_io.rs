@@ -317,6 +317,11 @@ pub trait FilesystemIsolation: Send + Sync {
     /// Create a temporary filesystem at `target` (not backed by host storage).
     fn mount_tmpfs(&self, target: &Path) -> Result<(), Self::Error>;
 
+    /// Mount a virtual/pseudo filesystem (proc, sysfs, devtmpfs, etc.).
+    ///
+    /// `fstype` is the filesystem type name (e.g., "proc", "sysfs", "tmpfs").
+    fn mount_virtual(&self, target: &Path, fstype: &str) -> Result<(), Self::Error>;
+
     /// Remove a previously created mount.
     fn unmount(&self, target: &Path) -> Result<(), Self::Error>;
 }

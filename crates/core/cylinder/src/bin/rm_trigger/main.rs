@@ -45,7 +45,11 @@ use std::os::fd::{AsFd, AsRawFd};
 use std::process::ExitCode;
 
 #[cfg(target_os = "linux")]
-use rustix::ioctl::Opcode;
+use std::path::Path;
+#[cfg(target_os = "linux")]
+use toadstool_hw_safe::ioctl_infra::{Opcode, ioctl as raw_ioctl};
+#[cfg(target_os = "linux")]
+use toadstool_hw_safe::mknod_char;
 
 #[cfg(target_os = "linux")]
 use toadstool_cylinder::bin_helpers::Bar0;
@@ -242,7 +246,7 @@ fn run_card_info(fd: &impl AsFd) -> Result<serde_json::Value, Box<dyn std::error
     let ioctl = RmRawIoctl::<{ CARD_INFO_OP }> {
         ptr: ci_buf.as_mut_ptr(),
     };
-    let (rc, errno) = match unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+    let (rc, errno) = match unsafe { raw_ioctl(fd, ioctl) } {
         Ok(v) => (v, 0),
         Err(e) => (-1, e.raw_os_error()),
     };
@@ -336,7 +340,7 @@ fn run_attach_gpus_to_fd(fd: &impl AsFd, gpu_id: u32) -> serde_json::Value {
     let ioctl = RmRawIoctl::<{ ATTACH_OP }> {
         ptr: attach_buf.as_mut_ptr().cast(),
     };
-    let (rc, errno) = match unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+    let (rc, errno) = match unsafe { raw_ioctl(fd, ioctl) } {
         Ok(v) => (v, 0),
         Err(e) => (-1, e.raw_os_error()),
     };
@@ -400,27 +404,12 @@ fn main() -> ExitCode {
     let _ = std::fs::remove_file(ctl_path);
     let _ = std::fs::remove_file(gpu_path);
 
-    let mode = rustix::fs::Mode::from_raw_mode(0o666);
-    let char_type = rustix::fs::FileType::CharacterDevice;
-
-    if let Err(e) = rustix::fs::mknodat(
-        rustix::fs::CWD,
-        ctl_path,
-        char_type,
-        mode,
-        rustix::fs::makedev(major, 255),
-    ) {
+    if let Err(e) = mknod_char(Path::new(ctl_path), 0o666, major, 255) {
         eprintln!("mknod ctl: {e}");
         return ExitCode::from(1);
     }
 
-    if let Err(e) = rustix::fs::mknodat(
-        rustix::fs::CWD,
-        gpu_path,
-        char_type,
-        mode,
-        rustix::fs::makedev(major, 0),
-    ) {
+    if let Err(e) = mknod_char(Path::new(gpu_path), 0o666, major, 0) {
         eprintln!("mknod gpu: {e}");
         let _ = std::fs::remove_file(ctl_path);
         return ExitCode::from(1);

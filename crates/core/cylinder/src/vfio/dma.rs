@@ -15,11 +15,10 @@
 //!   [`OwnedFd`](std::os::fd::OwnedFd); ioctls use [`AsFd::as_fd`] (no `borrow_raw`).
 
 use crate::error::DriverError;
-use rustix::mm::{mlock, munlock};
 use std::borrow::Cow;
 use std::os::fd::AsFd;
 use std::ptr::NonNull;
-use toadstool_hw_safe::VolatileMmio;
+use toadstool_hw_safe::{VolatileMmio, lock_memory, unlock_memory};
 
 use super::device::DmaBackend;
 use super::ioctl;
@@ -135,7 +134,7 @@ impl DmaBuffer {
 
         // SAFETY: mlock prevents page-out, required for VFIO DMA correctness.
         // vaddr valid for aligned_size bytes from alloc above.
-        if let Err(e) = unsafe { mlock(vaddr.as_ptr().cast(), aligned_size) } {
+        if let Err(e) = unsafe { lock_memory(vaddr.as_ptr(), aligned_size) } {
             // SAFETY: Cleanup — vaddr allocated above with same layout.
             unsafe { std::alloc::dealloc(vaddr.as_ptr(), layout) };
             return Err(DriverError::MmapFailed(Cow::Owned(format!(
@@ -157,7 +156,7 @@ impl DmaBuffer {
             tracing::warn!("VFIO DMA map failed: {e}");
             // SAFETY: Cleanup — vaddr allocated and mlock'd above.
             unsafe {
-                let _ = munlock(ptr.cast(), aligned_size);
+                let _ = unlock_memory(ptr, aligned_size);
                 std::alloc::dealloc(ptr, layout);
             };
             return Err(e);
@@ -336,7 +335,7 @@ impl Drop for DmaBuffer {
 
         // SAFETY: munlock matches mlock from new(); must unlock before dealloc.
         unsafe {
-            let _ = munlock(ptr.cast(), size);
+            let _ = unlock_memory(ptr, size);
         };
 
         let _ = Self::dma_unmap_backend(&self.backend, self.iova, size as u64);

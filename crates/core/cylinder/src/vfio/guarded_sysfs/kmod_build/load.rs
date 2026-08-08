@@ -1,41 +1,51 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::ffi::CString;
+use std::os::fd::AsFd;
 use std::path::Path;
 use std::time::{Duration, Instant};
+
+use toadstool_hw_safe::{
+    ForkResult, LinuxDeviceIo, Pid, WaitResult, delete_module, exit_group, finit_module, fork,
+    kill_process, pipe_cloexec, waitpid_nohang,
+};
 
 use super::super::GuardedSysfsError;
 use super::super::driver_ops::reap_forked_child;
 
 /// Wait for a forked kmod child with timeout, kill on timeout.
 fn wait_for_kmod_child(
-    child_pid: rustix::process::Pid,
+    child_pid: Pid,
     label: &str,
     args_str: &str,
     timeout: Duration,
 ) -> Result<(), GuardedSysfsError> {
-    use rustix::process::{Signal, WaitOptions, waitpid};
-
     let start = Instant::now();
     let poll_interval = Duration::from_millis(100);
 
     loop {
-        match waitpid(Some(child_pid), WaitOptions::NOHANG) {
-            Ok(Some((_pid, status))) => {
-                if status.exited() && status.exit_status() == Some(0) {
-                    tracing::info!(
-                        label,
-                        args = args_str,
-                        elapsed_ms = start.elapsed().as_millis() as u64,
-                        "kmod operation completed"
-                    );
-                    return Ok(());
-                }
-                let code = status.exit_status().unwrap_or(-1);
+        match waitpid_nohang(child_pid) {
+            Ok(Some(WaitResult::Exited(0))) => {
+                tracing::info!(
+                    label,
+                    args = args_str,
+                    elapsed_ms = start.elapsed().as_millis() as u64,
+                    "kmod operation completed"
+                );
+                return Ok(());
+            }
+            Ok(Some(WaitResult::Exited(code))) => {
                 return Err(GuardedSysfsError::KmodFailed {
                     cmd: label.into(),
                     args: args_str.into(),
                     reason: format!("child exited with code {code}"),
+                });
+            }
+            Ok(Some(WaitResult::Signaled(sig))) => {
+                return Err(GuardedSysfsError::KmodFailed {
+                    cmd: label.into(),
+                    args: args_str.into(),
+                    reason: format!("child killed by signal {sig}"),
                 });
             }
             Ok(None) => {
@@ -46,7 +56,7 @@ fn wait_for_kmod_child(
                         timeout_ms = timeout.as_millis() as u64,
                         "kmod operation timed out — killing child"
                     );
-                    let _ = rustix::process::kill_process(child_pid, Signal::KILL);
+                    let _ = kill_process(child_pid);
                     reap_forked_child(child_pid);
                     return Err(GuardedSysfsError::KmodTimeout {
                         cmd: label.into(),
@@ -101,17 +111,16 @@ pub fn insmod_guarded_with_params(
 
     // Pipe for errno propagation: child writes raw errno (4 bytes) on
     // failure, nothing on success. Parent reads after waitpid.
-    let (pipe_read, pipe_write) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)
-        .map_err(|e| GuardedSysfsError::KmodFailed {
-            cmd: "finit_module".into(),
-            args: path_str.clone(),
-            reason: format!("pipe failed: {e}"),
-        })?;
+    let (pipe_read, pipe_write) = pipe_cloexec().map_err(|e| GuardedSysfsError::KmodFailed {
+        cmd: "finit_module".into(),
+        args: path_str.clone(),
+        reason: format!("pipe failed: {e}"),
+    })?;
 
     // SAFETY: fork in multi-threaded context. Child calls only
     // finit_module (syscall) + write (pipe) + exit_group — all async-signal-safe.
     // ko_file fd is inherited by the child (not CLOEXEC).
-    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+    let fork_result = unsafe { fork() };
 
     match fork_result {
         Err(e) => Err(GuardedSysfsError::KmodFailed {
@@ -119,18 +128,18 @@ pub fn insmod_guarded_with_params(
             args: path_str,
             reason: format!("fork failed: {e}"),
         }),
-        Ok(rustix::runtime::Fork::Child(_)) => {
+        Ok(ForkResult::Child) => {
             drop(pipe_read);
-            match rustix::system::finit_module(&ko_file, &params_c, 0) {
-                Ok(()) => rustix::runtime::exit_group(0),
+            match finit_module(&ko_file, &params_c, 0) {
+                Ok(()) => exit_group(0),
                 Err(e) => {
-                    let errno = e.raw_os_error();
-                    let _ = rustix::io::write(&pipe_write, &errno.to_ne_bytes());
-                    rustix::runtime::exit_group(1)
+                    let errno = e.raw_os_error().unwrap_or(1);
+                    let _ = LinuxDeviceIo::write(pipe_write.as_fd(), &errno.to_ne_bytes());
+                    exit_group(1)
                 }
             }
         }
-        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
+        Ok(ForkResult::Parent { child_pid }) => {
             drop(ko_file);
             drop(pipe_write);
             let result = wait_for_kmod_child(child_pid, "finit_module", &path_str, timeout);
@@ -138,7 +147,7 @@ pub fn insmod_guarded_with_params(
                 && reason.starts_with("child exited with code")
             {
                 let mut buf = [0u8; 4];
-                if rustix::io::read(&pipe_read, &mut buf) == Ok(4) {
+                if matches!(LinuxDeviceIo::read(pipe_read.as_fd(), &mut buf), Ok(4)) {
                     let errno = i32::from_ne_bytes(buf);
                     return Err(GuardedSysfsError::KmodFailed {
                         cmd: "finit_module".into(),
@@ -215,15 +224,14 @@ fn rmmod_with_flags(name: &str, flags: i32, timeout: Duration) -> Result<(), Gua
         reason: "name contains NUL byte".into(),
     })?;
 
-    let (pipe_read, pipe_write) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)
-        .map_err(|e| GuardedSysfsError::KmodFailed {
-            cmd: "delete_module".into(),
-            args: name.into(),
-            reason: format!("pipe failed: {e}"),
-        })?;
+    let (pipe_read, pipe_write) = pipe_cloexec().map_err(|e| GuardedSysfsError::KmodFailed {
+        cmd: "delete_module".into(),
+        args: name.into(),
+        reason: format!("pipe failed: {e}"),
+    })?;
 
     // SAFETY: fork + delete_module syscall — async-signal-safe.
-    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+    let fork_result = unsafe { fork() };
 
     match fork_result {
         Err(e) => Err(GuardedSysfsError::KmodFailed {
@@ -231,25 +239,25 @@ fn rmmod_with_flags(name: &str, flags: i32, timeout: Duration) -> Result<(), Gua
             args: name.into(),
             reason: format!("fork failed: {e}"),
         }),
-        Ok(rustix::runtime::Fork::Child(_)) => {
+        Ok(ForkResult::Child) => {
             drop(pipe_read);
-            match rustix::system::delete_module(&name_c, flags) {
-                Ok(()) => rustix::runtime::exit_group(0),
+            match delete_module(&name_c, flags) {
+                Ok(()) => exit_group(0),
                 Err(e) => {
-                    let errno = e.raw_os_error();
-                    let _ = rustix::io::write(&pipe_write, &errno.to_ne_bytes());
-                    rustix::runtime::exit_group(1)
+                    let errno = e.raw_os_error().unwrap_or(1);
+                    let _ = LinuxDeviceIo::write(pipe_write.as_fd(), &errno.to_ne_bytes());
+                    exit_group(1)
                 }
             }
         }
-        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
+        Ok(ForkResult::Parent { child_pid }) => {
             drop(pipe_write);
             let result = wait_for_kmod_child(child_pid, "delete_module", name, timeout);
             if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result
                 && reason.starts_with("child exited with code")
             {
                 let mut buf = [0u8; 4];
-                if rustix::io::read(&pipe_read, &mut buf) == Ok(4) {
+                if matches!(LinuxDeviceIo::read(pipe_read.as_fd(), &mut buf), Ok(4)) {
                     let errno = i32::from_ne_bytes(buf);
                     return Err(GuardedSysfsError::KmodFailed {
                         cmd: "delete_module".into(),

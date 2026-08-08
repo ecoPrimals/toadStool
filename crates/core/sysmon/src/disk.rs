@@ -80,16 +80,13 @@ pub fn disk_usage() -> Result<Vec<DiskInfo>> {
             continue;
         }
 
-        if let Ok(stat) = rustix::fs::statvfs(mount_point) {
-            let block_size = stat.f_frsize;
-            let total = stat.f_blocks * block_size;
-            let available = stat.f_bavail * block_size;
-            if total > 0 {
+        if let Ok(stat) = toadstool_hw_safe::fs_stats(std::path::Path::new(mount_point)) {
+            if stat.total_bytes > 0 {
                 disks.push(DiskInfo {
                     mount_point: mount_point.to_string(),
                     filesystem: filesystem.to_string(),
-                    total_space: total,
-                    available_space: available,
+                    total_space: stat.total_bytes,
+                    available_space: stat.available_bytes,
                 });
             }
         }

@@ -46,7 +46,6 @@ toadstool-sysmon = { path = "../../core/sysmon" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 drm = "0.14"
-rustix = { workspace = true, features = ["fs", "all-apis"] }
 evdev = "0.13"
 toadstool-hw-safe = { path = "../../core/hw-safe" }
 

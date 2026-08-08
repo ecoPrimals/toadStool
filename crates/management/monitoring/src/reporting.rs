@@ -126,15 +126,16 @@ pub(crate) fn load_to_cpu_usage_percent(load_one: f64, cpu_cores: usize) -> f64 
 }
 
 /// Bytes available to unprivileged users on `/` via `statvfs`, or `0` on failure.
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn statvfs_root_available_bytes() -> u64 {
-    match rustix::fs::statvfs("/") {
-        Ok(s) => s.f_bavail.saturating_mul(s.f_frsize),
-        Err(_) => 0,
-    }
+    use std::path::Path;
+
+    toadstool_hw_safe::fs_stats(Path::new("/"))
+        .map(|s| s.available_bytes)
+        .unwrap_or(0)
 }
 
-#[cfg(not(unix))]
+#[cfg(not(target_os = "linux"))]
 fn statvfs_root_available_bytes() -> u64 {
     0
 }

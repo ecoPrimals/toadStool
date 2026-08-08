@@ -4,6 +4,7 @@
 use crate::error::DriverError;
 use std::borrow::Cow;
 use std::os::fd::{AsFd, AsRawFd};
+use toadstool_hw_safe::{LinuxDeviceIo, mmap_device};
 
 use super::super::ioctl;
 use super::super::types::{VfioPciHotReset, VfioRegionInfo};
@@ -47,20 +48,12 @@ impl VfioDevice {
         let region_size = region_info.size as usize;
 
         // SAFETY: device fd valid; region offset from kernel; size verified non-zero;
-        // MAP_SHARED for MMIO semantics; ProtFlags R|W for register access.
-        let raw_ptr = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                region_size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &self.device,
-                region_info.offset,
-            )
-            .map_err(|e| {
-                DriverError::MmapFailed(Cow::Owned(format!("BAR{bar_index} mmap failed: {e}")))
-            })?
-        };
+        // MAP_SHARED for MMIO semantics; writable for register access.
+        let raw_ptr =
+            unsafe { mmap_device(self.device.as_fd(), region_size, region_info.offset, true) }
+                .map_err(|e| {
+                    DriverError::MmapFailed(Cow::Owned(format!("BAR{bar_index} mmap failed: {e}")))
+                })?;
         // Defensive null check: Linux mmap returns MAP_FAILED on error (handled above);
         // on success the pointer is non-null. Check for robustness across platforms.
         if raw_ptr.is_null() {
@@ -68,7 +61,7 @@ impl VfioDevice {
                 "BAR{bar_index} mmap returned null"
             ))));
         }
-        let base_ptr = raw_ptr.cast::<u8>();
+        let base_ptr = raw_ptr;
 
         tracing::info!(
             bdf = %self.bdf,
@@ -163,16 +156,16 @@ impl VfioDevice {
 
         // Walk PCI capabilities chain to find Power Management capability (ID=0x01)
         let mut cap_ptr_buf = [0u8; 1];
-        rustix::io::pread(self.device.as_fd(), &mut cap_ptr_buf, cfg + 0x34)
+        LinuxDeviceIo::pread(self.device.as_fd(), &mut cap_ptr_buf, cfg + 0x34)
             .map_err(|e| DriverError::SubmitFailed(format!("PM cap ptr read: {e}").into()))?;
         let mut cap_off = cap_ptr_buf[0] as u64;
 
         let mut pm_offset = 0u64;
         while cap_off != 0 && cap_off < 256 {
             let mut cap_hdr = [0u8; 2];
-            rustix::io::pread(self.device.as_fd(), &mut cap_hdr, cfg + cap_off).map_err(|e| {
-                DriverError::SubmitFailed(format!("cap read at {cap_off:#x}: {e}").into())
-            })?;
+            LinuxDeviceIo::pread(self.device.as_fd(), &mut cap_hdr, cfg + cap_off).map_err(
+                |e| DriverError::SubmitFailed(format!("cap read at {cap_off:#x}: {e}").into()),
+            )?;
             let cap_id = cap_hdr[0];
             let next = cap_hdr[1] as u64;
             if cap_id == 0x01 {
@@ -191,7 +184,7 @@ impl VfioDevice {
         // PM Control/Status Register is at PM capability + 4
         let pmcsr_off = pm_offset + 4;
         let mut pmcsr_buf = [0u8; 2];
-        rustix::io::pread(self.device.as_fd(), &mut pmcsr_buf, cfg + pmcsr_off)
+        LinuxDeviceIo::pread(self.device.as_fd(), &mut pmcsr_buf, cfg + pmcsr_off)
             .map_err(|e| DriverError::SubmitFailed(format!("PMCSR read: {e}").into()))?;
         let pmcsr_before = u16::from_le_bytes(pmcsr_buf);
         let state_before = pmcsr_before & 0x3;
@@ -205,7 +198,7 @@ impl VfioDevice {
 
         // Set D3hot (bits [1:0] = 3)
         let d3_val = (pmcsr_before & !0x3) | 0x3;
-        rustix::io::pwrite(self.device.as_fd(), &d3_val.to_le_bytes(), cfg + pmcsr_off)
+        LinuxDeviceIo::pwrite(self.device.as_fd(), &d3_val.to_le_bytes(), cfg + pmcsr_off)
             .map_err(|e| DriverError::SubmitFailed(format!("PMCSR D3 write: {e}").into()))?;
 
         // Wait for D3 to take effect (PCI spec: 10ms minimum)
@@ -213,14 +206,14 @@ impl VfioDevice {
 
         // Return to D0 (bits [1:0] = 0)
         let d0_val = pmcsr_before & !0x3;
-        rustix::io::pwrite(self.device.as_fd(), &d0_val.to_le_bytes(), cfg + pmcsr_off)
+        LinuxDeviceIo::pwrite(self.device.as_fd(), &d0_val.to_le_bytes(), cfg + pmcsr_off)
             .map_err(|e| DriverError::SubmitFailed(format!("PMCSR D0 write: {e}").into()))?;
 
         // Wait for D0 transition (PCI spec: 10ms for D3hot→D0)
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // Verify power state
-        rustix::io::pread(self.device.as_fd(), &mut pmcsr_buf, cfg + pmcsr_off)
+        LinuxDeviceIo::pread(self.device.as_fd(), &mut pmcsr_buf, cfg + pmcsr_off)
             .map_err(|e| DriverError::SubmitFailed(format!("PMCSR verify: {e}").into()))?;
         let pmcsr_after = u16::from_le_bytes(pmcsr_buf);
         let state_after = pmcsr_after & 0x3;

@@ -25,9 +25,10 @@
 use std::os::fd::{AsFd, BorrowedFd};
 use std::time::Duration;
 
-use rustix::io::{read, write};
-use rustix::pipe::{PipeFlags, pipe_with};
-use rustix::process::{Signal, WaitOptions, kill_process, waitpid};
+use toadstool_hw_safe::{
+    ForkResult, LinuxDeviceIo, WaitResult, exit_group, fork, kill_process, pipe_cloexec,
+    waitpid_nohang,
+};
 
 /// Result of a fork-isolated operation.
 #[derive(Debug)]
@@ -76,26 +77,25 @@ pub fn fork_isolated_raw(
     max_result_bytes: usize,
     f: impl FnOnce(BorrowedFd<'_>),
 ) -> IsolationResult<Vec<u8>> {
-    let (pipe_read, pipe_write): (std::os::fd::OwnedFd, std::os::fd::OwnedFd) =
-        match pipe_with(PipeFlags::CLOEXEC) {
-            Ok(pair) => pair,
-            Err(e) => return IsolationResult::ForkError(std::io::Error::from(e)),
-        };
+    let (pipe_read, pipe_write) = match pipe_cloexec() {
+        Ok(pair) => pair,
+        Err(e) => return IsolationResult::ForkError(e),
+    };
 
     // SAFETY: fork in multi-threaded context. The child must only do
     // async-signal-safe operations (raw MMIO + pipe write + _exit).
-    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+    let fork_result = unsafe { fork() };
 
     match fork_result {
-        Err(e) => IsolationResult::ForkError(std::io::Error::from(e)),
-        Ok(rustix::runtime::Fork::Child(_)) => {
+        Err(e) => IsolationResult::ForkError(e),
+        Ok(ForkResult::Child) => {
             // ── Child process ──
             drop(pipe_read);
             f(pipe_write.as_fd());
             drop(pipe_write);
-            rustix::runtime::exit_group(0)
+            exit_group(0)
         }
-        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
+        Ok(ForkResult::Parent { child_pid }) => {
             // ── Parent process ──
             drop(pipe_write);
 
@@ -103,29 +103,22 @@ pub fn fork_isolated_raw(
             let poll_interval = Duration::from_millis(10);
 
             loop {
-                match waitpid(Some(child_pid), WaitOptions::NOHANG) {
-                    Ok(Some((_pid, status))) => {
+                match waitpid_nohang(child_pid) {
+                    Ok(Some(status)) => {
                         let bytes = read_pipe(&pipe_read, max_result_bytes);
                         return classify_exit(status, bytes);
                     }
                     Ok(None) => {
                         if std::time::Instant::now() >= deadline {
-                            let _ = kill_process(child_pid, Signal::KILL);
-                            // Non-blocking reap: if the child is in D-state
-                            // (uninterruptible sleep from a kernel deadlock),
-                            // SIGKILL won't take effect until the kernel code
-                            // returns. A blocking waitpid here would deadlock
-                            // the parent too. Poll briefly, then abandon the
-                            // zombie — it will be reaped when it eventually
-                            // exits D-state (or on parent exit by init).
+                            let _ = kill_process(child_pid);
                             let reap_deadline = std::time::Instant::now() + Duration::from_secs(2);
                             loop {
-                                match waitpid(Some(child_pid), WaitOptions::NOHANG) {
+                                match waitpid_nohang(child_pid) {
                                     Ok(Some(_)) => break,
                                     Ok(None) => {
                                         if std::time::Instant::now() >= reap_deadline {
                                             tracing::warn!(
-                                                pid = child_pid.as_raw_nonzero().get(),
+                                                pid = ?child_pid,
                                                 "fork isolation: child stuck in D-state after SIGKILL, \
                                                  abandoning zombie (will be reaped on exit)"
                                             );
@@ -149,7 +142,7 @@ pub fn fork_isolated_raw(
 
 fn read_pipe(pipe_fd: &impl AsFd, max_bytes: usize) -> Vec<u8> {
     let mut buf = vec![0u8; max_bytes];
-    match read(pipe_fd, &mut buf) {
+    match LinuxDeviceIo::read(pipe_fd.as_fd(), &mut buf) {
         Ok(n) => {
             buf.truncate(n);
             buf
@@ -158,15 +151,11 @@ fn read_pipe(pipe_fd: &impl AsFd, max_bytes: usize) -> Vec<u8> {
     }
 }
 
-fn classify_exit(status: rustix::process::WaitStatus, bytes: Vec<u8>) -> IsolationResult<Vec<u8>> {
-    if status.exited() && status.exit_status() == Some(0) {
-        IsolationResult::Ok(bytes)
-    } else if status.signaled() {
-        let sig = status.terminating_signal().unwrap_or(-1);
-        IsolationResult::ChildFailed { status: -sig }
-    } else {
-        let code = status.exit_status().unwrap_or(-1);
-        IsolationResult::ChildFailed { status: code }
+fn classify_exit(status: WaitResult, bytes: Vec<u8>) -> IsolationResult<Vec<u8>> {
+    match status {
+        WaitResult::Exited(0) => IsolationResult::Ok(bytes),
+        WaitResult::Exited(code) => IsolationResult::ChildFailed { status: code },
+        WaitResult::Signaled(sig) => IsolationResult::ChildFailed { status: -sig },
     }
 }
 
@@ -192,7 +181,7 @@ pub unsafe fn fork_isolated_mmio_read(
         let reg_ptr = unsafe { bar0.add(offset as usize).cast::<u32>() };
         // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
         let value = unsafe { std::ptr::read_volatile(reg_ptr) };
-        let _ = write(pipe_fd, &value.to_le_bytes());
+        let _ = LinuxDeviceIo::write(pipe_fd, &value.to_le_bytes());
     });
 
     match result {
@@ -229,7 +218,7 @@ pub unsafe fn fork_isolated_mmio_write(
         let reg_ptr = unsafe { bar0.add(offset as usize).cast::<u32>() };
         // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
         unsafe { std::ptr::write_volatile(reg_ptr, value) };
-        let _ = write(pipe_fd, &[1u8]);
+        let _ = LinuxDeviceIo::write(pipe_fd, &[1u8]);
     });
 
     match result {
@@ -278,7 +267,7 @@ pub unsafe fn fork_isolated_mmio_batch(
                 // SAFETY: reg_ptr points to a valid MMIO register in the child's BAR0 mmap.
                 None => unsafe { std::ptr::read_volatile(reg_ptr) },
             };
-            let _ = write(pipe_fd, &result_val.to_le_bytes());
+            let _ = LinuxDeviceIo::write(pipe_fd, &result_val.to_le_bytes());
         }
     });
 
@@ -303,7 +292,7 @@ mod tests {
     #[test]
     fn fork_isolated_raw_success() {
         let result = fork_isolated_raw(Duration::from_secs(5), 16, |pipe_fd| {
-            let _ = write(pipe_fd, b"hello");
+            let _ = LinuxDeviceIo::write(pipe_fd, b"hello");
         });
         match result {
             IsolationResult::Ok(data) => assert_eq!(&data, b"hello"),
@@ -322,7 +311,7 @@ mod tests {
     #[test]
     fn fork_isolated_raw_child_crash() {
         let result = fork_isolated_raw(Duration::from_secs(5), 4, |_pipe_fd| {
-            rustix::runtime::exit_group(42);
+            exit_group(42);
         });
         match result {
             IsolationResult::ChildFailed { status } => assert_eq!(status, 42),
@@ -343,7 +332,7 @@ mod tests {
     fn fork_isolated_raw_large_payload() {
         let result = fork_isolated_raw(Duration::from_secs(5), 1024, |pipe_fd| {
             let data = [0xABu8; 256];
-            let _ = write(pipe_fd, &data);
+            let _ = LinuxDeviceIo::write(pipe_fd, &data);
         });
         match result {
             IsolationResult::Ok(data) => {

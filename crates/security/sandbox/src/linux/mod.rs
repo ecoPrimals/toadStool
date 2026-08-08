@@ -9,12 +9,11 @@ mod privilege;
 mod proc;
 
 use std::collections::HashMap;
-use std::ffi::CStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rustix::io::Errno;
-use rustix::mount::{MountFlags, UnmountFlags, mount, mount_bind, mount_remount, unmount};
+use toadstool_common::platform::FilesystemIsolation;
+use toadstool_hw_safe::LinuxFilesystemIsolation;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -192,7 +191,7 @@ impl LinuxSandboxManager {
                 had_namespaces = state.namespaces_created;
                 had_mounts = !state.mounts.is_empty();
                 for target in state.mounts.iter().rev() {
-                    if let Err(e) = unmount(target, UnmountFlags::empty()) {
+                    if let Err(e) = LinuxFilesystemIsolation.unmount(target) {
                         warn!(
                             target = %target.display(),
                             error = ?e,
@@ -249,31 +248,13 @@ impl LinuxSandboxManager {
             .into());
         }
 
-        let result: rustix::io::Result<()> = match mount_spec.mount_type {
-            MountType::ReadWriteBind => mount_bind(&mount_spec.source, target_path),
-            MountType::ReadOnlyBind => mount_bind(&mount_spec.source, target_path)
-                .and_then(|()| mount_remount(target_path, MountFlags::RDONLY, c"")),
-            MountType::TmpFs => mount(
-                "tmpfs",
-                target_path,
-                "tmpfs",
-                MountFlags::empty(),
-                Option::<&CStr>::None,
-            ),
-            MountType::Proc => mount(
-                "proc",
-                target_path,
-                "proc",
-                MountFlags::empty(),
-                Option::<&CStr>::None,
-            ),
-            MountType::Sys => mount(
-                "sysfs",
-                target_path,
-                "sysfs",
-                MountFlags::empty(),
-                Option::<&CStr>::None,
-            ),
+        let fs = LinuxFilesystemIsolation;
+        let result: Result<(), std::io::Error> = match mount_spec.mount_type {
+            MountType::ReadWriteBind => fs.bind_mount(&mount_spec.source, target_path, false),
+            MountType::ReadOnlyBind => fs.bind_mount(&mount_spec.source, target_path, true),
+            MountType::TmpFs => fs.mount_tmpfs(target_path),
+            MountType::Proc => fs.mount_virtual(target_path, "proc"),
+            MountType::Sys => fs.mount_virtual(target_path, "sysfs"),
             MountType::Device => {
                 return Err(SecurityError::PermissionDenied {
                     operation: "setup_mount".to_string(),
@@ -292,9 +273,7 @@ impl LinuxSandboxManager {
                 info!("Filesystem mount applied at {}", target_path.display());
                 Ok(())
             }
-            Err(e)
-                if matches!(e, Errno::PERM | Errno::ACCESS) =>
-            {
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
                 Err(SecurityError::PermissionDenied {
                     operation: "setup_mount".to_string(),
                     reason: format!(

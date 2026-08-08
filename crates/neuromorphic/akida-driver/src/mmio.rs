@@ -24,9 +24,9 @@
 #![allow(clippy::items_after_statements)] // VFIO ioctl constants near usage
 
 use crate::error::{AkidaError, Result};
-use rustix::mm::{MapFlags, ProtFlags, mmap, munmap};
 use std::fs::File;
 use std::os::unix::io::{AsFd, AsRawFd};
+use toadstool_hw_safe::{vfio_bar_map, vfio_bar_unmap};
 
 /// AKD1000 BAR regions (VFIO region indices).
 ///
@@ -214,12 +214,9 @@ impl MappedRegion {
         // (3) mapping exclusive via VFIO/IOMMU; (4) ptr valid for size bytes or Err.
         // Caller guarantees: region_info populated by kernel, device_fd open.
         let ptr = unsafe {
-            mmap(
-                std::ptr::null_mut(),
-                region_info.size as usize,
-                ProtFlags::READ | ProtFlags::WRITE,
-                MapFlags::SHARED,
+            vfio_bar_map(
                 device_fd.as_fd(),
+                region_info.size as usize,
                 region_info.offset,
             )
             .map_err(|e| {
@@ -238,7 +235,7 @@ impl MappedRegion {
         );
 
         Ok(Self {
-            ptr: ptr.cast(),
+            ptr,
             size: region_info.size as usize,
             bar,
         })
@@ -317,8 +314,7 @@ impl Drop for MappedRegion {
         // Invariants: (1) ptr from mmap in map(), valid for self.size; (2) munmap with
         // ptr+size that was previously mapped; (3) Drop runs at most once; (4) no refs.
         unsafe {
-            // Ignore error in Drop (can't propagate, would need to log)
-            let _ = munmap(self.ptr.cast(), self.size);
+            let _ = vfio_bar_unmap(self.ptr, self.size);
         }
         tracing::debug!("Unmapped BAR{}", self.bar as u32);
     }

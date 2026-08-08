@@ -76,13 +76,7 @@ impl GemBuffer {
         let buf_len = usize::try_from(self.size).map_err(|_| {
             DriverError::platform_overflow("buffer size exceeds platform pointer width")
         })?;
-        let mut region = MappedRegion::new(
-            buf_len,
-            rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-            rustix::mm::MapFlags::SHARED,
-            fd,
-            mmap_offset,
-        )?;
+        let mut region = MappedRegion::new(buf_len, true, fd, mmap_offset)?;
         let byte_offset = usize::try_from(offset)
             .map_err(|_| DriverError::platform_overflow("offset exceeds platform pointer width"))?;
         region
@@ -110,13 +104,7 @@ impl GemBuffer {
         let buf_len = usize::try_from(self.size).map_err(|_| {
             DriverError::platform_overflow("buffer size exceeds platform pointer width")
         })?;
-        let region = MappedRegion::new(
-            buf_len,
-            rustix::mm::ProtFlags::READ,
-            rustix::mm::MapFlags::SHARED,
-            fd,
-            mmap_offset,
-        )?;
+        let region = MappedRegion::new(buf_len, false, fd, mmap_offset)?;
         let byte_offset = usize::try_from(offset)
             .map_err(|_| DriverError::platform_overflow("offset exceeds platform pointer width"))?;
         Ok(region.slice_at(byte_offset, len)?.to_vec())

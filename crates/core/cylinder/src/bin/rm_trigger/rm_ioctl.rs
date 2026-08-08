@@ -3,7 +3,7 @@
 
 use std::os::fd::AsFd;
 
-use rustix::ioctl::{Ioctl, IoctlOutput, Opcode};
+use toadstool_hw_safe::ioctl_infra::{IoResult, Ioctl, IoctlOutput, Opcode, ioctl as raw_ioctl};
 
 pub const NV_IOCTL_MAGIC: u8 = b'F';
 const NV_ESC_RM_ALLOC: u8 = 0x2B;
@@ -84,7 +84,7 @@ unsafe impl<const OP: Opcode> Ioctl for RmRawIoctl<OP> {
     unsafe fn output_from_ptr(
         out: IoctlOutput,
         _: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
+    ) -> IoResult<Self::Output> {
         Ok(out)
     }
 }
@@ -112,7 +112,7 @@ unsafe impl<const OP: Opcode, T> Ioctl for RmIoctl<OP, T> {
     unsafe fn output_from_ptr(
         out: IoctlOutput,
         _: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
+    ) -> IoResult<Self::Output> {
         Ok(out)
     }
 }
@@ -156,7 +156,7 @@ pub fn rm_alloc(
     let ioctl = RmRawIoctl::<{ RM_ALLOC_OP }> {
         ptr: buf.as_mut_ptr(),
     };
-    let rc = match unsafe { rustix::ioctl::ioctl(&fd, ioctl) } {
+    let rc = match unsafe { raw_ioctl(&fd, ioctl) } {
         Ok(v) => v,
         Err(e) => {
             eprintln!("  RM_ALLOC(cls=0x{class:04x}, h=0x{handle:08x}): errno={e}");
@@ -209,7 +209,7 @@ pub fn rm_ctrl(
     };
     // SAFETY: p is repr(C) matching kernel NVOS54 ABI; fd is valid.
     let ioctl = RmIoctl::<{ RM_CTRL_OP }, Nvos54Parameters> { ptr: &mut p };
-    let rc = match unsafe { rustix::ioctl::ioctl(&fd, ioctl) } {
+    let rc = match unsafe { raw_ioctl(&fd, ioctl) } {
         Ok(v) => v,
         Err(e) => {
             eprintln!("  RM_CTRL(cmd=0x{cmd:08x}, obj=0x{object:08x}): errno={e}");

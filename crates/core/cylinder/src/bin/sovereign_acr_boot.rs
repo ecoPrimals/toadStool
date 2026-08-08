@@ -44,6 +44,8 @@ use std::thread;
 use std::time::Duration;
 #[cfg(target_os = "linux")]
 use toadstool_cylinder::nv::registers::{falcon, pbus, pfb, pgraph, pmc, pramin};
+#[cfg(target_os = "linux")]
+use toadstool_hw_safe::open_path;
 
 #[cfg(target_os = "linux")]
 const BAR0_SIZE: usize = 16 * 1024 * 1024;
@@ -215,11 +217,7 @@ fn main() -> ExitCode {
         println!("*** DRY RUN — no hardware writes ***\n");
     }
 
-    let file = match rustix::fs::open(
-        res0_path,
-        rustix::fs::OFlags::RDWR | rustix::fs::OFlags::SYNC,
-        rustix::fs::Mode::empty(),
-    ) {
+    let file = match open_path(Path::new(res0_path), true, true) {
         Ok(f) => f,
         Err(e) => {
             eprintln!("open resource0: {e}");

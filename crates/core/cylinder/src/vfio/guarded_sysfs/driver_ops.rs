@@ -2,8 +2,15 @@
 //! Guarded sysfs write operations — bind, unbind, driver_override, drivers_probe.
 
 use std::ffi::CString;
+use std::os::fd::AsFd;
+use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::time::{Duration, Instant};
+
+use toadstool_hw_safe::{
+    ForkResult, LinuxDeviceIo, Pid, WaitResult, exit_group, fork, kill_process, open_path,
+    waitpid_nohang,
+};
 
 use super::GuardedSysfsError;
 use super::kmod_build::{rmmod_guarded, suppress_bus_reset, unsuppress_bus_reset_for};
@@ -25,64 +32,60 @@ pub fn sysfs_write(path: &str, value: &str) -> Result<(), GuardedSysfsError> {
 ///
 /// Returns the child PID (for fire-and-forget callers) or waits for
 /// completion (for synchronous callers).
-fn fork_sysfs_child(
-    path_c: &CString,
-    value: &[u8],
-) -> Result<rustix::process::Pid, GuardedSysfsError> {
+fn fork_sysfs_child(path_c: &CString, value: &[u8]) -> Result<Pid, GuardedSysfsError> {
     let path_str = path_c.to_string_lossy();
 
     // SAFETY: fork in multi-threaded context. The child only calls
     // open/write/close/exit_group — all async-signal-safe.
-    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+    let fork_result = unsafe { fork() };
 
     match fork_result {
         Err(e) => Err(GuardedSysfsError::WriteFailed {
             path: path_str.into_owned(),
             reason: format!("fork failed: {e}"),
         }),
-        Ok(rustix::runtime::Fork::Child(_)) => {
-            use rustix::fs::{Mode, OFlags, open};
-            let fd = match open(path_c.as_c_str(), OFlags::WRONLY, Mode::empty()) {
+        Ok(ForkResult::Child) => {
+            let path = Path::new(std::ffi::OsStr::from_bytes(path_c.as_bytes()));
+            let fd = match open_path(path, true, false) {
                 Ok(fd) => fd,
                 Err(e) => {
-                    let code = e.raw_os_error();
-                    rustix::runtime::exit_group(code.min(255) as u8 as i32)
+                    let code = e.raw_os_error().unwrap_or(1);
+                    exit_group(code.min(255));
                 }
             };
-            let _ = rustix::io::write(&fd, value);
+            let _ = LinuxDeviceIo::write(fd.as_fd(), value);
             drop(fd);
-            rustix::runtime::exit_group(0)
+            exit_group(0)
         }
-        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => Ok(child_pid),
+        Ok(ForkResult::Parent { child_pid }) => Ok(child_pid),
     }
 }
 
 /// Wait for a forked child with timeout, kill on timeout.
-fn wait_for_child(
-    child_pid: rustix::process::Pid,
-    path: &str,
-    timeout: Duration,
-) -> Result<(), GuardedSysfsError> {
-    use rustix::process::{Signal, WaitOptions, waitpid};
-
+fn wait_for_child(child_pid: Pid, path: &str, timeout: Duration) -> Result<(), GuardedSysfsError> {
     let start = Instant::now();
     let poll_interval = Duration::from_millis(50);
 
     loop {
-        match waitpid(Some(child_pid), WaitOptions::NOHANG) {
-            Ok(Some((_pid, status))) => {
-                if status.exited() && status.exit_status() == Some(0) {
-                    tracing::debug!(
-                        path,
-                        elapsed_ms = start.elapsed().as_millis() as u64,
-                        "guarded sysfs write completed"
-                    );
-                    return Ok(());
-                }
-                let code = status.exit_status().unwrap_or(-1);
+        match waitpid_nohang(child_pid) {
+            Ok(Some(WaitResult::Exited(0))) => {
+                tracing::debug!(
+                    path,
+                    elapsed_ms = start.elapsed().as_millis() as u64,
+                    "guarded sysfs write completed"
+                );
+                return Ok(());
+            }
+            Ok(Some(WaitResult::Exited(code))) => {
                 return Err(GuardedSysfsError::WriteFailed {
                     path: path.into(),
                     reason: format!("child exited with code {code}"),
+                });
+            }
+            Ok(Some(WaitResult::Signaled(sig))) => {
+                return Err(GuardedSysfsError::WriteFailed {
+                    path: path.into(),
+                    reason: format!("child killed by signal {sig}"),
                 });
             }
             Ok(None) => {
@@ -92,7 +95,7 @@ fn wait_for_child(
                         timeout_ms = timeout.as_millis() as u64,
                         "guarded sysfs write timed out — killing child"
                     );
-                    let _ = rustix::process::kill_process(child_pid, Signal::KILL);
+                    let _ = kill_process(child_pid);
                     reap_forked_child(child_pid);
                     return Err(GuardedSysfsError::Timeout {
                         path: path.into(),
@@ -114,12 +117,10 @@ fn wait_for_child(
 /// Non-blocking reap of a killed forked child. If the child is in D-state,
 /// SIGKILL won't take effect until the kernel code returns — a blocking
 /// waitpid would deadlock us too. Poll briefly, then abandon the zombie.
-pub(super) fn reap_forked_child(child_pid: rustix::process::Pid) {
-    use rustix::process::{WaitOptions, waitpid};
-
+pub(super) fn reap_forked_child(child_pid: Pid) {
     let deadline = Instant::now() + REAP_POLL_CAP;
     loop {
-        match waitpid(Some(child_pid), WaitOptions::NOHANG) {
+        match waitpid_nohang(child_pid) {
             Ok(Some(_)) => return,
             Ok(None) => {
                 if Instant::now() >= deadline {
@@ -218,11 +219,8 @@ pub(crate) fn sysfs_unbind_fire_and_poll(
             let child_deadline = deadline.saturating_sub(symlink_elapsed);
             let child_start = Instant::now();
             loop {
-                match rustix::process::waitpid(
-                    Some(child_pid),
-                    rustix::process::WaitOptions::NOHANG,
-                ) {
-                    Ok(Some(_status)) => {
+                match waitpid_nohang(child_pid) {
+                    Ok(Some(_)) => {
                         let total = start.elapsed();
                         tracing::info!(
                             bdf,

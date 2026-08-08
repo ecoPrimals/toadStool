@@ -64,8 +64,13 @@ pub use huge_page::HugePageMemory;
 pub use locked_memory::LockedMemory;
 #[cfg(target_os = "linux")]
 pub use platform_backends::{
-    LinuxDeviceFile, LinuxEvent, LinuxEventNotifier, LinuxMemoryMapper, LinuxPinnedMemory,
-    LinuxSystemParameters,
+    ForkResult, FsStats, LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier,
+    LinuxFilesystemIsolation, LinuxMemoryMapper, LinuxPinnedMemory, LinuxPrivilegeProbeBackend,
+    LinuxSystemParameters, Pid, UnixAddr, WaitResult, clock_monotonic_ns, delete_module,
+    exit_group, finit_module, fork, fs_stats, getpid, ioctl_infra, kill_process, lock_memory,
+    mknod_char, mmap_device, munmap_device, open_path, pipe_cloexec, recv_with_fds, seek_end,
+    send_signal, sendmsg_with_fds, unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap,
+    waitpid_nohang,
 };
 #[cfg(target_os = "linux")]
 pub use safe_mmap::SafeMmapRegion;

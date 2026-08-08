@@ -17,7 +17,7 @@ thiserror = { workspace = true }
 toadstool-core = { path = "../../toadstool-core" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rustix = { workspace = true, features = ["fs"] }
+toadstool-hw-safe = { path = "../hw-safe" }
 
 [dev-dependencies]
 

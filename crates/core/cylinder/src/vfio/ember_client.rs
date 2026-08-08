@@ -8,12 +8,8 @@
 //! group reset fires.
 
 use std::borrow::Cow;
-use std::mem::MaybeUninit;
 use std::os::fd::{AsFd, OwnedFd};
 use std::os::unix::net::UnixStream;
-
-use rustix::io::IoSliceMut;
-use rustix::net::{RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, recvmsg};
 
 use crate::error::{DriverError, DriverResult};
 use crate::vfio::device::MappedBar;
@@ -183,21 +179,8 @@ impl EmberSession {
 fn recv_with_fds(sock: impl AsFd, buf: &mut [u8]) -> DriverResult<(usize, Vec<OwnedFd>)> {
     const MAX_SCM_FDS: usize = 3;
 
-    let mut iov = [IoSliceMut::new(buf)];
-    let mut recv_space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(MAX_SCM_FDS))];
-    let mut control = RecvAncillaryBuffer::new(&mut recv_space);
-
-    let msg = recvmsg(sock, &mut iov, &mut control, RecvFlags::empty())
-        .map_err(|e| DriverError::DeviceNotFound(Cow::Owned(format!("ember recvmsg: {e}"))))?;
-
-    let mut fds = Vec::new();
-    for ancillary in control.drain() {
-        if let RecvAncillaryMessage::ScmRights(iter) = ancillary {
-            fds.extend(iter);
-        }
-    }
-
-    Ok((msg.bytes, fds))
+    toadstool_hw_safe::recv_with_fds(sock, buf, MAX_SCM_FDS)
+        .map_err(|e| DriverError::DeviceNotFound(Cow::Owned(format!("ember recvmsg: {e}"))))
 }
 
 #[cfg(test)]

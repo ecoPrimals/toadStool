@@ -47,13 +47,7 @@ fn drm_gem_close_struct_size() {
 fn mapped_region_zero_length_fails() {
     let file = File::open("/dev/zero").unwrap();
     let fd = file.as_raw_fd();
-    let result = MappedRegion::new(
-        0,
-        rustix::mm::ProtFlags::READ,
-        rustix::mm::MapFlags::SHARED,
-        fd,
-        0,
-    );
+    let result = MappedRegion::new(0, false, fd, 0);
     assert!(result.is_err());
     assert!(
         result
@@ -67,14 +61,7 @@ fn mapped_region_zero_length_fails() {
 fn mapped_region_slice_at_out_of_bounds() {
     let (file, path) = temp_mmap_file(4096);
     let fd = file.as_raw_fd();
-    let region = MappedRegion::new(
-        4096,
-        rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-        rustix::mm::MapFlags::SHARED,
-        fd,
-        0,
-    )
-    .unwrap();
+    let region = MappedRegion::new(4096, true, fd, 0).unwrap();
     let result = region.slice_at(0, 4097);
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("out of bounds"));
@@ -85,14 +72,7 @@ fn mapped_region_slice_at_out_of_bounds() {
 fn mapped_region_slice_at_overflow() {
     let (file, path) = temp_mmap_file(4096);
     let fd = file.as_raw_fd();
-    let region = MappedRegion::new(
-        4096,
-        rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-        rustix::mm::MapFlags::SHARED,
-        fd,
-        0,
-    )
-    .unwrap();
+    let region = MappedRegion::new(4096, true, fd, 0).unwrap();
     let result = region.slice_at(usize::MAX, 1);
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("overflow"));
@@ -103,14 +83,7 @@ fn mapped_region_slice_at_overflow() {
 fn mapped_region_slice_at_mut_out_of_bounds() {
     let (file, path) = temp_mmap_file(4096);
     let fd = file.as_raw_fd();
-    let mut region = MappedRegion::new(
-        4096,
-        rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-        rustix::mm::MapFlags::SHARED,
-        fd,
-        0,
-    )
-    .unwrap();
+    let mut region = MappedRegion::new(4096, true, fd, 0).unwrap();
     let result = region.slice_at_mut(4090, 100);
     assert!(result.is_err());
     let _ = std::fs::remove_file(path);
@@ -187,14 +160,7 @@ fn drm_gem_close_default() {
 fn mapped_region_slice_at_valid_range() {
     let (file, path) = temp_mmap_file(4096);
     let fd = file.as_raw_fd();
-    let region = MappedRegion::new(
-        4096,
-        rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-        rustix::mm::MapFlags::SHARED,
-        fd,
-        0,
-    )
-    .unwrap();
+    let region = MappedRegion::new(4096, true, fd, 0).unwrap();
     let slice = region.slice_at(0, 256).unwrap();
     assert_eq!(slice.len(), 256);
     let _ = std::fs::remove_file(path);

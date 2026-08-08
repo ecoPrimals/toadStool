@@ -46,15 +46,7 @@ fn amd_ioctl_read<T: bytemuck::Pod, R: bytemuck::Pod>(
 
 /// Current `CLOCK_MONOTONIC` time in nanoseconds.
 fn clock_monotonic_ns() -> u64 {
-    let ts = rustix::time::clock_gettime(rustix::time::ClockId::Monotonic);
-    #[expect(
-        clippy::cast_sign_loss,
-        reason = "CLOCK_MONOTONIC never returns negative values"
-    )]
-    let ns = (ts.tv_sec as u64)
-        .saturating_mul(1_000_000_000)
-        .saturating_add(ts.tv_nsec as u64);
-    ns
+    toadstool_hw_safe::clock_monotonic_ns()
 }
 
 /// Build an IOWR request number for an AMD DRM command.

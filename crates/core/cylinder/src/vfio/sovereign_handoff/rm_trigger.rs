@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::path::Path;
 use std::time::Duration;
+
+use toadstool_hw_safe::mknod_char;
 
 use crate::nv::registers::pmc::InterruptProfile;
 
@@ -146,14 +149,7 @@ pub(crate) fn trigger_rm_init(
     let dev_path = format!("/dev/toadstool-{module_name}-ctl");
     let _ = std::fs::remove_file(&dev_path);
 
-    let dev = rustix::fs::makedev(major, 0);
-    match rustix::fs::mknodat(
-        rustix::fs::CWD,
-        &*dev_path,
-        rustix::fs::FileType::CharacterDevice,
-        rustix::fs::Mode::from_raw_mode(0o666),
-        dev,
-    ) {
+    match mknod_char(Path::new(&dev_path), 0o666, major, 0) {
         Ok(()) => {}
         Err(e) => {
             return Err(HandoffError::DeviceNodeCreateFailed {

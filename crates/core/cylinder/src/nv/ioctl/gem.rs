@@ -242,13 +242,7 @@ pub(crate) fn gem_mmap_region(fd: RawFd, map_handle: u64, size: u64) -> DriverRe
     let len = usize::try_from(size).map_err(|_| {
         DriverError::platform_overflow("buffer size exceeds platform pointer width")
     })?;
-    MappedRegion::new(
-        len,
-        rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-        rustix::mm::MapFlags::SHARED,
-        fd,
-        map_handle,
-    )
+    MappedRegion::new(len, true, fd, map_handle)
 }
 
 #[cfg(test)]

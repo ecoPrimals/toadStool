@@ -9,7 +9,7 @@
 use std::borrow::Cow;
 use std::ptr::NonNull;
 
-use toadstool_hw_safe::{DeviceMmap, MmioError, VolatileMmio};
+use toadstool_hw_safe::{DeviceMmap, MmioError, VolatileMmio, munmap_device};
 
 use crate::error::DriverError;
 
@@ -158,9 +158,7 @@ impl Drop for MmioRegion {
         if let Backing::Adopted { ptr, len } = self.backing {
             // SAFETY: Adopted backing came from `new`, whose safety contract
             // requires that `ptr`/`len` came from `mmap` and were not freed elsewhere.
-            unsafe {
-                let _ = rustix::mm::munmap(ptr.as_ptr().cast::<std::ffi::c_void>(), len);
-            }
+            let _ = unsafe { munmap_device(ptr.as_ptr(), len) };
         }
     }
 }

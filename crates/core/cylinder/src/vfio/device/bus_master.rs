@@ -5,6 +5,8 @@
 use std::borrow::Cow;
 use std::os::fd::AsFd;
 
+use toadstool_hw_safe::LinuxDeviceIo;
+
 use super::super::ioctl;
 use super::super::types::VfioRegionInfo;
 use crate::error::DriverError;
@@ -34,7 +36,7 @@ impl VfioDevice {
         let config_offset = region_info.offset;
 
         let mut cmd_buf = [0u8; 2];
-        if rustix::io::pread(
+        if LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut cmd_buf,
             config_offset + PCI_COMMAND,
@@ -47,7 +49,7 @@ impl VfioDevice {
         let cmd = u16::from_le_bytes(cmd_buf);
 
         let new_cmd = cmd & !PCI_COMMAND_BUS_MASTER;
-        let _ = rustix::io::pwrite(
+        let _ = LinuxDeviceIo::pwrite(
             self.device.as_fd(),
             &new_cmd.to_le_bytes(),
             config_offset + PCI_COMMAND,
@@ -56,7 +58,7 @@ impl VfioDevice {
         // Readback verify — PCIe write posting means the device may not
         // have processed the write yet. Read forces the write to complete.
         let mut verify_buf = [0u8; 2];
-        let _ = rustix::io::pread(
+        let _ = LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut verify_buf,
             config_offset + PCI_COMMAND,
@@ -99,7 +101,7 @@ impl VfioDevice {
 
         // Read current PCI Command register (2 bytes at offset 0x04).
         let mut cmd_buf = [0u8; 2];
-        let n = rustix::io::pread(
+        let n = LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut cmd_buf,
             config_offset + PCI_COMMAND,
@@ -119,15 +121,17 @@ impl VfioDevice {
         // Set Bus Master + Memory + I/O enable.
         let new_cmd = cmd | PCI_COMMAND_BUS_MASTER | PCI_COMMAND_MEMORY | PCI_COMMAND_IO;
         let new_buf = new_cmd.to_le_bytes();
-        let n = rustix::io::pwrite(self.device.as_fd(), &new_buf, config_offset + PCI_COMMAND)
-            .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("PCI config write: {e}"))))?;
+        let n = LinuxDeviceIo::pwrite(self.device.as_fd(), &new_buf, config_offset + PCI_COMMAND)
+            .map_err(|e| {
+            DriverError::SubmitFailed(Cow::Owned(format!("PCI config write: {e}")))
+        })?;
         if n != 2 {
             return Err(DriverError::SubmitFailed("PCI config write short".into()));
         }
 
         // Verify.
         let mut verify_buf = [0u8; 2];
-        rustix::io::pread(
+        LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut verify_buf,
             config_offset + PCI_COMMAND,
@@ -153,7 +157,7 @@ impl VfioDevice {
         // Bits [1:0] of PMCSR = PowerState (00=D0, 11=D3hot).
         const PCI_PM_CTRL: u64 = 0x64;
         let mut pm_buf = [0u8; 2];
-        let _ = rustix::io::pread(
+        let _ = LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut pm_buf,
             config_offset + PCI_PM_CTRL,
@@ -170,7 +174,7 @@ impl VfioDevice {
 
             let new_pmcsr = pmcsr & !0x3; // D0 = power state 0
             let pm_new_buf = new_pmcsr.to_le_bytes();
-            let _ = rustix::io::pwrite(
+            let _ = LinuxDeviceIo::pwrite(
                 self.device.as_fd(),
                 &pm_new_buf,
                 config_offset + PCI_PM_CTRL,
@@ -181,18 +185,19 @@ impl VfioDevice {
 
             // Re-enable bus master (D3→D0 transition may clear it).
             let new_buf2 = new_cmd.to_le_bytes();
-            let _ = rustix::io::pwrite(self.device.as_fd(), &new_buf2, config_offset + PCI_COMMAND);
+            let _ =
+                LinuxDeviceIo::pwrite(self.device.as_fd(), &new_buf2, config_offset + PCI_COMMAND);
         }
 
         // Verify final state.
         let mut final_cmd_buf = [0u8; 2];
-        let _ = rustix::io::pread(
+        let _ = LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut final_cmd_buf,
             config_offset + PCI_COMMAND,
         );
         let mut final_pm_buf = [0u8; 2];
-        let _ = rustix::io::pread(
+        let _ = LinuxDeviceIo::pread(
             self.device.as_fd(),
             &mut final_pm_buf,
             config_offset + PCI_PM_CTRL,

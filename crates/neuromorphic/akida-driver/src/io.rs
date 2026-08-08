@@ -5,11 +5,11 @@
 //! Handles direct read/write operations to device files with proper
 //! error handling and tracing.
 //!
-//! Uses `rustix` safe fd borrowing — no unsafe code.
+//! Uses `toadstool-hw-safe` safe fd I/O wrappers — no unsafe code, no direct rustix.
 
 use crate::error::{AkidaError, Result};
-use rustix::fd::BorrowedFd;
-use rustix::io::{read, write};
+use std::os::fd::BorrowedFd;
+use toadstool_hw_safe::LinuxDeviceIo;
 
 /// I/O operations handler (borrowed fd — safe, no lifetime footgun)
 ///
@@ -32,7 +32,8 @@ impl<'fd> IoHandle<'fd> {
     ///
     /// Returns error if read operation fails.
     pub fn read(self, buffer: &mut [u8]) -> Result<usize> {
-        read(self.fd, buffer).map_err(|e| AkidaError::transfer_failed(format!("Read failed: {e}")))
+        LinuxDeviceIo::read(self.fd, buffer)
+            .map_err(|e| AkidaError::transfer_failed(format!("Read failed: {e}")))
     }
 
     /// Write data to device.
@@ -41,6 +42,7 @@ impl<'fd> IoHandle<'fd> {
     ///
     /// Returns error if write operation fails.
     pub fn write(self, data: &[u8]) -> Result<usize> {
-        write(self.fd, data).map_err(|e| AkidaError::transfer_failed(format!("Write failed: {e}")))
+        LinuxDeviceIo::write(self.fd, data)
+            .map_err(|e| AkidaError::transfer_failed(format!("Write failed: {e}")))
     }
 }

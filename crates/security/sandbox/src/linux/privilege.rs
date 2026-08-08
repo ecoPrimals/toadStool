@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based privilege snapshot for graceful degradation.
 
-use rustix::thread::{CapabilitySet, capabilities};
+use toadstool_common::platform::PrivilegeProbe;
+use toadstool_hw_safe::LinuxPrivilegeProbeBackend;
 
 /// Snapshot of privileges relevant to mount and seccomp setup.
 #[derive(Debug, Clone)]
@@ -12,17 +13,9 @@ pub struct LinuxPrivilegeProbe {
 
 impl LinuxPrivilegeProbe {
     pub(crate) fn probe() -> Self {
-        let caps = capabilities(None);
-        match caps {
-            Ok(c) => Self {
-                effective_sys_admin: c.effective.contains(CapabilitySet::SYS_ADMIN),
-            },
-            Err(e) => {
-                tracing::warn!(error = ?e, "could not read process capabilities; assuming unprivileged");
-                Self {
-                    effective_sys_admin: false,
-                }
-            }
+        let backend = LinuxPrivilegeProbeBackend;
+        Self {
+            effective_sys_admin: backend.has_privilege("sys_admin"),
         }
     }
 

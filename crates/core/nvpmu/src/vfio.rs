@@ -27,14 +27,16 @@
 //! ```
 
 use crate::error::{NvPmuError, Result};
-use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use toadstool_common::constants::platform_paths::devfs;
+use toadstool_hw_safe::ioctl_infra::{
+    IoResult, Ioctl, IoctlOutput, Opcode, ioctl as raw_ioctl, opcode,
+};
 use toadstool_hw_safe::vfio_setup::{
     self, VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
 };
-use toadstool_hw_safe::{DeviceMmap, VolatileMmio};
+use toadstool_hw_safe::{DeviceMmap, LinuxDeviceIo, VolatileMmio};
 
 const BAR0_REGION_INDEX: u32 = 0;
 
@@ -258,7 +260,7 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
     unsafe fn output_from_ptr(
         _ioctl_ret: IoctlOutput,
         extract_output: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
+    ) -> IoResult<Self::Output> {
         // SAFETY: No-op output extraction — kernel consumed/wrote the buffer at `as_ptr()`;
         // `extract_output` matches that address (rustix invariant); we do not read `T` here.
         // `extract_output` is the same address passed to `ioctl` (see rustix `Ioctl`).
@@ -350,7 +352,7 @@ impl VfioMsixInterrupt {
         // SAFETY: `device_fd` is an open VFIO device (`OwnedFd`). `payload` is a
         // correctly sized, aligned `repr(C)` struct matching the kernel ABI for
         // `VFIO_DEVICE_SET_IRQS` with eventfd data.
-        unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) }
+        unsafe { raw_ioctl(device_fd.as_fd(), ioctl) }
             .map_err(|e| NvPmuError::Hardware(format!("MSI-X configure vector {vector}: {e}")))?;
 
         tracing::info!(vector, "MSI-X interrupt configured via eventfd");
@@ -368,7 +370,7 @@ impl VfioMsixInterrupt {
     /// Returns error if the eventfd read fails.
     pub fn wait(&self) -> Result<u64> {
         let mut buf = [0u8; 8];
-        rustix::io::read(&self.eventfd, &mut buf)
+        LinuxDeviceIo::read(self.eventfd.as_fd(), &mut buf)
             .map_err(|e| NvPmuError::Hardware(format!("eventfd read: {e}")))?;
         Ok(u64::from_ne_bytes(buf))
     }
@@ -379,16 +381,10 @@ impl VfioMsixInterrupt {
     ///
     /// Returns error if timeout conversion, poll, or eventfd read fails.
     pub fn wait_timeout(&self, timeout: std::time::Duration) -> Result<Option<u64>> {
-        use rustix::event::{PollFd, PollFlags, poll};
-        use rustix::time::Timespec;
-
-        let mut pollfd = [PollFd::new(&self.eventfd, PollFlags::IN)];
-        let ts = Timespec::try_from(timeout)
-            .map_err(|e| NvPmuError::Hardware(format!("timeout conversion: {e}")))?;
-
-        match poll(&mut pollfd, Some(&ts)) {
-            Ok(0) => Ok(None), // timeout
-            Ok(_) => self.wait().map(Some),
+        let timeout_ms = timeout.as_millis().try_into().unwrap_or(i32::MAX);
+        match LinuxDeviceIo::poll_read(self.eventfd.as_fd(), Some(timeout_ms)) {
+            Ok(false) => Ok(None), // timeout
+            Ok(true) => self.wait().map(Some),
             Err(e) => Err(NvPmuError::Hardware(format!("poll: {e}"))),
         }
     }
@@ -402,9 +398,11 @@ impl VfioMsixInterrupt {
 
 /// Create an eventfd for interrupt notification.
 fn create_eventfd() -> Result<OwnedFd> {
-    use rustix::event::{EventfdFlags, eventfd};
-    eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK)
-        .map_err(|e| NvPmuError::Hardware(format!("eventfd create: {e}")))
+    use toadstool_common::platform::EventNotifier;
+    let event = toadstool_hw_safe::LinuxEventNotifier
+        .create()
+        .map_err(|e| NvPmuError::Hardware(format!("eventfd create: {e}")))?;
+    Ok(event.into_fd())
 }
 
 fn find_iommu_group(bdf: &str) -> Result<u32> {

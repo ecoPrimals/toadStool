@@ -21,8 +21,8 @@
 
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd, RawFd};
 
-use rustix::event::{EventfdFlags, PollFd, PollFlags, eventfd, poll};
-use rustix::time::Timespec;
+use toadstool_common::platform::EventNotifier;
+use toadstool_hw_safe::{LinuxDeviceIo, LinuxEvent, LinuxEventNotifier};
 
 use crate::error::DriverError;
 use crate::vfio::ioctl;
@@ -105,7 +105,8 @@ pub fn arm_irq_eventfd(
     index: VfioIrqIndex,
     vector: u32,
 ) -> Result<OwnedFd, DriverError> {
-    let efd = eventfd(0, EventfdFlags::NONBLOCK)
+    let event = LinuxEventNotifier
+        .create()
         .map_err(|e| DriverError::DeviceNotFound(format!("eventfd: {e}").into()))?;
 
     let mut set = VfioIrqSetEventfd {
@@ -114,14 +115,14 @@ pub fn arm_irq_eventfd(
         index: index as u32,
         start: vector,
         count: 1,
-        fd: efd.as_raw_fd(),
+        fd: event.as_raw_fd(),
     };
 
     ioctl::device_set_irqs(device_fd, &mut set)?;
 
     tracing::info!(?index, vector, "VFIO IRQ armed on eventfd");
 
-    Ok(efd)
+    Ok(event.into_fd())
 }
 
 /// A wired VFIO interrupt — holds the eventfd and provides wait/poll.
@@ -151,7 +152,7 @@ impl VfioIrq {
     /// Non-blocking check: has the IRQ fired since last read?
     pub fn poll_irq(&mut self) -> bool {
         let mut buf = [0u8; 8];
-        match rustix::io::read(&self.eventfd, &mut buf) {
+        match LinuxDeviceIo::read(self.eventfd.as_fd(), &mut buf) {
             Ok(8) => {
                 let count = u64::from_ne_bytes(buf);
                 self.fires += count;
@@ -165,17 +166,13 @@ impl VfioIrq {
     ///
     /// Returns `true` if an IRQ fired, `false` on timeout.
     pub fn wait(&mut self, timeout_ms: i32) -> bool {
-        let mut pfds = [PollFd::new(&self.eventfd, PollFlags::IN)];
         let timeout = if timeout_ms < 0 {
             None
         } else {
-            Some(Timespec {
-                tv_sec: (timeout_ms / 1000) as i64,
-                tv_nsec: ((timeout_ms % 1000) as i64) * 1_000_000,
-            })
+            Some(timeout_ms)
         };
-        match poll(&mut pfds, timeout.as_ref()) {
-            Ok(n) if n > 0 => self.poll_irq(),
+        match LinuxDeviceIo::poll_read(self.eventfd.as_fd(), timeout) {
+            Ok(true) => self.poll_irq(),
             _ => false,
         }
     }

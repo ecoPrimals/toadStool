@@ -47,8 +47,6 @@ bytes = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 
-rustix = { workspace = true, features = ["net", "fs"] }
-
 # Logging
 tracing = { workspace = true }
 

@@ -17,10 +17,10 @@
 //! identical functionality.
 
 use crate::error::{AkidaError, Result};
-use rustix::mm::{MapFlags, ProtFlags, mmap, munmap};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsFd;
 use std::ptr::NonNull;
+use toadstool_hw_safe::{vfio_bar_map, vfio_bar_unmap};
 
 /// Memory-mapped `PCIe` BAR region
 ///
@@ -89,23 +89,15 @@ impl MmapRegion {
 
         tracing::debug!("BAR size: {size} bytes ({} MB)", size / (1024 * 1024));
 
-        // SAFETY: `mmap` is required to map the PCIe BAR; rustix wraps the libc mmap contract.
+        // SAFETY: `mmap` is required to map the PCIe BAR; hw-safe wraps the rustix/libc contract.
         // Invariants: fd is valid (opened above), `size` is non-zero (checked), offset 0, and
-        // `ProtFlags`/`MapFlags` match BAR MMIO access. The `File` field keeps the fd alive until
+        // flags match BAR MMIO access. The `File` field keeps the fd alive until
         // `Drop` runs `munmap`, so the mapping is not unmapped while `MmapRegion` exists.
-        // EVOLVED: rustix instead of raw libc (typed flags and `Result`-based errors).
         let ptr = unsafe {
-            let addr = mmap(
-                std::ptr::null_mut(),
-                size,
-                ProtFlags::READ | ProtFlags::WRITE,
-                MapFlags::SHARED,
-                file.as_fd(),
-                0,
-            )
-            .map_err(|e| AkidaError::capability_query_failed(format!("mmap failed: {e}")))?;
+            let addr = vfio_bar_map(file.as_fd(), size, 0)
+                .map_err(|e| AkidaError::capability_query_failed(format!("mmap failed: {e}")))?;
 
-            NonNull::new(addr.cast::<u8>())
+            NonNull::new(addr)
                 .ok_or_else(|| AkidaError::capability_query_failed("mmap returned null pointer"))?
         };
 
@@ -269,9 +261,8 @@ impl Drop for MmapRegion {
 
         // SAFETY: `munmap` must pair with the `mmap` in `new()` before the fd can be closed.
         // Invariants: `self.ptr`/`self.size` are exactly the mapping from `new()`; `Drop` runs once.
-        // EVOLVED: rustix `munmap` instead of raw libc.
         unsafe {
-            if let Err(e) = munmap(self.ptr.as_ptr().cast(), self.size) {
+            if let Err(e) = vfio_bar_unmap(self.ptr.as_ptr(), self.size) {
                 tracing::error!("munmap failed during drop: {e}");
             }
         }

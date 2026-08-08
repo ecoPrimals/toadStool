@@ -10,7 +10,7 @@
     reason = "kernel ABI definitions — full surface kept for correctness"
 )]
 pub(crate) mod ioctls {
-    use rustix::ioctl::{Opcode, opcode};
+    use toadstool_hw_safe::ioctl_infra::{Opcode, opcode};
 
     const VFIO_TYPE: u8 = b';';
     const VFIO_BASE: u8 = 100;
@@ -75,7 +75,7 @@ pub(crate) mod ioctls {
 /// These mirror `<linux/iommufd.h>`. The iommufd type byte is `';'` (same as
 /// VFIO) but command numbers live in the `0x80+` range.
 pub(crate) mod iommufd {
-    use rustix::ioctl::{Opcode, opcode};
+    use toadstool_hw_safe::ioctl_infra::{Opcode, opcode};
 
     const IOMMUFD_TYPE: u8 = b';';
 

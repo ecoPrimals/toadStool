@@ -22,7 +22,6 @@ toadstool-ember = { path = "../ember" }
 tracing = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe", "fs", "system"] }
 toadstool-hw-safe = { path = "../hw-safe" }
 
 [[bin]]

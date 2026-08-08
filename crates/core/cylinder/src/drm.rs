@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Pure Rust DRM ioctl interface — uses `rustix` for mmap/munmap and ioctl.
+//! Pure Rust DRM ioctl interface — uses `toadstool_hw_safe` for mmap/munmap and ioctl.
 //!
 //! All ioctl numbers and structures are defined here from the Linux
 //! kernel headers (GPL-2.0-only) via clean-room constant extraction.
 //!
-//! Memory mapping uses `rustix::mm` (safe wrappers).
-//! ioctl uses `rustix::ioctl` — zero libc, zero inline asm.
+//! Memory mapping uses `toadstool_hw_safe::mmap_device` / `munmap_device`.
+//! ioctl uses `toadstool_hw_safe::ioctl_infra` — zero libc, zero inline asm.
 
 use crate::error::{DriverError, DriverResult};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::ptr::NonNull;
+use toadstool_hw_safe::ioctl_infra::{IoResult, Ioctl, IoctlOutput, Opcode, ioctl as raw_ioctl};
+use toadstool_hw_safe::{mmap_device, munmap_device};
 
 /// Linux ioctl direction flags (shared with UVM ioctls).
 pub(crate) const _IOC_NONE: u32 = 0;
@@ -127,14 +129,8 @@ pub(crate) struct MappedRegion {
 }
 
 impl MappedRegion {
-    /// Map a file descriptor region into memory using `rustix::mm::mmap`.
-    pub(crate) fn new(
-        len: usize,
-        prot: rustix::mm::ProtFlags,
-        flags: rustix::mm::MapFlags,
-        fd: RawFd,
-        offset: u64,
-    ) -> DriverResult<Self> {
+    /// Map a file descriptor region into memory using `mmap_device`.
+    pub(crate) fn new(len: usize, writable: bool, fd: RawFd, offset: u64) -> DriverResult<Self> {
         use std::os::unix::io::BorrowedFd;
 
         if len == 0 {
@@ -145,18 +141,9 @@ impl MappedRegion {
         // 2. Alignment:  mmap returns page-aligned memory
         // 3. Lifetime:   the mapping is owned by this struct, unmapped in Drop
         // 4. Exclusivity: single owner; &mut access gated by &mut self
-        let ptr = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                len,
-                prot,
-                flags,
-                BorrowedFd::borrow_raw(fd),
-                offset,
-            )
-        }
-        .map_err(|e| DriverError::MmapFailed(format!("mmap failed: {e}").into()))?;
-        let ptr = NonNull::new(ptr.cast::<u8>())
+        let ptr = unsafe { mmap_device(BorrowedFd::borrow_raw(fd), len, offset, writable) }
+            .map_err(|e| DriverError::MmapFailed(format!("mmap failed: {e}").into()))?;
+        let ptr = NonNull::new(ptr)
             .ok_or_else(|| DriverError::MmapFailed("mmap returned null".into()))?;
         Ok(Self { ptr, len })
     }
@@ -212,9 +199,9 @@ impl MappedRegion {
 
 impl Drop for MappedRegion {
     fn drop(&mut self) {
-        // SAFETY: ptr was returned by a successful rustix::mm::mmap in new()
+        // SAFETY: ptr was returned by a successful mmap_device in new()
         unsafe {
-            let _ = rustix::mm::munmap(self.ptr.as_ptr().cast::<std::ffi::c_void>(), self.len);
+            let _ = munmap_device(self.ptr.as_ptr(), self.len);
         }
     }
 }
@@ -361,13 +348,13 @@ pub(crate) fn drm_ioctl_named<T>(
         clippy::cast_possible_truncation,
         reason = "Linux ioctl request codes are u32; our u64 constants fit"
     )]
-    let opcode = request as rustix::ioctl::Opcode;
+    let opcode = request as Opcode;
     let ioctl_cmd = DrmIoctlCmd::new(opcode, arg);
     // SAFETY:
     // 1. fd is a valid open DRM device file descriptor (caller)
     // 2. ioctl_cmd wraps a properly aligned &mut T
     // 3. synchronous ioctl; all data outlives the call
-    unsafe { rustix::ioctl::ioctl(BorrowedFd::borrow_raw(fd), ioctl_cmd) }.map_err(|e| {
+    unsafe { raw_ioctl(BorrowedFd::borrow_raw(fd), ioctl_cmd) }.map_err(|e| {
         DriverError::IoctlFailed {
             name,
             errno: e.raw_os_error(),
@@ -376,23 +363,23 @@ pub(crate) fn drm_ioctl_named<T>(
 }
 
 struct DrmIoctlCmd<'a, T> {
-    opcode: rustix::ioctl::Opcode,
+    opcode: Opcode,
     arg: &'a mut T,
 }
 
 impl<'a, T> DrmIoctlCmd<'a, T> {
     #[inline]
-    fn new(opcode: rustix::ioctl::Opcode, arg: &'a mut T) -> Self {
+    fn new(opcode: Opcode, arg: &'a mut T) -> Self {
         Self { opcode, arg }
     }
 }
 
 // SAFETY: opcode/arg are paired by drm_ioctl_named call sites
-unsafe impl<T> rustix::ioctl::Ioctl for DrmIoctlCmd<'_, T> {
+unsafe impl<T> Ioctl for DrmIoctlCmd<'_, T> {
     type Output = ();
     const IS_MUTATING: bool = true;
 
-    fn opcode(&self) -> rustix::ioctl::Opcode {
+    fn opcode(&self) -> Opcode {
         self.opcode
     }
 
@@ -403,9 +390,9 @@ unsafe impl<T> rustix::ioctl::Ioctl for DrmIoctlCmd<'_, T> {
     /// # Safety
     /// Caller guarantees `out` points to valid ioctl return data.
     unsafe fn output_from_ptr(
-        _output: rustix::ioctl::IoctlOutput,
+        _output: IoctlOutput,
         _ptr: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
+    ) -> IoResult<Self::Output> {
         // SAFETY: No-op — body is intentionally empty (trait method stub for ioctl infrastructure).
         Ok(())
     }

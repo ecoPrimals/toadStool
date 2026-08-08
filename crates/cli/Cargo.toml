@@ -124,10 +124,8 @@ toadstool-cylinder = { path = "../core/cylinder" }
 nvpmu = { path = "../core/nvpmu" }
 toadstool-display = { path = "../runtime/display", optional = true }
 
-[target.'cfg(unix)'.dev-dependencies]
-# EVOLVED: libc replaced with rustix (Feb 16, 2026) - ecoBin compliant, safer API
-# EVOLVED: 0.38 → 1.1 (Apr 11, 2026) — align with workspace-wide rustix 1.x
-rustix = { workspace = true, features = ["process"] }
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+toadstool-hw-safe = { path = "../core/hw-safe" }
 
 [features]
 default = ["full"]

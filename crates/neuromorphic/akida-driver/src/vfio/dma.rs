@@ -14,8 +14,8 @@ use super::ioctls::{
     self, VfioDmaMap, VfioDmaUnmap, ioctl_vfio_iommu_map_dma, ioctl_vfio_iommu_unmap_dma,
 };
 use crate::error::{AkidaError, Result};
-use rustix::mm::{mlock, munlock};
 use std::os::unix::io::RawFd;
+use toadstool_hw_safe::{lock_memory, unlock_memory};
 
 /// DMA buffer for fast data transfer
 #[derive(Debug)]
@@ -48,7 +48,7 @@ impl DmaBuffer {
         // SAFETY: mlock necessary for VFIO DMA (prevents swap, ensures physical pages).
         // Invariants: (1) vaddr from alloc_zeroed, valid for size bytes; (2) size matches
         // layout.size(); (3) region [vaddr, vaddr+size) entirely within allocation.
-        if let Err(e) = unsafe { mlock(vaddr.cast(), size) } {
+        if let Err(e) = unsafe { lock_memory(vaddr, size) } {
             // SAFETY: vaddr allocated above with layout; cleanup on error path before return.
             unsafe { std::alloc::dealloc(vaddr, layout) };
             return Err(AkidaError::transfer_failed(format!(
@@ -86,7 +86,7 @@ impl DmaBuffer {
             // SAFETY: vaddr was allocated above with this exact layout and mlock'd
             // successfully, so munlock and dealloc are valid cleanup operations
             unsafe {
-                let _ = munlock(vaddr.cast(), size);
+                let _ = unlock_memory(vaddr, size);
                 std::alloc::dealloc(vaddr, layout);
             };
             return Err(e);
@@ -131,7 +131,7 @@ impl Drop for DmaBuffer {
     fn drop(&mut self) {
         // SAFETY: munlock necessary - vaddr was mlock'd in new(); must unlock before dealloc.
         unsafe {
-            let _ = munlock(self.vaddr.cast(), self.size);
+            let _ = unlock_memory(self.vaddr, self.size);
         };
 
         let dma_unmap = VfioDmaUnmap {

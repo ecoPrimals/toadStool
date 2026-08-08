@@ -244,7 +244,7 @@ pub fn start_sentinel_thread() -> std::io::Result<()> {
                 }
             };
 
-            let _ = rustix::fs::seek(kmsg_fd.as_fd(), rustix::fs::SeekFrom::End(0));
+            let _ = toadstool_hw_safe::seek_end(kmsg_fd.as_fd());
 
             info!("kernel sentinel thread started — monitoring /dev/kmsg");
 
@@ -254,14 +254,14 @@ pub fn start_sentinel_thread() -> std::io::Result<()> {
             let mut report_saved = false;
 
             loop {
-                let n = match rustix::io::read(kmsg_fd.as_fd(), &mut buf) {
+                let n = match toadstool_hw_safe::LinuxDeviceIo::read(kmsg_fd.as_fd(), &mut buf) {
                     Ok(n) if n > 0 => n,
-                    Err(e) if e == rustix::io::Errno::PIPE => {
-                        // Ring buffer wrapped — records were lost, keep going
+                    Err(ref e) if e.raw_os_error() == Some(32) => {
+                        // EPIPE: ring buffer wrapped — records were lost, keep going
                         continue;
                     }
-                    Err(e) if e == rustix::io::Errno::INVAL => {
-                        // Buffer too small for record (unlikely at 8K)
+                    Err(ref e) if e.raw_os_error() == Some(22) => {
+                        // EINVAL: buffer too small for record (unlikely at 8K)
                         continue;
                     }
                     _ => {

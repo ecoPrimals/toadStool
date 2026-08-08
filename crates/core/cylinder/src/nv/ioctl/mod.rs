@@ -3,7 +3,7 @@
 //!
 //! Ioctl numbers and structures are derived from the Linux kernel
 //! nouveau driver headers (`nouveau_drm.h`). Ioctl syscalls go through
-//! [`crate::drm`] helpers built on `rustix::ioctl` — no inline assembly,
+//! [`crate::drm`] helpers built on `toadstool_hw_safe::ioctl_infra` — no inline assembly,
 //! no libc dependency.
 //!
 //! ## Module structure

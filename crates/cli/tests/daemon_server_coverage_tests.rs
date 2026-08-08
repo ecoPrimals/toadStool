@@ -115,8 +115,8 @@ fn daemon_socket_path_resolution_uses_platform_paths_when_none() {
     assert!(!socket.as_os_str().is_empty());
 }
 
-/// Run daemon briefly and verify it shuts down on SIGINT (Unix only)
-#[cfg(unix)]
+/// Run daemon briefly and verify it shuts down on SIGINT (Linux only)
+#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn daemon_server_run_shuts_down_on_sigint() {
     let temp = tempfile::tempdir().expect("temp dir");
@@ -136,8 +136,8 @@ async fn daemon_server_run_shuts_down_on_sigint() {
             }
             tokio::task::yield_now().await;
         }
-        let pid = rustix::process::getpid();
-        let _ = rustix::process::kill_process(pid, rustix::process::Signal::INT);
+        let pid = toadstool_hw_safe::getpid();
+        let _ = toadstool_hw_safe::send_signal(pid, 2);
     });
     let result = tokio::time::timeout(Duration::from_secs(5), handle).await;
     assert!(result.is_ok(), "run should complete within timeout");

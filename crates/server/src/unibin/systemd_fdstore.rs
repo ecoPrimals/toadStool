@@ -10,7 +10,6 @@
 //! and reconstructs `VfioAnchor`s so the GPU stays warm.
 
 use std::collections::HashMap;
-use std::mem::MaybeUninit;
 use std::os::fd::{AsRawFd, BorrowedFd, OwnedFd};
 use std::sync::Arc;
 
@@ -30,48 +29,13 @@ fn sd_notify_with_fds(msg: &str, fds: &[BorrowedFd<'_>]) -> std::io::Result<()> 
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::NotFound, "NOTIFY_SOCKET not set"))?;
 
     let addr = if let Some(abstract_name) = socket_path.strip_prefix('@') {
-        rustix::net::SocketAddrUnix::new_abstract_name(abstract_name.as_bytes())
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?
+        toadstool_hw_safe::UnixAddr::Abstract(abstract_name.as_bytes().to_vec())
     } else {
-        rustix::net::SocketAddrUnix::new(&socket_path)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?
+        toadstool_hw_safe::UnixAddr::Path(socket_path.into())
     };
 
-    let sock = rustix::net::socket(
-        rustix::net::AddressFamily::UNIX,
-        rustix::net::SocketType::DGRAM,
-        None,
-    )
-    .map_err(std::io::Error::other)?;
-
-    let iov = [rustix::io::IoSlice::new(msg.as_bytes())];
-
-    if fds.is_empty() {
-        rustix::net::sendmsg_addr(
-            &sock,
-            &addr,
-            &iov,
-            &mut rustix::net::SendAncillaryBuffer::default(),
-            rustix::net::SendFlags::empty(),
-        )
-        .map_err(std::io::Error::other)?;
-    } else {
-        // Allocate space for up to 4 fds (device + backend + group + spare)
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
-        let mut cmsg_buf = rustix::net::SendAncillaryBuffer::new(&mut space);
-        cmsg_buf.push(rustix::net::SendAncillaryMessage::ScmRights(fds));
-
-        rustix::net::sendmsg_addr(
-            &sock,
-            &addr,
-            &iov,
-            &mut cmsg_buf,
-            rustix::net::SendFlags::empty(),
-        )
-        .map_err(std::io::Error::other)?;
-    }
-
-    Ok(())
+    let sock = toadstool_hw_safe::unix_dgram_socket()?;
+    toadstool_hw_safe::sendmsg_with_fds(&sock, &addr, msg.as_bytes(), fds)
 }
 
 fn bdf_to_fdname(bdf: &str) -> String {
