@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S360 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S361 | v0.2.0
 
 ---
 
@@ -308,6 +308,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S361 (Aug 7, 2026)**: **G68 L3 Implementation Exemplar** — `hw-safe` crate now provides concrete Linux implementations of the L3 backend traits: `LinuxMemoryMapper` (file + anonymous mmap) and `LinuxPinnedMemory` (mlock/munlock with safe `&[u8]` API). `SafeMmapRegion` implements `platform::MappedMemory`. Pattern established for cylinder, akida-driver, display to follow. Scanner L2 false positive documented (`.mode()` on `SubstrateMode` is not filesystem permissions).
 - **S360 (Aug 7, 2026)**: **G68 L3 Backend Traits + Deep Debt Refactor** — New `platform::device_io` module defines trait abstractions for all hardware I/O (MappedMemory, MemoryMapper, PinnedMemory, DeviceFile, EventNotifier, ProcessIsolation). Safe API surface with unsafe contained in hardware crate implementations. `akida-driver` hybrid module refactored from 995L monolith into 4 focused submodules (weights, substrate, selector, core). Full audit: all unsafe is hardware-mandated in designated crates, all production stubs are fail-closed, no overstep remains, no mocks in production, all external deps are pure Rust (rustix). 1,807 tests pass.
 - **S359 (Aug 7, 2026)**: **G68 L2 Convergence** — Final 2 `PermissionsExt` violations migrated (akida-setup permissions + verification). `check_access` for `Custom` mode now uses bitmask semantics (all required bits present) instead of exact match. `missing_docs` warning on BTSP non-Unix stub resolved. Zero `PermissionsExt` usage remains in production code. G68 L2: **COMPLIANT**. L3 (11 device backends in cylinder/hw-safe/nvpmu/akida-driver) — glacial scope.
 - **S358 (Aug 7, 2026)**: **G68 Platform Substrate Abstraction (L1+L2)** — New `toadstool-common::platform` module with `platform_link()` (L1) and `PlatformAccess` enum + `set_access()`/`check_access()` (L2). Replaces 10 scattered inline `#[cfg(unix)]` blocks across 11 files. Unix: mode bits + symlink. Windows: best-effort ACL + symlink_file/dir. 3 symlink sites + 7 permission sites migrated. L3 (device backends) unchanged — already gated.
