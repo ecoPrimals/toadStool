@@ -40,11 +40,13 @@
     reason = "transitive deps pull different minor versions"
 )]
 
+#[cfg(feature = "runtime")]
 mod discovery;
 mod error;
 mod seed;
 mod types;
 
+#[cfg(feature = "runtime")]
 pub use discovery::{EntropyClient, SeedRequest};
 pub use error::SecurityError;
 pub use seed::{EphemeralSeed, SeedQuality};
@@ -85,6 +87,7 @@ pub use types::{EntropyMixing, EntropySource};
 ///     Ok(())
 /// }
 /// ```
+#[cfg(feature = "runtime")]
 pub async fn discover_entropy() -> Result<EntropyClient, SecurityError> {
     EntropyClient::discover().await
 }

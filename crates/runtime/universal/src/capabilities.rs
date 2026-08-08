@@ -32,7 +32,7 @@ impl CapabilityDiscovery {
         }
 
         // Discover GPU (wgpu) — isolated so driver crashes don't bring down the process
-        #[cfg(feature = "wgpu-backend")]
+        #[cfg(all(feature = "wgpu-backend", feature = "runtime"))]
         {
             match tokio::time::timeout(
                 std::time::Duration::from_secs(DEFAULT_WGPU_DISCOVERY_TIMEOUT_SECS),

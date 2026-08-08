@@ -13,6 +13,7 @@ use crate::backends::CpuComputeUnit;
 use crate::backends::WgpuComputeUnit;
 
 /// Closed set of in-tree [`ComputeUnit`] implementations.
+#[non_exhaustive]
 pub enum ComputeUnitDispatch {
     /// CPU parallel unit.
     #[cfg(feature = "cpu")]
@@ -29,6 +30,8 @@ impl ComputeUnit for ComputeUnitDispatch {
             Self::Cpu(u) => u.capabilities(),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.capabilities(),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -38,6 +41,8 @@ impl ComputeUnit for ComputeUnitDispatch {
             Self::Cpu(u) => u.name(),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.name(),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -47,6 +52,8 @@ impl ComputeUnit for ComputeUnitDispatch {
             Self::Cpu(u) => u.execute(workload).await,
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.execute(workload).await,
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -56,6 +63,8 @@ impl ComputeUnit for ComputeUnitDispatch {
             Self::Cpu(u) => u.optimal_batch_size(),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.optimal_batch_size(),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -65,6 +74,8 @@ impl ComputeUnit for ComputeUnitDispatch {
             Self::Cpu(u) => u.estimate_duration(workload),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.estimate_duration(workload),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }

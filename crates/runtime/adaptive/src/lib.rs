@@ -57,7 +57,7 @@ pub use selector::{ConfigSelector, FallbackStrategy};
 pub use types::{OpType, SizeClass};
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Adaptive GPU executor that learns optimal configurations
 ///
@@ -106,7 +106,10 @@ impl AdaptiveExecutor {
         );
 
         // Load or create cache
+        #[cfg(feature = "runtime")]
         let cache = OptimizationCache::load_or_create(&fingerprint)?;
+        #[cfg(not(feature = "runtime"))]
+        let cache = OptimizationCache::new(fingerprint.clone());
         let cache = Arc::new(RwLock::new(cache));
 
         // Create profiler for runtime benchmarking
@@ -117,7 +120,7 @@ impl AdaptiveExecutor {
 
         // Check if we need to profile
         let needs_profiling = {
-            let cache_read = cache.read().await;
+            let cache_read = cache.read().expect("lock poisoned");
             cache_read.is_empty()
         };
 
@@ -165,13 +168,14 @@ impl AdaptiveExecutor {
                 profiler.profile_operation(op_type, &size_classes, &workgroup_candidates)?;
 
             // Update cache with results
-            let mut cache_write = cache.write().await;
+            let mut cache_write = cache.write().expect("lock poisoned");
             cache_write.add_profile(profile);
         }
 
         // Save cache to disk
+        #[cfg(feature = "runtime")]
         {
-            let cache_read = cache.read().await;
+            let cache_read = cache.read().expect("lock poisoned");
             cache_read.save()?;
         }
 
@@ -413,7 +417,7 @@ mod tests {
             backend: "test".to_string(),
             memory_size_gb: 0,
         };
-        let cache = Arc::new(tokio::sync::RwLock::new(OptimizationCache::new(gpu)));
+        let cache = Arc::new(std::sync::RwLock::new(OptimizationCache::new(gpu)));
         let selector = ConfigSelector::new(cache, FallbackStrategy::Conservative);
         let wg = selector.select_workgroup(OpType::MatMul, 1024);
         assert!(wg >= 32);

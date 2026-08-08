@@ -57,8 +57,11 @@ pub mod discovery;
 pub mod firmware;
 pub mod health;
 pub mod personality;
+#[cfg(feature = "runtime")]
 pub mod plx;
+#[cfg(feature = "runtime")]
 pub mod portable_executor;
+#[cfg(feature = "runtime")]
 pub mod swap;
 #[cfg(target_os = "linux")]
 pub mod sysfs_executor;
@@ -77,8 +80,11 @@ pub use discovery::DeviceDiscovery;
 pub use firmware::{BootServiceEvidence, FirmwareInterface};
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
+#[cfg(feature = "runtime")]
 pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
+#[cfg(feature = "runtime")]
 pub use portable_executor::PortableSwapExecutor;
+#[cfg(feature = "runtime")]
 pub use swap::{ExitBootServicesFn, SwapExecutor, SwapObservation, SwapOrchestrator};
 #[cfg(target_os = "linux")]
 pub use sysfs_executor::SysfsSwapExecutor;

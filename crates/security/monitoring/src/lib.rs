@@ -10,10 +10,10 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 /// Maximum events held in the ring buffer before oldest are dropped.
@@ -175,14 +175,14 @@ impl SecurityMonitor {
 
     /// Return a snapshot of all buffered events (newest last).
     pub async fn events(&self) -> Vec<SecurityEvent> {
-        self.events.read().await.iter().cloned().collect()
+        self.events.read().expect("lock poisoned").iter().cloned().collect()
     }
 
     /// Return events at or above the given severity.
     pub async fn events_above(&self, min: Severity) -> Vec<SecurityEvent> {
         self.events
             .read()
-            .await
+            .expect("lock poisoned")
             .iter()
             .filter(|e| e.severity >= min)
             .cloned()
@@ -193,7 +193,7 @@ impl SecurityMonitor {
     pub async fn count_by_category(&self, category: EventCategory) -> usize {
         self.events
             .read()
-            .await
+            .expect("lock poisoned")
             .iter()
             .filter(|e| e.category == category)
             .count()
@@ -227,7 +227,7 @@ impl SecurityMonitor {
             memory_total_bytes: mem_total,
         };
 
-        let mut history = self.resource_history.write().await;
+        let mut history = self.resource_history.write().expect("lock poisoned");
         if history.len() >= 64 {
             history.pop_front();
         }
@@ -252,7 +252,7 @@ impl SecurityMonitor {
     // ── Internal ──────────────────────────────────────────────────────────────
 
     async fn push_event(&self, event: SecurityEvent) {
-        let mut buf = self.events.write().await;
+        let mut buf = self.events.write().expect("lock poisoned");
         if buf.len() >= self.capacity {
             buf.pop_front();
         }

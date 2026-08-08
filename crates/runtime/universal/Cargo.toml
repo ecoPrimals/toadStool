@@ -12,9 +12,9 @@ categories = ["development-tools", "hardware-support"]
 
 [dependencies]
 # Core dependencies
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -22,25 +22,24 @@ serde_json = { workspace = true }
 # ToadStool core (silicon unit types)
 toadstool-core = { path = "../../toadstool-core" }
 
-# ToadStool runtimes
-
 # GPU backends (all optional, capability-based discovery)
-wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
-bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"], optional = true }
+wgpu = { workspace = true, optional = true }
+bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"] }
 
 # For CPU parallelism and discovery
-rayon = "1.8"
+rayon = { version = "1.8", optional = true }
 
 # Hardware learning (optional)
 hw-learn = { path = "../../core/hw-learn", optional = true }
 toadstool-sysmon = { path = "../../core/sysmon", optional = true }
 
 [features]
-default = ["cpu", "wgpu-backend"]
-cpu = []
-wgpu-backend = ["dep:wgpu", "bytemuck"]
+default = ["cpu", "runtime"]
+cpu = ["dep:rayon"]
+runtime = ["dep:tokio", "toadstool-common/runtime", "wgpu-backend"]
+wgpu-backend = ["dep:wgpu"]
 hardware-learning = ["hw-learn", "toadstool-sysmon"]
-all = ["cpu", "wgpu-backend", "hardware-learning"]
+all = ["cpu", "wgpu-backend", "hardware-learning", "runtime"]
 
 [dev-dependencies]
 criterion = { workspace = true }

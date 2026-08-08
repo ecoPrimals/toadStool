@@ -41,6 +41,7 @@ pub mod journal;
 pub mod lend_reclaim;
 pub mod metadata;
 pub mod observation;
+#[cfg(feature = "runtime")]
 pub mod plx_keepalive;
 #[cfg(all(test, target_os = "linux"))]
 mod plx_keepalive_tests;
@@ -64,6 +65,7 @@ pub use journal::{JournalEntry, SwapJournal};
 pub use lend_reclaim::{LendReceipt, LendState};
 pub use metadata::MetadataStore;
 pub use observation::{HealthResult, ResetObservation, SwapObservation, SwapTiming, epoch_ms};
+#[cfg(feature = "runtime")]
 pub use plx_keepalive::{
     ActivityTracker, KeepaliveHandle, PLX_VENDOR_ID, PcieBridgeKeepalive, PlxKeepalive,
     detect_pcie_bridges, detect_plx_bridge, is_pci_bdf,

@@ -11,9 +11,8 @@ categories = ["development-tools::profiling"]
 
 [dependencies]
 serde = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 toadstool-sysmon = { workspace = true }
 
 [dev-dependencies]
@@ -21,4 +20,3 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 
 [lints]
 workspace = true
-

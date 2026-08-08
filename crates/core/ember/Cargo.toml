@@ -17,8 +17,12 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-tokio = { workspace = true }
-toadstool-common = { path = "../common" }
+tokio = { workspace = true, optional = true }
+toadstool-common = { path = "../common", default-features = false }
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool-common/runtime"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

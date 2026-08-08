@@ -13,14 +13,18 @@ categories = ["development-tools", "hardware-support"]
 [dependencies]
 # Core dependencies
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 
 # ToadStool internal
-toadstool-runtime-universal = { path = "../universal" }
+toadstool-runtime-universal = { path = "../universal", default-features = false, features = ["cpu"] }
 toadstool-sysmon = { path = "../../core/sysmon" }
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool-runtime-universal/runtime"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }
@@ -28,4 +32,3 @@ criterion = { workspace = true }
 
 [lints]
 workspace = true
-

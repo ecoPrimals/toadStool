@@ -9,7 +9,9 @@ use crate::fingerprint::GpuFingerprint;
 use crate::types::{OpType, SizeClass};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+#[cfg(feature = "runtime")]
 use std::fs;
+#[cfg(feature = "runtime")]
 use std::path::PathBuf;
 use std::time::SystemTime;
 
@@ -113,6 +115,7 @@ impl OptimizationCache {
     /// # Errors
     ///
     /// Returns error if file I/O fails.
+    #[cfg(feature = "runtime")]
     pub fn load_or_create(gpu: &GpuFingerprint) -> Result<Self, AdaptiveError> {
         let cache_path = Self::cache_path(gpu)?;
 
@@ -161,6 +164,7 @@ impl OptimizationCache {
     /// # Errors
     ///
     /// Returns error if file I/O fails.
+    #[cfg(feature = "runtime")]
     pub fn save(&self) -> Result<(), AdaptiveError> {
         let cache_path = Self::cache_path(&self.gpu_fingerprint)?;
 
@@ -191,6 +195,7 @@ impl OptimizationCache {
     /// - Linux: ~/.cache/toadstool-gpu/
     /// - macOS: ~/Library/Caches/toadstool-gpu/
     /// - Windows: %LOCALAPPDATA%\toadstool-gpu\
+    #[cfg(feature = "runtime")]
     fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf, AdaptiveError> {
         use etcetera::{BaseStrategy, choose_base_strategy};
         const GPU_CACHE_NAMESPACE: &str = "toadstool-gpu";

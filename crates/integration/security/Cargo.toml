@@ -12,17 +12,20 @@ repository.workspace = true
 
 [dependencies]
 # Core dependencies
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 # ToadStool core
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 
 # OS-level entropy
 getrandom = { workspace = true }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
@@ -32,4 +35,5 @@ temp-env = { workspace = true }
 workspace = true
 
 [features]
-default = []
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool-common/runtime"]

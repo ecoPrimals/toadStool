@@ -1,7 +1,7 @@
 # toadStool Cross-Architecture Support
 
-**Status**: 16/16 native targets + 10/48 crates on WASM (Tier 3 active)
-**Sprint**: S370 — Tier 3 WASM compute subset achieved
+**Status**: 16/16 native targets + 24/48 crates on WASM (Tier 3 — 50% compute kernel)
+**Sprint**: S371 — Full Tier 3 abstraction sprint
 **Philosophy**: If it can run a bin, we can run primals on it.
 
 ## Node Atomic Fleet — Actual Hardware
@@ -15,8 +15,8 @@
 | Milk-V Jupiter 2 (RISC-V vector) | `riscv64gc-unknown-linux-gnu` | Full workspace |
 | Steam Deck (SteamOS) | `x86_64-unknown-linux-gnu` | Full workspace |
 | Raspberry Pi | `aarch64-unknown-linux-gnu` | Full workspace |
-| WebGPU/Browser | `wasm32-unknown-unknown` | 10 crates (compute subset) |
-| Cloud/WASI edge | `wasm32-wasip1` | 10 crates (compute subset) |
+| WebGPU/Browser | `wasm32-unknown-unknown` | 24 crates (compute kernel) |
+| Cloud/WASI edge | `wasm32-wasip1` | 24 crates (compute kernel) |
 
 ## Supported Architectures
 
@@ -46,35 +46,50 @@
 | `s390x-unknown-linux-gnu` | Linux | IBM Z | Mainframe compute |
 | `loongarch64-unknown-linux-gnu` | Linux | LoongArch | Loongson sovereign |
 
-### Tier 3 — Compute Subset (WASM — 10 crates pass)
+### Tier 3 — Compute Kernel (WASM — 24 crates pass)
 
 | Target | Runtime | Crates |
 |--------|---------|--------|
-| `wasm32-unknown-unknown` | Browser/WebGPU | 10/48 (compute core) |
-| `wasm32-wasip1` | WASI edge/cloud | 10/48 (compute core) |
+| `wasm32-unknown-unknown` | Browser/WebGPU | 24/48 (compute kernel) |
+| `wasm32-wasip1` | WASI edge/cloud | 24/48 (compute kernel) |
 
-**Crates passing on WASM** (compute subset):
-- `toadstool-hw-safe` — safe hardware abstraction layer
+**Crates passing on WASM** (compute kernel — types, traits, hw abstraction, inference):
+- `toadstool-common` — core types, traits, error handling
+- `toadstool-config` — configuration schemas and parsing
 - `toadstool-core` — core hardware infrastructure types
+- `toadstool-hw-safe` — safe hardware abstraction layer
 - `toadstool-sysmon` — system monitoring types
 - `toadstool-management-resources` — resource management types
 - `toadstool-runtime-secure-enclave` — enclave computation types
+- `toadstool-runtime-universal` — compute unit dispatch (types layer)
+- `toadstool-runtime-orchestration` — workload scheduling/policy logic
+- `toadstool-runtime-adaptive` — GPU optimization algorithms
+- `toadstool-security-monitoring` — security event ring buffer
+- `toadstool-integration-security` — entropy types and seed logic
+- `toadstool-ember` — hardware device holder/lifecycle types
+- `toadstool-cylinder` — DRM/VFIO driver dispatch types
+- `toadstool-glowplug` — device personality/discovery/health types
+- `cross-substrate-validation` — benchmark scoring logic
 - `hw-learn` — vendor-neutral GPU hardware learning
 - `nvpmu` — NVIDIA power management logic
 - `akida-chip` — NPU chip abstraction
 - `akida-models` — NPU model loading/inference
+- `akida-driver` — NPU driver abstraction
 - `akida-setup` — NPU setup utilities
+- `akida-reservoir-research` — reservoir computing algorithms
+- `neurobench-runner` — neuromorphic benchmark framework
 
-**Key: `toadstool-common` `runtime` feature**
+**Key: `runtime` feature pattern**
 
-The `runtime` feature (default-enabled) gates tokio and all async networking.
-Crates that only need types/traits/constants from `common` use `default-features = false`
-to avoid pulling in tokio/mio/socket2 which cannot compile on WASM.
+The `runtime` feature (default-enabled) gates tokio, etcetera, and all async networking.
+Crates that only need types/traits/constants use `default-features = false` on their
+dependencies to avoid pulling in tokio/mio/socket2 which cannot compile on WASM.
+On native builds, Cargo's feature unification ensures full functionality.
 
-**What won't compile on WASM** (requires OS networking/processes):
-- Server, client, CLI — fundamentally need TCP/Unix sockets
-- Runtime orchestration — needs process control
-- All integration/testing crates — need full OS
+**Native-only crates** (24 — require OS networking/processes/IPC):
+- Server, client, CLI, distributed — TCP/Unix sockets, daemon lifecycle
+- Container, display, edge, native — OS process/kernel management
+- Testing, examples, integration-tests — test infrastructure
 
 ## Architecture Decisions
 

@@ -44,16 +44,30 @@ TIER3_TARGETS=(
 )
 
 WASM_CRATES=(
-    "toadstool-hw-safe"
+    "toadstool-common"
+    "toadstool-config"
     "toadstool-core"
+    "toadstool-hw-safe"
     "toadstool-sysmon"
     "toadstool-management-resources"
     "toadstool-runtime-secure-enclave"
+    "toadstool-runtime-universal"
+    "toadstool-runtime-orchestration"
+    "toadstool-runtime-adaptive"
+    "toadstool-security-monitoring"
+    "toadstool-integration-security"
+    "toadstool-ember"
+    "toadstool-cylinder"
+    "toadstool-glowplug"
+    "cross-substrate-validation"
     "hw-learn"
     "nvpmu"
     "akida-chip"
     "akida-models"
+    "akida-driver"
     "akida-setup"
+    "akida-reservoir-research"
+    "neurobench-runner"
 )
 
 if [[ "${1:-full}" == "quick" ]]; then
@@ -69,7 +83,7 @@ elif [[ "${1:-full}" == "wasm" ]]; then
         echo "  Target: $t"
         for c in "${WASM_CRATES[@]}"; do
             printf "    %-42s " "$c"
-            if cargo check -p "$c" --target "$t" 2>/dev/null; then
+            if cargo check -p "$c" --no-default-features --target "$t" 2>/dev/null; then
                 echo "✓"
                 PASS=$((PASS + 1))
             else

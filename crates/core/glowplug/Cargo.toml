@@ -13,13 +13,17 @@ keywords = ["hardware", "device", "lifecycle", "personality", "firmware"]
 categories.workspace = true
 
 [dependencies]
-toadstool-cylinder = { path = "../cylinder" }
-toadstool-ember = { path = "../ember" }
+toadstool-cylinder = { path = "../cylinder", default-features = false }
+toadstool-ember = { path = "../ember", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool-cylinder/runtime", "toadstool-ember/runtime"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

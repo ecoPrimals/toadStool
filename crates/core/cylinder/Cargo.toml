@@ -17,8 +17,8 @@ toml = "0.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-toadstool-common = { path = "../../core/common" }
-toadstool-ember = { path = "../ember" }
+toadstool-common = { path = "../../core/common", default-features = false }
+toadstool-ember = { path = "../ember", default-features = false }
 tracing = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -44,7 +44,8 @@ path = "src/bin/capture_pmu_falcon.rs"
 serde_json = { workspace = true }
 
 [features]
-default = ["vfio"]
+default = ["vfio", "runtime"]
+runtime = ["toadstool-common/runtime", "toadstool-ember/runtime"]
 vfio = []
 amd = []
 test-utils = []

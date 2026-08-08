@@ -4,7 +4,7 @@
 use crate::cache::OptimizationCache;
 use crate::types::OpType;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Fallback strategy when no cached config available
 #[derive(Debug, Clone, Copy)]
@@ -209,7 +209,7 @@ mod tests {
 
         // Add cached config
         {
-            let mut cache_guard = cache.write().await;
+            let mut cache_guard = cache.write().expect("lock poisoned");
             cache_guard.update_measurement(OpType::MatMul, 10_000, 256, 1000.0);
         }
 
@@ -227,7 +227,7 @@ mod tests {
 
         // Add cached config
         {
-            let mut cache_guard = cache.write().await;
+            let mut cache_guard = cache.write().expect("lock poisoned");
             cache_guard.update_measurement(OpType::MatMul, 10_000, 256, 1000.0);
         }
 
