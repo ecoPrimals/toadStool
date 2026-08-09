@@ -1,7 +1,7 @@
 # toadStool Cross-Architecture Support
 
 **Status**: 16/16 native targets + 24/48 crates on WASM (Tier 3 — 50% compute kernel)
-**Sprint**: S372 — Vertebrate evolution: types extraction + self-audit
+**Sprint**: S373 — Deep debt: large file decomposition, hardcoding removal
 **Philosophy**: If it can run a bin, we can run primals on it.
 
 ## Node Atomic Fleet — Actual Hardware
