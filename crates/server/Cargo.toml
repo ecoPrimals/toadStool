@@ -19,6 +19,7 @@ toadstool-ember = { path = "../core/ember" }
 toadstool-glowplug = { path = "../core/glowplug" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols", features = ["tarpc-transport"] }
+toadstool-integration-primals = { path = "../integration/primals" }
 toadstool-runtime-container = { path = "../runtime/container", features = ["docker"] }
 toadstool-runtime-native = { path = "../runtime/native" }
 toadstool-runtime-specialty = { path = "../runtime/specialty" }

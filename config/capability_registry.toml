@@ -60,6 +60,7 @@ methods = [
     "compute.performance_surface.query",
     "compute.performance_surface.list",
     "compute.route.multi_unit",
+    "compute.silicon.registry",
 ]
 
 [capabilities.workload]

@@ -26,6 +26,8 @@ mod cleanup;
 mod health;
 #[cfg(unix)]
 pub(crate) mod ipc_watch;
+#[cfg(unix)]
+pub(crate) mod silicon_discovery;
 #[cfg(target_os = "linux")]
 pub(crate) mod kernel_sentinel;
 #[cfg(all(test, target_os = "linux"))]

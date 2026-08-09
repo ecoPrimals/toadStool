@@ -182,6 +182,11 @@ impl JsonRpcHandler {
                 return self.silicon.route_multi_unit(params).await;
             }
 
+            #[cfg(unix)]
+            "compute.silicon.registry" => {
+                return self.silicon_registry_status().await;
+            }
+
             "provenance.query" | "provenance.get" | "toadstool.provenance" => {
                 return Self::toadstool_provenance().await;
             }
@@ -588,6 +593,71 @@ impl JsonRpcHandler {
             "ember_device_recover" => mmio::ember_device_recover(params),
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
+    }
+
+    /// `compute.silicon.registry` — expose discovered shader compiler capabilities
+    /// from the silicon registry (populated by background IPC query).
+    #[cfg(unix)]
+    async fn silicon_registry_status(&self) -> JsonRpcResult {
+        let reg = self.silicon_registry.read().await;
+        let status = match &reg.status {
+            toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Unknown => {
+                "unknown"
+            }
+            toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Available(_) => {
+                "available"
+            }
+            toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Unavailable => {
+                "unavailable"
+            }
+            toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Error(_) => {
+                "error"
+            }
+        };
+
+        let compiler_version = match &reg.status {
+            toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Available(v) => {
+                Some(v.as_str())
+            }
+            _ => None,
+        };
+
+        let error_detail = match &reg.status {
+            toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Error(e) => {
+                Some(e.as_str())
+            }
+            _ => None,
+        };
+
+        let (backends, precision_modes, gemm_tiling, integer_subgroup, max_workgroup) =
+            if let Some(caps) = &reg.capabilities {
+                (
+                    serde_json::json!(caps.backends),
+                    serde_json::json!(caps.precision_modes),
+                    caps.gemm_tiling,
+                    caps.integer_subgroup,
+                    caps.max_workgroup_size,
+                )
+            } else {
+                (
+                    serde_json::json!([]),
+                    serde_json::json!([]),
+                    false,
+                    false,
+                    None,
+                )
+            };
+
+        Ok(serde_json::json!({
+            "status": status,
+            "compiler_version": compiler_version,
+            "error": error_detail,
+            "backends": backends,
+            "precision_modes": precision_modes,
+            "gemm_tiling": gemm_tiling,
+            "integer_subgroup": integer_subgroup,
+            "max_workgroup_size": max_workgroup,
+        }))
     }
 }
 

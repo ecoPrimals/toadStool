@@ -32,7 +32,7 @@ impl Default for HardwareCapabilities {
     fn default() -> Self {
         Self {
             cpu_cores: std::thread::available_parallelism()
-                .map(|n| n.get())
+                .map(std::num::NonZero::get)
                 .unwrap_or(4),
             ram_bytes: Self::detect_ram(),
             gpu_devices: Vec::new(),
@@ -282,6 +282,7 @@ impl BackendSelector {
     }
 
     /// Should use native CUDA?
+    #[expect(clippy::unused_self, reason = "method pattern — selector may gain state")]
     const fn should_use_native_cuda(&self, chars: &WorkloadCharacteristics) -> bool {
         // Always use native CUDA if available, unless workload is trivial
         !matches!(chars.compute_intensity, ComputeIntensity::Minimal)

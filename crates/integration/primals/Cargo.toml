@@ -13,7 +13,6 @@ categories = ["science", "network-programming"]
 
 [dependencies]
 # Core dependencies
-tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -28,6 +27,7 @@ toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
 
 [dev-dependencies]
+tokio = { workspace = true }
 tokio-test = { workspace = true }
 mockall = "0.12"
 proptest = { workspace = true }

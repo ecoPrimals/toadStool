@@ -45,7 +45,7 @@ impl EncryptedPayload {
 
     /// Get size in bytes
     pub fn size(&self) -> usize {
-        self.ciphertext.len() + self.auth_tag.as_ref().map_or(0, |t| t.len())
+        self.ciphertext.len() + self.auth_tag.as_ref().map_or(0, std::vec::Vec::len)
     }
 }
 
@@ -246,23 +246,20 @@ impl Default for KeyRotationPolicy {
 impl KeyRotationPolicy {
     /// Check if key should be rotated
     pub const fn should_rotate(&self, uses: u64, age_seconds: u64, data_bytes: u64) -> bool {
-        if let Some(max_uses) = self.max_uses {
-            if uses >= max_uses {
+        if let Some(max_uses) = self.max_uses
+            && uses >= max_uses {
                 return true;
             }
-        }
 
-        if let Some(max_age) = self.max_age_seconds {
-            if age_seconds >= max_age {
+        if let Some(max_age) = self.max_age_seconds
+            && age_seconds >= max_age {
                 return true;
             }
-        }
 
-        if let Some(max_data) = self.max_data_bytes {
-            if data_bytes >= max_data {
+        if let Some(max_data) = self.max_data_bytes
+            && data_bytes >= max_data {
                 return true;
             }
-        }
 
         false
     }

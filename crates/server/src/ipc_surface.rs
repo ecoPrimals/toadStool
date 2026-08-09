@@ -38,6 +38,7 @@ pub const ANNOUNCED_METHODS: &[&str] = &[
     "compute.performance_surface.report",
     "compute.result",
     "compute.route.multi_unit",
+    "compute.silicon.registry",
     "compute.status",
     "compute.submit",
     "compute.version",

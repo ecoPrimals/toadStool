@@ -40,6 +40,7 @@ impl WorkloadAnalyzer {
         }
     }
 
+    #[expect(clippy::unused_self, reason = "method pattern — analyzer may gain state")]
     const fn analyze_gpu(&self) -> WorkloadCharacteristics {
         use characteristics::{
             ComputeIntensity, GpuAdvantage, MemoryRequirement, ParallelismLevel,
