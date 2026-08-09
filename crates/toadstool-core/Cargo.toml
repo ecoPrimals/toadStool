@@ -17,12 +17,16 @@ tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = { version = "1", features = ["serde"] }
+uuid = { version = "1.7", features = ["serde"] }
+zeroize = { version = "1.7", features = ["derive"] }
+humantime-serde = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
 
 [features]
 default = []
+runtime = ["uuid/v4"]
 # Full akida backend requires akida-driver + rustChip/akida-chip (biomeGate-only, C5)
 akida = []
 

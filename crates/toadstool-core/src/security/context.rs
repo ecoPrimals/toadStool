@@ -3,9 +3,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::{ToadStoolError, ToadStoolResult};
 
-use super::types::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, UserContext};
+use super::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, UserContext};
 
 /// Security context for workload execution
 #[derive(Debug, Clone, Serialize, Deserialize)]

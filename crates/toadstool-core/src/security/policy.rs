@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::types::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity};
+use super::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity};
 
 /// Security settings for runtime configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

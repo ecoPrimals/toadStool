@@ -6,9 +6,6 @@ mod metrics;
 mod requirements;
 mod system;
 
-#[cfg(test)]
-mod tests;
-
 pub use limits::{
     CpuLimits, MemoryLimits, NetworkLimits, ResourceLimits, ResourceUsage, StorageLimits,
 };

@@ -7,10 +7,10 @@ use uuid::Uuid;
 use crate::{ToadStoolError, ToadStoolResult};
 
 use super::capability::CryptoCapability;
-use super::config::{EncryptedInput, EncryptedOutput, EncryptionConfig};
+use super::{EncryptedInput, EncryptedOutput, EncryptionConfig};
 use super::provider::{CryptoProvider, CryptoProviderRegistry, NoopCryptoProvider};
-use super::security::SecurityLevel;
-use super::types::EncryptionKey;
+use super::SecurityLevel;
+use super::EncryptionKey;
 
 /// Encryption context for an execution
 ///

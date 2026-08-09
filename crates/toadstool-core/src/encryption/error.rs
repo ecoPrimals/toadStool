@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Crypto provider errors
 
-use crate::{ConfigError, ToadStoolError};
+use toadstool_common::{ConfigError, ToadStoolError};
 
 /// Errors from crypto provider operations
 #[derive(Debug, Clone, thiserror::Error)]

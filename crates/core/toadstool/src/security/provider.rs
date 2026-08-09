@@ -3,9 +3,7 @@
 
 use crate::ToadStoolResult;
 
-use super::context::SecurityContext;
-use super::policy::{AuditEvent, SecurityPolicy};
-use super::types::Capability;
+use super::{AuditEvent, Capability, SecurityContext, SecurityPolicy};
 
 /// Security provider trait
 #[expect(

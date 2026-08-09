@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
-use super::error::CryptoError;
+use super::CryptoError;
 use super::{CryptoCapability, EncryptedPayload, EncryptionKey, EncryptionMetadata, SecurityLevel};
 
 /// Trait for crypto service providers

@@ -3,10 +3,10 @@
 use std::marker::PhantomData;
 use uuid::Uuid;
 
-use super::config::EncryptionConfig;
+use super::EncryptionConfig;
 use super::context::EncryptionContext;
 use super::provider::{CryptoProvider, NoopCryptoProvider};
-use super::security::SecurityLevel;
+use super::SecurityLevel;
 
 /// Builder for encryption contexts
 ///

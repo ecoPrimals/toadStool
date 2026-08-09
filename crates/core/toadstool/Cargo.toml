@@ -17,7 +17,7 @@ readme = "README.md"
 # Core dependencies
 toadstool-common = { path = "../common" }
 toadstool-config = { path = "../config" }
-toadstool-core = { path = "../../toadstool-core" }
+toadstool-core = { path = "../../toadstool-core", features = ["runtime"] }
 
 # Async runtime
 tokio = { workspace = true }
@@ -30,9 +30,6 @@ bytes = { workspace = true }
 
 # Unique identifiers
 uuid = { workspace = true }
-
-# Time handling
-humantime-serde = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
@@ -49,9 +46,6 @@ toadstool-sysmon = { workspace = true }
 
 # Encoding
 base64 = { workspace = true }
-
-# Security
-zeroize = { version = "1.7", features = ["derive"] }
 
 libloading = { workspace = true, optional = true }
 

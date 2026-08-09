@@ -146,7 +146,10 @@ pub struct EncryptionKey {
 impl Default for EncryptionKey {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "runtime")]
             id: Uuid::new_v4().to_string(),
+            #[cfg(not(feature = "runtime"))]
+            id: Uuid::nil().to_string(),
             key_material: Vec::new(),
             security_level: SecurityLevel::Standard,
             algorithm: "chacha20poly1305".to_string(),
@@ -264,7 +267,3 @@ impl KeyRotationPolicy {
         false
     }
 }
-
-#[cfg(test)]
-#[path = "types_tests.rs"]
-mod tests;

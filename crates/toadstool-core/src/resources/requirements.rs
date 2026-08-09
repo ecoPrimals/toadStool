@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ToadStoolResult;
+use toadstool_common::ToadStoolResult;
 
 /// Resource requirements specification
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -98,7 +98,7 @@ impl ResourceRequirements {
     ///
     /// Returns error if CPU or memory bounds are invalid.
     pub fn validate(&self) -> ToadStoolResult<()> {
-        use crate::ToadStoolError;
+        use toadstool_common::ToadStoolError;
         if self.cpu.min_cores <= 0.0 {
             return Err(ToadStoolError::validation(
                 "cpu.min_cores must be greater than 0",

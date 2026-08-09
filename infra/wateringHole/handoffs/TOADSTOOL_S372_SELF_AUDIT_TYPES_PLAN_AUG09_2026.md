@@ -1,7 +1,7 @@
 # ToadStool S372 Self-Audit + Types Extraction Plan
 
 **Date**: Aug 9, 2026 | **Sprint**: S372 | **Wave**: 157a Vertebrate Evolution
-**Status**: Self-audit COMPLETE. Extraction plan documented.
+**Status**: Self-audit COMPLETE. Types extraction Phase 1+2 COMPLETE.
 
 ---
 
@@ -24,37 +24,35 @@ Registry bumped to v0.2.1.
 
 ---
 
-## Types Extraction Plan (Next Sprint)
+## Types Extraction — EXECUTED
 
-### Problem
-The main `toadstool` crate (56K lines, 65 files using tokio) is depended on by 4 management/security crates that only need ~3,035 lines of pure types. This blocks those crates from WASM compilation.
+### Phase 1: `workload/` module (3,095 lines, 17 files)
+Moved from `crates/core/toadstool/src/workload/` → `crates/toadstool-core/src/workload/`.
+Main crate re-exports via `pub use toadstool_core::workload::*;`.
 
-### Extraction Target: ~3,035 lines → `toadstool-core`
+### Phase 2: resources + security + encryption + execution types
+- `resources/types/` (501L) → `crates/toadstool-core/src/resources/`
+- `security/{types,context,policy}` (297L) → `crates/toadstool-core/src/security/`
+- `encryption/{security,types,config,error}` → `crates/toadstool-core/src/encryption/`
+- `execution/` types (260L) → `crates/toadstool-core/src/execution/`
 
-| Module | Lines | Types needed by downstream |
-|--------|-------|---------------------------|
-| `workload/` | 2,030 | `WorkloadSpec`, `ExecutableSource`, `WasmModuleSource`, `WorkloadType` |
-| `resources/types/` | 501 | `RuntimeMetrics`, `CpuMetrics`, `MemoryMetrics`, `StorageMetrics`, `NetworkMetrics`, `TimingMetrics`, `ResourceRequirements` |
-| `security/types+context+policy` | 297 | `Capability`, `IsolationLevel`, `SecurityContext` |
-| `execution/` (types only) | 260 | `RuntimeType`, `ExecutionRequest`, `ExecutionStatus`, `ExecutionResponse` |
+Main crate re-exports all via `pub use toadstool_core::...::*;`. Zero downstream breakage.
 
-### Downstream Crates Unblocked
-- `toadstool-management-performance`
-- `toadstool-management-monitoring`
-- `toadstool-management-analytics`
-- `toadstool-security-policies`
-
-### Strategy
-Expand `toadstool-core` (already WASM-capable, 1,899 lines) to include platform types. Main `toadstool` crate re-exports from `toadstool-core`. Downstream crates switch from `toadstool` → `toadstool-core` dependency.
+### Dead Deps Removed from Main Crate
+- `zeroize` (moved to toadstool-core)
+- `humantime-serde` (moved to toadstool-core)
 
 ### Dependencies Added to `toadstool-core`
 ```
-serde_json, bytes, uuid, humantime-serde
+serde_json, bytes, uuid, humantime-serde, zeroize
 ```
-All pure Rust, WASM-safe. Zero tokio.
+All pure Rust, WASM-safe. `uuid/v4` feature-gated behind `runtime` (getrandom-safe).
 
-### Expected Result
-28/48 crates WASM-capable (from current 24/48).
+### Result
+- `toadstool-core` now ~5K lines of pure types, fully WASM-capable
+- `cargo check -p toadstool-core --target wasm32-unknown-unknown --no-default-features` passes
+- Full workspace compiles cleanly (zero errors, zero TODO/FIXME)
+- 5.2 GiB reclaimed from `cargo clean`
 
 ---
 

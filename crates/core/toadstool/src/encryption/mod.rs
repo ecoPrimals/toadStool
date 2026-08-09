@@ -9,23 +9,18 @@
 //! - Graceful degradation: Works without encryption
 
 mod builder;
-mod config;
 mod context;
-pub mod error;
-mod security;
 
 pub mod capability;
 pub mod provider;
-pub mod types;
 
 #[cfg(test)]
 mod tests;
 
+// Re-export pure types from toadstool-core
+pub use toadstool_core::encryption::*;
+
 pub use builder::EncryptionContextBuilder;
 pub use capability::CryptoCapability;
-pub use config::{EncryptedInput, EncryptedOutput, EncryptionConfig};
 pub use context::EncryptionContext;
-pub use error::CryptoError;
 pub use provider::{CryptoProvider, CryptoProviderRegistry, NoopCryptoProvider};
-pub use security::SecurityLevel;
-pub use types::{EncryptedPayload, EncryptionKey, EncryptionMetadata};

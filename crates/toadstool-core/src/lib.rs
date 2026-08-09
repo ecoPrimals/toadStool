@@ -22,6 +22,14 @@ pub mod silicon;
 /// Workload specification types — compute job definitions, executable sources,
 /// AI/ML workload descriptors, CUDA kernels, validators, and analyzers.
 pub mod workload;
+/// Resource types — metrics, requirements, limits, system info.
+pub mod resources;
+/// Security types — isolation levels, capabilities, contexts, policies.
+pub mod security;
+/// Encryption types — security levels, payloads, config.
+pub mod encryption;
+/// Execution types — requests, responses, status, runtime config.
+pub mod execution;
 
 #[cfg(test)]
 mod workload_tests {
