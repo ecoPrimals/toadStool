@@ -95,28 +95,66 @@ async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
     let mut gpus = Vec::new();
 
-    // Try to detect AMD GPUs using rocm-smi (if available)
     if let Ok(output) = tokio::process::Command::new("rocm-smi")
         .arg("--showproductname")
-        .arg("--showmeminfo")
         .output()
         .await
+        && output.status.success()
     {
-        // Parse rocm-smi output (simplified)
         let output_str = String::from_utf8_lossy(&output.stdout);
-        if output_str.contains("AMD") || output_str.contains("Radeon") {
-            gpus.push(GpuInfo {
-                name: "AMD GPU".to_string(),
-                vendor: "AMD".to_string(),
-                memory_gb: 8.0, // Default assumption
-                driver_version: "Unknown".to_string(),
-                compute_capability: "RDNA".to_string(),
-                supports_cuda: false,
-            });
-        }
+        let name = output_str
+            .lines()
+            .find(|l| l.contains("GPU") || l.contains("AMD") || l.contains("Radeon"))
+            .map(|l| l.trim().to_string())
+            .unwrap_or_else(|| "AMD GPU (unknown model)".to_string());
+
+        let memory_gb = detect_amd_memory_gb().await;
+
+        gpus.push(GpuInfo {
+            name,
+            vendor: "AMD".to_string(),
+            memory_gb,
+            driver_version: detect_amd_driver_version().await,
+            compute_capability: "RDNA".to_string(),
+            supports_cuda: false,
+        });
     }
 
     Ok(gpus)
+}
+
+async fn detect_amd_memory_gb() -> f64 {
+    if let Ok(output) = tokio::process::Command::new("rocm-smi")
+        .arg("--showmeminfo")
+        .arg("vram")
+        .output()
+        .await
+        && output.status.success()
+    {
+        let s = String::from_utf8_lossy(&output.stdout);
+        for line in s.lines() {
+            if let Some(mb_str) = line.split_whitespace().find(|w| w.parse::<u64>().is_ok()) {
+                if let Ok(mb) = mb_str.parse::<u64>() {
+                    if mb > 256 {
+                        return mb as f64 / 1024.0;
+                    }
+                }
+            }
+        }
+    }
+    0.0
+}
+
+async fn detect_amd_driver_version() -> String {
+    let rocm_path = std::env::var("ROCM_PATH").unwrap_or_else(|_| "/opt/rocm".to_string());
+    let version_file = std::path::Path::new(&rocm_path).join(".info/version");
+    if let Ok(ver) = tokio::fs::read_to_string(&version_file).await {
+        let ver = ver.trim();
+        if !ver.is_empty() {
+            return ver.to_string();
+        }
+    }
+    "unknown".to_string()
 }
 
 /// Detect Intel GPUs

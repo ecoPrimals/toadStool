@@ -63,6 +63,7 @@ pub use safe_mmap::SafeMmapRegion;
 
 pub mod drm_ioctl;
 pub mod platform_backends;
+pub mod process_isolation;
 pub mod vfio_dma;
 pub mod vfio_setup;
 
@@ -70,14 +71,20 @@ pub mod vfio_setup;
 pub mod systemd_fds;
 
 // Cross-platform re-exports from Layer 2 (data-only types).
-pub use platform_backends::{FsStats, UnixAddr, WaitResult};
+pub use platform_backends::{FsStats, UnixAddr};
+pub use process_isolation::WaitResult;
 
 #[cfg(target_os = "linux")]
 pub use platform_backends::{
-    ForkResult, LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier,
-    LinuxFilesystemIsolation, LinuxMemoryMapper, LinuxPinnedMemory, LinuxPrivilegeProbeBackend,
-    LinuxSystemParameters, Pid, clock_monotonic_ns, delete_module, exit_group, finit_module, fork,
-    fs_stats, getpid, ioctl_infra, kill_process, lock_memory, mknod_char, mmap_device,
-    munmap_device, open_path, pipe_cloexec, recv_with_fds, seek_end, send_signal, sendmsg_with_fds,
-    unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap, waitpid_nohang,
+    LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier, LinuxFilesystemIsolation,
+    LinuxMemoryMapper, LinuxPinnedMemory, LinuxPrivilegeProbeBackend, LinuxSystemParameters,
+    clock_monotonic_ns, delete_module, finit_module, fs_stats, ioctl_infra, lock_memory, mknod_char,
+    mmap_device, munmap_device, open_path, recv_with_fds, seek_end, sendmsg_with_fds,
+    unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap,
+};
+
+#[cfg(target_os = "linux")]
+pub use process_isolation::{
+    ForkResult, Pid, exit_group, fork, getpid, kill_process, pipe_cloexec, send_signal,
+    waitpid_nohang,
 };

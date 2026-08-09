@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! VFIO NPU backend — Pure Rust with DMA support
+//! VFIO NPU backend — Pure Rust with DMA support.
 //!
 //! This backend uses Linux VFIO (Virtual Function I/O) to provide:
-//!
-// FFI/ioctl casts are intentional - VFIO API requires specific types
-#![allow(clippy::cast_possible_truncation)]
 //! - DMA transfers (fast bulk data movement)
 //! - Interrupt support (no polling)
 //! - IOMMU isolation (security)
@@ -16,43 +13,11 @@
 //! 1. IOMMU enabled in BIOS and kernel (`intel_iommu=on` or `amd_iommu=on`)
 //! 2. Device unbound from native driver and bound to `vfio-pci`
 //! 3. User in `vfio` group or root permissions
-//!
-//! # Setup Commands
-//!
-//! ```bash
-//! # Unbind from native driver
-//! echo "0000:a1:00.0" > /sys/bus/pci/drivers/akida/unbind
-//!
-//! # Bind to vfio-pci
-//! echo "1e7c bca1" > /sys/bus/pci/drivers/vfio-pci/new_id
-//!
-//! # Grant user access
-//! sudo chown $USER /dev/vfio/$IOMMU_GROUP
-//! ```
-//!
-//! # Architecture
-//!
-//! ```text
-//! ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-//! │  User App   │────▶│  VFIO API   │────▶│   IOMMU     │
-//! │  (Rust)     │     │  (Rust)     │     │  (Hardware) │
-//! └─────────────┘     └─────────────┘     └─────────────┘
-//!                            │                   │
-//!                            ▼                   ▼
-//!                     ┌─────────────┐     ┌─────────────┐
-//!                     │  DMA Buffer │────▶│   Akida     │
-//!                     │  (Pinned)   │     │   NPU       │
-//!                     └─────────────┘     └─────────────┘
-//! ```
-//!
-//! # Deep Debt Compliance
-//!
-//! - Runtime discovery (IOMMU groups, device capabilities)
-//! - Minimal unsafe (well-encapsulated VFIO ioctls)
-//! - Safe public API
-//! - No C dependencies for mmap/mlock (pure Rust via rustix)
-//! - VFIO ioctls use libc: `rustix::ioctl` requires Ioctl trait impl per variant;
-//!   VFIO has 9+ ioctls with varied semantics (int, struct, fd ptr, C string).
+
+#![allow(clippy::cast_possible_truncation)]
+
+mod bind;
+pub use bind::{bind_to_vfio, iommu_group, unbind_from_vfio};
 
 mod container;
 mod dma;
@@ -771,107 +736,3 @@ mod tests {
     }
 }
 
-// ── VFIO device binding helpers ───────────────────────────────────────────────
-// These replace the C driver's install.sh for the VFIO path.
-
-/// Bind an Akida device to `vfio-pci`, unloading any existing driver.
-///
-/// Steps:
-/// 1. Unbind from current driver (e.g., `akida_pcie`)
-/// 2. Enable `vfio-pci` module
-/// 3. Write vendor:device to `vfio-pci/new_id`
-/// 4. Bind the device
-///
-/// Requires root or `CAP_SYS_ADMIN`.
-///
-/// # Errors
-///
-/// Returns an error if any sysfs write fails (usually permission denied).
-pub fn bind_to_vfio(pcie_address: &str) -> crate::error::Result<()> {
-    use crate::error::AkidaError;
-    use std::path::Path;
-
-    tracing::info!("Binding {} to vfio-pci", pcie_address);
-
-    let driver_unbind = format!("/sys/bus/pci/devices/{pcie_address}/driver/unbind");
-    if Path::new(&driver_unbind).exists() {
-        std::fs::write(&driver_unbind, pcie_address).map_err(|e| {
-            AkidaError::hardware_error(format!("Cannot unbind {pcie_address}: {e}"))
-        })?;
-        tracing::info!("Unbound from existing driver");
-    }
-
-    let new_id = "/sys/bus/pci/drivers/vfio-pci/new_id";
-    if Path::new(new_id).exists() {
-        std::fs::write(
-            new_id,
-            format!(
-                "{:04x} {:04x}",
-                akida_chip::pcie::BRAINCHIP_VENDOR_ID,
-                0xBCA1u16
-            ),
-        )
-        .map_err(|e| AkidaError::hardware_error(format!("Cannot write vfio-pci/new_id: {e}")))?;
-    }
-
-    let bind_path = "/sys/bus/pci/drivers/vfio-pci/bind";
-    std::fs::write(bind_path, pcie_address)
-        .map_err(|e| AkidaError::hardware_error(format!("Cannot bind to vfio-pci: {e}")))?;
-
-    tracing::info!("{pcie_address} bound to vfio-pci");
-    Ok(())
-}
-
-/// Unbind from `vfio-pci` and re-bind to `akida_pcie` kernel module.
-///
-/// # Errors
-///
-/// Returns an error if sysfs writes fail.
-pub fn unbind_from_vfio(pcie_address: &str) -> crate::error::Result<()> {
-    use crate::error::AkidaError;
-
-    let unbind = "/sys/bus/pci/drivers/vfio-pci/unbind";
-    std::fs::write(unbind, pcie_address)
-        .map_err(|e| AkidaError::hardware_error(format!("Cannot unbind from vfio-pci: {e}")))?;
-
-    let bind = "/sys/bus/pci/drivers/akida/bind";
-    if std::path::Path::new(bind).exists() {
-        std::fs::write(bind, pcie_address)
-            .map_err(|e| AkidaError::hardware_error(format!("Cannot bind to akida driver: {e}")))?;
-        tracing::info!("{pcie_address} re-bound to akida_pcie");
-    } else {
-        tracing::info!("{pcie_address} unbound (akida_pcie not loaded)");
-    }
-
-    Ok(())
-}
-
-/// Find the IOMMU group number for a `PCIe` device.
-///
-/// Reads `/sys/bus/pci/devices/{addr}/iommu_group` symlink.
-///
-/// # Errors
-///
-/// Returns `AkidaError` if the sysfs symlink cannot be read.
-pub fn iommu_group(pcie_address: &str) -> crate::error::Result<u32> {
-    use crate::error::AkidaError;
-
-    let link = format!("/sys/bus/pci/devices/{pcie_address}/iommu_group");
-    let target = std::fs::read_link(&link).map_err(|e| {
-        AkidaError::hardware_error(format!("Cannot read iommu_group for {pcie_address}: {e}"))
-    })?;
-
-    let group = target
-        .file_name()
-        .and_then(|n| n.to_str())
-        .and_then(|s| s.parse::<u32>().ok())
-        .ok_or_else(|| {
-            AkidaError::hardware_error(format!(
-                "Cannot parse IOMMU group from {}",
-                target.display()
-            ))
-        })?;
-
-    tracing::debug!("{pcie_address} → IOMMU group {group}");
-    Ok(group)
-}

@@ -57,7 +57,9 @@ pub fn get_gpu_memory_gb() -> u32 {
 
 /// Get ROCm version
 pub fn get_rocm_version() -> String {
-    if let Ok(ver) = std::fs::read_to_string("/opt/rocm/.info/version") {
+    let rocm_path = std::env::var("ROCM_PATH").unwrap_or_else(|_| "/opt/rocm".to_string());
+    let version_file = std::path::Path::new(&rocm_path).join(".info/version");
+    if let Ok(ver) = std::fs::read_to_string(&version_file) {
         let ver = ver.trim();
         if !ver.is_empty() {
             return ver.to_string();

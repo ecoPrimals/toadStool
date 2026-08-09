@@ -49,7 +49,7 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
     Ok(())
 }
 
-/// Setup GPU runtime support (NVIDIA)
+/// Setup GPU runtime support (discovers available GPU via system probes)
 pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStoolError> {
     info!("🎮 Setting up GPU runtime support...");
 
@@ -67,7 +67,7 @@ pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStool
 
             let nvidia_config = serde_json::json!({
                 "runtime": "nvidia",
-                "memory_fraction": 0.8,
+                "memory_fraction": default_gpu_memory_fraction(),
                 "compute_mode": "default"
             });
 
@@ -80,6 +80,16 @@ pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStool
     }
 
     Ok(())
+}
+
+/// Default GPU memory fraction allocated to toadStool workloads.
+/// Reserves 20% for system/display to prevent OOM kills.
+/// Overridable via `TOADSTOOL_GPU_MEMORY_FRACTION` env var.
+fn default_gpu_memory_fraction() -> f64 {
+    std::env::var("TOADSTOOL_GPU_MEMORY_FRACTION")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0.8)
 }
 
 #[cfg(test)]
