@@ -1,11 +1,12 @@
 # ToadStool Capability Registry — machine-readable capability declaration
 # Wave 78 ecosystem standard | AGPL-3.0-or-later
 # Generated from DIRECT_JSONRPC_METHODS + capabilities.list Wire Standard L3
-# Version: v0.2.0 | Session: S321+
+# Version: v0.2.1 | Session: S372 (self-audit)
+# Audit: 126 methods across 18 capabilities — verified against DIRECT_JSONRPC_METHODS + ANNOUNCED_METHODS
 
 [meta]
 primal = "toadstool"
-version = "0.2.0"
+version = "0.2.1"
 protocol = "jsonrpc-2.0"
 transport = ["uds", "tcp"]
 sockets = ["compute.sock", "compute.tarpc.sock"]
@@ -201,6 +202,32 @@ description = "biomeOS ai_local capability routing"
 methods = [
     "ai.local_inference",
     "ai.local_execute",
+]
+
+[capabilities.science]
+owner = "toadstool"
+description = "Science compute domain — aliases routing to compute handlers"
+methods = [
+    "science.compute.submit",
+    "science.compute.status",
+    "science.compute.result",
+    "science.compute.cancel",
+    "science.gpu.dispatch",
+    "science.gpu.capabilities",
+    "science.npu.dispatch",
+    "science.npu.capabilities",
+    "science.substrate.discover",
+    "science.substrate.probe",
+]
+
+[capabilities.inference]
+owner = "toadstool"
+description = "Model lifecycle and inference execution"
+methods = [
+    "inference.execute",
+    "inference.list_models",
+    "inference.load_model",
+    "inference.unload_model",
 ]
 
 [capabilities.identity]
