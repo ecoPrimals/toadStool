@@ -3,7 +3,7 @@
 
 use super::types::{ExecutableSource, GpuProgramSource, PythonSource, WasmModuleSource};
 
-use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::{ToadStoolError, ToadStoolResult};
 
 /// Validate executable source
 ///

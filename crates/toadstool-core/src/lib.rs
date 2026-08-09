@@ -19,6 +19,14 @@ pub mod npu_dispatch;
 /// RT cores, TMUs, ROPs, rasterizer, depth buffer, tessellator, video
 /// encoder — modeled as first-class types for discovery and routing.
 pub mod silicon;
+/// Workload specification types — compute job definitions, executable sources,
+/// AI/ML workload descriptors, CUDA kernels, validators, and analyzers.
+pub mod workload;
+
+#[cfg(test)]
+mod workload_tests {
+    pub use super::workload::*;
+}
 
 pub use hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 pub use hardware_transport::{

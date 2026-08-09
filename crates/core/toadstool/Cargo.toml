@@ -17,6 +17,7 @@ readme = "README.md"
 # Core dependencies
 toadstool-common = { path = "../common" }
 toadstool-config = { path = "../config" }
+toadstool-core = { path = "../../toadstool-core" }
 
 # Async runtime
 tokio = { workspace = true }

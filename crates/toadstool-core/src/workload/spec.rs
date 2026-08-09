@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::{ToadStoolError, ToadStoolResult};
 
 use super::ai_ml;
 use super::cuda;

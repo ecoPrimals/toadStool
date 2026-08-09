@@ -17,7 +17,7 @@ pub use characteristics::{
     ComputeIntensity, GpuAdvantage, MemoryRequirement, ParallelismLevel, WorkloadCharacteristics,
 };
 
-use crate::workload::WorkloadSpec;
+use super::WorkloadSpec;
 
 /// Workload analyzer for characterizing workloads
 pub struct WorkloadAnalyzer;
