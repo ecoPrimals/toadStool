@@ -70,6 +70,9 @@ pub const SHADER_COMPILE: &str = "shader.compile";
 /// Native shader compilation pipeline
 pub const SHADER_COMPILE_NATIVE: &str = "shader.compile.native";
 
+/// Shader compiler capabilities discovery (query method)
+pub const SHADER_COMPILE_CAPABILITIES: &str = "shader.compile.capabilities";
+
 /// GPU hardware calibration (NVVM safety, precision tier probing).
 pub const GPU_CALIBRATION: &str = "gpu.calibration";
 

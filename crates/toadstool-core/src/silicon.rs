@@ -166,6 +166,11 @@ pub struct SiliconCapabilities {
     pub tessellator_available: bool,
     /// Which silicon units are confirmed available on this GPU.
     pub available_units: Vec<SiliconUnit>,
+    /// Shader compiler backends available for this GPU (populated via IPC
+    /// query to whatever provides `shader.compile` capability).
+    /// Empty until shader compiler is discovered and queried.
+    #[serde(default)]
+    pub compiler_backends: Vec<String>,
 }
 
 impl SiliconCapabilities {
@@ -181,6 +186,7 @@ impl SiliconCapabilities {
             rasterizer_available: false,
             tessellator_available: false,
             available_units: vec![SiliconUnit::ShaderCore],
+            compiler_backends: Vec::new(),
         }
     }
 
@@ -203,6 +209,7 @@ impl SiliconCapabilities {
                 SiliconUnit::DepthBuffer,
                 SiliconUnit::Tessellator,
             ],
+            compiler_backends: Vec::new(),
         }
     }
 
@@ -216,6 +223,22 @@ impl SiliconCapabilities {
     #[must_use]
     pub const fn unit_count(&self) -> usize {
         self.available_units.len()
+    }
+
+    /// Whether native ISA compilation is available for this GPU.
+    ///
+    /// Returns `true` if the shader compiler has registered a backend that
+    /// can emit native GPU instructions (PTX for NVIDIA, AMDGCN for AMD).
+    #[must_use]
+    pub fn has_native_compiler(&self) -> bool {
+        self.compiler_backends.iter().any(|b| {
+            b == "ptx" || b == "amdgcn" || b == "spirv"
+        })
+    }
+
+    /// Set compiler backends (called after IPC query to shader.compile.capabilities).
+    pub fn set_compiler_backends(&mut self, backends: Vec<String>) {
+        self.compiler_backends = backends;
     }
 }
 

@@ -72,6 +72,7 @@ pub(crate) fn probe_silicon_capabilities(
         rasterizer_available: has_graphics,
         tessellator_available: has_graphics,
         available_units,
+        compiler_backends: Vec::new(),
     }
 }
 

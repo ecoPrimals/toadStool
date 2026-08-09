@@ -66,6 +66,8 @@ pub mod orchestrator;
     reason = "wired in S217; docs will be added incrementally"
 )]
 pub mod services;
+/// Shader compiler capability discovery — coralReef IPC types.
+pub mod shader_compiler;
 
 // Re-exports for backward compatibility - all public types accessible from crate root
 pub use health::{HealthCheck, HealthCheckStatus, HealthStatus};

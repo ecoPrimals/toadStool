@@ -101,6 +101,7 @@ pub fn nvidia_silicon(device_id: u32) -> SiliconCapabilities {
         rasterizer_available: true,
         tessellator_available: true,
         available_units: units,
+        compiler_backends: Vec::new(),
     }
 }
 
@@ -145,6 +146,7 @@ pub fn amd_silicon(device_id: u32) -> SiliconCapabilities {
         rasterizer_available: true,
         tessellator_available: true,
         available_units: units,
+        compiler_backends: Vec::new(),
     }
 }
 
@@ -167,5 +169,6 @@ pub fn intel_silicon() -> SiliconCapabilities {
             SiliconUnit::Tessellator,
             SiliconUnit::VideoEncoder,
         ],
+        compiler_backends: Vec::new(),
     }
 }
