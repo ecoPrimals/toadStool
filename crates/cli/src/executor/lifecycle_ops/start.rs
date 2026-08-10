@@ -12,10 +12,11 @@ use std::fs;
 use tracing::info;
 use uuid::Uuid;
 
+use super::super::workload::infer_runtime_type;
 use super::super::{BiomeExecutor, BiomeProcess, ProcessType, RunningBiome};
 use crate::{BiomeInfo, BiomeManifest, BiomeStatus, ResourceUsage, ServiceInfo, WorkloadSource};
 use toadstool::{
-    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext,
+    ExecutionInput, ExecutionRequest, ResourceRequirements, SecurityContext,
     WorkloadSpec,
 };
 
@@ -179,11 +180,12 @@ impl BiomeExecutor {
         let execution_id = Uuid::new_v4();
 
         let workload = self.workload_source_to_spec(&config.source).await?;
+        let runtime_hint = infer_runtime_type(&workload);
 
         let request = ExecutionRequest {
             execution_id,
             workload,
-            runtime_hint: Some(RuntimeType::Native),
+            runtime_hint: Some(runtime_hint),
             resources: ResourceRequirements::default(),
             security_context: SecurityContext::default(),
             timeout: Some(Duration::from_secs(DEFAULT_WORKLOAD_TIMEOUT_SECS)),
@@ -215,6 +217,7 @@ impl BiomeExecutor {
         let execution_id = Uuid::new_v4();
 
         let workload = self.workload_source_to_spec(&config.source).await?;
+        let runtime_hint = infer_runtime_type(&workload);
 
         let mut service_env = environment.clone();
         service_env.extend(config.environment.clone());
@@ -222,7 +225,7 @@ impl BiomeExecutor {
         let request = ExecutionRequest {
             execution_id,
             workload,
-            runtime_hint: Some(RuntimeType::Native),
+            runtime_hint: Some(runtime_hint),
             resources: ResourceRequirements::default(),
             security_context: SecurityContext::default(),
             timeout: Some(Duration::from_secs(DEFAULT_WORKLOAD_TIMEOUT_SECS)),

@@ -77,6 +77,47 @@ pub(super) fn convert_to_workload_spec(
                 env_vars,
             })
         }
+        ExecutionSpec::Wasm {
+            module,
+            args,
+            env,
+        } => {
+            if let Some(env) = env {
+                env_vars.extend(env.clone());
+            }
+            env_vars.extend(env_overrides);
+
+            Ok(WorkloadSpec::Wasm {
+                module: toadstool::workload::WasmModuleSource::File {
+                    path: module.into(),
+                },
+                args: args.clone(),
+                wasi_config: None,
+                env_vars,
+            })
+        }
+        ExecutionSpec::Container {
+            image,
+            command,
+            args,
+            env,
+        } => {
+            if let Some(env) = env {
+                env_vars.extend(env.clone());
+            }
+            env_vars.extend(env_overrides);
+
+            Ok(WorkloadSpec::Container {
+                image: image.clone(),
+                command: command.clone(),
+                args: args.clone(),
+                working_dir: None,
+                env_vars,
+                volumes: Vec::new(),
+                ports: Vec::new(),
+                registry_auth: None,
+            })
+        }
         ExecutionSpec::Gpu {
             kernel_name,
             source,
@@ -95,9 +136,6 @@ pub(super) fn convert_to_workload_spec(
                 args: vec![],                   // Args would be populated from input_data
             })
         }
-        _ => Err(crate::CliError::Other(
-            "Workload type not yet supported".to_string(),
-        )),
     }
 }
 

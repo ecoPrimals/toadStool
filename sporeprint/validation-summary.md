@@ -1,6 +1,6 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,008+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, Tokio vestigial segmentation (118→65 default-build files, 45% reduction), NUCLEUS manifest converged (5→2 structs)"
+description = "Sovereign compute hardware primal — 9,008+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, Tokio vestigial segmentation (118→65 default-build files, 45% reduction), NUCLEUS manifest converged (5→2 structs), last-mile WASM wiring + archaic excision"
 date = 2026-08-10
 
 [taxonomies]
@@ -10,7 +10,8 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S378, Aug 10, 2026)
+- **Version**: 0.2.0 (Session S379, Aug 10, 2026)
+- **S379**: Last-mile wiring + archaic excision — WASM conversion wired, runtime hint inference, `display.rs` + `discovery.rs` excised (~735 LOC), `component-model` feature removed, `tokio::fs` tail eliminated, `toadstool-core` test fixes.
 - **S378**: Tokio vestigial segmentation — ~35k LOC feature-gated behind 9 non-default features. Default-build tokio surface 118→65 production files (45% reduction). GPU/WASM `tokio::sync` → `std::sync`. Server background monitors gated. CLI monitoring gated. runtime/edge excluded. `tokio::time` → `std::time` in 10 files.
 - **S377**: NUCLEUS manifest convergence — 5→2 `BiomeManifest` structs. All subsystems re-export canonical `toadstool-core` type.
 - **S376**: Tokio blast radius reduction — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, 7 crates feature-gated (31→38/48 WASM), workspace tokio features 9→7.

@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: August 10, 2026 — S378
+**Date**: August 10, 2026 — S379
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S379 (strandGate Last-Mile Wiring + Archaic Excision — Aug 10, 2026)**: WASM workload
+conversion wired in `conversion.rs` (Wasm + Container variants). Runtime hint inference
+replaces hardcoded `RuntimeType::Native`. Vestigial `executor/display.rs` (~260 LOC) and
+`cli/ecosystem/discovery.rs` (~475 LOC) excised. `component-model` empty feature removed.
+`tail_log_file` migrated from `tokio::fs` to `std::io`. Pre-existing `toadstool-core` test
+issues fixed (WorkloadSpec/WorkloadType re-exports, tempfile dev-dep).
 
 **S378 (strandGate Tokio Vestigial Segmentation — Aug 10, 2026)**: ~35k LOC of
 vestigial code feature-gated behind non-default features (`legacy-cloud`,

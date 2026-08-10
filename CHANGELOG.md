@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 10, 2026 (Sessions 43-378+)
+## [Unreleased] - Aug 10, 2026 (Sessions 43-379+)
+
+### Session S379 (Aug 10, 2026) — Last-Mile Wiring + Archaic Code Excision
+
+- **WASM workload conversion wired** — `conversion.rs` now handles `ExecutionSpec::Wasm` and `ExecutionSpec::Container` variants (was: catch-all reject). WASM module path → `WasmModuleSource::File`, env merging follows Native/Python pattern.
+- **Runtime hint inference** — `start_primal` and `start_service` now call `infer_runtime_type(&workload)` instead of hardcoding `RuntimeType::Native`. WASM workloads get correct `RuntimeType::Wasm` hint.
+- **Vestigial `display.rs` excised** — `executor/display.rs` (~260 LOC) deleted. Was `#[cfg(test)]`-only duplicate of `display_ops.rs` `DisplayManager`.
+- **`component-model` feature excised** — Empty feature flag removed from `runtime/wasm`. Test stubs collapsed with `#[ignore]` annotations.
+- **Discovery stack deduped** — `cli/ecosystem/discovery.rs` (~475 LOC) deleted. Duplicate env/config/mDNS stack; only `verify_service()` retained (moved to `integrator_impl.rs` as private helper). `discovery_coverage_tests.rs` deleted.
+- **`tokio::fs` → `std::io`** — `tail_log_file()` migrated from `tokio::fs::File` + async `BufReader` to `std::io::BufReader` with `tokio::time::sleep` polling. No `tokio/fs` feature needed.
+- **Pre-existing `toadstool-core` test fix** — `WorkloadSpec` and `WorkloadType` re-exported from crate root. Dead `workload_tests` module removed. Missing `tempfile` dev-dependency added.
+- **All tests pass** — workspace `cargo check` 0 errors, `cargo test --workspace --lib` all pass.
 
 ### Session S378 (Aug 10, 2026) — Tokio Vestigial Segmentation: ~35k LOC Feature-Gated
 

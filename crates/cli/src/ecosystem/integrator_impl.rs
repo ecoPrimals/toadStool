@@ -14,8 +14,6 @@
 // - `crates/cli/src/ecosystem/adapters/` - New capability-based API
 // - `CAPABILITY_BASED_DISCOVERY_STANDARD.md` in wateringHole — ecosystem standard
 
-use self::discovery::*;
-
 use crate::{CliContextExt, Result};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -465,6 +463,31 @@ impl EcosystemIntegrator {
     }
 
 
+}
+
+const SERVICE_VERIFY_TIMEOUT_SECS: u64 = 2;
+
+/// Verify a discovered service by attempting a TCP connection.
+async fn verify_service(service: &ServiceEndpoint) -> Result<bool> {
+    match timeout(
+        Duration::from_secs(SERVICE_VERIFY_TIMEOUT_SECS),
+        tokio::net::TcpStream::connect(&service.address),
+    )
+    .await
+    {
+        Ok(Ok(_)) => {
+            info!("✅ Service verified: {}", service.address);
+            Ok(true)
+        }
+        Ok(Err(e)) => {
+            warn!("⚠️  Service verification failed: {}", e);
+            Ok(false)
+        }
+        Err(_) => {
+            warn!("⚠️  Service verification timeout");
+            Ok(false)
+        }
+    }
 }
 
 // Tests are included in the main integrator_impl.rs file

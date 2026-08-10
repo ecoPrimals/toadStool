@@ -12,7 +12,7 @@
 //! - ✅ User-friendly output
 
 use super::*;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::io::BufRead;
 
 /// Display and logging operation implementations
 impl BiomeExecutor {
@@ -92,25 +92,18 @@ impl BiomeExecutor {
 
     // Used by commands.rs for 'logs --follow' command
     pub(super) async fn tail_log_file(&self, log_file: &Path, initial_lines: usize) -> Result<()> {
-        // Show initial lines
         self.show_log_file(log_file, Some(initial_lines)).await?;
 
-        // Open file for tailing
-        let file = tokio::fs::File::from_std(fs::File::open(log_file)?);
-        let mut reader = BufReader::new(file);
+        let file = fs::File::open(log_file)?;
+        let mut reader = std::io::BufReader::new(file);
         let mut line = String::new();
 
-        // Poll at interval (proper async pattern for tail -f without inotify)
-        const LOG_POLL_INTERVAL_MS: u64 = 100;
-        let mut interval =
-            tokio::time::interval(tokio::time::Duration::from_millis(LOG_POLL_INTERVAL_MS));
-        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        const LOG_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
 
         loop {
-            match reader.read_line(&mut line).await {
+            match reader.read_line(&mut line) {
                 Ok(0) => {
-                    // EOF - wait for next poll tick
-                    interval.tick().await;
+                    tokio::time::sleep(LOG_POLL_INTERVAL).await;
                 }
                 Ok(_) => {
                     print!("{line}");

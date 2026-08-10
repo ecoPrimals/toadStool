@@ -7,7 +7,6 @@
 //!
 //! Targeting lib.rs to increase coverage from 48.72% to 60%+
 //!
-//! Evolved: Placeholder component-model tests remain for Phase 2.
 //! Real tests below exercise the existing wasmi runtime (module load, execute, metrics).
 
 use std::collections::HashMap;
@@ -193,59 +192,25 @@ fn test_wasm_config_debug() {
 }
 
 // ============================================================================
-// ComponentModelConfig Tests (Phase 2 - Requires component-model feature)
+// ComponentModelConfig Tests (Phase 2 — component model not yet implemented)
 // ============================================================================
 
-/// Stub tests when component-model feature is NOT enabled — run and skip clearly
-#[cfg(not(feature = "component-model"))]
 mod component_config_tests {
     #[test]
-    fn test_component_config_default() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_config_default() {}
 
     #[test]
-    fn test_component_config_custom() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_config_custom() {}
 
     #[test]
-    fn test_component_config_clone() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_config_clone() {}
 
     #[test]
-    fn test_component_config_debug() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
-}
-
-/// Full implementation when component-model feature IS enabled
-#[cfg(feature = "component-model")]
-mod component_config_tests {
-    #[test]
-    fn test_component_config_default() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_config_custom() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_config_clone() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_config_debug() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_config_debug() {}
 }
 
 // ============================================================================
@@ -477,150 +442,57 @@ async fn test_module_loader_cache_key_generation() {
 }
 
 // ============================================================================
-// Component Model Tests (Phase 2 - Requires component-model feature)
+// Component Model Tests (Phase 2 — component model not yet implemented)
 // ============================================================================
-// NOTE: These tests are conditionally compiled to avoid blocking builds.
-// Enable with: cargo test -p toadstool-runtime-wasm --features component-model
-// EVOLUTION: Component model support is planned for Phase 2 via wasmtime subprocess.
 
-/// Stub tests when component-model feature is NOT enabled — run and skip clearly
-#[cfg(not(feature = "component-model"))]
 mod component_model_tests {
     #[test]
-    fn test_component_value_u32() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_value_u32() {}
 
     #[test]
-    fn test_component_value_string() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_value_string() {}
 
     #[test]
-    fn test_component_value_bool() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_value_bool() {}
 
     #[test]
-    fn test_component_value_u64() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_value_u64() {}
 
     #[test]
-    fn test_component_value_f32() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_value_f32() {}
 
     #[test]
-    fn test_component_value_clone() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_value_clone() {}
 
     #[test]
-    fn test_component_state_initializing() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_state_initializing() {}
 
     #[test]
-    fn test_component_state_ready() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_state_ready() {}
 
     #[test]
-    fn test_component_state_running() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_state_running() {}
 
     #[test]
-    fn test_component_state_failed() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_state_failed() {}
 
     #[test]
-    fn test_component_state_terminating() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_state_terminating() {}
 
     #[test]
-    fn test_component_state_clone() {
-        eprintln!("skipped: component-model feature not enabled");
-    }
-}
-
-/// Full implementation when component-model feature IS enabled
-#[cfg(feature = "component-model")]
-mod component_model_tests {
-    #[test]
-    fn test_component_value_u32() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_value_string() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_value_bool() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_value_u64() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_value_f32() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_value_clone() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_state_initializing() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_state_ready() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_state_running() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_state_failed() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_state_terminating() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
-
-    #[test]
-    fn test_component_state_clone() {
-        // BLOCKED(component-model): awaiting feature implementation
-        eprintln!("skipped: component-model implementation pending");
-    }
+    #[ignore = "Phase 2: component-model implementation pending"]
+    fn test_component_state_clone() {}
 }
 
 // ============================================================================

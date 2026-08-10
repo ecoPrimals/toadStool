@@ -38,7 +38,6 @@ sha2 = { workspace = true }
 [features]
 default = ["runtime"]
 runtime = ["dep:tokio", "dep:futures", "dep:wasmi_wasi", "toadstool/runtime", "toadstool-common/runtime", "uuid/v4"]
-component-model = []
 
 [dev-dependencies]
 toadstool-testing = { path = "../../testing" }

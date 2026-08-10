@@ -39,7 +39,8 @@ use conversion::{
 };
 use loading::load_workload_file;
 use reporting::{print_json_output, print_text_output};
-use runtime::{infer_runtime_type, parse_runtime_hint, register_runtime_engines};
+pub(crate) use runtime::infer_runtime_type;
+use runtime::{parse_runtime_hint, register_runtime_engines};
 
 /// Execute a workload from a specification file
 pub async fn execute_workload(

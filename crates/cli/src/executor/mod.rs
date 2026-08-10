@@ -11,7 +11,6 @@
 //! ## Module Structure (Refactored by Concern)
 //!
 //! - `types`: Type definitions (BiomeProcess, RunningBiome, WasmModule, etc.)
-//! - `display`: UI and pretty-printing
 //! - `resources`: Resource cleanup and PID management
 //! - `signals`: Unix signal handling
 //! - `workload`: Direct workload execution
@@ -21,7 +20,6 @@
 mod types;
 
 // Refactored domain modules
-mod display;
 mod resources;
 mod signals;
 

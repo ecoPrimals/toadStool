@@ -33,11 +33,6 @@ pub mod execution;
 /// Canonical NUCLEUS composition manifest — `biome.yaml` schema.
 pub mod manifest;
 
-#[cfg(test)]
-mod workload_tests {
-    pub use super::workload::*;
-}
-
 pub use hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 pub use hardware_transport::{
     FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, TransportInfo,
@@ -59,3 +54,4 @@ pub use manifest::{
     BiomeManifest, BiomeMetadata, CompositionGraph, CompositionKind, ManifestPrimalConfig,
     ManifestServiceConfig,
 };
+pub use workload::{WorkloadSpec, WorkloadType};

@@ -11,7 +11,6 @@
 //! - `types`: Type definitions (EcosystemIntegrator, ServiceEndpoint, etc.)
 //! - `adapters/`: Capability-based service adapters (crypto, coordination, storage)
 //! - `capabilities/`: Capability resolution and discovery
-//! - `discovery`: Service discovery and scanning logic
 //! - `integrator_impl`: Core EcosystemIntegrator implementation
 
 // Public modules
@@ -21,9 +20,6 @@ pub mod config;
 pub mod constants; // Zero-copy constants
 pub mod service_type;
 pub mod types;
-
-// Internal modules
-pub mod discovery;
 
 // Public re-exports
 #[expect(
