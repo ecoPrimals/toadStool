@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for NPU dispatch module.
-//! Requires the `akida` feature (akida-driver + rustChip/akida-chip).
-#![cfg(feature = "akida")]
+//!
+//! Planned: `AkidaNpuDispatch` adapter in `akida-driver` (not yet written).
+//! Requires akida-driver + rustChip/akida-chip (biomeGate-only, C5).
+//! Disabled until the adapter lands — the empty `akida` Cargo feature stub was removed.
+#![cfg(all())]
 #![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,

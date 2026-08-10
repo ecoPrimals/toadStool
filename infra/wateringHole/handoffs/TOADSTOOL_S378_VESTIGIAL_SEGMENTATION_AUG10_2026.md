@@ -60,3 +60,26 @@ Genuinely needed for the async deployment layer:
 - `distributed/` (2) — coordination_integration, crypto_integration
 - `client/` (2) — JSON-RPC client
 - Other (6) — container BYOB, native engine, ember keepalive, testing helpers
+
+## Dead Features Excised
+
+| Feature | Crate | Reason |
+|---------|-------|--------|
+| `plugin-loading` | `toadstool` | C FFI dlopen via `libloading` — ecoBin v3.0 incompatible. `ffi_loader.rs` deleted. |
+| `wgpu` | `toadstool` | Superseded by `runtime/gpu` + server `gpu-discovery`. Core crate no longer pulls wgpu. |
+| `wasm-runtime` | `toadstool` | Dead probe stub — CLI never passed it. Real WASM engine is `runtime/wasm`. |
+| `akida` | `toadstool-core` | Empty stub with no dep. `AkidaNpuDispatch` adapter not yet written. |
+| `vulkano` dep | `runtime/gpu` | Dead weight — `vulkan` feature actually uses wgpu-vulkan. `FrameworkHandle::Vulkan` excised. |
+
+## Last-Mile Gaps (documented, not this sprint)
+
+### NPU/Akida pipeline
+- `AkidaNpuDispatch` adapter (impl `NpuDispatch` wrapping `NpuBackend`) — should live in `akida-driver`
+- Server NPU handler (dedicated, not aliasing GPU dispatch)
+- CLI `npu` feature wiring (uncomment `akida-driver` dep, add to `Commands` enum)
+
+### WASM workload pipeline
+- `conversion.rs` rejects WASM workloads ("not yet supported")
+- Server daemon `runtime_engines` empty at startup (no engine registration)
+- Biome lifecycle hardcodes `RuntimeType::Native` for WASM sources (bug)
+- `compute.engine.register` JSON-RPC method referenced but missing

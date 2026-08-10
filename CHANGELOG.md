@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`tokio::sync::RwLock` → `std::sync::RwLock`** — 6 runtime-specialty files + auto_config interface.
 - **`tokio::sync::Mutex` → `std::sync::Mutex`** — 2 files (server transport, distributed scheduling).
 - **Default-build tokio surface: 118 → 65 production files (45% reduction).**
+- **Dead features excised** — `plugin-loading` (C FFI dlopen, ecoBin v3.0 incompatible), core `wgpu` (superseded by `runtime/gpu`), `wasm-runtime` (dead probe stub). `ffi_loader.rs` deleted. `libloading` and core `wgpu` deps removed.
+- **Vulkano dep removed** — `runtime/gpu` `vulkan` feature now just enables wgpu (which auto-selects Vulkan backend). `vulkano` was dead weight; `FrameworkHandle::Vulkan` variant excised.
+- **NPU/Akida features made honest** — `toadstool-core` `akida` feature removed (empty stub). CLI `npu` documented as requiring last-mile `AkidaNpuDispatch` adapter wiring.
+- **Stale metadata fixed** — `networking` feature comment corrected (was "reqwest HTTP", is Unix JSON-RPC). `runtime/wasm` description corrected (was "wasmtime", is "wasmi"). `binary-transport` documented as unwired.
 - **All tests pass** — workspace `cargo check` 0 errors/0 warnings, lib tests all pass.
 
 ### Session S377 (Aug 10, 2026) — NUCLEUS Manifest Convergence: 5→2 BiomeManifest Structs

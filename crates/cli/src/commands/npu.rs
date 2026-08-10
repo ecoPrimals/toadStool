@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! NPU management commands for Akida neuromorphic hardware
+//!
+//! Gated behind the `npu` feature — requires akida-driver (not yet wired).
+#![cfg(feature = "npu")]
 
 use crate::Result;
 use akida_driver::setup::NpuSetup;

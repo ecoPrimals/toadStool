@@ -78,48 +78,22 @@ fn no_engine_err_response(reason: impl Into<String>) -> ToadStoolResult<Executio
 }
 
 fn probe_wgpu() -> BackendProbe {
-    #[cfg(feature = "wgpu")]
-    {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-        let has_adapters = !instance
-            .enumerate_adapters(wgpu::Backends::all())
-            .is_empty();
-        if has_adapters {
-            BackendProbe {
-                name: "WGPU",
-                available: true,
-                detail: "wgpu instance created with available adapters",
-            }
-        } else {
-            BackendProbe {
-                name: "WGPU",
-                available: false,
-                detail: "wgpu feature enabled but no GPU adapters found",
-            }
-        }
-    }
-    #[cfg(not(feature = "wgpu"))]
-    {
-        #[cfg(target_os = "linux")]
-        let dri_present = std::path::Path::new("/dev/dri").exists();
-        #[cfg(not(target_os = "linux"))]
-        let dri_present = false;
+    #[cfg(target_os = "linux")]
+    let dri_present = std::path::Path::new("/dev/dri").exists();
+    #[cfg(not(target_os = "linux"))]
+    let dri_present = false;
 
-        if dri_present {
-            BackendProbe {
-                name: "WGPU",
-                available: true,
-                detail: "/dev/dri present (enable `wgpu` feature for full probe)",
-            }
-        } else {
-            BackendProbe {
-                name: "WGPU",
-                available: false,
-                detail: "wgpu feature not enabled and /dev/dri absent",
-            }
+    if dri_present {
+        BackendProbe {
+            name: "WGPU",
+            available: true,
+            detail: "/dev/dri present (use runtime/gpu for full probe)",
+        }
+    } else {
+        BackendProbe {
+            name: "WGPU",
+            available: false,
+            detail: "/dev/dri absent",
         }
     }
 }
@@ -142,21 +116,10 @@ fn probe_vfio() -> BackendProbe {
 }
 
 fn probe_wasm() -> BackendProbe {
-    #[cfg(feature = "wasm-runtime")]
-    {
-        BackendProbe {
-            name: "WASM",
-            available: true,
-            detail: "wasm-runtime feature enabled",
-        }
-    }
-    #[cfg(not(feature = "wasm-runtime"))]
-    {
-        BackendProbe {
-            name: "WASM",
-            available: false,
-            detail: "wasm-runtime feature not enabled",
-        }
+    BackendProbe {
+        name: "WASM",
+        available: false,
+        detail: "WASM engine lives in runtime/wasm; register via compute.engine.register",
     }
 }
 

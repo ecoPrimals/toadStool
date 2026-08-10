@@ -31,7 +31,7 @@ use toadstool::layer_adaptation::{
     detect_network_bandwidth, detect_storage_read_bandwidth, detect_storage_write_bandwidth,
     storage_capabilities,
 };
-use toadstool::plugin_system::{PluginManager, PluginManifest};
+use toadstool::plugin_system::{PluginManager, PluginManifest, PluginState};
 use toadstool::resources::{
     CpuRequirements, LoadAverages, MemoryRequirements, ProcessStatus, ResourceLimits,
     ResourceRequirements, ResourceUsage, RuntimeMetrics, SystemResourceMonitor, SystemResources,
@@ -754,9 +754,12 @@ fn test_plugin_manager_load_unload() {
         ..Default::default()
     };
     manager.register_plugin(manifest).unwrap();
-    manager.load_plugin("load-plugin").unwrap();
-    assert!(manager.active_plugins().contains(&"load-plugin"));
+    let load_err = manager.load_plugin("load-plugin").unwrap_err();
+    assert!(load_err.to_string().contains("deprecated"));
+    assert!(manager.active_plugins().is_empty());
     manager.unload_plugin("load-plugin").unwrap();
+    let info = manager.get_plugin_info("load-plugin").unwrap();
+    assert_eq!(info.state, PluginState::Unloaded);
 }
 
 #[test]

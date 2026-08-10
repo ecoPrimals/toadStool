@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
 
-//! Stable C ABI for dynamic plugins (`dlopen` / `LoadLibrary`).
+//! Stable C ABI for dynamic plugins (deprecated — ecoBin v3.0 removed C FFI loading).
 //!
-//! # Safety (FFI contract)
-//!
-//! Every `unsafe extern "C"` symbol in this module is invoked only from
-//! `super::ffi_loader::LoadedPlugin` after `dlopen` and ABI version checks.
-//! Plugins must uphold:
+//! Retained for documentation of the legacy plugin ABI. Native loading is no longer
+//! supported; use WASM runtimes or capability IPC instead.
 //!
 //! - **Calling convention**: `extern "C"` with no unwinding across the boundary.
 //! - **Lifetime**: pointers returned from `plugin_init` / `plugin_name` / `vtable.name`
@@ -61,8 +58,8 @@ pub struct PluginVTable {
     ///
     /// # Safety (call-site contract)
     ///
-    /// - Invoked only while the host holds the open `Library` handle and after
-    ///   ABI/name validation in `super::ffi_loader::LoadedPlugin::load`.
+    /// - Invoked only while the host holds the open library handle and after
+    ///   ABI/name validation during native load (deprecated).
     /// - Must not unwind across the FFI boundary; return non-zero to signal failure.
     /// - If absent (`None`), the host skips initialization hooks.
     pub on_load: Option<unsafe extern "C" fn() -> i32>,

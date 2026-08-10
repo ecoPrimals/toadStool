@@ -28,8 +28,6 @@ serde_yaml_ng = { workspace = true }
 [features]
 default = []
 runtime = ["uuid/v4"]
-# Full akida backend requires akida-driver + rustChip/akida-chip (biomeGate-only, C5)
-akida = []
 
 [lints]
 workspace = true

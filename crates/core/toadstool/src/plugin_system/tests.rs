@@ -40,10 +40,16 @@ mod plugin_system_tests {
             .register_plugin(manifest)
             .expect("register should succeed");
         let result = manager.load_plugin("test-plugin");
-        assert!(result.is_ok());
+        assert!(result.is_err());
+        let err = result.expect_err("expected LoadFailed");
+        assert!(matches!(err, PluginError::LoadFailed(_)));
+        assert!(err.to_string().contains("deprecated"));
 
-        let active = manager.active_plugins();
-        assert_eq!(active.len(), 1);
+        let info = manager
+            .get_plugin_info("test-plugin")
+            .expect("plugin info should exist");
+        assert_eq!(info.state, PluginState::Failed);
+        assert!(manager.active_plugins().is_empty());
     }
 
     #[test]
@@ -54,15 +60,17 @@ mod plugin_system_tests {
         manager
             .register_plugin(manifest)
             .expect("register should succeed");
-        manager
-            .load_plugin("test-plugin")
-            .expect("load should succeed");
+        assert!(manager.load_plugin("test-plugin").is_err());
 
         let result = manager.unload_plugin("test-plugin");
         assert!(result.is_ok());
 
         let active = manager.active_plugins();
         assert_eq!(active.len(), 0);
+        let info = manager
+            .get_plugin_info("test-plugin")
+            .expect("plugin info should exist");
+        assert_eq!(info.state, PluginState::Unloaded);
     }
 
     #[test]
@@ -186,11 +194,11 @@ mod plugin_system_tests {
 
         manager
             .load_plugin("test-plugin")
-            .expect("load should succeed");
+            .expect_err("load should fail for deprecated C FFI");
         let info = manager
             .get_plugin_info("test-plugin")
             .expect("plugin info should exist");
-        assert_eq!(info.state, PluginState::Active);
+        assert_eq!(info.state, PluginState::Failed);
 
         manager
             .unload_plugin("test-plugin")

@@ -47,11 +47,7 @@ toadstool-sysmon = { workspace = true, optional = true }
 # Encoding
 base64 = { workspace = true }
 
-libloading = { workspace = true, optional = true }
-
 mdns-sd = { version = "0.10", optional = true }
-# MUST use same version as workspace to prevent duplicate symbol errors  
-wgpu = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
@@ -66,16 +62,10 @@ proptest = { workspace = true }
 default = ["runtime", "mdns"]
 # Tokio async runtime + I/O modules. Disable for WASM-only types/traits builds.
 runtime = ["dep:tokio", "dep:toadstool-sysmon", "toadstool-common/runtime", "toadstool-common/mdns", "toadstool-common/btsp", "toadstool-config/runtime", "toadstool-core/runtime", "uuid/v4"]
-# Real `dlopen`/`dlclose` plugin loading (`libloading`). Omit from default so unit tests
-# without `.so` fixtures keep simulated load/unload unless this feature is enabled.
-plugin-loading = ["dep:libloading"]
 # In-memory auth mock (`InMemoryAuthBackend`); for tests and explicit `--features test-mocks`
 test-mocks = []
-# Gates reqwest-based HTTP communication in ecosystem modules
+# Gates Unix JSON-RPC IPC paths in ecosystem modules (no HTTP client)
 networking = []
-wgpu = ["dep:wgpu"]
-# Marker for WASM runtime probe in StubRuntimeEngine (wired by CLI `wasm` feature).
-wasm-runtime = []
 # mDNS bootstrap discovery (songBird's domain -- use for cold-start only)
 mdns = ["dep:mdns-sd"]
 # Proptest generators for workload/resource types (`crate::proptest_strategies`).

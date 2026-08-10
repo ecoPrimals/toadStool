@@ -258,10 +258,7 @@ impl Default for DeviceUsage {
 /// Framework-specific device handles.
 #[derive(Debug)]
 pub enum FrameworkHandle {
-    /// Vulkan device.
-    #[cfg(feature = "vulkan")]
-    Vulkan(Arc<vulkano::device::Device>),
-    /// `WebGPU` device.
+    /// `WebGPU` device (selects Vulkan backend on Linux/Windows when available).
     #[cfg(feature = "webgpu")]
     WebGpu(Arc<wgpu::Device>),
     // #[cfg(feature = "metal")]
@@ -278,8 +275,6 @@ pub enum FrameworkHandle {
 impl Clone for FrameworkHandle {
     fn clone(&self) -> Self {
         match self {
-            #[cfg(feature = "vulkan")]
-            Self::Vulkan(device) => Self::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]
             Self::WebGpu(device) => Self::WebGpu(Arc::clone(device)),
             Self::Unavailable { name, reason } => Self::Unavailable {

@@ -2,11 +2,11 @@
 name = "toadstool-runtime-wasm"
 version.workspace = true
 edition.workspace = true
-description = "ToadStool WebAssembly runtime engine with Wasmtime and WASI support"
+description = "ToadStool WebAssembly runtime engine with wasmi and WASI support"
 license.workspace = true
 repository.workspace = true
 readme = "README.md"
-keywords = ["wasm", "webassembly", "wasmtime", "wasi"]
+keywords = ["wasm", "webassembly", "wasmi", "wasi"]
 categories = ["wasm", "development-tools"]
 
 [dependencies]

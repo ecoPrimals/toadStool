@@ -18,7 +18,12 @@ surface reduced from ~118 to ~65 production files (45% reduction).
 `tokio::time::Duration`/`Instant` migrated to `std::time` (10 files).
 `tokio::sync::RwLock`/`Mutex` migrated to `std::sync` (12+ files including GPU
 coordinator, WASM cache, runtime-specialty, auto_config). `runtime/edge` excluded
-from workspace (orphaned). Code preserved as fossil record, not deleted.
+from workspace (orphaned). Code preserved as fossil record, not deleted. Dead features
+excised: `plugin-loading` (C FFI dlopen, ecoBin incompatible, `ffi_loader.rs` deleted),
+core `wgpu` (superseded by `runtime/gpu`), `wasm-runtime` (dead probe stub). `vulkano`
+dep removed from `runtime/gpu` (dead weight). NPU/Akida features made honest (empty
+`akida` removed, CLI `npu` documented as needing last-mile adapter). Stale metadata
+corrected (`networking` comment, `runtime/wasm` description, `binary-transport` docs).
 
 **S377 (strandGate NUCLEUS Manifest Convergence — Aug 10, 2026)**: BiomeManifest
 struct convergence: 5→2. Three divergent `BiomeManifest` definitions

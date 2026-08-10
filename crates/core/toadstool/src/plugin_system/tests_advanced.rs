@@ -171,7 +171,7 @@ mod plugin_system_advanced_tests {
             .expect("register should succeed");
         manager
             .load_plugin("cycle-plugin")
-            .expect("load should succeed");
+            .expect_err("load should fail for deprecated C FFI");
         manager
             .unload_plugin("cycle-plugin")
             .expect("unload should succeed");
@@ -194,16 +194,17 @@ mod plugin_system_advanced_tests {
         assert_eq!(info_before.state, PluginState::Registered);
         manager
             .load_plugin("state-plugin")
-            .expect("load should succeed");
+            .expect_err("load should fail for deprecated C FFI");
         let info_after = manager
             .get_plugin_info("state-plugin")
-            .expect("state-plugin should exist after load");
-        assert_eq!(info_after.state, PluginState::Active);
-        assert!(info_after.loaded_at.is_some());
+            .expect("state-plugin should exist after load attempt");
+        assert_eq!(info_after.state, PluginState::Failed);
+        assert!(info_after.loaded_at.is_none());
+        assert!(info_after.error.is_some());
     }
 
     #[test]
-    fn test_plugin_info_error_field_none_when_loaded() {
+    fn test_plugin_info_error_field_set_when_load_fails() {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("ok-plugin");
         manager
@@ -211,11 +212,11 @@ mod plugin_system_advanced_tests {
             .expect("register should succeed");
         manager
             .load_plugin("ok-plugin")
-            .expect("load should succeed");
+            .expect_err("load should fail for deprecated C FFI");
         let info = manager
             .get_plugin_info("ok-plugin")
             .expect("ok-plugin should exist");
-        assert!(info.error.is_none());
+        assert!(info.error.is_some());
     }
 
     #[test]
@@ -244,10 +245,9 @@ mod plugin_system_advanced_tests {
             .expect("register active2 should succeed");
         manager
             .load_plugin("active1")
-            .expect("load active1 should succeed");
+            .expect_err("load should fail for deprecated C FFI");
         let active = manager.active_plugins();
-        assert_eq!(active.len(), 1);
-        assert_eq!(active[0], "active1");
+        assert!(active.is_empty());
     }
 
     #[test]

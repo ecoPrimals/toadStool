@@ -23,7 +23,6 @@ thiserror = { workspace = true }
 toadstool-sysmon = { workspace = true }
 rayon = "1.8"
 wgpu = { workspace = true, optional = true, features = ["wgsl"] }
-vulkano = { version = "0.34", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-hw-safe = { path = "../../core/hw-safe" }
@@ -41,9 +40,9 @@ runtime = [
     "webgpu",
 ]
 webgpu = ["dep:wgpu"]
-vulkan = ["vulkano"]
+vulkan = ["webgpu"]
 ai-ml = ["webgpu"]
-all-backends = ["webgpu", "vulkan"]
+all-backends = ["webgpu"]
 fuzz = []
 
 [dev-dependencies]

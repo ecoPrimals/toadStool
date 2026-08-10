@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// `deny` (not `forbid`) so `plugin_system` can contain narrowly-scoped `unsafe` for the
-// `plugin-loading` feature (`libloading` / plugin ABI). All other modules remain safe-only.
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![expect(

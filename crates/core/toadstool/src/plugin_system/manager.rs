@@ -10,11 +10,8 @@ use tracing::{debug, info, warn};
 
 use super::types::{PluginConfig, PluginError, PluginInfo, PluginManifest, PluginState};
 
-#[cfg(feature = "plugin-loading")]
-use super::types::PluginId;
-
-#[cfg(feature = "plugin-loading")]
-use super::ffi_loader::LoadedPlugin;
+const DEPRECATED_C_FFI_LOAD_MSG: &str =
+    "plugin-loading via C FFI is deprecated; use WASM runtime or capability IPC";
 
 /// Plugin manager
 ///
@@ -22,10 +19,6 @@ use super::ffi_loader::LoadedPlugin;
 pub struct PluginManager {
     /// Registered plugins
     plugins: HashMap<String, PluginInfo>,
-
-    /// Dynamically loaded libraries (only when `plugin-loading` is enabled).
-    #[cfg(feature = "plugin-loading")]
-    loaded_plugins: HashMap<PluginId, LoadedPlugin>,
 
     /// Plugin search paths
     search_paths: Vec<PathBuf>,
@@ -39,8 +32,6 @@ impl PluginManager {
     pub fn new() -> Self {
         Self {
             plugins: HashMap::new(),
-            #[cfg(feature = "plugin-loading")]
-            loaded_plugins: HashMap::new(),
             search_paths: vec![
                 PathBuf::from("/usr/lib/toadstool/plugins"),
                 PathBuf::from("/usr/local/lib/toadstool/plugins"),
@@ -102,18 +93,11 @@ impl PluginManager {
     ///
     /// # Errors
     ///
-    /// Returns error if the plugin is not registered.
+    /// Returns error if the plugin is not registered or native C FFI loading is requested.
     pub fn load_plugin(&mut self, name: &str) -> Result<(), PluginError> {
         if !self.plugins.contains_key(name) {
             return Err(PluginError::NotFound(name.to_string()));
         }
-
-        #[cfg(feature = "plugin-loading")]
-        let native: Result<(PathBuf, LoadedPlugin), PluginError> = {
-            let manifest = &self.plugins[name].manifest;
-            let path = self.resolve_plugin_library(manifest)?;
-            LoadedPlugin::load(&path, name).map(|loaded| (path, loaded))
-        };
 
         let plugin = self
             .plugins
@@ -123,39 +107,10 @@ impl PluginManager {
         plugin.state = PluginState::Loading;
         plugin.error = None;
 
-        #[cfg(feature = "plugin-loading")]
-        {
-            match native {
-                Ok((path, loaded)) => {
-                    self.loaded_plugins.insert(name.to_string(), loaded);
-                    plugin.state = PluginState::Active;
-                    plugin.loaded_at = Some(std::time::SystemTime::now());
-                    info!(
-                        "✅ Loaded plugin (native): {} from {}",
-                        name,
-                        path.display()
-                    );
-                }
-                Err(e) => {
-                    plugin.state = PluginState::Failed;
-                    plugin.error = Some(e.to_string());
-                    return Err(e);
-                }
-            }
-        }
-
-        #[cfg(not(feature = "plugin-loading"))]
-        {
-            warn!(
-                "plugin-loading feature disabled: simulated load for `{}` (no dlopen)",
-                name
-            );
-            plugin.state = PluginState::Active;
-            plugin.loaded_at = Some(std::time::SystemTime::now());
-            info!("✅ Loaded plugin (simulated): {}", name);
-        }
-
-        Ok(())
+        let err = PluginError::LoadFailed(DEPRECATED_C_FFI_LOAD_MSG.to_string());
+        plugin.state = PluginState::Failed;
+        plugin.error = Some(err.to_string());
+        Err(err)
     }
 
     /// Unload a plugin
@@ -169,23 +124,9 @@ impl PluginManager {
             .get_mut(name)
             .ok_or_else(|| PluginError::NotFound(name.to_string()))?;
 
-        #[cfg(feature = "plugin-loading")]
-        {
-            if let Some(mut loaded) = self.loaded_plugins.remove(name) {
-                loaded.unload();
-            }
-        }
-
-        #[cfg(not(feature = "plugin-loading"))]
-        {
-            warn!(
-                "plugin-loading feature disabled: simulated unload for `{}` (no dlclose)",
-                name
-            );
-        }
-
         plugin.state = PluginState::Unloaded;
         plugin.loaded_at = None;
+        plugin.error = None;
 
         info!("🔄 Unloaded plugin: {}", name);
 
@@ -264,26 +205,6 @@ impl PluginManager {
         }
 
         Ok(())
-    }
-
-    /// Resolve `manifest.entry_point` to an existing file under [`Self::search_paths`].
-    #[cfg(feature = "plugin-loading")]
-    fn resolve_plugin_library(&self, manifest: &PluginManifest) -> Result<PathBuf, PluginError> {
-        for base in &self.search_paths {
-            let candidates = [
-                base.join(&manifest.entry_point),
-                base.join(&manifest.name).join(&manifest.entry_point),
-            ];
-            for p in candidates {
-                if p.exists() && p.is_file() {
-                    return Ok(p);
-                }
-            }
-        }
-        Err(PluginError::LoadFailed(format!(
-            "could not find plugin library `{}` for plugin `{}` in search paths",
-            manifest.entry_point, manifest.name
-        )))
     }
 
     /// Add search path

@@ -23,7 +23,7 @@ runtime = [
     "tarpc-transport",
 ]
 tarpc-transport = ["dep:tarpc", "dep:bytes"]
-# MessagePack + length-delimited framing (`tarpc::serde_transport`) for Rust-to-Rust peers
+# Implemented but unwired — MessagePack transport. JSON-RPC over Unix sockets is the live path.
 binary-transport = ["tarpc-transport", "dep:tokio-serde", "dep:tokio-util", "dep:futures"]
 # Vestigial protocol client (~2.5k LOC); biomeOS owns capability routing
 legacy-protocol-client = ["runtime"]

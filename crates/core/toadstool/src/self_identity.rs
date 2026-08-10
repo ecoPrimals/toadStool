@@ -219,48 +219,22 @@ impl SelfIdentity {
         }
     }
 
-    /// Detect GPU availability using wgpu runtime detection.
+    /// Detect GPU availability via `/dev/dri` heuristics.
     ///
-    /// Result is cached via `OnceLock` since GPU availability does not change
-    /// during process lifetime. This also prevents SIGSEGV from concurrent
-    /// wgpu instance creation in parallel test harnesses.
+    /// Full GPU discovery lives in `runtime/gpu`. Result is cached via `OnceLock`
+    /// since GPU availability does not change during process lifetime.
     fn detect_gpu() -> bool {
         use std::sync::OnceLock;
         static GPU_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
         *GPU_AVAILABLE.get_or_init(|| {
-            #[cfg(feature = "wgpu")]
-            {
-                std::thread::scope(|s| {
-                    s.spawn(|| {
-                        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-                            backends: wgpu::Backends::all(),
-                            ..Default::default()
-                        });
+            #[cfg(target_os = "linux")]
+            let available = std::path::Path::new("/dev/dri").exists();
+            #[cfg(not(target_os = "linux"))]
+            let available = false;
 
-                        // wgpu 22+ exposes synchronous `enumerate_adapters`; no async runtime bridge.
-                        let has_gpu = instance
-                            .enumerate_adapters(wgpu::Backends::all())
-                            .into_iter()
-                            .any(|adapter| {
-                                let info = adapter.get_info();
-                                matches!(
-                                    info.device_type,
-                                    wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
-                                )
-                            });
-
-                        tracing::debug!(gpu_detected = has_gpu, "GPU hardware probe complete");
-                        has_gpu
-                    })
-                    .join()
-                    .unwrap_or(false)
-                })
-            }
-            #[cfg(not(feature = "wgpu"))]
-            {
-                false
-            }
+            tracing::debug!(gpu_detected = available, "GPU hardware probe complete");
+            available
         })
     }
 

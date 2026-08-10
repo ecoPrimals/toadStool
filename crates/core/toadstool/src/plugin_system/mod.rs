@@ -39,9 +39,6 @@
 
 pub mod abi;
 
-#[cfg(feature = "plugin-loading")]
-mod ffi_loader;
-
 mod manager;
 mod registry;
 mod traits;
