@@ -38,7 +38,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **9,008+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **16/16 cross-arch native targets** (S369) — x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
 - **38/48 crates WASM** (S376) — compute kernel on `wasm32-unknown-unknown` + `wasm32-wasip1`. Tokio optional via `runtime` feature gate. `tokio::fs`/`tokio::process` fully eliminated from production code.
-- **126 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. Self-audit verified (S372).
+- **126 JSON-RPC methods** (18 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. Self-audit verified (S372).
 - **138 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **G68 platform containment complete** (S365) — zero rustix outside hw-safe.
 - **Tokio blast radius reduced** (S376) — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, workspace features 9→7. S374 — initial `runtime` feature gate, 20+ needless async→sync.

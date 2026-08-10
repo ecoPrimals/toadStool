@@ -10,8 +10,9 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S374, Aug 10, 2026)
+- **Version**: 0.2.0 (Session S376, Aug 10, 2026)
 - **S376**: Tokio blast radius reduction — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, 7 crates feature-gated (31→38/48 WASM), workspace tokio features 9→7.
+- **S375**: WASM push 26→31/48. Canonical `BiomeManifest`. NUCLEUS composition graph.
 - **S374**: Tokio deep debt — `runtime` feature gate, needless async removal, std::sync migration, 26/48 WASM. Node Atomic AAR: silicon discovery via coralReef IPC.
 - **S373**: Large file decomposition, hardcoding → runtime discovery, zero `missing_docs`.
 - **S372**: Vertebrate self-audit (126/126 methods verified), types extraction to `toadstool-core`.

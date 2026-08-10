@@ -50,8 +50,8 @@
 
 | Target | Runtime | Crates |
 |--------|---------|--------|
-| `wasm32-unknown-unknown` | Browser/WebGPU | 26/48 (compute kernel) |
-| `wasm32-wasip1` | WASI edge/cloud | 26/48 (compute kernel) |
+| `wasm32-unknown-unknown` | Browser/WebGPU | 38/48 (compute kernel) |
+| `wasm32-wasip1` | WASI edge/cloud | 38/48 (compute kernel) |
 
 **Crates passing on WASM** (compute kernel — types, traits, hw abstraction, inference):
 - `toadstool` — core runtime (types/logic layer via `--no-default-features`)

@@ -115,7 +115,7 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 | Test coverage | Target 90%, current ~85%+ (llvm-cov) | D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
-### Key Numbers (S374)
+### Key Numbers (S376)
 
 - **9,008+ lib-only** tests (0 failures), **126 JSON-RPC methods**, **16/16 native cross-arch**, **38/48 WASM crates**
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
@@ -124,7 +124,7 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 - **41 crates** `#![forbid(unsafe_code)]`, **5 crates** with narrow `#[allow(unsafe_code, reason)]` — **138 unsafe blocks** (all hw containment, all SAFETY-documented)
 - **ecoBin v3.0 certified** — pure Rust, zero C application deps
 - **Rust 2024 edition**, MSRV 1.85
-- **47 workspace crates**, **39 external deps**, zero production panics/unwraps, zero dead deps
+- **48 workspace crates**, **39 external deps**, zero production panics/unwraps, zero dead deps
 
 ### Architecture
 

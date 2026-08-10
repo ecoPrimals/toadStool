@@ -309,4 +309,4 @@ No code sharing or refactoring is needed. The layering is clean.
 - `barraCuda/specs/BARRACUDA_SPECIFICATION.md` — barraCuda crate architecture
 - `toadStool/specs/BARRACUDA_PRIMAL_BUDDING.md` — extraction phases
 - `toadStool/specs/SOVEREIGN_COMPUTE_EVOLUTION.md` — toadStool roadmap
-- `wateringHole/handoffs/BARRACUDA_S89_EXTRACTION_COMPLETE_MAR02_2026.md`
+- `toadStool/specs/BARRACUDA_PRIMAL_BUDDING.md` — S89 extraction completion

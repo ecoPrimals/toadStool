@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Functions made sync** — 30+ functions across all crates converted from `async fn` to `fn` where `tokio::fs`/`tokio::process` was the only async operation.
 - **Native-only crates reduced** — From 17 to 10 crates that inherently require OS networking/processes.
 
+### Session S375 (Aug 10, 2026) — NUCLEUS Composition Manifest + WASM Push 26→31
+
+- **WASM-capable crates: 26→31/48** — 5 "easy win" crates feature-gated: `toadstool-integration-storage`, `toadstool-management-performance`, `toadstool-management-analytics`, `toadstool-runtime-specialty`, `toadstool-security-policies`. Pattern: tokio optional, `default-features = false` on core deps, modules gated behind `#[cfg(feature = "runtime")]`.
+- **Canonical BiomeManifest** — `toadstool-core/src/manifest.rs`: unified `BiomeManifest` struct with `compositions` field (NUCLEUS sub-graph definitions), `gossip_events` per primal, federation config. Replaces divergent CLI/biomeOS/integration schemas.
+- **CLI manifest wiring** — `From<toadstool_core::manifest::BiomeManifest>` conversion in `crates/cli/src/biome_model.rs`. `load_biome_manifest` tries canonical format first, falls back to legacy.
+- **Example biome** — `examples/biome-strandgate.yaml`: composition graph with `tower-atomic` and `node-atomic` sub-graphs, 7 primals, gossip events, federation config.
+- **Gossip events spec** — `specs/GOSSIP_EVENTS.md`: event taxonomy for swarmVine (hardware, silicon, workload, runtime, Node Atomic events).
+- **tokio::sync::RwLock handling** — Careful analysis: guards held across `.await` in runtime-gated modules kept on `tokio::sync`; guards with brief sync use migrated to `std::sync::RwLock`.
+
 ### Session S374 (Aug 9-10, 2026) — Tokio Deep Debt: `runtime` Feature Gate + Needless Async Removal
 
 - **`runtime` feature gate** — `tokio` now optional in `crates/core/toadstool/`. Without `runtime`, the crate compiles on `wasm32-unknown-unknown` as a pure types+logic library.

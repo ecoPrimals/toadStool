@@ -16,6 +16,8 @@ radius reduced from workspace-wide unconditional to deployment-layer-only.
 Workspace tokio features trimmed from 9 to 7. 30+ functions made sync. Native-only
 crates reduced from 17 to 10.
 
+**S375 (strandGate NUCLEUS Composition — Aug 10, 2026)**: WASM push 26→31/48 (5 crates feature-gated). Canonical `BiomeManifest` in `toadstool-core`. CLI manifest wiring. Gossip events spec.
+
 **S374 (strandGate Tokio Deep Debt — Aug 9-10, 2026)**: Tokio made optional via
 `runtime` feature gate in `crates/core/toadstool/`. 26/48 crates now compile on
 `wasm32-unknown-unknown`. 34+ files migrated from `tokio::sync::RwLock` to
@@ -2399,7 +2401,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~85%+ line coverage** (llvm-cov). **23,000+ tests** (9,232+ lib-only, S336+). Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. |
+| D-COV | Test coverage → 90% | Medium | **~85%+ line coverage** (llvm-cov). **9,008+ lib-only tests (S376)**. Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |

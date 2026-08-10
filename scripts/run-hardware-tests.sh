@@ -87,10 +87,8 @@ run_gpu_tests() {
         echo -e "${CYAN}Testing AMD adapter (card0, renderD128)...${NC}"
         TOADSTOOL_GPU_ADAPTER="0" \
             cargo test --workspace -- --ignored \
-            --test-threads=1 \
-            -Z unstable-options --format json 2>&1 \
-            | grep -E '"event":"(ok|failed|ignored)"' \
-            | tail -5 || failed=$((failed + 1))
+            --test-threads=1 2>&1 \
+            | grep -E "test result" || failed=$((failed + 1))
         echo ""
     fi
 
@@ -98,10 +96,8 @@ run_gpu_tests() {
         echo -e "${CYAN}Testing NVIDIA adapter (card1, renderD129)...${NC}"
         TOADSTOOL_GPU_ADAPTER="1" \
             cargo test --workspace -- --ignored \
-            --test-threads=1 \
-            -Z unstable-options --format json 2>&1 \
-            | grep -E '"event":"(ok|failed|ignored)"' \
-            | tail -5 || failed=$((failed + 1))
+            --test-threads=1 2>&1 \
+            | grep -E "test result" || failed=$((failed + 1))
         echo ""
     fi
 
