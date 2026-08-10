@@ -1,6 +1,6 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,008+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, Tokio vestigial segmentation (118→65 default-build files, 45% reduction), NUCLEUS manifest converged (5→2 structs), last-mile WASM wiring + archaic excision"
+description = "Sovereign compute hardware primal — 8,447+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 160 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, Tokio vestigial segmentation (118→65 default-build files, 45% reduction), NUCLEUS manifest converged (5→2 structs), last-mile WASM wiring + archaic excision"
 date = 2026-08-10
 
 [taxonomies]
@@ -21,14 +21,14 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 - **S372**: Vertebrate self-audit (126/126 methods verified), types extraction to `toadstool-core`.
 - **S369**: 16/16 native cross-arch targets — first primal fleet-ready.
 - **S365**: G68 complete — zero rustix outside hw-safe.
-- **Lib tests**: 9,008+ (0 failures, unlimited parallelism)
+- **Lib tests**: 8,447+ (0 failures, unlimited parallelism)
 - **JSON-RPC methods**: 126 (direct) + semantic registry aliases
 - **Workspace crates**: 48
 - **Cross-arch**: 16/16 native targets, 38/48 WASM crates
 - **Clippy**: 0 warnings (`-D warnings`)
 - **Doc warnings**: 0
 - **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned; 19+ bans)
-- **Unsafe blocks**: 138 (all SAFETY-documented, designated containment crates only: hw-safe, cylinder, nvpmu, display, runtime/gpu, ffi_loader; all cylinder `#[allow]` have `reason`)
+- **Unsafe blocks**: 160 (all SAFETY-documented, designated containment crates only: hw-safe, cylinder, nvpmu, display, runtime/gpu, akida-driver; all cylinder `#[allow]` have `reason`)
 - **Production unwrap/panic**: 0
 - **License**: AGPL-3.0-or-later (SPDX headers on all files)
 

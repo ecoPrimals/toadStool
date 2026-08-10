@@ -35,20 +35,20 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **9,008+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **8,447+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **16/16 cross-arch native targets** (S369) — x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
 - **38/48 crates WASM** (S376) — compute kernel on `wasm32-unknown-unknown` + `wasm32-wasip1`. Tokio optional via `runtime` feature gate. `tokio::fs`/`tokio::process` fully eliminated from production code.
 - **NUCLEUS manifest convergence** (S377) — 5→2 `BiomeManifest` structs. All subsystems (CLI, daemon, biomeOS, integration-primals) consume the single canonical type from `toadstool-core`.
 - **Tokio vestigial segmentation** (S378) — ~35k LOC feature-gated behind non-default features (`legacy-cloud`, `legacy-security`, `legacy-scheduler`, `legacy-protocol-client`, `legacy-security-client`, `hardening`, `background-monitors`, `cli-monitoring`, `network-scan`). Default-build tokio surface reduced 118→65 production files (45%). `runtime/edge` excluded. GPU/WASM `tokio::sync` → `std::sync`. Server background monitors gated.
 - **126 JSON-RPC methods** (18 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. Self-audit verified (S372).
-- **138 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
+- **160 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **39 crates `forbid`**.
 - **G68 platform containment complete** (S365) — zero rustix outside hw-safe.
 - **Tokio blast radius reduced** (S376) — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, workspace features 9→7. S374 — initial `runtime` feature gate, 20+ needless async→sync.
 - **Zero production files >800L** (S373). Smart decomposition.
 - **Zero dead deps** — S351: 48 eliminated. ecoBin v3.0 — zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V.
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S378).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S379).
 
 ---
 

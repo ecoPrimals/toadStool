@@ -148,7 +148,6 @@ bollard = "0.18" # Docker API
 # EVOLVED: Removed dead dependencies (Feb 14, 2026)
 # - wasmtime, wasmtime-wasi, wasmer, wasi-common were unused
 # - Runtime uses wasmi (Pure Rust) for WASM execution
-# - runtime/gpu has optional wasmtime via local dependency for JIT path
 
 # EVOLVED: pyo3/pyo3-asyncio removed — Python FFI violates ecoBin v3.0.
 # Python integration belongs to Squirrel via IPC.
