@@ -216,12 +216,8 @@ mod tests {
     async fn test_add_to_path_linux_creates_export() {
         let dir = tempfile::tempdir().expect("tempdir");
         let install_path = dir.path().join("toadstool");
-        tokio::fs::create_dir_all(&install_path)
-            .await
-            .expect("create dir");
-        tokio::fs::create_dir_all(install_path.join("bin"))
-            .await
-            .expect("create bin");
+        std::fs::create_dir_all(&install_path).expect("create dir");
+        std::fs::create_dir_all(install_path.join("bin")).expect("create bin");
 
         let home = tempfile::tempdir().expect("home tempdir");
         let home_str = home.path().to_str().unwrap().to_string();
@@ -229,7 +225,6 @@ mod tests {
         temp_env::with_vars(
             [("HOME", Some(home_str.as_str())), ("DISPLAY", None::<&str>)],
             || {
-                // Use spawn_blocking to avoid nested runtime - temp_env runs in sync context
                 let result = std::thread::spawn(move || {
                     let rt = tokio::runtime::Builder::new_current_thread()
                         .enable_all()
@@ -261,12 +256,8 @@ mod tests {
     async fn test_create_desktop_shortcuts_linux() {
         let dir = tempfile::tempdir().expect("tempdir");
         let install_path = dir.path().join("toadstool");
-        tokio::fs::create_dir_all(&install_path)
-            .await
-            .expect("create dir");
-        tokio::fs::create_dir_all(install_path.join("bin"))
-            .await
-            .expect("create bin");
+        std::fs::create_dir_all(&install_path).expect("create dir");
+        std::fs::create_dir_all(install_path.join("bin")).expect("create bin");
 
         let home = tempfile::tempdir().expect("home tempdir");
         let desktop_dir = home.path().join("Desktop");
@@ -297,12 +288,8 @@ mod tests {
     async fn test_add_to_path_windows_informational() {
         let dir = tempfile::tempdir().expect("tempdir");
         let install_path = dir.path().join("toadstool");
-        tokio::fs::create_dir_all(&install_path)
-            .await
-            .expect("create dir");
-        tokio::fs::create_dir_all(install_path.join("bin"))
-            .await
-            .expect("create bin");
+        std::fs::create_dir_all(&install_path).expect("create dir");
+        std::fs::create_dir_all(install_path.join("bin")).expect("create bin");
 
         let result = super::add_to_path(Platform::Windows, &install_path).await;
         assert!(result.is_ok());

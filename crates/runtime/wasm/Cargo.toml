@@ -20,7 +20,7 @@ tokio = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
 # wasmi 1.0 — Pure Rust WASM interpreter (instant startup, zero C deps)
-wasmi = { version = "1.0", features = ["std"] }
+wasmi = { workspace = true }
 wasmi_wasi = { version = "1.0", optional = true }
 
 # WAT format support

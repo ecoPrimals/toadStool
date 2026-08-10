@@ -145,7 +145,7 @@ mod tests {
         };
         let script_path = bin_dir.join(script_name);
         assert!(script_path.exists());
-        let content = tokio::fs::read_to_string(&script_path).await.unwrap();
+        let content = std::fs::read_to_string(&script_path).unwrap();
         assert!(content.contains("ToadStool"));
         assert!(content.contains("status"));
     }

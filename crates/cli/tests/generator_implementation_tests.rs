@@ -298,7 +298,7 @@ async fn test_generate_output_is_valid_yaml() {
     let output_path = generator.generate(BiomeTemplate::Basic).await.unwrap();
 
     // Read the generated file
-    let content = tokio::fs::read_to_string(&output_path).await.unwrap();
+    let content = std::fs::read_to_string(&output_path).unwrap();
 
     // Should be valid YAML (basic check: not empty, has structure)
     assert!(!content.is_empty(), "Generated YAML should not be empty");
@@ -311,7 +311,7 @@ async fn test_generate_output_has_version() {
     let generator = TemplateGenerator::new(temp_dir.path().to_path_buf(), false);
 
     let output_path = generator.generate(BiomeTemplate::Basic).await.unwrap();
-    let content = tokio::fs::read_to_string(&output_path).await.unwrap();
+    let content = std::fs::read_to_string(&output_path).unwrap();
 
     assert!(content.contains("version"), "Should have version field");
 }
@@ -322,7 +322,7 @@ async fn test_generate_output_has_primals() {
     let generator = TemplateGenerator::new(temp_dir.path().to_path_buf(), false);
 
     let output_path = generator.generate(BiomeTemplate::Basic).await.unwrap();
-    let content = tokio::fs::read_to_string(&output_path).await.unwrap();
+    let content = std::fs::read_to_string(&output_path).unwrap();
 
     assert!(
         content.contains("primals") || content.contains("beardog"),
@@ -377,7 +377,7 @@ async fn test_end_to_end_workflow() {
 
     // Verify output
     assert!(output_path.exists());
-    let content = tokio::fs::read_to_string(&output_path).await.unwrap();
+    let content = std::fs::read_to_string(&output_path).unwrap();
     assert!(!content.is_empty());
 }
 

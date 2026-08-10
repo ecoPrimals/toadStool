@@ -24,7 +24,7 @@ tracing = { workspace = true }
 toadstool-common = { path = "../../core/common", default-features = false }
 
 # Safe byte casting (replaces unsafe f32<->u8 conversions)
-bytemuck = { version = "1", features = ["derive"] }
+bytemuck = { workspace = true }
 
 # Async runtime (optional — only for async evolution/sentinel paths)
 tokio = { workspace = true, optional = true }

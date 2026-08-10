@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 
 /// Helper to create a minimal valid biome manifest
 async fn create_test_manifest(dir: &std::path::Path, name: &str) -> PathBuf {
@@ -37,7 +37,6 @@ command = ["sleep", "infinity"]
     );
 
     fs::write(&manifest_path, content)
-        .await
         .expect("Failed to write test manifest");
     manifest_path
 }
@@ -50,7 +49,6 @@ async fn test_manifest_loading_success() {
     // Verify manifest file exists and is readable
     assert!(manifest_path.exists());
     let content = fs::read_to_string(&manifest_path)
-        .await
         .expect("Failed to read manifest");
     assert!(content.contains("test-biome"));
     assert!(content.contains("test-service"));
@@ -94,11 +92,9 @@ environment = ["POSTGRES_DB=testdb"]
 "#;
 
     fs::write(&manifest_path, content)
-        .await
         .expect("Failed to write manifest");
 
     let content = fs::read_to_string(&manifest_path)
-        .await
         .expect("Failed to read manifest");
     assert!(content.contains("web"));
     assert!(content.contains("api"));
@@ -477,7 +473,6 @@ async fn test_manifest_path_validation() {
 
     // Create manifest
     fs::write(&manifest_path, "# Test manifest")
-        .await
         .expect("Failed to write");
 
     // After creation

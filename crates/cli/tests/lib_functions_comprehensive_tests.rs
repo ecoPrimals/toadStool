@@ -21,7 +21,7 @@ use toadstool_cli::{
     Cli, CliContext, Commands, PrimalConfig, ServiceConfig, WorkloadSource, load_biome_manifest,
     validate_manifest,
 };
-use tokio::fs;
+use std::fs;
 
 // ============================================================================
 // CliContext Tests
@@ -166,7 +166,7 @@ storage:
   volumes: []
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
     let manifest = load_biome_manifest(&manifest_path).await.unwrap();
 
@@ -222,7 +222,7 @@ storage:
   volumes: []
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
     let manifest = load_biome_manifest(&manifest_path).await.unwrap();
 
@@ -250,7 +250,6 @@ async fn test_load_biome_manifest_invalid_yaml() {
     let manifest_path = temp_dir.path().join("invalid.yaml");
 
     fs::write(&manifest_path, "invalid: yaml: content: {{{")
-        .await
         .unwrap();
 
     let result = load_biome_manifest(&manifest_path).await;
@@ -274,7 +273,7 @@ metadata:
   name: incomplete
 ";
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
     let result = load_biome_manifest(&manifest_path).await;
 
@@ -335,7 +334,7 @@ storage:
   volumes: []
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
     let manifest = load_biome_manifest(&manifest_path).await.unwrap();
 
@@ -724,7 +723,7 @@ storage:
   volumes: []
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
     let manifest = load_biome_manifest(&manifest_path).await.unwrap();
     let warnings = validate_manifest(&manifest).unwrap();

@@ -83,7 +83,7 @@ async fn test_server_mode_with_socket() {
     let socket_path = "/tmp/toadstool-test.sock";
 
     // Clean up any existing socket
-    let _ = tokio::fs::remove_file(socket_path).await;
+    let _ = std::fs::remove_file(socket_path);
 
     let mut cmd = Command::new("cargo")
         .args([
@@ -108,7 +108,7 @@ async fn test_server_mode_with_socket() {
     // Note: May need to check if socket exists
 
     // Cleanup
-    let _ = tokio::fs::remove_file(socket_path).await;
+    let _ = std::fs::remove_file(socket_path);
 }
 
 #[tokio::test]
@@ -136,7 +136,7 @@ async fn test_server_mode_with_all_options() {
     let biomeos_socket = "/tmp/biomeos-test.sock";
 
     // Clean up
-    let _ = tokio::fs::remove_file(socket_path).await;
+    let _ = std::fs::remove_file(socket_path);
 
     let mut cmd = Command::new("cargo")
         .args([
@@ -165,7 +165,7 @@ async fn test_server_mode_with_all_options() {
     cmd.kill().await.ok();
 
     // Cleanup
-    let _ = tokio::fs::remove_file(socket_path).await;
+    let _ = std::fs::remove_file(socket_path);
 }
 
 // ============================================================================
@@ -340,8 +340,7 @@ memory_limit = "256M"
 "#;
 
     let manifest_path = "/tmp/test-workload.toml";
-    tokio::fs::write(manifest_path, manifest_content)
-        .await
+    std::fs::write(manifest_path, manifest_content)
         .expect("Failed to write test manifest");
 
     // Start server
@@ -364,7 +363,7 @@ memory_limit = "256M"
     server.kill().await.ok();
 
     // Cleanup
-    let _ = tokio::fs::remove_file(manifest_path).await;
+    let _ = std::fs::remove_file(manifest_path);
 
     // Should execute (may fail if server mode not fully implemented)
     let _ran = output.status.success();

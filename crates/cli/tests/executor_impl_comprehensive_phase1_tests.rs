@@ -16,7 +16,7 @@
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use tokio::fs;
+use std::fs;
 use uuid::Uuid;
 
 // ============================================================================
@@ -211,7 +211,7 @@ async fn test_run_biome_creates_log_directory() {
     assert!(log_dir.is_dir(), "Should be a directory");
 
     // Cleanup
-    let _ = fs::remove_dir_all(log_dir).await;
+    let _ = fs::remove_dir_all(log_dir);
 }
 
 // ============================================================================
@@ -616,14 +616,14 @@ spec:
     );
 
     let path = PathBuf::from(format!("/tmp/{name}-manifest.yaml"));
-    fs::write(&path, content).await?;
+    fs::write(&path, content)?;
     Ok(path)
 }
 
 async fn create_invalid_manifest() -> Result<PathBuf> {
     let content = "invalid: yaml: content: [unclosed";
     let path = PathBuf::from("/tmp/invalid-manifest.yaml");
-    fs::write(&path, content).await?;
+    fs::write(&path, content)?;
     Ok(path)
 }
 
@@ -639,7 +639,7 @@ spec:
   [unclosed bracket
 ";
     let path = PathBuf::from("/tmp/invalid-yaml.yaml");
-    fs::write(&path, content).await?;
+    fs::write(&path, content)?;
     Ok(path)
 }
 
@@ -648,7 +648,7 @@ async fn load_test_manifest(path: &PathBuf) -> Result<TestManifest> {
         anyhow::bail!("Manifest not found");
     }
 
-    let content = fs::read_to_string(path).await?;
+    let content = fs::read_to_string(path)?;
     let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
 
     let name = value["metadata"]["name"]
@@ -669,7 +669,7 @@ async fn load_test_manifest(path: &PathBuf) -> Result<TestManifest> {
 }
 
 async fn validate_test_manifest(path: &PathBuf) -> Result<Vec<String>> {
-    let content = fs::read_to_string(path).await?;
+    let content = fs::read_to_string(path)?;
 
     // Try to parse as YAML
     let result = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&content);
@@ -726,7 +726,7 @@ fn is_valid_security_level(level: &str) -> bool {
 
 async fn create_log_directory(biome_name: &str) -> Result<PathBuf> {
     let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
-    fs::create_dir_all(&log_dir).await?;
+    fs::create_dir_all(&log_dir)?;
     Ok(log_dir)
 }
 

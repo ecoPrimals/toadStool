@@ -14,7 +14,7 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 - **S379**: Last-mile wiring + archaic excision — WASM conversion wired, runtime hint inference, `display.rs` + `discovery.rs` excised (~735 LOC), `component-model` feature removed, `tokio::fs` tail eliminated, `toadstool-core` test fixes.
 - **S378**: Tokio vestigial segmentation — ~35k LOC feature-gated behind 9 non-default features. Default-build tokio surface 118→65 production files (45% reduction). GPU/WASM `tokio::sync` → `std::sync`. Server background monitors gated. CLI monitoring gated. runtime/edge excluded. `tokio::time` → `std::time` in 10 files.
 - **S377**: NUCLEUS manifest convergence — 5→2 `BiomeManifest` structs. All subsystems re-export canonical `toadstool-core` type.
-- **S376**: Tokio blast radius reduction — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, 7 crates feature-gated (31→38/48 WASM), workspace tokio features 9→7.
+- **S376**: Tokio blast radius reduction — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, 7 crates feature-gated (31→38/48 WASM), workspace tokio features 9→6.
 - **S375**: WASM push 26→31/48. Canonical `BiomeManifest`. NUCLEUS composition graph.
 - **S374**: Tokio deep debt — `runtime` feature gate, needless async removal, std::sync migration, 26/48 WASM. Node Atomic AAR: silicon discovery via coralReef IPC.
 - **S373**: Large file decomposition, hardcoding → runtime discovery, zero `missing_docs`.

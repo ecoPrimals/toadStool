@@ -49,14 +49,14 @@ toadstool-runtime-container = { path = "../runtime/container", features = ["dock
 toadstool-runtime-native = { path = "../runtime/native" }
 # EVOLVED: toadstool-runtime-python removed — pyo3 FFI violates ecoBin v3.0
 toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: pure Rust (wasmi)
-wasmi = { version = "1.0", features = ["std"], optional = true }  # For WASM execution when wasm feature enabled
+wasmi = { workspace = true, optional = true }  # For WASM execution when wasm feature enabled
 toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 
 # CLI framework
 clap = { workspace = true, features = ["color", "suggestions"] }
 
-# Async runtime
-tokio = { workspace = true }
+# Async runtime (signal: daemon SIGTERM/SIGINT)
+tokio = { workspace = true, features = ["signal"] }
 futures = { workspace = true }
 
 # Error handling
@@ -99,7 +99,7 @@ colored = "2.0"
 # Encoding / integrity
 base64 = { workspace = true }
 sha2 = { workspace = true }
-blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
+blake3 = { workspace = true }
 
 # barracuda removed S94b: nautilus methods are now proxied to barraCuda via
 # capability-based IPC (JSON-RPC over Unix socket). Zero library coupling.
@@ -112,12 +112,11 @@ url = { workspace = true }
 # HTTP is songBird's domain per PRIMAL_RESPONSIBILITY_MATRIX.
 
 [dev-dependencies]
-anyhow = "1"
+anyhow = { workspace = true }
 temp-env = { workspace = true }
 tempfile = { workspace = true }
 assert_cmd = "2.0"
 predicates = "3.0"
-http-body-util = "0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-cylinder = { path = "../core/cylinder" }

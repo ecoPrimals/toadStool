@@ -576,8 +576,7 @@ async fn test_start_biome_internal_wasm_checksum_mismatch_fails() {
     let executor = BiomeExecutor::new().await.expect("executor should create");
     let temp_dir = std::env::temp_dir();
     let wasm_path = temp_dir.join(format!("test-module-{}.wasm", uuid::Uuid::new_v4()));
-    tokio::fs::write(&wasm_path, b"\0asm\x01\0\0\0")
-        .await
+    std::fs::write(&wasm_path, b"\0asm\x01\0\0\0")
         .expect("write temp wasm");
 
     let manifest = make_wasm_manifest(wasm_path.to_str().expect("utf8 path"), "wrong-checksum");
@@ -593,7 +592,7 @@ async fn test_start_biome_internal_wasm_checksum_mismatch_fails() {
         )
         .await;
 
-    let _ = tokio::fs::remove_file(&wasm_path).await;
+    let _ = std::fs::remove_file(&wasm_path);
     assert!(result.is_err(), "checksum mismatch should fail startup");
 }
 

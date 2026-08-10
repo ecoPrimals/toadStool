@@ -37,8 +37,8 @@ tokio-serde = { version = "0.9", features = ["json"], optional = true }
 # Base64 encoding
 base64 = { workspace = true }
 
-# Async runtime and channels
-tokio = { workspace = true }
+# Async runtime (signal: daemon shutdown)
+tokio = { workspace = true, features = ["signal"] }
 
 # Serialization
 serde = { workspace = true }
@@ -103,7 +103,6 @@ hw-learn = { path = "../core/hw-learn" }
 nvpmu = { path = "../core/nvpmu" }
 
 [dev-dependencies]
-criterion = { workspace = true }
 hw-learn = { path = "../core/hw-learn" }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }

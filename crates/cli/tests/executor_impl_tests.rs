@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 
 // Note: BiomeExecutor is not directly exported, testing through CLI module structure
 // These tests focus on helper functions and types that can be tested
@@ -34,7 +34,6 @@ async fn test_temp_dir_creation_and_cleanup() {
     // Write a test file
     let test_file = path.join("test.txt");
     fs::write(&test_file, b"test content")
-        .await
         .expect("Failed to write test file");
 
     assert!(test_file.exists());
@@ -69,13 +68,11 @@ image = "alpine:latest"
 "#;
 
     fs::write(&manifest_path, manifest_content)
-        .await
         .expect("Failed to write manifest");
     assert!(manifest_path.exists());
 
     // Test reading manifest
     let content = fs::read_to_string(&manifest_path)
-        .await
         .expect("Failed to read manifest");
     assert!(content.contains("test-biome"));
     assert!(content.contains("test-service"));

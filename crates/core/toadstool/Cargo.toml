@@ -47,7 +47,7 @@ toadstool-sysmon = { workspace = true, optional = true }
 # Encoding
 base64 = { workspace = true }
 
-mdns-sd = { version = "0.10", optional = true }
+mdns-sd = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

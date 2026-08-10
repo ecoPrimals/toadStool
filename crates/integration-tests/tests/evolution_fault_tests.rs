@@ -130,7 +130,7 @@ async fn test_display_manager_handles_corrupted_log_file() {
 async fn test_display_manager_handles_missing_log_file() {
     // Test display manager handles missing log files
 
-    let result = tokio::fs::read("/tmp/nonexistent_log_12345.log").await;
+    let result = std::fs::read("/tmp/nonexistent_log_12345.log");
 
     // Should return error, not panic
     assert!(result.is_err());
@@ -148,7 +148,7 @@ async fn test_resource_manager_handles_permission_denied() {
 
     for path in restricted_paths {
         // Attempts should fail gracefully
-        let result = tokio::fs::create_dir_all(path).await;
+        let result = std::fs::create_dir_all(path);
         // Expect permission denied (but don't panic)
         let _ = result; // Ignore result, just verify no panic
     }

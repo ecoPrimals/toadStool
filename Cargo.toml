@@ -102,10 +102,13 @@ etcetera = "0.8"
 # bytes::Bytes is Arc<[u8]>: clone() bumps a refcount, not a memcpy.
 bytes = { version = "1.11.1", features = ["serde"] }
 
+# Safe byte casting (GPU buffers, Akida inference, cylinder drivers)
+bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"] }
+
 # Core dependencies
 tokio = { version = "1.35", features = [
     "rt-multi-thread", "macros", "sync", "time", "net",
-    "io-util", "signal",
+    "io-util",
 ] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -148,6 +151,7 @@ bollard = "0.18" # Docker API
 # EVOLVED: Removed dead dependencies (Feb 14, 2026)
 # - wasmtime, wasmtime-wasi, wasmer, wasi-common were unused
 # - Runtime uses wasmi (Pure Rust) for WASM execution
+wasmi = { version = "1.0", features = ["std"] }
 
 # EVOLVED: pyo3/pyo3-asyncio removed — Python FFI violates ecoBin v3.0.
 # Python integration belongs to Squirrel via IPC.
@@ -162,6 +166,8 @@ bollard = "0.18" # Docker API
 aes-gcm = "0.10.3"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 sha2 = "0.10"
+zeroize = { version = "1.7", features = ["derive"] }
+blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
 
 # BTSP handshake (BTSP_PROTOCOL_STANDARD.md): pure Rust, no C FFI
 x25519-dalek = { version = "2.0", features = ["static_secrets"] }
@@ -175,6 +181,7 @@ humantime-serde = "1.1"
 # Networking
 # EVOLVED: ipnet removed (Mar 12, 2026) — unused; no crate references it
 # mdns removed: standardized on mdns-sd; edge stub doesn't need it
+mdns-sd = "0.10"
 
 # System monitoring — Pure Rust via /proc (replaces sysinfo)
 toadstool-sysmon = { path = "crates/core/sysmon" }
@@ -203,6 +210,7 @@ base64 = "0.22"
 clap = { version = "4.4", features = ["derive", "env"] }
 
 # Development dependencies
+anyhow = "1"
 tokio-test = "0.4"
 tempfile = "3.8"
 temp-env = { version = "0.3", features = ["async_closure"] }

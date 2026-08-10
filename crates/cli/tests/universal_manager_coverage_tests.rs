@@ -138,7 +138,7 @@ async fn test_detect_platforms_with_output_file() {
 
     assert!(result.is_ok());
     if output_path.exists() {
-        let content = tokio::fs::read_to_string(&output_path).await.unwrap();
+        let content = std::fs::read_to_string(&output_path).unwrap();
         assert!(content.contains("platforms") || content.contains("timestamp"));
     }
 }

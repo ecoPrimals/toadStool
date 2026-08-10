@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 
 /// Helper to create test manifest
 async fn create_test_manifest(temp_dir: &TempDir) -> Result<PathBuf> {
@@ -51,7 +51,7 @@ isolation = "high"
 capabilities = []
 "#;
 
-    fs::write(&manifest_path, manifest_content).await?;
+    fs::write(&manifest_path, manifest_content)?;
     Ok(manifest_path)
 }
 
@@ -71,7 +71,7 @@ memory_limit = "512MB"
 "#
     );
 
-    fs::write(&manifest_path, manifest_content).await?;
+    fs::write(&manifest_path, manifest_content)?;
     Ok(manifest_path)
 }
 
@@ -149,7 +149,7 @@ async fn test_manifest_loading_success() -> Result<()> {
     assert!(manifest_path.exists());
 
     // Verify content
-    let content = fs::read_to_string(&manifest_path).await?;
+    let content = fs::read_to_string(&manifest_path)?;
     assert!(content.contains("test-biome"));
     assert!(content.contains("cpu_limit"));
     assert!(content.contains("memory_limit"));
@@ -160,7 +160,7 @@ async fn test_manifest_loading_success() -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manifest_loading_missing_file() {
     let manifest_path = PathBuf::from("/nonexistent/biome.toml");
-    let result = fs::read_to_string(&manifest_path).await;
+    let result = fs::read_to_string(&manifest_path);
 
     assert!(result.is_err(), "Should fail for missing manifest");
 }
@@ -169,7 +169,7 @@ async fn test_manifest_loading_missing_file() {
 async fn test_manifest_validation_complete() -> Result<()> {
     let temp_dir = TempDir::new()?;
     let manifest_path = create_test_manifest(&temp_dir).await?;
-    let content = fs::read_to_string(&manifest_path).await?;
+    let content = fs::read_to_string(&manifest_path)?;
 
     // Validate required fields
     assert!(content.contains("[metadata]"));
@@ -192,8 +192,8 @@ name = "incomplete"
 # Missing version
 "#;
 
-    fs::write(&manifest_path, incomplete_content).await?;
-    let content = fs::read_to_string(&manifest_path).await?;
+    fs::write(&manifest_path, incomplete_content)?;
+    let content = fs::read_to_string(&manifest_path)?;
 
     assert!(content.contains("name = "));
     assert!(!content.contains("version = "));
@@ -324,7 +324,7 @@ async fn test_biome_id_generation() {
 async fn test_biome_name_from_manifest() -> Result<()> {
     let temp_dir = TempDir::new()?;
     let manifest_path = create_minimal_manifest(&temp_dir, "test-biome-123").await?;
-    let content = fs::read_to_string(&manifest_path).await?;
+    let content = fs::read_to_string(&manifest_path)?;
 
     assert!(content.contains("test-biome-123"));
 
@@ -381,10 +381,10 @@ async fn test_log_file_path_construction() -> Result<()> {
     let temp_dir = TempDir::new()?;
     let log_path = temp_dir.path().join("biome.log");
 
-    fs::write(&log_path, b"test log content").await?;
+    fs::write(&log_path, b"test log content")?;
     assert!(log_path.exists());
 
-    let content = fs::read_to_string(&log_path).await?;
+    let content = fs::read_to_string(&log_path)?;
     assert_eq!(content, "test log content");
 
     Ok(())
@@ -586,7 +586,7 @@ async fn test_file_creation_in_temp() -> Result<()> {
     let temp_dir = TempDir::new()?;
     let test_file = temp_dir.path().join("test.txt");
 
-    fs::write(&test_file, b"test").await?;
+    fs::write(&test_file, b"test")?;
     assert!(test_file.exists());
 
     Ok(())

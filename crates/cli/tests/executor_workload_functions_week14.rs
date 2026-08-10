@@ -49,7 +49,7 @@ memory_mb = 512
     write!(temp_file, "{content}").unwrap();
 
     // Read and parse
-    let file_content = tokio::fs::read_to_string(temp_file.path()).await.unwrap();
+    let file_content = std::fs::read_to_string(temp_file.path()).unwrap();
 
     // Parse as WorkloadFile structure
     #[derive(Debug, serde::Deserialize)]
@@ -99,7 +99,7 @@ async fn test_load_workload_file_json_basic() {
     let mut temp_file = NamedTempFile::with_suffix(".json").unwrap();
     write!(temp_file, "{content}").unwrap();
 
-    let file_content = tokio::fs::read_to_string(temp_file.path()).await.unwrap();
+    let file_content = std::fs::read_to_string(temp_file.path()).unwrap();
     let value: serde_json::Value = serde_json::from_str(&file_content).unwrap();
 
     assert_eq!(value["metadata"]["name"].as_str().unwrap(), "json-workload");

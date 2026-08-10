@@ -10,7 +10,7 @@ keywords = ["gpu", "drm", "vfio", "hardware", "driver"]
 categories = ["hardware-support", "os::linux-apis"]
 
 [dependencies]
-bytemuck = { version = "1", features = ["derive"] }
+bytemuck = { workspace = true }
 object = { version = "0.39.1", features = ["read", "write"] }
 ruzstd = { workspace = true }
 toml = "0.8"

@@ -21,7 +21,7 @@ use tempfile::TempDir;
 // Helper to create a test manifest file
 async fn create_test_manifest(dir: &TempDir, name: &str, content: &str) -> Result<PathBuf> {
     let manifest_path = dir.path().join(format!("{name}.yaml"));
-    tokio::fs::write(&manifest_path, content).await?;
+    std::fs::write(&manifest_path, content)?;
     Ok(manifest_path)
 }
 

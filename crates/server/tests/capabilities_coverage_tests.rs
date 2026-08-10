@@ -225,17 +225,15 @@ async fn find_peer_with_in_ignores_nonmatching_peer_files() {
     let dir = TempDir::new().expect("temp");
     let peer_a = sample_peer("a", vec!["other".to_string()]);
     let peer_b = sample_peer("b", vec!["gpu-nvidia-rtx".to_string()]);
-    tokio::fs::write(
+    std::fs::write(
         dir.path().join("a.json"),
         serde_json::to_string_pretty(&peer_a).expect("json"),
     )
-    .await
     .expect("write");
-    tokio::fs::write(
+    std::fs::write(
         dir.path().join("b.json"),
         serde_json::to_string_pretty(&peer_b).expect("json"),
     )
-    .await
     .expect("write");
     let found = PrimalCapabilities::find_peer_with_in("nvidia", dir.path())
         .await
@@ -246,15 +244,13 @@ async fn find_peer_with_in_ignores_nonmatching_peer_files() {
 #[tokio::test]
 async fn find_peer_with_in_skips_non_json_then_matches() {
     let dir = TempDir::new().expect("temp");
-    tokio::fs::write(dir.path().join("readme.md"), "# x")
-        .await
+    std::fs::write(dir.path().join("readme.md"), "# x")
         .expect("write");
     let peer = sample_peer("p1", vec!["compute".to_string()]);
-    tokio::fs::write(
+    std::fs::write(
         dir.path().join("p1.json"),
         serde_json::to_string_pretty(&peer).expect("json"),
     )
-    .await
     .expect("write");
     let found = PrimalCapabilities::find_peer_with_in("compute", dir.path())
         .await
@@ -266,11 +262,10 @@ async fn find_peer_with_in_skips_non_json_then_matches() {
 async fn find_peer_with_in_errors_when_no_peer_matches() {
     let dir = TempDir::new().expect("temp");
     let peer = sample_peer("z", vec!["only-this".to_string()]);
-    tokio::fs::write(
+    std::fs::write(
         dir.path().join("z.json"),
         serde_json::to_string_pretty(&peer).expect("json"),
     )
-    .await
     .expect("write");
     let err = PrimalCapabilities::find_peer_with_in("missing-cap", dir.path())
         .await
@@ -282,11 +277,10 @@ async fn find_peer_with_in_errors_when_no_peer_matches() {
 async fn find_peer_with_in_errors_when_capabilities_empty() {
     let dir = TempDir::new().expect("temp");
     let peer = sample_peer("empty-caps", vec![]);
-    tokio::fs::write(
+    std::fs::write(
         dir.path().join("empty-caps.json"),
         serde_json::to_string_pretty(&peer).expect("json"),
     )
-    .await
     .expect("write");
     let err = PrimalCapabilities::find_peer_with_in("compute", dir.path())
         .await
@@ -297,8 +291,7 @@ async fn find_peer_with_in_errors_when_capabilities_empty() {
 #[tokio::test]
 async fn find_peer_with_in_errors_on_invalid_json() {
     let dir = TempDir::new().expect("temp");
-    tokio::fs::write(dir.path().join("bad.json"), "{ not json }")
-        .await
+    std::fs::write(dir.path().join("bad.json"), "{ not json }")
         .expect("write");
     let err = PrimalCapabilities::find_peer_with_in("compute", dir.path())
         .await
@@ -329,14 +322,12 @@ async fn find_all_peers_in_empty_directory_returns_empty_vec() {
 async fn find_all_peers_in_collects_valid_json_and_skips_invalid() {
     let dir = TempDir::new().expect("temp");
     let good = sample_peer("good", vec!["compute".to_string()]);
-    tokio::fs::write(
+    std::fs::write(
         dir.path().join("good.json"),
         serde_json::to_string_pretty(&good).expect("json"),
     )
-    .await
     .expect("write");
-    tokio::fs::write(dir.path().join("bad.json"), "{")
-        .await
+    std::fs::write(dir.path().join("bad.json"), "{")
         .expect("write");
     let peers = PrimalCapabilities::find_all_peers_in(dir.path())
         .await
@@ -350,11 +341,9 @@ async fn find_all_peers_in_duplicate_files_same_primal_id_appear_twice() {
     let dir = TempDir::new().expect("temp");
     let peer = sample_peer("dup-id", vec!["compute".to_string()]);
     let json = serde_json::to_string_pretty(&peer).expect("json");
-    tokio::fs::write(dir.path().join("one.json"), &json)
-        .await
+    std::fs::write(dir.path().join("one.json"), &json)
         .expect("write");
-    tokio::fs::write(dir.path().join("two.json"), &json)
-        .await
+    std::fs::write(dir.path().join("two.json"), &json)
         .expect("write");
     let peers = PrimalCapabilities::find_all_peers_in(dir.path())
         .await
@@ -380,11 +369,9 @@ async fn announce_writes_canonical_and_compat_json_files() {
         let eco_root = discovery_base.parent().expect("ecoPrimals root");
         assert!(discovery_base.join("announce-dual.json").exists());
         assert!(eco_root.join("announce-dual.json").exists());
-        let a = tokio::fs::read_to_string(discovery_base.join("announce-dual.json"))
-            .await
+        let a = std::fs::read_to_string(discovery_base.join("announce-dual.json"))
             .expect("read");
-        let b = tokio::fs::read_to_string(eco_root.join("announce-dual.json"))
-            .await
+        let b = std::fs::read_to_string(eco_root.join("announce-dual.json"))
             .expect("read");
         assert_eq!(a, b);
     })
@@ -418,11 +405,10 @@ async fn cleanup_succeeds_when_announcement_files_absent() {
 async fn find_peer_with_uses_global_discovery_directory_under_xdg() {
     with_temp_discovery(|discovery_base| async move {
         let peer = sample_peer("global-find", vec!["science.gpu.dispatch".to_string()]);
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("global-find.json"),
             serde_json::to_string_pretty(&peer).expect("json"),
         )
-        .await
         .expect("write");
         let found = PrimalCapabilities::find_peer_with("science.gpu")
             .await
@@ -436,11 +422,10 @@ async fn find_peer_with_uses_global_discovery_directory_under_xdg() {
 async fn find_all_peers_global_collects_from_xdg_discovery() {
     with_temp_discovery(|discovery_base| async move {
         let p = sample_peer("all-global", vec!["compute".to_string()]);
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("all-global.json"),
             serde_json::to_string_pretty(&p).expect("json"),
         )
-        .await
         .expect("write");
         let peers = PrimalCapabilities::find_all_peers().await.expect("peers");
         assert!(peers.iter().any(|x| x.primal_id == "all-global"));

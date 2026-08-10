@@ -24,7 +24,7 @@ toadstool-core = { path = "../../toadstool-core" }
 
 # GPU backends (all optional, capability-based discovery)
 wgpu = { workspace = true, optional = true }
-bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"] }
+bytemuck = { workspace = true }
 
 # For CPU parallelism and discovery
 rayon = { version = "1.8", optional = true }

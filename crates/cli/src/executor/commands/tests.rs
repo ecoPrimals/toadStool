@@ -5,7 +5,7 @@ use super::super::*;
 use crate::CliContext;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 
 async fn create_valid_manifest_file(name: &str) -> (PathBuf, TempDir) {
     let temp_dir = TempDir::new().expect("temp dir");
@@ -62,7 +62,6 @@ volumes = []
     );
 
     fs::write(&manifest_path, content)
-        .await
         .expect("write manifest");
     (manifest_path, temp_dir)
 }
@@ -274,9 +273,9 @@ async fn test_show_logs_biome_service() {
         .join("logs-biome-svc")
         .join("test-primal.log");
     if let Some(parent) = log_path.parent() {
-        let _ = fs::create_dir_all(parent).await;
+        let _ = fs::create_dir_all(parent);
     }
-    let _ = fs::write(&log_path, "test log line\n").await;
+    let _ = fs::write(&log_path, "test log line\n");
 
     let result = executor
         .show_logs("logs-biome-svc.test-primal", false, 10, false, None, None)

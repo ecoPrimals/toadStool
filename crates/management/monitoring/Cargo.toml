@@ -19,7 +19,6 @@ thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
 serde = { workspace = true }
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-hw-safe = { path = "../../core/hw-safe", optional = true }
@@ -33,7 +32,6 @@ runtime = [
     "dep:toadstool-hw-safe",
     "toadstool/runtime",
     "toadstool-common/runtime",
-    "uuid/v4",
 ]
 
 [dev-dependencies]

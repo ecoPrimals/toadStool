@@ -81,13 +81,13 @@ async fn create_manifest_file(name: &str, content: &str) -> Result<PathBuf> {
     let unique_id = Uuid::new_v4();
     let path = temp_dir.join(format!("manifest-{name}-{unique_id}.toml"));
 
-    tokio::fs::write(&path, content).await?;
+    std::fs::write(&path, content)?;
     Ok(path)
 }
 
 async fn cleanup_file(path: &PathBuf) -> Result<()> {
     if path.exists() {
-        tokio::fs::remove_file(path).await?;
+        std::fs::remove_file(path)?;
     }
     Ok(())
 }

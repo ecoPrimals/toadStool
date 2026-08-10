@@ -30,8 +30,7 @@ async fn test_run_biome_with_invalid_manifest_fails() {
     // Create invalid manifest
     let temp_dir = std::env::temp_dir();
     let manifest_path = temp_dir.join(format!("invalid-{}.toml", uuid::Uuid::new_v4()));
-    tokio::fs::write(&manifest_path, "invalid toml content {{{")
-        .await
+    std::fs::write(&manifest_path, "invalid toml content {{{")
         .unwrap();
 
     let opts = run_biome_opts(
@@ -46,7 +45,7 @@ async fn test_run_biome_with_invalid_manifest_fails() {
     let result = executor.run_biome(&ctx, opts).await;
 
     // Cleanup
-    let _ = tokio::fs::remove_file(&manifest_path).await;
+    let _ = std::fs::remove_file(&manifest_path);
 
     assert!(result.is_err(), "Should fail with invalid manifest");
 }

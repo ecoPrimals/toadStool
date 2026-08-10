@@ -23,7 +23,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 use uuid::Uuid;
 
 use toadstool_cli::executor::*;
@@ -323,11 +323,11 @@ workloads:
     args: ["Hello", "World"]
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
     assert!(manifest_path.exists());
 
     // Verify content
-    let content = fs::read_to_string(&manifest_path).await.unwrap();
+    let content = fs::read_to_string(&manifest_path).unwrap();
     assert!(content.contains("test-biome"));
 }
 
@@ -348,9 +348,9 @@ resources:
 workloads: []
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
-    let content = fs::read_to_string(&manifest_path).await.unwrap();
+    let content = fs::read_to_string(&manifest_path).unwrap();
     assert!(content.contains("minimal"));
     assert!(content.contains("workloads: []"));
 }
@@ -376,9 +376,9 @@ workloads:
     type: Python
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
-    let content = fs::read_to_string(&manifest_path).await.unwrap();
+    let content = fs::read_to_string(&manifest_path).unwrap();
     assert!(content.contains("service1"));
     assert!(content.contains("service2"));
 }
@@ -404,9 +404,9 @@ dependencies:
 workloads: []
 "#;
 
-    fs::write(&manifest_path, yaml_content).await.unwrap();
+    fs::write(&manifest_path, yaml_content).unwrap();
 
-    let content = fs::read_to_string(&manifest_path).await.unwrap();
+    let content = fs::read_to_string(&manifest_path).unwrap();
     assert!(content.contains("postgres"));
     assert!(content.contains("redis"));
 }
@@ -428,9 +428,9 @@ async fn test_biome_manifest_json_format() {
   "workloads": []
 }"#;
 
-    fs::write(&manifest_path, json_content).await.unwrap();
+    fs::write(&manifest_path, json_content).unwrap();
 
-    let content = fs::read_to_string(&manifest_path).await.unwrap();
+    let content = fs::read_to_string(&manifest_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
     assert_eq!(parsed["metadata"]["name"], "json-biome");
 }

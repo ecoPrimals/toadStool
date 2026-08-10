@@ -195,7 +195,7 @@ mod tests {
 
         let toadstool_json = config_path.join("toadstool.json");
         assert!(toadstool_json.exists(), "toadstool.json should exist");
-        let content = tokio::fs::read_to_string(&toadstool_json).await.unwrap();
+        let content = std::fs::read_to_string(&toadstool_json).unwrap();
         assert!(
             content.contains("toadstool") || content.contains("app") || content.contains("runtime")
         );
@@ -222,16 +222,13 @@ mod tests {
         let config = ToadStoolConfig::default();
         manager.apply_configuration(&config).await.unwrap();
 
-        let toadstool_content = tokio::fs::read_to_string(config_path.join("toadstool.json"))
-            .await
-            .unwrap();
+        let toadstool_content =
+            std::fs::read_to_string(config_path.join("toadstool.json")).unwrap();
         let _parsed: serde_json::Value =
             serde_json::from_str(&toadstool_content).expect("toadstool.json should be valid JSON");
 
         let native_content =
-            tokio::fs::read_to_string(config_path.join("runtimes").join("native.json"))
-                .await
-                .unwrap();
+            std::fs::read_to_string(config_path.join("runtimes").join("native.json")).unwrap();
         let native_json: serde_json::Value =
             serde_json::from_str(&native_content).expect("native.json should be valid JSON");
         assert_eq!(native_json["enabled"], true);

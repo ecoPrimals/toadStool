@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 
 // We can't easily test BiomeExecutor::new() without full infrastructure,
 // but we CAN test the helper logic that's used within executor_impl.rs
@@ -167,7 +167,6 @@ async fn test_log_directory_creation_logic() {
 
     // Create directory
     fs::create_dir_all(&log_dir)
-        .await
         .expect("Failed to create log dir");
 
     // Verify it exists
@@ -177,7 +176,6 @@ async fn test_log_directory_creation_logic() {
     // Test nested structure
     let service_log = log_dir.join("service.log");
     fs::write(&service_log, "test log content")
-        .await
         .expect("Failed to write log");
 
     assert!(service_log.exists());
@@ -190,7 +188,6 @@ async fn test_log_file_path_generation() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let log_dir = temp_dir.path().join("logs/test-biome");
     fs::create_dir_all(&log_dir)
-        .await
         .expect("Failed to create log dir");
 
     // Test different log file types
@@ -200,7 +197,6 @@ async fn test_log_file_path_generation() {
 
     for log_path in [&primal_log, &service_log, &system_log] {
         fs::write(log_path, "log content")
-            .await
             .expect("Failed to write log");
         assert!(log_path.exists());
     }

@@ -23,7 +23,7 @@ ruzstd = { workspace = true }  # Pure Rust Zstd implementation (no C dependencie
 # (crypto.encrypt / crypto.decrypt over JSON-RPC Unix socket).
 # blake3 kept for local tamper-evident audit chain hashing (latency-critical,
 # no network round-trip; pure Rust mode for ecoBin cross-compilation).
-blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
+blake3 = { workspace = true }
 
 # Serialization
 serde_json = { workspace = true }

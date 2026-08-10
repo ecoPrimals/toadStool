@@ -104,7 +104,7 @@ mod tests {
         if docker_config_dir.exists() {
             let daemon_json = docker_config_dir.join("daemon.json");
             assert!(daemon_json.exists());
-            let content = tokio::fs::read_to_string(&daemon_json).await.unwrap();
+            let content = std::fs::read_to_string(&daemon_json).unwrap();
             assert!(content.contains("runc"));
             assert!(content.contains("overlay2"));
         }

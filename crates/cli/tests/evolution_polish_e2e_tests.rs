@@ -50,12 +50,12 @@ mode = "bridge"
 
     let temp_dir = std::env::temp_dir();
     let path = temp_dir.join(format!("evolution-{name}.toml"));
-    tokio::fs::write(&path, content).await?;
+    std::fs::write(&path, content)?;
     Ok(path)
 }
 
 async fn cleanup_manifest(path: &PathBuf) {
-    let _ = tokio::fs::remove_file(path).await;
+    let _ = std::fs::remove_file(path);
 }
 
 // ============================================================================

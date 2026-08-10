@@ -8,12 +8,14 @@ with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
 
-**S379 (strandGate Last-Mile Wiring + Archaic Excision — Aug 10, 2026)**: WASM workload
-conversion wired in `conversion.rs` (Wasm + Container variants). Runtime hint inference
-replaces hardcoded `RuntimeType::Native`. Vestigial `executor/display.rs` (~260 LOC) and
-`cli/ecosystem/discovery.rs` (~475 LOC) excised. `component-model` empty feature removed.
-`tail_log_file` migrated from `tokio::fs` to `std::io`. Pre-existing `toadstool-core` test
-issues fixed (WorkloadSpec/WorkloadType re-exports, tempfile dev-dep).
+**S379 (strandGate G72 Dependency Pandemic Tier 1 — Aug 10, 2026)**: G72 exemplar sprint.
+tokio `["full"]` trimmed from examples. tokio `signal` scoped to CLI+server only (workspace
+7→6 features). tokio::fs fully eliminated from workspace (28 files migrated to std::fs). 7
+dead deps removed (http-body-util, criterion, uuid, env_logger, test-log, tempfile). 6 deps
+promoted to workspace (bytemuck aligned 1→1.14, zeroize, wasmi, blake3, anyhow, mdns-sd).
+WASM workload conversion wired. Runtime hint inference. ~1,750 LOC excised (display.rs,
+discovery.rs, 3 stale test files). component-model feature removed. Doc metrics corrected
+(test count, unsafe count, forbid count, ffi_loader refs).
 
 **S378 (strandGate Tokio Vestigial Segmentation — Aug 10, 2026)**: ~35k LOC of
 vestigial code feature-gated behind non-default features (`legacy-cloud`,

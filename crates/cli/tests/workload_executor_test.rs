@@ -15,7 +15,7 @@
 
 use std::collections::HashMap;
 use tempfile::TempDir;
-use tokio::fs;
+use std::fs;
 
 use toadstool_cli::executor::workload::*;
 
@@ -191,13 +191,13 @@ command = "/bin/echo"
 args = ["Hello", "World"]
 "#;
 
-    fs::write(&workload_path, toml_content).await.unwrap();
+    fs::write(&workload_path, toml_content).unwrap();
 
     // Verify file was created
     assert!(workload_path.exists());
 
     // Verify content can be read
-    let content = fs::read_to_string(&workload_path).await.unwrap();
+    let content = fs::read_to_string(&workload_path).unwrap();
     assert!(content.contains("echo-test"));
 }
 
@@ -215,9 +215,9 @@ type = "python"
 script = "print('Hello from Python')"
 "#;
 
-    fs::write(&workload_path, toml_content).await.unwrap();
+    fs::write(&workload_path, toml_content).unwrap();
 
-    let content = fs::read_to_string(&workload_path).await.unwrap();
+    let content = fs::read_to_string(&workload_path).unwrap();
     assert!(content.contains("python-test"));
     assert!(content.contains("Hello from Python"));
 }
@@ -238,9 +238,9 @@ async fn test_parse_json_workload() {
   }
 }"#;
 
-    fs::write(&workload_path, json_content).await.unwrap();
+    fs::write(&workload_path, json_content).unwrap();
 
-    let content = fs::read_to_string(&workload_path).await.unwrap();
+    let content = fs::read_to_string(&workload_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
     assert_eq!(parsed["metadata"]["name"], "json-test");
 }
@@ -264,9 +264,9 @@ memory_mb = 1024
 gpu = true
 "#;
 
-    fs::write(&workload_path, toml_content).await.unwrap();
+    fs::write(&workload_path, toml_content).unwrap();
 
-    let content = fs::read_to_string(&workload_path).await.unwrap();
+    let content = fs::read_to_string(&workload_path).unwrap();
     assert!(content.contains("cpu_cores"));
     assert!(content.contains("1024"));
 }
@@ -288,9 +288,9 @@ command = "/bin/secure"
 isolation = "strict"
 "#;
 
-    fs::write(&workload_path, toml_content).await.unwrap();
+    fs::write(&workload_path, toml_content).unwrap();
 
-    let content = fs::read_to_string(&workload_path).await.unwrap();
+    let content = fs::read_to_string(&workload_path).unwrap();
     assert!(content.contains("isolation"));
     assert!(content.contains("strict"));
 }

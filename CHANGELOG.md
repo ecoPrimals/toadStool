@@ -7,16 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Aug 10, 2026 (Sessions 43-379+)
 
-### Session S379 (Aug 10, 2026) — Last-Mile Wiring + Archaic Code Excision
+### Session S379 (Aug 10, 2026) — G72 Dependency Pandemic Tier 1 + Last-Mile Wiring
 
-- **WASM workload conversion wired** — `conversion.rs` now handles `ExecutionSpec::Wasm` and `ExecutionSpec::Container` variants (was: catch-all reject). WASM module path → `WasmModuleSource::File`, env merging follows Native/Python pattern.
-- **Runtime hint inference** — `start_primal` and `start_service` now call `infer_runtime_type(&workload)` instead of hardcoding `RuntimeType::Native`. WASM workloads get correct `RuntimeType::Wasm` hint.
-- **Vestigial `display.rs` excised** — `executor/display.rs` (~260 LOC) deleted. Was `#[cfg(test)]`-only duplicate of `display_ops.rs` `DisplayManager`.
-- **`component-model` feature excised** — Empty feature flag removed from `runtime/wasm`. Test stubs collapsed with `#[ignore]` annotations.
-- **Discovery stack deduped** — `cli/ecosystem/discovery.rs` (~475 LOC) deleted. Duplicate env/config/mDNS stack; only `verify_service()` retained (moved to `integrator_impl.rs` as private helper). `discovery_coverage_tests.rs` deleted.
-- **`tokio::fs` → `std::io`** — `tail_log_file()` migrated from `tokio::fs::File` + async `BufReader` to `std::io::BufReader` with `tokio::time::sleep` polling. No `tokio/fs` feature needed.
-- **Pre-existing `toadstool-core` test fix** — `WorkloadSpec` and `WorkloadType` re-exported from crate root. Dead `workload_tests` module removed. Missing `tempfile` dev-dependency added.
-- **All tests pass** — workspace `cargo check` 0 errors, `cargo test --workspace --lib` all pass.
+- **G72 Dependency Pandemic Tier 1** — toadStool as exemplar. 664 Cargo.toml ecosystem-wide, 3-tier excision plan. Stadial shift: dependencies accumulated during Aug 2025 stadial shed as compositions close gaps.
+- **tokio `["full"]` trimmed** — `examples/Cargo.toml` was pulling all 15+ tokio features; now inherits workspace 6. Example `tokio::fs` → `std::fs`.
+- **tokio `signal` feature scoped** — removed from workspace tokio definition (7→6 features). Only `toadstool-cli` and `toadstool-server` add `signal` (daemon SIGTERM/SIGINT). ~30 library crates no longer compile signal handlers.
+- **tokio::fs fully eliminated from workspace** — 28 files migrated from `tokio::fs` to `std::fs` (latent dependencies exposed by `["full"]` removal). Zero `tokio::fs` references remain.
+- **7 dead dependencies removed** — `http-body-util` (cli+container dev), `criterion` (server dev), `uuid` (monitoring), `env_logger`+`test-log` (sandbox dev), `tempfile` (integration-tests dev).
+- **6 deps promoted to workspace** — `bytemuck` (version aligned 1→1.14), `zeroize`, `wasmi`, `blake3`, `anyhow`, `mdns-sd`. `bytes` aligned to workspace in `toadstool-core`.
+- **WASM workload conversion wired** — `conversion.rs` now handles `ExecutionSpec::Wasm` and `ExecutionSpec::Container` variants. WASM module path → `WasmModuleSource::File`, env merging follows Native/Python pattern.
+- **Runtime hint inference** — `start_primal` and `start_service` call `infer_runtime_type(&workload)` instead of hardcoding `RuntimeType::Native`.
+- **~1,750 LOC excised** — `executor/display.rs` (~260), `ecosystem/discovery.rs` (~475), `discovery_coverage_tests.rs`, `ecosystem_discovery_tests.rs` (324), `executor_modules_unit_tests.rs` (531). Dead test-only duplicates and mock stubs.
+- **`component-model` feature excised** — Empty feature flag removed from `runtime/wasm`.
+- **Doc metrics corrected** — test count 9,008→8,447, unsafe blocks 138→160, forbid crates 41→39. `ffi_loader` removed from containment lists (deleted S378).
+- **All tests pass** — 8,447 lib tests, 0 failures. Workspace `cargo check` clean.
 
 ### Session S378 (Aug 10, 2026) — Tokio Vestigial Segmentation: ~35k LOC Feature-Gated
 

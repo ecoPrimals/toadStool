@@ -110,14 +110,14 @@ pub fn create_test_manifest_content() -> String {
 
 /// Create test manifest file (unique per test to avoid conflicts)
 pub async fn create_test_manifest_file(test_name: &str) -> Result<PathBuf> {
-    use tokio::fs;
+    use std::fs;
     use uuid::Uuid;
 
     let temp_dir = std::env::temp_dir();
     let unique_id = Uuid::new_v4();
     let manifest_path = temp_dir.join(format!("test-{}-{}.toml", test_name, unique_id));
 
-    fs::write(&manifest_path, create_test_manifest_content()).await?;
+    fs::write(&manifest_path, create_test_manifest_content())?;
 
     Ok(manifest_path)
 }
@@ -125,7 +125,7 @@ pub async fn create_test_manifest_file(test_name: &str) -> Result<PathBuf> {
 /// Cleanup test manifest (async drop)
 pub async fn cleanup_test_manifest(path: &PathBuf) -> Result<()> {
     if path.exists() {
-        tokio::fs::remove_file(path).await?;
+        std::fs::remove_file(path)?;
     }
     Ok(())
 }
