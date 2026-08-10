@@ -12,7 +12,7 @@ impl ServiceManager {
         &self,
         capability: &Capability,
     ) -> Vec<crate::ecosystem::types::ServiceInstance> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
         services
             .values()
             .filter(|s| s.has_capability(capability))
@@ -22,8 +22,8 @@ impl ServiceManager {
 
     /// Check if a capability is available
     pub async fn is_capability_available(&self, capability: &Capability) -> bool {
-        let services = self.services.read().await;
-        let statuses = self.statuses.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
+        let statuses = self.statuses.read().unwrap_or_else(|e| e.into_inner());
 
         services.values().any(|service| {
             service.has_capability(capability)
@@ -45,8 +45,7 @@ impl ServiceManager {
     ) -> ToadStoolResult<Vec<Capability>> {
         let service = self
             .services
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .get(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?
             .capabilities

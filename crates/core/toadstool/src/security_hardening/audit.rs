@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -90,7 +90,7 @@ impl SecurityAuditLogger {
 
     /// Log security event
     pub async fn log_event(&self, event: SecurityAuditEvent) {
-        self.events.write().await.push(event.clone());
+        self.events.write().unwrap_or_else(|e| e.into_inner()).push(event.clone());
 
         // Log to tracing
         match event.severity {
@@ -106,7 +106,7 @@ impl SecurityAuditLogger {
 
     /// Get recent security events
     pub async fn get_recent_events(&self, limit: usize) -> Vec<SecurityAuditEvent> {
-        let events = self.events.read().await;
+        let events = self.events.read().unwrap_or_else(|e| e.into_inner());
         events.iter().rev().take(limit).cloned().collect()
     }
 }

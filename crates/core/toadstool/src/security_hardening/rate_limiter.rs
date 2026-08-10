@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{info, warn};
 
 use crate::ToadStoolResult;
@@ -59,7 +59,7 @@ impl RateLimiter {
         reason = "drop order is intentional"
     )] // client_data borrows from lock for many operations
     pub async fn check_rate_limit(&self, client_id: &str) -> ToadStoolResult<bool> {
-        let mut clients = self.client_requests.write().await;
+        let mut clients = self.client_requests.write().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         let client_data = clients
@@ -131,7 +131,7 @@ impl RateLimiter {
     pub async fn ban_client(&self, client_id: &str, duration: Duration) {
         let now = Instant::now();
 
-        let mut clients = self.client_requests.write().await;
+        let mut clients = self.client_requests.write().unwrap_or_else(|e| e.into_inner());
         let client_data = clients
             .entry(client_id.to_string())
             .or_insert_with(|| ClientRateData {

@@ -86,7 +86,7 @@ async fn demo_platform_status(platform: &UniversalComputePlatform) -> ToadStoolR
     println!("  • Max concurrent jobs: {}", config.max_concurrent_jobs);
 
     // Get available runtimes
-    let runtimes = platform.get_available_runtimes().await;
+    let runtimes = platform.get_available_runtimes();
     println!("🏃 Available runtimes: {runtimes:?}");
 
     Ok(())
@@ -107,8 +107,8 @@ async fn demo_capability_discovery(platform: &UniversalComputePlatform) -> ToadS
 
     // Discover WASM capabilities
     let wasm_providers = platform
-        .find_primals_by_capability(&PrimalCapability::WasmExecution { wasi_support: true })
-        .await;
+        .find_primals_by_capability(&PrimalCapability::WasmExecution { wasi_support: true });
+        ;
     println!("🕸️  WASM execution providers: {}", wasm_providers.len());
 
     // Discover container capabilities

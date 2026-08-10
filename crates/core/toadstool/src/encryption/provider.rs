@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
@@ -186,11 +186,10 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
     /// # Errors
     ///
     /// Returns error if the provider ID is already registered.
-    pub async fn register(&self, provider: Arc<P>) -> ToadStoolResult<()> {
+    pub fn register(&self, provider: Arc<P>) -> ToadStoolResult<()> {
         let provider_id = provider.provider_id().to_string();
-        let mut providers = self.providers.write().await;
+        let mut providers = self.providers.write().unwrap_or_else(|e| e.into_inner());
 
-        // Check if already registered
         if providers.contains_key(&provider_id) {
             return Err(ToadStoolError::configuration(format!(
                 "Provider {provider_id} already registered"
@@ -207,10 +206,9 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
     /// # Errors
     ///
     /// Returns error if `provider_id` is not registered.
-    pub async fn unregister(&self, provider_id: &str) -> ToadStoolResult<()> {
+    pub fn unregister(&self, provider_id: &str) -> ToadStoolResult<()> {
         self.providers
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .remove(provider_id)
             .ok_or_else(|| {
                 ToadStoolError::not_found(format!("Provider {provider_id} not found"))
@@ -225,15 +223,13 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
     /// # Errors
     ///
     /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
-    pub async fn find_provider(
+    pub fn find_provider(
         &self,
         capability: &CryptoCapability,
     ) -> ToadStoolResult<Option<Arc<P>>> {
-        // Find all matching providers
         let mut matches: Vec<(u32, Arc<P>)> = self
             .providers
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|p| p.capabilities().matches(capability))
             .map(|p| {
@@ -246,10 +242,8 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
             return Ok(None);
         }
 
-        // Sort by score (best first)
         matches.sort_by_key(|item| std::cmp::Reverse(item.0));
 
-        // Return best match
         Ok(Some(matches[0].1.clone()))
     }
 
@@ -258,14 +252,13 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
     /// # Errors
     ///
     /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
-    pub async fn find_all_providers(
+    pub fn find_all_providers(
         &self,
         capability: &CryptoCapability,
     ) -> ToadStoolResult<Vec<Arc<P>>> {
         let matches: Vec<Arc<P>> = self
             .providers
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|p| p.capabilities().matches(capability))
             .map(Arc::clone)
@@ -279,26 +272,24 @@ impl<P: CryptoProvider> CryptoProviderRegistry<P> {
     /// # Errors
     ///
     /// Returns error if `provider_id` is not registered.
-    pub async fn get_provider(&self, provider_id: &str) -> ToadStoolResult<Arc<P>> {
+    pub fn get_provider(&self, provider_id: &str) -> ToadStoolResult<Arc<P>> {
         self.providers
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .get(provider_id)
             .map(Arc::clone)
             .ok_or_else(|| ToadStoolError::not_found(format!("Provider {provider_id} not found")))
     }
 
     /// List all registered providers
-    pub async fn list_providers(&self) -> Vec<String> {
-        self.providers.read().await.keys().cloned().collect()
+    pub fn list_providers(&self) -> Vec<String> {
+        self.providers.read().unwrap_or_else(|e| e.into_inner()).keys().cloned().collect()
     }
 
     /// Check health of all providers
     pub async fn health_check_all(&self) -> HashMap<String, ProviderHealth> {
         let to_check: Vec<(String, Arc<P>)> = self
             .providers
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .iter()
             .map(|(id, p)| (id.clone(), Arc::clone(p)))
             .collect();

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -117,7 +117,7 @@ impl<E: RuntimeEngine> UniversalComputePlatform<E> {
         let context = PrimalContext {
             user_id: "system".to_string(),
             device_id: defaults::network::LOCALHOST.to_string(),
-            session_id: Uuid::new_v4().to_string(),
+            session_id: crate::generate_uuid().to_string(),
             network_location: NetworkLocation {
                 ip_address: defaults::network::LOCALHOST.to_string(),
                 subnet: None,
@@ -132,8 +132,7 @@ impl<E: RuntimeEngine> UniversalComputePlatform<E> {
         self.primal_registry
             .register_primal(Arc::new(UniversalPrimalProviderDispatch::ToadStool(
                 inner.clone(),
-            )))
-            .await?;
+            )))?;
         self.toadstool_provider = Some(Arc::new(inner));
 
         info!("ToadStool registered as universal primal");
@@ -157,29 +156,28 @@ impl<E: RuntimeEngine> UniversalComputePlatform<E> {
     /// # Errors
     ///
     /// This function currently always returns `Ok`.
-    pub async fn register_runtime_engine(
+    pub fn register_runtime_engine(
         &self,
         runtime_type: RuntimeType,
         engine: Arc<E>,
     ) -> ToadStoolResult<()> {
         self.runtime_engines
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(runtime_type, engine);
         Ok(())
     }
 
     /// Get available runtime types
-    pub async fn get_available_runtimes(&self) -> Vec<RuntimeType> {
-        self.runtime_engines.read().await.keys().cloned().collect()
+    pub fn get_available_runtimes(&self) -> Vec<RuntimeType> {
+        self.runtime_engines.read().unwrap_or_else(|e| e.into_inner()).keys().cloned().collect()
     }
 
     /// Find primals by capability
-    pub async fn find_primals_by_capability(
+    pub fn find_primals_by_capability(
         &self,
         capability: &PrimalCapability,
     ) -> Vec<Arc<UniversalPrimalProviderDispatch>> {
-        self.primal_registry.find_by_capability(capability).await
+        self.primal_registry.find_by_capability(capability)
     }
 
     /// Route primal request
@@ -255,8 +253,7 @@ pub async fn init_with_runtime_engines<E: RuntimeEngine>(
 
     for (runtime_type, engine) in engines {
         platform
-            .register_runtime_engine(runtime_type, engine)
-            .await?;
+            .register_runtime_engine(runtime_type, engine)?;
     }
 
     Ok(platform)
@@ -377,7 +374,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_available_runtimes_empty_initially() {
         let platform = UniversalComputePlatform::new().await.unwrap();
-        let runtimes = platform.get_available_runtimes().await;
+        let runtimes = platform.get_available_runtimes();
         // May be empty or pre-seeded depending on config, but must not panic.
         let _ = runtimes;
     }
@@ -389,8 +386,7 @@ mod tests {
         let results = platform
             .find_primals_by_capability(&PrimalCapability::NativeExecution {
                 architectures: vec!["x86_64".to_string()],
-            })
-            .await;
+            });
         assert!(results.is_empty());
     }
 
@@ -406,7 +402,7 @@ mod tests {
         let platform = init_with_runtime_engines::<StubRuntimeEngine>(vec![])
             .await
             .unwrap();
-        let runtimes = platform.get_available_runtimes().await;
+        let runtimes = platform.get_available_runtimes();
         let _ = runtimes; // Empty or default-seeded — just verify no panic.
     }
 }

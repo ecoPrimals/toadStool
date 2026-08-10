@@ -22,31 +22,42 @@
 //! rather than arbitrary line count limits.
 
 // Module declarations
+#[cfg(feature = "runtime")]
 pub mod async_ops;
+#[cfg(feature = "runtime")]
 pub mod caching;
 pub mod memory;
 pub mod monitoring;
 pub mod types;
 
 // Re-exports for public API
+#[cfg(feature = "runtime")]
 pub use async_ops::AsyncBatcher;
+#[cfg(feature = "runtime")]
 pub use caching::IntelligentCache;
 pub use memory::{MemoryPool, PooledObject};
 pub use monitoring::OptimizedResourceMonitor;
 pub use types::*;
 
+#[cfg(feature = "runtime")]
 use std::collections::HashMap;
+#[cfg(feature = "runtime")]
 use std::hash::Hash;
+#[cfg(feature = "runtime")]
 use std::sync::Arc;
+#[cfg(feature = "runtime")]
 use tokio::sync::RwLock;
+#[cfg(feature = "runtime")]
 use tracing::info;
 
+#[cfg(feature = "runtime")]
 use crate::{ToadStoolError, ToadStoolResult};
 
 /// Performance hardening manager
 ///
 /// Central manager for all performance hardening features, providing
 /// unified configuration and lifecycle management.
+#[cfg(feature = "runtime")]
 pub struct PerformanceHardeningManager {
     /// Configuration
     config: PerformanceHardeningConfig,
@@ -58,6 +69,7 @@ pub struct PerformanceHardeningManager {
     caches: Arc<RwLock<HashMap<String, Arc<dyn std::any::Any + Send + Sync>>>>,
 }
 
+#[cfg(feature = "runtime")]
 impl PerformanceHardeningManager {
     /// Create new performance hardening manager
     #[must_use]

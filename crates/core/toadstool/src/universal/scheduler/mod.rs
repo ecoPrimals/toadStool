@@ -22,7 +22,7 @@ mod tests;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 use uuid::Uuid;
 
@@ -102,17 +102,16 @@ where
     /// Register a runtime engine for local execution
     ///
     /// Allows adding runtime engines after scheduler creation.
-    pub async fn register_runtime_engine(&self, runtime_type: RuntimeType, engine: Arc<E>) {
+    pub fn register_runtime_engine(&self, runtime_type: RuntimeType, engine: Arc<E>) {
         info!("Registering runtime engine: {:?}", runtime_type);
         self.runtime_engines
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(runtime_type, engine);
     }
 
     /// Get available runtime types
-    pub async fn available_runtimes(&self) -> Vec<RuntimeType> {
-        self.runtime_engines.read().await.keys().cloned().collect()
+    pub fn available_runtimes(&self) -> Vec<RuntimeType> {
+        self.runtime_engines.read().unwrap_or_else(|e| e.into_inner()).keys().cloned().collect()
     }
 
     /// Schedule a job
@@ -128,7 +127,7 @@ where
         info!("Scheduling job: {}", job_id);
 
         // Add to active jobs
-        self.active_jobs.write().await.insert(job_id, job.clone());
+        self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job_id, job.clone());
 
         // Allocate resources
         let _allocation = self
@@ -142,7 +141,12 @@ where
                 executable,
                 args,
                 env,
-            } => self.execute_native(executable, args, env).await,
+            } => {
+                #[cfg(feature = "runtime")]
+                { self.execute_native(executable, args, env).await }
+                #[cfg(not(feature = "runtime"))]
+                { let _ = (executable, args, env); Err(crate::ToadStoolError::runtime("native execution requires runtime feature".to_string())) }
+            }
             UniversalJobType::Wasm { module, args, env } => {
                 self.execute_wasm(module, args, env).await
             }
@@ -158,19 +162,19 @@ where
         };
 
         // Remove from active jobs
-        self.active_jobs.write().await.remove(&job_id);
+        self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).remove(&job_id);
 
         result
     }
 
     /// Get active job count
-    pub async fn get_active_job_count(&self) -> usize {
-        self.active_jobs.read().await.len()
+    pub fn get_active_job_count(&self) -> usize {
+        self.active_jobs.read().unwrap_or_else(|e| e.into_inner()).len()
     }
 
     /// Find primals by capability using the registry
-    pub async fn find_primals_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
-        self.primal_registry.find_by_capability(capability).await
+    pub fn find_primals_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
+        self.primal_registry.find_by_capability(capability)
     }
 
     /// Access primal registry (for execution submodule)

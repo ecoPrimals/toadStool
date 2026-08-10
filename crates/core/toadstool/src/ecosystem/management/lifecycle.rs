@@ -3,6 +3,7 @@
 use tracing::info;
 
 use crate::{ToadStoolError, ToadStoolResult};
+#[cfg(feature = "runtime")]
 use toadstool_common::service_discovery::DiscoveredService;
 
 use super::ServiceManager;
@@ -25,12 +26,10 @@ impl ServiceManager {
         };
 
         self.services
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(service_id.clone(), service.clone());
         self.statuses
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(service_id.clone(), initial_status);
 
         info!("✅ Service registered: {}", service_id);
@@ -46,12 +45,11 @@ impl ServiceManager {
         info!("🗑️  Unregistering service: {}", service_id);
 
         self.services
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .remove(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?;
 
-        self.statuses.write().await.remove(service_id);
+        self.statuses.write().unwrap_or_else(|e| e.into_inner()).remove(service_id);
 
         info!("✅ Service unregistered: {}", service_id);
         Ok(())
@@ -59,26 +57,26 @@ impl ServiceManager {
 
     /// Get a service by ID
     pub async fn get_service(&self, service_id: &str) -> Option<ServiceInstance> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
         services.get(service_id).cloned()
     }
 
     /// Get all registered services
     pub async fn get_all_services(&self) -> Vec<ServiceInstance> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
         services.values().cloned().collect()
     }
 
     /// Clear all services
     pub async fn clear_all(&self) {
         info!("🗑️  Clearing all services");
-        self.services.write().await.clear();
-        self.statuses.write().await.clear();
+        self.services.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.statuses.write().unwrap_or_else(|e| e.into_inner()).clear();
     }
 
     /// Get service count
     pub async fn service_count(&self) -> usize {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
         services.len()
     }
 }

@@ -164,7 +164,6 @@ async fn test_register_engine_and_lookup() {
     let engine = MockRuntimeEngine::new(vec![WorkloadType::Wasm]);
     orchestrator
         .register_engine(RuntimeType::Wasm, Arc::new(engine))
-        .await
         .unwrap();
     let orch_no_engine = RuntimeOrchestrator::new(RuntimeSelectionStrategy::OptimalMatch);
     let request = ExecutionRequest {
@@ -195,7 +194,6 @@ async fn test_execute_with_mock_engine_success() {
         .with_execute_success(exec_id, RuntimeType::Native);
     orchestrator
         .register_engine(RuntimeType::Native, Arc::new(engine))
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -219,7 +217,6 @@ async fn test_execute_with_mock_engine_failure() {
         MockRuntimeEngine::new(vec![WorkloadType::AiMl]).with_execute_error("mock failure");
     orchestrator
         .register_engine(RuntimeType::Native, Arc::new(engine))
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -244,7 +241,6 @@ async fn test_selection_logic_ai_ml_prefers_gpu() {
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
         )
-        .await
         .unwrap();
     orchestrator
         .register_engine(
@@ -254,7 +250,6 @@ async fn test_selection_logic_ai_ml_prefers_gpu() {
                     .with_execute_success(exec_id, RuntimeType::Native),
             ),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -281,7 +276,6 @@ async fn test_selection_logic_cuda_with_gpu_available() {
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -303,7 +297,6 @@ async fn test_selection_logic_cuda_fallback_to_native_when_no_gpu() {
             RuntimeType::Native,
             Arc::new(MockRuntimeEngine::new(vec![WorkloadType::Cuda])),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -328,7 +321,6 @@ async fn test_runtime_hint_respected_when_supported() {
                     .with_execute_success(exec_id, RuntimeType::Python),
             ),
         )
-        .await
         .unwrap();
     orchestrator
         .register_engine(
@@ -338,7 +330,6 @@ async fn test_runtime_hint_respected_when_supported() {
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -365,7 +356,6 @@ async fn test_runtime_hint_ignored_when_unsupported() {
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -388,7 +378,6 @@ async fn test_optimal_match_returns_error_when_no_engine_supports() {
             RuntimeType::Native,
             Arc::new(MockRuntimeEngine::new(vec![WorkloadType::Native])),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -413,7 +402,6 @@ async fn test_execute_validates_workload() {
             RuntimeType::Native,
             Arc::new(MockRuntimeEngine::new(vec![WorkloadType::Native])),
         )
-        .await
         .unwrap();
 
     let request = ExecutionRequest {
@@ -448,7 +436,6 @@ async fn test_execute_validates_security_context() {
             RuntimeType::Gpu,
             Arc::new(MockRuntimeEngine::new(vec![WorkloadType::AiMl])),
         )
-        .await
         .unwrap();
 
     let ctx = crate::SecurityContext {

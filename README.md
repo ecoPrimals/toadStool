@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S373 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S374 | v0.2.0
 
 ---
 
@@ -40,7 +40,7 @@ Nest    = Tower  + Storage            <- storage
 |------|--------|
 | `cargo build --workspace` | Clean |
 | `cargo check --workspace` (16 arch targets) | **16/16 PASS** (x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch — Linux/macOS/Windows/iOS/Android) |
-| `cargo check` WASM Tier 3 (compute kernel) | **24/48 crates** on `wasm32-unknown-unknown` + `wasm32-wasip1` |
+| `cargo check` WASM Tier 3 (compute kernel) | **26/48 crates** on `wasm32-unknown-unknown` + `wasm32-wasip1` |
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
@@ -59,7 +59,7 @@ Nest    = Tower  + Storage            <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery; S341: magic port `8082` → `discovery_ports::DEFAULT_STORAGE_PORT` |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| JSON-RPC surface | **112** JSON-RPC methods (direct) + semantic registry |
+| JSON-RPC surface | **126** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | File size limit | Non-hardware production files target **< 500 lines**. **0 production files >800L** (S284 split large files, S303+S306+S307 tightened gate to 750L, S373 smart decomposition: platform_backends/capabilities/vfio refactored); test-only files in `tests/` directories may exceed limit. |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
@@ -413,7 +413,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Aug 9, 2026 — S373 (Deep debt: large file decomposition, hardcoding removal, runtime discovery. 24/48 crates on wasm32-unknown-unknown + wasm32-wasip1 — 50% compute kernel). **9,008+ lib tests**, 0 failures. ~85%+ lib-only line coverage (target 90%). **126 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **138 unsafe blocks** — all SAFETY-documented, all in designated containment crates; workspace `unsafe_code = "deny"`, **41 crates `forbid`**; **all cylinder `#[allow]` have `reason`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list**. **Zero dead deps**. **Zero production files >800L** (S373). **Zero clippy warnings** (`-D warnings`). **Zero doc warnings**. **46 crates `version.workspace = true`**. **18-target cross-compile** — 16 native (Mac M4, iPhone XS, Pixel 8, Milk-V Jupiter 2, Steam Deck, Raspberry Pi, IBM POWER, IBM Z, LoongArch) + 2 WASM (S371: 24 crates). **Security fail-closed** — sandbox/PKI/mainframe/probe require explicit config. Rust 1.85+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced. **C2 dual-socket** — `compute.tarpc.sock` (S354). **Zero hardcoded primal name violations** (S355). **G68 COMPLETE** — zero rustix outside hw-safe (S365). **Node Atomic fleet ready** (S369). **WASM compute kernel** (S371: 24/48). **Vertebrate self-audit** (S372: 126 methods verified). **Deep debt clean** (S373: 0 files >800L, runtime discovery, pure Rust verified).
+**Last Updated**: Aug 10, 2026 — S374 (Tokio deep debt: `runtime` feature gate, tokio optional in core, 26/48 WASM crates. Needless async removal across 20+ functions. RwLock/Mutex migration to `std::sync`. Node Atomic AAR: silicon discovery via coralReef IPC). **9,008+ lib tests**, 0 failures. ~85%+ lib-only line coverage (target 90%). **126 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **138 unsafe blocks** — all SAFETY-documented, all in designated containment crates; workspace `unsafe_code = "deny"`, **41 crates `forbid`**; **all cylinder `#[allow]` have `reason`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list**. **Zero dead deps**. **Zero production files >800L** (S373). **Zero clippy warnings** (`-D warnings`). **Zero doc warnings**. **46 crates `version.workspace = true`**. **18-target cross-compile** — 16 native (Mac M4, iPhone XS, Pixel 8, Milk-V Jupiter 2, Steam Deck, Raspberry Pi, IBM POWER, IBM Z, LoongArch) + 2 WASM (S374: 26 crates). **Security fail-closed** — sandbox/PKI/mainframe/probe require explicit config. Rust 1.85+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced. **C2 dual-socket** — `compute.tarpc.sock` (S354). **Zero hardcoded primal name violations** (S355). **G68 COMPLETE** — zero rustix outside hw-safe (S365). **Node Atomic fleet ready** (S369). **WASM compute kernel** (S374: 26/48). **Vertebrate self-audit** (S372: 126 methods verified). **Deep debt clean** (S373: 0 files >800L). **Tokio deep debt** (S374: `runtime` feature gate, needless async removed, std::sync migration).
 
 ---
 

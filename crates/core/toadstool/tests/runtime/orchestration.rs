@@ -87,7 +87,7 @@ async fn test_register_all_runtime_types() {
             should_fail: false,
         });
 
-        let result = orchestrator.register_engine(runtime_type, engine).await;
+        let result = orchestrator.register_engine(runtime_type, engine);
         assert!(result.is_ok());
     }
 }

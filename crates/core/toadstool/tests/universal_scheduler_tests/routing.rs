@@ -33,7 +33,6 @@ async fn test_scheduler_schedule_primal_job() {
             context: make_test_context(),
             primal_type: PrimalType::Compute,
         }))
-        .await
         .unwrap();
 
     let scheduler = UniversalScheduler::new(Arc::clone(&registry))
@@ -79,7 +78,6 @@ async fn test_scheduler_schedule_biome_os_job() {
             context: make_test_context(),
             primal_type: PrimalType::OS,
         }))
-        .await
         .unwrap();
 
     let scheduler = UniversalScheduler::new(Arc::clone(&registry))
@@ -181,7 +179,6 @@ async fn test_scheduler_biome_os_job_no_provider_returns_error_response() {
             context: make_test_context(),
             primal_type: PrimalType::Compute,
         }))
-        .await
         .unwrap();
 
     let scheduler = UniversalScheduler::new(Arc::clone(&registry))
@@ -218,7 +215,6 @@ async fn test_scheduler_primal_provider_route_fails_returns_error_response() {
             instance_id: "failing-compute".to_string(),
             context: make_test_context(),
         }))
-        .await
         .unwrap();
 
     let scheduler = UniversalScheduler::new(Arc::clone(&registry))
@@ -349,14 +345,13 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = SchedDispatchWithSimpleMock::create(registry).await.unwrap();
 
-    assert!(scheduler.available_runtimes().await.is_empty());
+    assert!(scheduler.available_runtimes().is_empty());
 
     let engine = Arc::new(simple_mock_engine::SimpleMockRuntimeEngine);
     scheduler
-        .register_runtime_engine(RuntimeType::Native, engine)
-        .await;
+        .register_runtime_engine(RuntimeType::Native, engine);
 
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);
     assert_eq!(runtimes[0], RuntimeType::Native);
 }
@@ -375,7 +370,7 @@ async fn test_scheduler_with_runtime_engines() {
     let scheduler = SchedDispatchWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);
     assert_eq!(runtimes[0], RuntimeType::Native);
 }
@@ -391,7 +386,6 @@ async fn test_scheduler_find_primals_by_capability() {
             context: make_test_context(),
             primal_type: PrimalType::Compute,
         }))
-        .await
         .unwrap();
 
     let scheduler = UniversalScheduler::new(Arc::clone(&registry))
@@ -400,6 +394,6 @@ async fn test_scheduler_find_primals_by_capability() {
     let cap = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
-    let providers = scheduler.find_primals_by_capability(&cap).await;
+    let providers = scheduler.find_primals_by_capability(&cap);
     assert!(!providers.is_empty());
 }

@@ -25,7 +25,7 @@ async fn test_scheduler_creation() {
 async fn test_scheduler_creation_with_empty_registry() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
-    assert_eq!(scheduler.get_active_job_count().await, 0);
+    assert_eq!(scheduler.get_active_job_count(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -33,7 +33,7 @@ async fn test_scheduler_creation_result_is_ok() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let result = UniversalScheduler::new(registry).await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().get_active_job_count().await, 0);
+    assert_eq!(result.unwrap().get_active_job_count(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -41,7 +41,7 @@ async fn test_scheduler_get_active_job_count() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     assert_eq!(
-        scheduler.get_active_job_count().await,
+        scheduler.get_active_job_count(),
         0,
         "New scheduler should have 0 active jobs"
     );
@@ -84,7 +84,7 @@ async fn test_scheduler_active_job_count_after_completion() {
     let job = create_test_native_job(JobPriority::Normal);
     let _ = scheduler.schedule_job(job).await.unwrap();
     assert_eq!(
-        scheduler.get_active_job_count().await,
+        scheduler.get_active_job_count(),
         0,
         "Active jobs should be cleared after job completes"
     );
@@ -113,7 +113,7 @@ async fn test_scheduler_sequential_job_submission() {
             "Job {i} should succeed"
         );
     }
-    assert_eq!(scheduler.get_active_job_count().await, 0);
+    assert_eq!(scheduler.get_active_job_count(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

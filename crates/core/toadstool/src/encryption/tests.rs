@@ -236,7 +236,7 @@ async fn test_discover_provider_empty_registry_sets_none() {
     );
     let registry = CryptoProviderRegistry::<super::provider::NoopCryptoProvider>::new();
 
-    let result = ctx.discover_provider(&registry).await;
+    let result = ctx.discover_provider(&registry);
     assert!(result.is_ok());
     assert!(!ctx.is_available());
 }
@@ -334,10 +334,9 @@ async fn test_discover_provider_with_registered_provider() {
     let registry = CryptoProviderRegistry::<TestProvider>::new();
     registry
         .register(Arc::new(TestProvider))
-        .await
         .expect("register");
 
-    let result = ctx.discover_provider(&registry).await;
+    let result = ctx.discover_provider(&registry);
     assert!(result.is_ok());
     assert!(ctx.is_available());
 }

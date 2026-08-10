@@ -1,18 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Production hardening — circuit breakers, memory pressure, resource leak detection.
 
+#[cfg(feature = "runtime")]
 mod circuit_breaker;
 mod memory_pressure;
+#[cfg(feature = "runtime")]
 mod resource_leak;
 
+#[cfg(feature = "runtime")]
 use std::sync::Arc;
 use std::time::Duration;
 
+#[cfg(feature = "runtime")]
 use crate::ToadStoolResult;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+#[cfg(feature = "runtime")]
+use std::sync::RwLock;
+#[cfg(feature = "runtime")]
 use uuid::Uuid;
 
+#[cfg(feature = "runtime")]
 pub use circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState,
 };
@@ -20,6 +27,7 @@ pub use memory_pressure::{
     DefaultMemoryPressureCallback, MemoryPressureCallback, MemoryPressureConfig,
     MemoryPressureDispatch, MemoryPressureHandler, MemoryPressureLevel,
 };
+#[cfg(feature = "runtime")]
 pub use resource_leak::{ResourceAllocation, ResourceLeakDetector};
 
 /// Production hardening configuration
@@ -32,6 +40,7 @@ pub struct ProductionHardeningConfig {
     /// Enable memory pressure monitoring.
     pub enable_memory_pressure: bool,
     /// Default circuit breaker settings.
+    #[cfg(feature = "runtime")]
     pub default_circuit_config: CircuitBreakerConfig,
     /// Memory pressure thresholds and callbacks.
     pub memory_pressure_config: MemoryPressureConfig,
@@ -47,6 +56,7 @@ impl Default for ProductionHardeningConfig {
             enable_circuit_breakers: true,
             enable_leak_detection: true,
             enable_memory_pressure: true,
+            #[cfg(feature = "runtime")]
             default_circuit_config: CircuitBreakerConfig::default(),
             memory_pressure_config: MemoryPressureConfig::default(),
             leak_detection_threshold: Duration::from_secs(300),
@@ -60,6 +70,7 @@ impl Default for ProductionHardeningConfig {
 /// Owns a circuit-breaker registry, a resource-leak detector, and a memory-pressure
 /// handler. Callers construct once with [`Self::new`], then use the delegation
 /// methods to interact with each sub-system.
+#[cfg(feature = "runtime")]
 pub struct ProductionHardeningManager {
     config: ProductionHardeningConfig,
     circuit_breakers: Arc<RwLock<std::collections::HashMap<String, Arc<CircuitBreaker>>>>,
@@ -67,6 +78,7 @@ pub struct ProductionHardeningManager {
     memory_handler: Arc<MemoryPressureHandler>,
 }
 
+#[cfg(feature = "runtime")]
 impl ProductionHardeningManager {
     /// Creates a new production hardening manager with the given config.
     #[must_use]
@@ -112,7 +124,7 @@ impl ProductionHardeningManager {
     /// default config. Callers always receive a ready-to-use breaker.
     pub async fn get_circuit_breaker(&self, service: &str) -> Arc<CircuitBreaker> {
         {
-            let breakers = self.circuit_breakers.read().await;
+            let breakers = self.circuit_breakers.read().unwrap_or_else(|e| e.into_inner());
             if let Some(b) = breakers.get(service) {
                 return Arc::clone(b);
             }
@@ -122,15 +134,14 @@ impl ProductionHardeningManager {
             self.config.default_circuit_config.clone(),
         ));
         self.circuit_breakers
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(service.to_string(), Arc::clone(&breaker));
         breaker
     }
 
     /// Look up an existing circuit breaker without creating one.
     pub async fn find_circuit_breaker(&self, service: &str) -> Option<Arc<CircuitBreaker>> {
-        self.circuit_breakers.read().await.get(service).cloned()
+        self.circuit_breakers.read().unwrap_or_else(|e| e.into_inner()).get(service).cloned()
     }
 
     // ── Resource leak detection API ────────────────────────────────────────────

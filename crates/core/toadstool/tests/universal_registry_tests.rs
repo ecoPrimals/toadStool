@@ -179,7 +179,7 @@ async fn test_registry_empty_find_by_capability() {
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
-    let providers = registry.find_by_capability(&capability).await;
+    let providers = registry.find_by_capability(&capability);
     assert!(providers.is_empty());
 }
 
@@ -187,7 +187,7 @@ async fn test_registry_empty_find_by_capability() {
 async fn test_registry_empty_find_by_context() {
     let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let context = create_test_context("user-1");
-    let providers = registry.find_by_context(&context).await;
+    let providers = registry.find_by_context(&context);
     assert!(providers.is_empty());
 }
 
@@ -207,7 +207,7 @@ async fn test_registry_register_single_provider() {
         }],
     ));
 
-    let result = registry.register_primal(provider).await;
+    let result = registry.register_primal(provider);
     assert!(result.is_ok());
 
     let providers = registry.get_all_providers().await;
@@ -228,7 +228,7 @@ async fn test_registry_register_multiple_providers() {
                 architectures: vec!["x86_64".to_string()],
             }],
         ));
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
     }
 
     let providers = registry.get_all_providers().await;
@@ -247,7 +247,7 @@ async fn test_registry_register_overwrites_same_instance_id() {
             architectures: vec!["x86_64".to_string()],
         }],
     ));
-    registry.register_primal(provider1).await.unwrap();
+    registry.register_primal(provider1).unwrap();
 
     let provider2 = Arc::new(MockPrimalProvider::new(
         "same-id",
@@ -257,7 +257,7 @@ async fn test_registry_register_overwrites_same_instance_id() {
             methods: vec!["oauth".to_string()],
         }],
     ));
-    registry.register_primal(provider2).await.unwrap();
+    registry.register_primal(provider2).unwrap();
 
     let all_providers = registry.get_all_providers().await;
     assert_eq!(all_providers.len(), 1);
@@ -280,9 +280,9 @@ async fn test_registry_find_by_capability_native_execution() {
         create_test_context("user-1"),
         vec![capability.clone()],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
-    let found = registry.find_by_capability(&capability).await;
+    let found = registry.find_by_capability(&capability);
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].instance_id(), "native-1");
 }
@@ -297,9 +297,9 @@ async fn test_registry_find_by_capability_wasm() {
         create_test_context("user-1"),
         vec![capability.clone()],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
-    let found = registry.find_by_capability(&capability).await;
+    let found = registry.find_by_capability(&capability);
     assert_eq!(found.len(), 1);
 }
 
@@ -322,10 +322,10 @@ async fn test_registry_find_by_capability_multiple_with_same_cap() {
         create_test_context("user-2"),
         vec![capability.clone()],
     ));
-    registry.register_primal(p1).await.unwrap();
-    registry.register_primal(p2).await.unwrap();
+    registry.register_primal(p1).unwrap();
+    registry.register_primal(p2).unwrap();
 
-    let found = registry.find_by_capability(&capability).await;
+    let found = registry.find_by_capability(&capability);
     assert_eq!(found.len(), 2);
 }
 
@@ -340,10 +340,10 @@ async fn test_registry_find_by_capability_no_match() {
             architectures: vec!["x86_64".to_string()],
         }],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let other_capability = PrimalCapability::GpuAcceleration { cuda_support: true };
-    let found = registry.find_by_capability(&other_capability).await;
+    let found = registry.find_by_capability(&other_capability);
     assert!(found.is_empty());
 }
 
@@ -363,9 +363,9 @@ async fn test_registry_find_by_context() {
             architectures: vec!["x86_64".to_string()],
         }],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
-    let found = registry.find_by_context(&context).await;
+    let found = registry.find_by_context(&context);
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].instance_id(), "alice-primal");
 }
@@ -384,16 +384,16 @@ async fn test_registry_find_by_context_filters_can_serve() {
         )
         .with_can_serve_context(false),
     );
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     // Query with different user - can_serve_context returns false
     let alice_context = create_test_context("alice");
-    let found = registry.find_by_context(&alice_context).await;
+    let found = registry.find_by_context(&alice_context);
     assert!(found.is_empty());
 
     // Query with same user - can_serve_context checks user_id match
     let bob_context = create_test_context("bob");
-    let found = registry.find_by_context(&bob_context).await;
+    let found = registry.find_by_context(&bob_context);
     assert_eq!(found.len(), 1);
 }
 
@@ -406,10 +406,10 @@ async fn test_registry_find_by_context_unknown_user_empty() {
         create_test_context("user-1"),
         vec![],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let unknown_context = create_test_context("unknown-user-999");
-    let found = registry.find_by_context(&unknown_context).await;
+    let found = registry.find_by_context(&unknown_context);
     // Context index uses user_id - unknown user has no index entry
     assert!(found.is_empty());
 }
@@ -427,7 +427,7 @@ async fn test_registry_route_request_success() {
         create_test_context("user-1"),
         vec![],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let request = PrimalRequest {
         id: Uuid::new_v4(),
@@ -459,7 +459,7 @@ async fn test_registry_route_request_target_not_found() {
         create_test_context("user-1"),
         vec![],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let request = PrimalRequest {
         id: Uuid::new_v4(),
@@ -488,7 +488,7 @@ async fn test_registry_route_request_provider_returns_error() {
         )
         .with_fail_requests(true),
     );
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let request = PrimalRequest {
         id: Uuid::new_v4(),
@@ -537,7 +537,7 @@ async fn test_registry_provider_primal_type_preserved() {
         create_test_context("user-1"),
         vec![],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let providers = registry.get_all_providers().await;
     assert_eq!(providers[0].primal_type(), PrimalType::Storage);
@@ -552,7 +552,7 @@ async fn test_registry_custom_primal_type() {
         create_test_context("user-1"),
         vec![],
     ));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let providers = registry.get_all_providers().await;
     assert_eq!(

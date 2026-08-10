@@ -5,6 +5,7 @@
 
 mod biome_os;
 mod discover;
+#[cfg(feature = "runtime")]
 mod native;
 mod primal;
 mod wasm;

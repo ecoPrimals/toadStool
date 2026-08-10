@@ -68,16 +68,21 @@ pub mod composition_constraints;
 pub mod composition_engine;
 pub mod cross_spring_provenance;
 pub mod deployment_layer;
+#[cfg(feature = "runtime")]
 pub mod discovery;
+#[cfg(feature = "runtime")]
 pub mod ecosystem;
 pub mod encryption;
 pub mod error;
 pub mod execution;
 pub mod fractal_integration;
 /// Universal IPC (evolved from ipc_helpers).
+#[cfg(feature = "runtime")]
 pub mod ipc;
 /// Legacy IPC helpers - prefer `toadstool::ipc` for new code.
+#[cfg(feature = "runtime")]
 pub mod ipc_helpers;
+#[cfg(feature = "runtime")]
 pub mod launcher; // Phase 3: Deployment coordination
 pub mod layer_adaptation;
 pub mod multi_workload_compositor;
@@ -87,6 +92,7 @@ pub mod plugin_system;
 pub mod production_hardening;
 pub mod resources;
 pub mod runtime;
+#[cfg(feature = "runtime")]
 pub mod runtime_discovery;
 pub mod security;
 pub mod security_hardening;
@@ -99,8 +105,21 @@ pub mod workload_migration;
 #[cfg(feature = "proptest-strategies")]
 pub mod proptest_strategies;
 
+/// Generate a new UUID v4. Falls back to nil UUID when `runtime` feature is disabled (WASM).
+#[cfg(feature = "runtime")]
+pub(crate) fn generate_uuid() -> uuid::Uuid {
+    uuid::Uuid::new_v4()
+}
+
+/// Generate a new UUID v4. Falls back to nil UUID when `runtime` feature is disabled (WASM).
+#[cfg(not(feature = "runtime"))]
+pub(crate) fn generate_uuid() -> uuid::Uuid {
+    uuid::Uuid::nil()
+}
+
 // biomeOS integration is now handled as a primal through the ecosystem module
 // Re-export core types
+#[cfg(feature = "runtime")]
 pub use ecosystem::{
     DiscoveryMethodConfig, EcosystemConfig, EcosystemCoordinator,
     EcosystemMessage as EcosystemCoreMessage, EcosystemMessageType as EcosystemCoreMessageType,
@@ -128,12 +147,14 @@ pub use os_layer::{
     PlatformInfo as OSPlatformInfo, WindowsCompatibilityLayer,
 };
 pub use resources::ResourceRequirements as UniversalResourceRequirements;
-#[cfg(any(test, feature = "test-mocks"))]
+#[cfg(all(any(test, feature = "test-mocks"), feature = "runtime"))]
 pub use resources::TestResourceMonitor;
+#[cfg(feature = "runtime")]
+pub use resources::{ResourceMonitor, ResourceMonitorDispatch, SystemResourceMonitor};
 pub use resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
-    ResourceMonitor, ResourceMonitorDispatch, ResourceRequirements, ResourceUsage, RuntimeMetrics,
-    StorageRequirements, SystemResourceMonitor, SystemResources,
+    ResourceRequirements, ResourceUsage, RuntimeMetrics,
+    StorageRequirements, SystemResources,
 };
 pub use runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
 pub use security::{
@@ -212,6 +233,7 @@ pub fn init() -> ToadStoolResult<()> {
 /// - Platform initialization fails
 /// - Ecosystem discovery fails
 /// - Primal integration fails
+#[cfg(feature = "runtime")]
 pub async fn init_with_ecosystem() -> ToadStoolResult<UniversalComputePlatform> {
     init()?;
 
@@ -233,6 +255,7 @@ pub async fn init_with_ecosystem() -> ToadStoolResult<UniversalComputePlatform> 
 /// # Errors
 ///
 /// Returns error if core initialization or [`init_with_ecosystem`] fails.
+#[cfg(feature = "runtime")]
 pub async fn init_with_biomeos() -> ToadStoolResult<UniversalComputePlatform> {
     init()?;
 

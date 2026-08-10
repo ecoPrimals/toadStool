@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 use toadstool_common::constants::{INSTANCE_ID, PRIMAL_NAME};
@@ -84,7 +84,7 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
 
     fn health_check(&self) -> impl std::future::Future<Output = PrimalHealth> + Send + '_ {
         let health_status = self.health_status.clone();
-        async move { health_status.read().await.clone() }
+        async move { health_status.read().unwrap_or_else(|e| e.into_inner()).clone() }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {

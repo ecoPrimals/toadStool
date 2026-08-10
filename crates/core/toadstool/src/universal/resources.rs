@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
@@ -90,15 +90,14 @@ impl ResourceCoordinator {
         requirements: &ResourceRequirements,
     ) -> ToadStoolResult<ResourceAllocation> {
         let allocation = ResourceAllocation {
-            job_id: Uuid::new_v4(),
+            job_id: crate::generate_uuid(),
             allocated_resources: requirements.clone(),
             allocated_at: SystemTime::now(),
             released_at: None,
         };
 
         self.allocation_history
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .push(allocation.clone());
         debug!("Allocated resources for job: {}", allocation.job_id);
         Ok(allocation)
@@ -117,7 +116,7 @@ impl ResourceCoordinator {
         allocation.released_at = Some(SystemTime::now());
 
         // Add to history
-        self.allocation_history.write().await.push(allocation);
+        self.allocation_history.write().unwrap_or_else(|e| e.into_inner()).push(allocation);
 
         debug!("Released resources for job");
         Ok(())
@@ -125,7 +124,7 @@ impl ResourceCoordinator {
 
     /// Get available resources
     pub async fn get_available_resources(&self) -> UniversalSystemResources {
-        self.available_resources.read().await.clone()
+        self.available_resources.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 }
 
@@ -150,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_resource_allocation_struct() {
-        let id = Uuid::new_v4();
+        let id = crate::generate_uuid();
         let allocation = ResourceAllocation {
             job_id: id,
             allocated_resources: ResourceRequirements::default(),

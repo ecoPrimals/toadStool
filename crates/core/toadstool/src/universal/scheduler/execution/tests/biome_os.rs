@@ -23,7 +23,7 @@ async fn execute_biome_os_success() {
         status: ResponseStatus::Success,
         fail_route: false,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -60,7 +60,7 @@ async fn execute_biome_os_non_success_statuses() {
             status,
             fail_route: false,
         });
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
 
         let scheduler = UniversalScheduler::new(registry).await.unwrap();
         let out = scheduler
@@ -82,7 +82,7 @@ async fn execute_biome_os_route_error() {
         status: ResponseStatus::Success,
         fail_route: true,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler

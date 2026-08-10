@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::SystemTime;
-use tokio::sync::Mutex;
 
 use super::super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use super::VolumeStatus;
@@ -56,8 +56,7 @@ impl StorageBackend for InMemoryBackend {
             };
 
             volumes
-                .lock()
-                .await
+                .lock().unwrap_or_else(|e| e.into_inner())
                 .insert(config_name, volume_info.clone());
 
             tracing::debug!("Provisioned test volume: {}", volume_info.name);
@@ -85,8 +84,7 @@ impl StorageBackend for InMemoryBackend {
             };
 
             volumes
-                .lock()
-                .await
+                .lock().unwrap_or_else(|e| e.into_inner())
                 .insert(config_name, volume_info.clone());
 
             tracing::debug!("Provisioned test persistent volume: {}", volume_info.name);
@@ -105,7 +103,7 @@ impl StorageBackend for InMemoryBackend {
         let service_name = service_name.to_string();
 
         async move {
-            if !volumes.lock().await.contains_key(&volume_name) {
+            if !volumes.lock().unwrap_or_else(|e| e.into_inner()).contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
                 )));
@@ -130,7 +128,7 @@ impl StorageBackend for InMemoryBackend {
         let service_name = service_name.to_string();
 
         async move {
-            if !volumes.lock().await.contains_key(&volume_name) {
+            if !volumes.lock().unwrap_or_else(|e| e.into_inner()).contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
                 )));
@@ -153,7 +151,7 @@ impl StorageBackend for InMemoryBackend {
         let volume_name = volume_name.to_string();
 
         async move {
-            volumes.lock().await.remove(&volume_name).ok_or_else(|| {
+            volumes.lock().unwrap_or_else(|e| e.into_inner()).remove(&volume_name).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Volume {volume_name} not found"))
             })?;
 
@@ -170,7 +168,7 @@ impl StorageBackend for InMemoryBackend {
         let volume_name = volume_name.to_string();
 
         async move {
-            let vols = volumes.lock().await;
+            let vols = volumes.lock().unwrap_or_else(|e| e.into_inner());
             vols.get(&volume_name)
                 .map(|_| VolumeStatus::Available)
                 .ok_or_else(|| ToadStoolError::not_found(format!("Volume {volume_name} not found")))
@@ -181,7 +179,7 @@ impl StorageBackend for InMemoryBackend {
         let volumes = Arc::clone(&self.volumes);
 
         async move {
-            let vols: tokio::sync::MutexGuard<HashMap<String, VolumeInfo>> = volumes.lock().await;
+            let vols = volumes.lock().unwrap_or_else(|e| e.into_inner());
             Ok(vols.values().cloned().collect())
         }
     }

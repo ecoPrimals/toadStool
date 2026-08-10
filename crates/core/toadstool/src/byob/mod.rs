@@ -14,6 +14,7 @@
 //! - `network_manager` - Network lifecycle management
 //! - `health_monitor` - Health checking and monitoring
 
+#[cfg(feature = "runtime")]
 pub mod byob_impl;
 pub mod byob_types;
 pub mod config;
@@ -21,10 +22,12 @@ mod deployment; // Internal module
 pub mod health_monitor;
 pub(crate) mod ipv4_subnet;
 pub mod network_manager;
+#[cfg(feature = "runtime")]
 mod resource_metrics;
 mod validation; // Internal validation logic
 
 // Re-export all public types and implementations
+#[cfg(feature = "runtime")]
 pub use byob_impl::*;
 pub use byob_types::*;
 pub use config::*;

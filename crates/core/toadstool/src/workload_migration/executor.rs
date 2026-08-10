@@ -38,14 +38,13 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
                 let hostname = std::env::var(socket_env::HOSTNAME)
                     .or_else(|_| std::env::var(socket_env::HOST))
                     .or_else(|_| std::env::var(socket_env::COMPUTERNAME))
-                    .unwrap_or_else(|_| format!("node-{}", uuid::Uuid::new_v4()));
+                    .unwrap_or_else(|_| format!("node-{}", crate::generate_uuid()));
                 WorkloadLocation::Local { hostname }
             }
         };
 
         self.workload_locations
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), new_location.clone());
 
         let duration = start.elapsed();
@@ -64,7 +63,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         new_location: &WorkloadLocation,
         duration_secs: f64,
     ) {
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
 
         stats.total_migrations += 1;
 

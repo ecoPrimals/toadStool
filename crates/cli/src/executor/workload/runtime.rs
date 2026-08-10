@@ -57,7 +57,6 @@ pub(super) async fn register_runtime_engines(
             RuntimeType::Native,
             Arc::new(RuntimeEngineDispatch::Native(native_engine)),
         )
-        .await
         .context("Failed to register native runtime")?;
     info!("   ✅ Native runtime registered");
 
@@ -76,7 +75,6 @@ pub(super) async fn register_runtime_engines(
                         RuntimeType::Wasm,
                         Arc::new(RuntimeEngineDispatch::Wasm(wasm_engine)),
                     )
-                    .await
                     .context("Failed to register WASM runtime")?;
                 info!("   ✅ WASM runtime registered");
             }
@@ -100,7 +98,6 @@ pub(super) async fn register_runtime_engines(
                         RuntimeType::Gpu,
                         Arc::new(RuntimeEngineDispatch::Gpu(gpu_engine)),
                     )
-                    .await
                     .context("Failed to register GPU runtime")?;
                 info!("   ✅ GPU runtime registered");
             }

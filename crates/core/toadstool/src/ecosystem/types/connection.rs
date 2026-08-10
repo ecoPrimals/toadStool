@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service status, communication channels, and multi-protocol clients.
 
-#[cfg(all(feature = "networking", unix))]
+#[cfg(all(feature = "networking", feature = "runtime", unix))]
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -70,7 +70,7 @@ pub struct ServiceChannel {
 #[derive(Debug, Clone)]
 pub enum ServiceClient {
     /// tarpc client (OPTIONAL - for performance-critical internal paths)
-    #[cfg(all(feature = "networking", unix))]
+    #[cfg(all(feature = "networking", feature = "runtime", unix))]
     Tarpc(Arc<tokio::sync::Mutex<Option<TarpcClientWrapper>>>),
 
     /// JSON-RPC 2.0 over unix sockets (PRIMARY - wateringHole standard!)
@@ -87,13 +87,13 @@ pub enum ServiceClient {
 /// Per wateringHole `UNIVERSAL_IPC_STANDARD_V3.md`: tarpc is optional for
 /// high-performance internal paths. Until a binary tarpc transport is wired,
 /// this wrapper gracefully degrades to JSON-RPC over the same Unix socket.
-#[cfg(all(feature = "networking", unix))]
+#[cfg(all(feature = "networking", feature = "runtime", unix))]
 #[derive(Debug, Clone)]
 pub struct TarpcClientWrapper {
     fallback: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
-#[cfg(all(feature = "networking", unix))]
+#[cfg(all(feature = "networking", feature = "runtime", unix))]
 impl TarpcClientWrapper {
     pub const fn with_fallback(
         client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,

@@ -22,7 +22,7 @@ async fn test_execute_biome_os_with_provider_success() {
         instance_id: "biomeos-1".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -58,7 +58,7 @@ async fn test_execute_biome_os_route_failure() {
         instance_id: "biomeos-err".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {

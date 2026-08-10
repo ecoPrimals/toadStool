@@ -62,8 +62,7 @@ run_tier1() {
         "toadstool-runtime-secure-enclave"
         # toadstool-runtime-edge excluded (serialport→libudev C dep)
         "toadstool-runtime-specialty"
-        # neuromorphic crates excluded (require rustChip/akida-chip, biomeGate-only C5)
-        # Build separately on biomeGate with: cargo llvm-cov -p akida-driver
+        # neuromorphic crates require hardware — coverage via run-hardware-tests.sh
         "toadstool-integration-security"
         "toadstool-integration-primals"
         "toadstool-integration-storage"

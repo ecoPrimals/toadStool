@@ -13,7 +13,7 @@ use serde_json::json;
 use std::sync::Arc;
 use toadstool_common::capability_provider::{CapabilityError, CapabilityProvider};
 use toadstool_common::primal_identity::Capability;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Errors for authentication backend
 #[derive(Debug, thiserror::Error)]
@@ -102,7 +102,7 @@ impl AuthBackend {
     /// This discovers the provider by capability:
     /// "Who can manage tokens?" not "Connect to a specific primal"
     async fn get_provider(&self) -> Result<CapabilityProvider> {
-        let mut provider_lock = self.provider.write().await;
+        let mut provider_lock = self.provider.write().unwrap_or_else(|e| e.into_inner());
 
         if provider_lock.is_none() {
             // Discover security provider by capability
@@ -209,7 +209,7 @@ impl AuthBackend {
     ///
     /// WARNING: Do NOT use provider name for logic decisions!
     pub async fn provider_info(&self) -> Option<String> {
-        let provider_lock = self.provider.read().await;
+        let provider_lock = self.provider.read().unwrap_or_else(|e| e.into_inner());
         provider_lock.as_ref().map(|p| p.service_name().to_string())
     }
 }
@@ -229,7 +229,7 @@ mod tests {
         let backend = AuthBackend::new();
 
         // Provider starts as None
-        let provider_lock = backend.provider.read().await;
+        let provider_lock = backend.provider.read().unwrap_or_else(|e| e.into_inner());
         assert!(provider_lock.is_none());
     }
 

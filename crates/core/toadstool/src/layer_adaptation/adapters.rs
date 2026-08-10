@@ -9,6 +9,7 @@
 use crate::deployment_layer::DeploymentLayer;
 use std::collections::HashMap;
 
+#[cfg(feature = "runtime")]
 use super::detection::{
     detect_network_bandwidth, detect_storage_read_bandwidth, detect_storage_write_bandwidth,
     get_available_disk, get_total_memory,
@@ -32,7 +33,45 @@ impl LayerCapabilityAdapter {
         Self { layer }
     }
 
+    /// Get adapted capabilities for this layer (stub for no-runtime)
+    #[cfg(not(feature = "runtime"))]
+    pub async fn get_adapted_capabilities(&self) -> AdaptedCapabilities {
+        AdaptedCapabilities {
+            compute: ComputeCapabilities {
+                gpu_access: GpuAccess::None,
+                has_cpu: true,
+                cpu_cores: None,
+                memory_bytes: None,
+                supports_tensor_ops: false,
+                supports_nn_training: false,
+                supports_nn_inference: false,
+            },
+            storage: StorageCapabilities {
+                storage_type: StorageType::HostFilesystem,
+                available_bytes: None,
+                read_bandwidth: None,
+                write_bandwidth: None,
+            },
+            network: NetworkCapabilities {
+                network_access: NetworkAccess::Direct,
+                bandwidth: None,
+                latency_ms: None,
+                has_service_mesh: false,
+            },
+            metadata: CapabilityMetadata {
+                layer: format!("{}", self.layer),
+                host_os: None,
+                cloud_provider: None,
+                extra: std::collections::HashMap::new(),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "runtime")]
+impl LayerCapabilityAdapter {
     /// Get adapted capabilities for this layer
+    #[cfg(feature = "runtime")]
     pub async fn get_adapted_capabilities(&self) -> AdaptedCapabilities {
         match &self.layer {
             DeploymentLayer::BareMetalOS => self.adapt_bare_metal().await,

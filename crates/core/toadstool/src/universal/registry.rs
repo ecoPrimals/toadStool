@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 
 use crate::{ToadStoolError, ToadStoolResult};
@@ -68,7 +68,7 @@ where
     /// # Errors
     ///
     /// This function currently always returns `Ok`; the `Result` type is reserved for future validation.
-    pub async fn register_primal(&self, provider: Arc<P>) -> ToadStoolResult<()> {
+    pub fn register_primal(&self, provider: Arc<P>) -> ToadStoolResult<()> {
         let instance_id = provider.instance_id().to_string();
         let capabilities = provider.capabilities();
         let context = provider.context().clone();
@@ -76,16 +76,14 @@ where
 
         // Register provider
         self.providers
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(instance_id.clone(), provider);
 
         // Index capabilities
         for capability in capabilities {
             let cap_key = format!("{capability:?}");
             self.capability_index
-                .write()
-                .await
+                .write().unwrap_or_else(|e| e.into_inner())
                 .entry(cap_key)
                 .or_insert_with(Vec::new)
                 .push(instance_id.clone());
@@ -93,8 +91,7 @@ where
 
         // Index context
         self.context_index
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .entry(context.user_id.clone())
             .or_insert_with(Vec::new)
             .push(instance_id.clone());
@@ -102,8 +99,7 @@ where
         // Index type
         let type_key = format!("{primal_type:?}");
         self.type_index
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .entry(type_key)
             .or_insert_with(Vec::new)
             .push(instance_id.clone());
@@ -113,10 +109,10 @@ where
     }
 
     /// Find providers by capability
-    pub async fn find_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
+    pub fn find_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
         let cap_key = format!("{capability:?}");
-        let capability_index = self.capability_index.read().await;
-        let providers = self.providers.read().await;
+        let capability_index = self.capability_index.read().unwrap_or_else(|e| e.into_inner());
+        let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
 
         capability_index
             .get(&cap_key)
@@ -130,9 +126,9 @@ where
     }
 
     /// Find providers by context
-    pub async fn find_by_context(&self, context: &PrimalContext) -> Vec<Arc<P>> {
-        let context_index = self.context_index.read().await;
-        let providers = self.providers.read().await;
+    pub fn find_by_context(&self, context: &PrimalContext) -> Vec<Arc<P>> {
+        let context_index = self.context_index.read().unwrap_or_else(|e| e.into_inner());
+        let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
 
         context_index
             .get(&context.user_id)
@@ -152,9 +148,12 @@ where
     ///
     /// Returns error if the target primal is not registered or handling fails.
     pub async fn route_request(&self, request: PrimalRequest) -> ToadStoolResult<PrimalResponse> {
-        let providers = self.providers.read().await;
+        let provider = {
+            let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
+            providers.get(&request.target).cloned()
+        };
 
-        if let Some(provider) = providers.get(&request.target) {
+        if let Some(provider) = provider {
             provider.handle_primal_request(request).await
         } else {
             Err(ToadStoolError::execution(format!(
@@ -166,7 +165,7 @@ where
 
     /// Get all registered providers
     pub async fn get_all_providers(&self) -> Vec<Arc<P>> {
-        self.providers.read().await.values().cloned().collect()
+        self.providers.read().unwrap_or_else(|e| e.into_inner()).values().cloned().collect()
     }
 }
 
@@ -210,7 +209,7 @@ mod tests {
         let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
             ToadStoolPrimalProvider::new(context),
         ));
-        let result = registry.register_primal(provider).await;
+        let result = registry.register_primal(provider);
         assert!(result.is_ok());
     }
 
@@ -221,11 +220,10 @@ mod tests {
         let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
             ToadStoolPrimalProvider::new(context),
         ));
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
 
         let providers = registry
-            .find_by_capability(&PrimalCapability::WasmExecution { wasi_support: true })
-            .await;
+            .find_by_capability(&PrimalCapability::WasmExecution { wasi_support: true });
         assert!(!providers.is_empty());
     }
 
@@ -236,9 +234,9 @@ mod tests {
         let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
             ToadStoolPrimalProvider::new(context.clone()),
         ));
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
 
-        let providers = registry.find_by_context(&context).await;
+        let providers = registry.find_by_context(&context);
         assert!(!providers.is_empty());
     }
 
@@ -249,7 +247,7 @@ mod tests {
         let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
             ToadStoolPrimalProvider::new(context),
         ));
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
 
         let all = registry.get_all_providers().await;
         assert_eq!(all.len(), 1);
@@ -262,7 +260,7 @@ mod tests {
         let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
             ToadStoolPrimalProvider::new(context),
         ));
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
 
         let request = PrimalRequest {
             id: Uuid::new_v4(),

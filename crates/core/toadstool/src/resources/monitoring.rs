@@ -6,6 +6,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
+#[cfg(feature = "runtime")]
 use tokio::sync::RwLock;
 
 use crate::ToadStoolResult;

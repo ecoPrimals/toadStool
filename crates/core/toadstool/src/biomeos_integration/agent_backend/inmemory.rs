@@ -2,8 +2,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::SystemTime;
-use tokio::sync::Mutex;
 
 use super::super::types::{AgentConfig, ModelConfig};
 use super::AgentBackend;
@@ -63,8 +63,7 @@ impl AgentBackend for InMemoryAgentBackend {
             };
 
             self.agents
-                .lock()
-                .await
+                .lock().unwrap_or_else(|e| e.into_inner())
                 .insert(config.name.clone(), agent_info.clone());
 
             tracing::debug!("Deployed test agent: {}", config.name);
@@ -98,8 +97,7 @@ impl AgentBackend for InMemoryAgentBackend {
             };
 
             self.models
-                .lock()
-                .await
+                .lock().unwrap_or_else(|e| e.into_inner())
                 .insert(config.name.clone(), model_info.clone());
 
             tracing::debug!("Loaded test model: {}", config.name);
@@ -113,7 +111,7 @@ impl AgentBackend for InMemoryAgentBackend {
         replicas: u32,
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
-            let mut agents = self.agents.lock().await;
+            let mut agents = self.agents.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(agent) = agents.get_mut(agent_name) {
                 agent.replicas = replicas;
                 agent.last_updated = SystemTime::now();
@@ -132,7 +130,7 @@ impl AgentBackend for InMemoryAgentBackend {
         agent_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
-            let mut agents = self.agents.lock().await;
+            let mut agents = self.agents.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(agent) = agents.get_mut(agent_name) {
                 agent.status = AgentStatus::Stopped;
                 agent.last_updated = SystemTime::now();
@@ -151,7 +149,7 @@ impl AgentBackend for InMemoryAgentBackend {
         agent_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
-            self.agents.lock().await.remove(agent_name).ok_or_else(|| {
+            self.agents.lock().unwrap_or_else(|e| e.into_inner()).remove(agent_name).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Agent {agent_name} not found"))
             })?;
 
@@ -165,7 +163,7 @@ impl AgentBackend for InMemoryAgentBackend {
         agent_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a {
         async move {
-            let agents = self.agents.lock().await;
+            let agents = self.agents.lock().unwrap_or_else(|e| e.into_inner());
             agents
                 .get(agent_name)
                 .map(|agent| agent.status.clone())
@@ -175,14 +173,14 @@ impl AgentBackend for InMemoryAgentBackend {
 
     fn list_agents(&self) -> impl Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_ {
         async move {
-            let agents = self.agents.lock().await;
+            let agents = self.agents.lock().unwrap_or_else(|e| e.into_inner());
             Ok(agents.values().cloned().collect())
         }
     }
 
     fn list_models(&self) -> impl Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_ {
         async move {
-            let models = self.models.lock().await;
+            let models = self.models.lock().unwrap_or_else(|e| e.into_inner());
             Ok(models.values().cloned().collect())
         }
     }
@@ -192,7 +190,7 @@ impl AgentBackend for InMemoryAgentBackend {
         agent_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a {
         async move {
-            let agents = self.agents.lock().await;
+            let agents = self.agents.lock().unwrap_or_else(|e| e.into_inner());
             agents
                 .get(agent_name)
                 .map(|agent| agent.resources.clone())
@@ -205,7 +203,7 @@ impl AgentBackend for InMemoryAgentBackend {
         model_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
-            self.models.lock().await.remove(model_name).ok_or_else(|| {
+            self.models.lock().unwrap_or_else(|e| e.into_inner()).remove(model_name).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Model {model_name} not found"))
             })?;
 

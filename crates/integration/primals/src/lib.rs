@@ -97,6 +97,7 @@ pub trait PrimalIntegration: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Register with orchestrator via capability discovery
+    #[cfg(feature = "runtime")]
     fn register_with_orchestrator(
         &self,
         discovery: &dyn toadstool_common::infant_discovery::CapabilityDiscovery,

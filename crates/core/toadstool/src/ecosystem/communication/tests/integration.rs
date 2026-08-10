@@ -186,7 +186,7 @@ async fn test_send_heartbeat_updates_last_heartbeat() {
     };
 
     {
-        let mut channels = manager.channels.write().await;
+        let mut channels = manager.channels.write().unwrap_or_else(|e| e.into_inner());
         channels.insert("hb-svc".to_string(), channel.clone());
     }
 

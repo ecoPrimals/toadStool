@@ -32,7 +32,7 @@ where
             primal_type, endpoint
         );
         let start_time = std::time::Instant::now();
-        let execution_id = Uuid::new_v4();
+        let execution_id = crate::generate_uuid();
 
         // Find a primal provider that matches the requested type
         let providers = self.primal_registry().get_all_providers().await;

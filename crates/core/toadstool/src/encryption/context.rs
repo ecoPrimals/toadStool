@@ -52,7 +52,7 @@ impl<P: CryptoProvider> EncryptionContext<P> {
     /// # Errors
     ///
     /// Returns error if provider lookup fails.
-    pub async fn discover_provider(
+    pub fn discover_provider(
         &mut self,
         registry: &CryptoProviderRegistry<P>,
     ) -> ToadStoolResult<()> {
@@ -65,7 +65,7 @@ impl<P: CryptoProvider> EncryptionContext<P> {
             ),
         };
 
-        self.provider = registry.find_provider(&capability).await?;
+        self.provider = registry.find_provider(&capability)?;
         Ok(())
     }
 

@@ -65,7 +65,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         constraints: &[Constraint],
         current_location: Option<&WorkloadLocation>,
     ) -> ToadStoolResult<MigrationRecommendation> {
-        let registry = self.providers.read().await;
+        let registry = self.providers.read().unwrap_or_else(|e| e.into_inner());
         let available = registry.available_providers();
 
         if available.is_empty() {

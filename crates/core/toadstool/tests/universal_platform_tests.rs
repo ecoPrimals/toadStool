@@ -43,7 +43,7 @@ async fn test_platform_creation_initializes_components() {
     let platform = UniversalComputePlatform::new().await.unwrap();
 
     // Platform should have no runtime engines initially
-    let runtimes = platform.get_available_runtimes().await;
+    let runtimes = platform.get_available_runtimes();
     assert!(
         runtimes.is_empty(),
         "New platform should have no runtime engines"
@@ -53,7 +53,7 @@ async fn test_platform_creation_initializes_components() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_platform_get_available_runtimes_empty() {
     let platform = UniversalComputePlatform::new().await.unwrap();
-    let runtimes = platform.get_available_runtimes().await;
+    let runtimes = platform.get_available_runtimes();
 
     assert_eq!(runtimes.len(), 0, "New platform should have 0 runtimes");
 }
@@ -67,7 +67,7 @@ async fn test_platform_find_primals_by_capability() {
         orchestrators: vec!["docker".to_string()],
     };
 
-    let _primals = platform.find_primals_by_capability(&capability).await;
+    let _primals = platform.find_primals_by_capability(&capability);
 
     // Should return a vec (may be empty or contain ToadStool primal)
     // Assert that we can get the primal list (length check removed as >= 0 is always true)

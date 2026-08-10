@@ -9,6 +9,7 @@ use super::byob_types::{
     ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, NetworkInfo, NetworkUsage,
     ResourceUsage,
 };
+#[cfg(feature = "runtime")]
 use super::resource_metrics::ResourcePollState;
 
 /// Active deployment tracking
@@ -29,6 +30,7 @@ pub(super) struct ActiveDeployment {
     /// Updated timestamp
     pub updated_at: Instant,
     /// State for delta-based cgroup/`/proc` metrics polling.
+    #[cfg(feature = "runtime")]
     pub resource_poll_state: Option<ResourcePollState>,
 }
 
@@ -54,6 +56,7 @@ impl ActiveDeployment {
             network_info,
             created_at: Instant::now(),
             updated_at: Instant::now(),
+            #[cfg(feature = "runtime")]
             resource_poll_state: None,
         }
     }

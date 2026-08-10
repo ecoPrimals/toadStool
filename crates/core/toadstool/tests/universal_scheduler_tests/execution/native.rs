@@ -26,7 +26,7 @@ async fn test_execute_native_via_primal_provider() {
         instance_id: "native-provider-1".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -58,7 +58,7 @@ async fn test_execute_native_via_primal_provider_error_response() {
         instance_id: "error-provider".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -91,7 +91,7 @@ async fn test_execute_native_via_primal_provider_timeout_response() {
         instance_id: "timeout-provider".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -121,7 +121,7 @@ async fn test_execute_native_via_primal_provider_service_unavailable() {
         instance_id: "unavail-provider".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -213,7 +213,7 @@ async fn test_discover_self_ip_via_env_toadstool_bind_address() {
                 instance_id: "p1".to_string(),
                 context: test_ctx(),
             });
-            registry.register_primal(provider).await.unwrap();
+            registry.register_primal(provider).unwrap();
             let scheduler = UniversalScheduler::new(registry).await.unwrap();
             let job = UniversalJob {
                 id: Uuid::new_v4(),

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 
 use crate::{ExecutionRequest, RuntimeEngine, RuntimeType, ToadStoolError, ToadStoolResult};
@@ -23,14 +23,14 @@ impl<E: RuntimeEngine> EngineRegistry<E> {
         &self.engines
     }
 
-    pub async fn register_engine(
+    pub fn register_engine(
         &self,
         runtime_type: RuntimeType,
         engine: Arc<E>,
     ) -> ToadStoolResult<()> {
         info!("Registering runtime engine: {:?}", runtime_type);
 
-        self.engines.write().await.insert(runtime_type, engine);
+        self.engines.write().unwrap_or_else(|e| e.into_inner()).insert(runtime_type, engine);
         info!("Successfully registered runtime engine");
         Ok(())
     }
@@ -48,12 +48,12 @@ pub enum RuntimeSelectionStrategy {
 }
 
 impl RuntimeSelectionStrategy {
-    pub(crate) async fn select_runtime<E: RuntimeEngine>(
+    pub(crate) fn select_runtime<E: RuntimeEngine>(
         &self,
         request: &ExecutionRequest,
         engines: &Arc<RwLock<HashMap<RuntimeType, Arc<E>>>>,
     ) -> ToadStoolResult<RuntimeType> {
-        let engines_guard = engines.read().await;
+        let engines_guard = engines.read().unwrap_or_else(|e| e.into_inner());
         let workload_type = request.workload.workload_type();
 
         let result = match self {

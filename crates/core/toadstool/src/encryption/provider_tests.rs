@@ -107,9 +107,9 @@ async fn test_registry_register() {
         },
     });
 
-    assert!(registry.register(provider).await.is_ok());
+    assert!(registry.register(provider).is_ok());
 
-    let providers = registry.list_providers().await;
+    let providers = registry.list_providers();
     assert_eq!(providers.len(), 1);
     assert!(providers.contains(&"test".to_string()));
 }
@@ -126,7 +126,7 @@ async fn test_registry_find_provider() {
         },
     });
 
-    registry.register(provider).await.unwrap();
+    registry.register(provider).unwrap();
 
     let required = CryptoCapability {
         algorithms: vec!["chacha20poly1305".to_string()],
@@ -134,7 +134,7 @@ async fn test_registry_find_provider() {
         hardware_backed: false,
     };
 
-    let found = registry.find_provider(&required).await.unwrap();
+    let found = registry.find_provider(&required).unwrap();
     assert!(found.is_some());
     assert_eq!(found.unwrap().provider_id(), "test");
 }
@@ -184,7 +184,7 @@ fn test_provider_health_debug_clone() {
 #[tokio::test]
 async fn test_registry_default() {
     let registry = CryptoProviderRegistry::<MockProvider>::default();
-    assert!(registry.list_providers().await.is_empty());
+    assert!(registry.list_providers().is_empty());
 }
 
 #[tokio::test]
@@ -199,8 +199,8 @@ async fn test_registry_register_duplicate_fails() {
         },
     });
 
-    assert!(registry.register(provider.clone()).await.is_ok());
-    let result = registry.register(provider).await;
+    assert!(registry.register(provider.clone()).is_ok());
+    let result = registry.register(provider);
     assert!(result.is_err());
     assert!(
         result
@@ -213,7 +213,7 @@ async fn test_registry_register_duplicate_fails() {
 #[tokio::test]
 async fn test_registry_unregister_not_found() {
     let registry = CryptoProviderRegistry::<MockProvider>::new();
-    let result = registry.unregister("nonexistent").await;
+    let result = registry.unregister("nonexistent");
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("not found"));
 }
@@ -229,11 +229,11 @@ async fn test_registry_unregister() {
             hardware_backed: false,
         },
     });
-    registry.register(provider).await.unwrap();
-    assert_eq!(registry.list_providers().await.len(), 1);
+    registry.register(provider).unwrap();
+    assert_eq!(registry.list_providers().len(), 1);
 
-    assert!(registry.unregister("unreg").await.is_ok());
-    assert!(registry.list_providers().await.is_empty());
+    assert!(registry.unregister("unreg").is_ok());
+    assert!(registry.list_providers().is_empty());
 }
 
 #[tokio::test]
@@ -247,14 +247,14 @@ async fn test_registry_find_provider_no_match() {
             hardware_backed: false,
         },
     });
-    registry.register(provider).await.unwrap();
+    registry.register(provider).unwrap();
 
     let required = CryptoCapability {
         algorithms: vec!["nonexistent-alg".to_string()],
         security_level: SecurityLevel::Standard,
         hardware_backed: false,
     };
-    let found = registry.find_provider(&required).await.unwrap();
+    let found = registry.find_provider(&required).unwrap();
     assert!(found.is_none());
 }
 
@@ -277,15 +277,15 @@ async fn test_registry_find_all_providers() {
             hardware_backed: false,
         },
     });
-    registry.register(p1).await.unwrap();
-    registry.register(p2).await.unwrap();
+    registry.register(p1).unwrap();
+    registry.register(p2).unwrap();
 
     let required = CryptoCapability {
         algorithms: vec!["chacha20poly1305".to_string()],
         security_level: SecurityLevel::Standard,
         hardware_backed: false,
     };
-    let found = registry.find_all_providers(&required).await.unwrap();
+    let found = registry.find_all_providers(&required).unwrap();
     assert_eq!(found.len(), 2);
 }
 
@@ -300,12 +300,12 @@ async fn test_registry_get_provider() {
             hardware_backed: false,
         },
     });
-    registry.register(provider).await.unwrap();
+    registry.register(provider).unwrap();
 
-    let got = registry.get_provider("get-me").await.unwrap();
+    let got = registry.get_provider("get-me").unwrap();
     assert_eq!(got.provider_id(), "get-me");
 
-    let result = registry.get_provider("missing").await;
+    let result = registry.get_provider("missing");
     assert!(result.is_err());
 }
 
@@ -320,7 +320,7 @@ async fn test_registry_health_check_all() {
             hardware_backed: false,
         },
     });
-    registry.register(provider).await.unwrap();
+    registry.register(provider).unwrap();
 
     let health_map = registry.health_check_all().await;
     assert_eq!(health_map.len(), 1);
@@ -331,7 +331,7 @@ async fn test_registry_health_check_all() {
 #[tokio::test]
 async fn test_registry_list_providers_empty() {
     let registry = CryptoProviderRegistry::<MockProvider>::new();
-    let list = registry.list_providers().await;
+    let list = registry.list_providers();
     assert!(list.is_empty());
 }
 
@@ -347,9 +347,9 @@ async fn test_registry_list_providers_multiple() {
                 hardware_backed: false,
             },
         });
-        registry.register(provider).await.unwrap();
+        registry.register(provider).unwrap();
     }
-    let list = registry.list_providers().await;
+    let list = registry.list_providers();
     assert_eq!(list.len(), 2);
     assert!(list.contains(&"a".to_string()));
     assert!(list.contains(&"b".to_string()));

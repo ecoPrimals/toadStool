@@ -11,7 +11,7 @@ use super::ServiceManager;
 impl ServiceManager {
     /// Get service status
     pub async fn get_service_status(&self, service_id: &str) -> Option<ServiceStatus> {
-        let statuses = self.statuses.read().await;
+        let statuses = self.statuses.read().unwrap_or_else(|e| e.into_inner());
         statuses.get(service_id).cloned()
     }
 
@@ -19,13 +19,13 @@ impl ServiceManager {
     pub async fn update_service_status(&self, service_id: &str, status: ServiceStatus) {
         debug!("📊 Updating service status: {} -> {:?}", service_id, status);
 
-        let mut statuses = self.statuses.write().await;
+        let mut statuses = self.statuses.write().unwrap_or_else(|e| e.into_inner());
         statuses.insert(service_id.to_string(), status);
     }
 
     /// Get all service statuses
     pub async fn get_all_statuses(&self) -> HashMap<String, ServiceStatus> {
-        let statuses = self.statuses.read().await;
+        let statuses = self.statuses.read().unwrap_or_else(|e| e.into_inner());
         statuses.clone()
     }
 
@@ -53,7 +53,7 @@ impl ServiceManager {
 
     /// Get count of services by status
     pub async fn count_by_status(&self, status: ServiceStatus) -> usize {
-        let statuses = self.statuses.read().await;
+        let statuses = self.statuses.read().unwrap_or_else(|e| e.into_inner());
         statuses.values().filter(|s| **s == status).count()
     }
 }

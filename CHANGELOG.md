@@ -5,7 +5,58 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 8, 2026 (Sessions 43-365+)
+## [Unreleased] - Aug 10, 2026 (Sessions 43-374+)
+
+### Session S374 (Aug 9-10, 2026) — Tokio Deep Debt: `runtime` Feature Gate + Needless Async Removal
+
+- **`runtime` feature gate** — `tokio` now optional in `crates/core/toadstool/`. Without `runtime`, the crate compiles on `wasm32-unknown-unknown` as a pure types+logic library.
+- **WASM-capable crates: 13→26/48** — Doubled WASM coverage by unblocking `toadstool` and 12 downstream crates from unconditional tokio pull.
+- **RwLock migration** — 34+ files: `tokio::sync::RwLock` → `std::sync::RwLock` where guards are held briefly (no `.await` while locked). Poison-tolerant via `.unwrap_or_else(|e| e.into_inner())`.
+- **Mutex migration** — 2 biomeos inmemory backends: `tokio::sync::Mutex` → `std::sync::Mutex` (brief cache ops).
+- **Needless async removal** — 20+ functions across 7 modules converted from `async fn` to `fn` (no `.await` inside). `SecurityProvider` trait, `CryptoProviderRegistry`, `RuntimeOrchestrator`, `EngineRegistry`, `UniversalPrimalRegistry`, `UniversalScheduler`, `UniversalComputePlatform`, `EncryptionContext`.
+- **Guard-across-await fixes** — 3 files refactored to clone-before-await where `std::sync::RwLock` guards crossed `.await` points.
+- **UUID WASM safety** — `uuid/v4` moved behind `runtime` feature. `generate_uuid()` helper: `Uuid::new_v4()` on native, `Uuid::nil()` on WASM.
+- **Node Atomic AAR** — `silicon_discovery.rs`: queries coralReef `shader.compile.capabilities` at startup for silicon registry. `SiliconCapabilities` confirmed as native silicon registry (no external absorption needed).
+- **Downstream crates** — `toadstool-integration-primals` gained own `runtime` feature with `register_with_orchestrator` gated.
+- **All tests pass** — 15 toadstool lib tests, 0 failures. Full workspace clean.
+
+### Session S373 (Aug 9, 2026) — Deep Debt: Large File Decomposition, Hardcoding Removal, Doc Completeness
+
+- **Smart decomposition** — 3 oversized files refactored: `platform_backends.rs` (962→797L, `process_isolation.rs` extracted), `capabilities.rs` (922→813L, `pcie_config.rs` extracted), `vfio/mod.rs` (877→738L, `vfio/bind.rs` extracted).
+- **Hardcoding → discovery** — Hugepagesize from `/proc/meminfo`, `$ROCM_PATH` env, `$TOADSTOOL_GPU_MEMORY_FRACTION` env, actual `rocm-smi --showmeminfo` parsing.
+- **Doc completeness** — Full field-level doc comments on all `toadstool-core` execution types. Zero `missing_docs` warnings.
+- **Audit clean** — 0 production panics, 0 TODO/FIXME/HACK, 0 dead code, all unsafe SAFETY-documented.
+
+### Session S372 (Aug 9, 2026) — Vertebrate Evolution: Self-Audit + Types Extraction
+
+- **RPC self-audit** — 126/126 JSON-RPC methods verified: `DIRECT_JSONRPC_METHODS`, `ANNOUNCED_METHODS`, and `config/capability_registry.toml` all aligned.
+- **14 missing entries** added to capability registry (science.*, inference.*). Registry bumped to v0.2.1.
+- **Types extraction** — ~5K lines of pure types moved to `toadstool-core` (workload, resources, security, encryption, execution) for WASM-clean downstream.
+
+### Session S371 (Aug 8-9, 2026) — Full Tier 3: WASM Compute Kernel (24/48 Crates)
+
+- **WASM compilation** — 24/48 workspace crates compile on `wasm32-unknown-unknown` + `wasm32-wasip1` with `--no-default-features`.
+- **Feature gating** — `toadstool-common`, `toadstool-config`, `toadstool-core` all gained `runtime` feature gate. tokio/mio/socket2 gated behind `runtime`.
+- **Pattern** — Types-only "compute kernel" crates vs native-only "deployment layer" crates.
+
+### Session S370 (Aug 8, 2026) — Initial Tier 3: WASM Groundwork
+
+- **10 crates WASM-capable** — initial feature gating across `toadstool-common`, `toadstool-config`, `toadstool-core`, and neuromorphic crates.
+- **`default-features = false`** — pattern established for workspace WASM opt-in.
+
+### Session S369 (Aug 8, 2026) — Cross-Architecture Fleet Ready (16/16 Native Targets)
+
+- **First primal fleet-ready** — 16/16 native `cargo check --workspace` targets: x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
+- **`.cargo/config.toml`** — Cross-linker configuration for all targets.
+- **`scripts/cross-arch-check.sh`** — CI-ready verification script.
+- **`docs/CROSS_ARCH.md`** — Fleet matrix documentation.
+
+### Session S366-S368 (Aug 7-8, 2026) — G68 Cross-Architecture Hardening
+
+- **Musl ioctl fixes** — `ioctl_readwrite!` Opcode type portability for `musl` targets.
+- **hw-safe Layer 0/1/2 restructuring** — Architecture-clean separation of platform abstraction.
+- **seccompiler gating** — `#[cfg(target_os = "linux")]` for sandbox seccomp.
+- **rustix arch fallbacks** — Graceful degradation on unsupported architectures.
 
 ### Session S365 (Aug 7-8, 2026) — G68 Complete: Platform Containment (0 rustix outside hw-safe)
 

@@ -17,11 +17,13 @@
 //! **Adaptation over assumption**: Don't assume where we're running,
 //! detect it and adapt accordingly.
 
+#[cfg(feature = "runtime")]
 mod detector;
 
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime")]
 pub use detector::LayerDetector;
 use serde::{Deserialize, Serialize};
 use std::fmt;

@@ -1,12 +1,27 @@
 # Active Technical Debt Register
 
-**Date**: August 8, 2026 — S365
+**Date**: August 10, 2026 — S374
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S374 (strandGate Tokio Deep Debt — Aug 9-10, 2026)**: Tokio made optional via
+`runtime` feature gate in `crates/core/toadstool/`. 26/48 crates now compile on
+`wasm32-unknown-unknown`. 34+ files migrated from `tokio::sync::RwLock` to
+`std::sync::RwLock`. 20+ needlessly-async functions converted to sync. 2 biomeos
+inmemory backends migrated `tokio::sync::Mutex` → `std::sync::Mutex`. Node Atomic
+AAR: silicon discovery via coralReef IPC. All tests pass.
+
+**S373 (strandGate Deep Debt — Aug 9, 2026)**: Large file smart decomposition
+(platform_backends, capabilities, vfio). Hardcoding → runtime discovery. Zero
+`missing_docs` warnings. 0 files >800L.
+
+**S366-S372 (strandGate G68 Cross-Arch + Vertebrate — Aug 7-9, 2026)**: 16/16 native
+cross-arch targets (S369). 126/126 JSON-RPC self-audit (S372). Types extraction to
+`toadstool-core` (S372). WASM Tier 3 initial (S370-S371: 24/48).
 
 **S365 (strandGate G68 Complete — Aug 7-8, 2026)**: All `rustix::` syscall imports
 now confined exclusively to `toadstool-hw-safe`. 30+ files migrated across 9 crates.

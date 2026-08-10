@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
@@ -29,6 +29,7 @@ use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::constants::timeouts;
 #[cfg(all(feature = "networking", unix))]
 use toadstool_common::interned_strings::protocols;
+#[cfg(feature = "runtime")]
 use toadstool_common::service_discovery::DiscoveredService;
 
 use super::types::{EcosystemMessage, ServiceChannel, ServiceClient, ServiceStatus};
@@ -91,8 +92,7 @@ impl CommunicationManager {
         };
 
         self.channels
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .entry(service.id.clone())
             .or_insert_with(|| channel.clone());
 
@@ -202,7 +202,7 @@ impl CommunicationManager {
     ///
     /// Returns error if the channel is missing or sending the heartbeat message fails.
     pub async fn send_heartbeat(&self, service_id: &str) -> ToadStoolResult<()> {
-        let channels = self.channels.read().await;
+        let channels = self.channels.read().unwrap_or_else(|e| e.into_inner());
         let channel = channels
             .get(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found: {service_id}")))?;
@@ -213,7 +213,7 @@ impl CommunicationManager {
         self.send_message(channel, heartbeat_msg).await?;
 
         drop(channels);
-        if let Some(channel) = self.channels.write().await.get_mut(service_id) {
+        if let Some(channel) = self.channels.write().unwrap_or_else(|e| e.into_inner()).get_mut(service_id) {
             channel.last_heartbeat = std::time::SystemTime::now();
         }
 
@@ -222,19 +222,19 @@ impl CommunicationManager {
 
     /// Returns the channel for a service by ID.
     pub async fn get_channel(&self, service_id: &str) -> Option<ServiceChannel> {
-        let channels = self.channels.read().await;
+        let channels = self.channels.read().unwrap_or_else(|e| e.into_inner());
         channels.get(service_id).cloned()
     }
 
     /// Returns all active channels.
     pub async fn get_all_channels(&self) -> Vec<ServiceChannel> {
-        let channels = self.channels.read().await;
+        let channels = self.channels.read().unwrap_or_else(|e| e.into_inner());
         channels.values().cloned().collect()
     }
 
     /// Removes the channel for a service.
     pub async fn remove_channel(&self, service_id: &str) {
-        let mut channels = self.channels.write().await;
+        let mut channels = self.channels.write().unwrap_or_else(|e| e.into_inner());
         if let Some(channel) = channels.remove(service_id) {
             info!("🗑️  Removed channel for service: {}", channel.service_name);
         }
@@ -242,7 +242,7 @@ impl CommunicationManager {
 
     /// Updates the status of a channel.
     pub async fn update_channel_status(&self, service_id: &str, status: ServiceStatus) {
-        let mut channels = self.channels.write().await;
+        let mut channels = self.channels.write().unwrap_or_else(|e| e.into_inner());
         if let Some(channel) = channels.get_mut(service_id) {
             channel.status = status;
         }

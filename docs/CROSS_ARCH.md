@@ -1,6 +1,6 @@
 # toadStool Cross-Architecture Support
 
-**Status**: 16/16 native targets + 24/48 crates on WASM (Tier 3 — 50% compute kernel)
+**Status**: 16/16 native targets + 26/48 crates on WASM (Tier 3 — 54% compute kernel)
 **Sprint**: S373 — Deep debt: large file decomposition, hardcoding removal
 **Philosophy**: If it can run a bin, we can run primals on it.
 
@@ -15,8 +15,8 @@
 | Milk-V Jupiter 2 (RISC-V vector) | `riscv64gc-unknown-linux-gnu` | Full workspace |
 | Steam Deck (SteamOS) | `x86_64-unknown-linux-gnu` | Full workspace |
 | Raspberry Pi | `aarch64-unknown-linux-gnu` | Full workspace |
-| WebGPU/Browser | `wasm32-unknown-unknown` | 24 crates (compute kernel) |
-| Cloud/WASI edge | `wasm32-wasip1` | 24 crates (compute kernel) |
+| WebGPU/Browser | `wasm32-unknown-unknown` | 26 crates (compute kernel) |
+| Cloud/WASI edge | `wasm32-wasip1` | 26 crates (compute kernel) |
 
 ## Supported Architectures
 
@@ -46,14 +46,15 @@
 | `s390x-unknown-linux-gnu` | Linux | IBM Z | Mainframe compute |
 | `loongarch64-unknown-linux-gnu` | Linux | LoongArch | Loongson sovereign |
 
-### Tier 3 — Compute Kernel (WASM — 24 crates pass)
+### Tier 3 — Compute Kernel (WASM — 26 crates pass)
 
 | Target | Runtime | Crates |
 |--------|---------|--------|
-| `wasm32-unknown-unknown` | Browser/WebGPU | 24/48 (compute kernel) |
-| `wasm32-wasip1` | WASI edge/cloud | 24/48 (compute kernel) |
+| `wasm32-unknown-unknown` | Browser/WebGPU | 26/48 (compute kernel) |
+| `wasm32-wasip1` | WASI edge/cloud | 26/48 (compute kernel) |
 
 **Crates passing on WASM** (compute kernel — types, traits, hw abstraction, inference):
+- `toadstool` — core runtime (types/logic layer via `--no-default-features`)
 - `toadstool-common` — core types, traits, error handling
 - `toadstool-config` — configuration schemas and parsing
 - `toadstool-core` — core hardware infrastructure types
@@ -66,6 +67,7 @@
 - `toadstool-runtime-adaptive` — GPU optimization algorithms
 - `toadstool-security-monitoring` — security event ring buffer
 - `toadstool-integration-security` — entropy types and seed logic
+- `toadstool-integration-primals` — primal integration trait (types layer via `--no-default-features`)
 - `toadstool-ember` — hardware device holder/lifecycle types
 - `toadstool-cylinder` — DRM/VFIO driver dispatch types
 - `toadstool-glowplug` — device personality/discovery/health types
@@ -86,7 +88,7 @@ Crates that only need types/traits/constants use `default-features = false` on t
 dependencies to avoid pulling in tokio/mio/socket2 which cannot compile on WASM.
 On native builds, Cargo's feature unification ensures full functionality.
 
-**Native-only crates** (24 — require OS networking/processes/IPC):
+**Native-only crates** (22 — require OS networking/processes/IPC):
 - Server, client, CLI, distributed — TCP/Unix sockets, daemon lifecycle
 - Container, display, edge, native — OS process/kernel management
 - Testing, examples, integration-tests — test infrastructure

@@ -211,7 +211,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.4"
 
 # ============================================================================
-# BUILD PROFILES — tuned for 45-crate, 602-package workspace
+# BUILD PROFILES — tuned for 48-crate workspace
 # ============================================================================
 # Baseline (clean build, Ryzen 7 5700X / 16 threads / 62 GB):
 #   dev:          ~2m30s wall (26m CPU)  — mold linker cuts ~30s

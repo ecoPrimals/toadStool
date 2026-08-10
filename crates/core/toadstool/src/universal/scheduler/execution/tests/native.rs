@@ -29,7 +29,7 @@ async fn execute_native_via_primal_success_with_stdout_stderr_exit() {
         }),
         metadata: HashMap::new(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -56,7 +56,7 @@ async fn execute_native_via_primal_error_status() {
         payload: serde_json::json!({}),
         metadata: HashMap::new(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -77,7 +77,7 @@ async fn execute_native_via_primal_timeout_status() {
         payload: serde_json::json!({}),
         metadata: HashMap::new(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -98,7 +98,7 @@ async fn execute_native_via_primal_service_unavailable_status() {
         payload: serde_json::json!({}),
         metadata: HashMap::new(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -119,7 +119,7 @@ async fn execute_native_primal_handler_error_propagates() {
         instance_id: "fail-native".to_string(),
         context: ctx,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let err = scheduler
@@ -140,7 +140,7 @@ async fn execute_native_uses_local_engine_when_no_native_primal() {
         instance_id: "wasm-only".to_string(),
         context: ctx,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let mut engines = HashMap::new();
     engines.insert(RuntimeType::Native, Arc::new(MockRuntimeEngine));

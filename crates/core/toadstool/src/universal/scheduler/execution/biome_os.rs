@@ -27,7 +27,7 @@ where
         team_id: &str,
     ) -> ToadStoolResult<ExecutionResponse> {
         debug!("Executing BiomeOS job for team: {}", team_id);
-        let execution_id = Uuid::new_v4();
+        let execution_id = crate::generate_uuid();
         let start_time = std::time::Instant::now();
 
         // BiomeOS integration: Look for a BiomeOS primal provider

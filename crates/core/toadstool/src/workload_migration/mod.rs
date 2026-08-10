@@ -52,7 +52,7 @@ use crate::composition_engine::CompositionEngine;
 use crate::fractal_integration::FractalRuntime;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 
 /// Migration coordinator
@@ -167,6 +167,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
     /// # Errors
     ///
     /// Returns error if fractal runtime or composition engine initialization fails.
+    #[cfg(feature = "runtime")]
     pub async fn new() -> ToadStoolResult<Self> {
         let runtime = Arc::new(FractalRuntime::init().await?);
         let engine = Arc::new(CompositionEngine::new(Arc::clone(&runtime))?);
@@ -183,30 +184,30 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
     /// Register a cloud provider
     pub async fn register_provider(&self, provider: Box<P>) {
         let name = provider.name().to_string();
-        self.providers.write().await.register(provider);
+        self.providers.write().unwrap_or_else(|e| e.into_inner()).register(provider);
         info!("📦 Registered cloud provider: {}", name);
     }
 
     /// Get available providers
     pub async fn available_providers(&self) -> Vec<String> {
-        let providers = self.providers.read().await;
+        let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
         providers.available_providers()
     }
 
     /// Get workload location
     pub async fn get_workload_location(&self, workload_id: &str) -> Option<WorkloadLocation> {
-        let locations = self.workload_locations.read().await;
+        let locations = self.workload_locations.read().unwrap_or_else(|e| e.into_inner());
         locations.get(workload_id).cloned()
     }
 
     /// Track workload location
     pub async fn track_workload(&self, workload_id: impl Into<String>, location: WorkloadLocation) {
-        let mut locations = self.workload_locations.write().await;
+        let mut locations = self.workload_locations.write().unwrap_or_else(|e| e.into_inner());
         locations.insert(workload_id.into(), location);
     }
 
     /// Get migration statistics
     pub async fn stats(&self) -> MigrationStats {
-        self.stats.read().await.clone()
+        self.stats.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 }

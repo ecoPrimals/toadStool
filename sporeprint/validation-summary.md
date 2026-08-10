@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,008+ lib tests, 112 JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, Windows cross-compile, C2 dual-socket, zero hardcoded primal name violations"
-date = 2026-08-06
+description = "Sovereign compute hardware primal — 9,008+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 26/48 WASM, C2 dual-socket, G68 platform containment, Tokio deep debt resolved"
+date = 2026-08-10
 
 [taxonomies]
 primals = ["toadstool"]
@@ -10,11 +10,16 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S355, Aug 6, 2026)
-- **S355**: Hardcoded primal names → capability strings. C2 announce parity. Fake data → not_supported. Dead code removed. S354: C2 dual-socket naming. S353: C5 neuromorphic exclusion. S352: socket permissions 0o660. S351: 48 dead deps eliminated.
+- **Version**: 0.2.0 (Session S374, Aug 10, 2026)
+- **S374**: Tokio deep debt — `runtime` feature gate, needless async removal, std::sync migration, 26/48 WASM. Node Atomic AAR: silicon discovery via coralReef IPC.
+- **S373**: Large file decomposition, hardcoding → runtime discovery, zero `missing_docs`.
+- **S372**: Vertebrate self-audit (126/126 methods verified), types extraction to `toadstool-core`.
+- **S369**: 16/16 native cross-arch targets — first primal fleet-ready.
+- **S365**: G68 complete — zero rustix outside hw-safe.
 - **Lib tests**: 9,008+ (0 failures, unlimited parallelism)
-- **JSON-RPC methods**: 112 (direct) + semantic registry aliases
-- **Workspace crates**: 47 (46 with `version.workspace = true`)
+- **JSON-RPC methods**: 126 (direct) + semantic registry aliases
+- **Workspace crates**: 48
+- **Cross-arch**: 16/16 native targets, 26/48 WASM crates
 - **Clippy**: 0 warnings (`-D warnings`)
 - **Doc warnings**: 0
 - **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned; 19+ bans)

@@ -211,7 +211,7 @@ async fn test_concurrent_registrations() {
                 _ => RuntimeType::Python,
             };
 
-            orch_clone.register_engine(runtime_type, engine).await
+            orch_clone.register_engine(runtime_type, engine)
         });
 
         handles.push(handle);

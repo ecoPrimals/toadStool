@@ -33,12 +33,18 @@
 //! }
 //! ```
 
-use crate::deployment_layer::{DeploymentLayer, LayerDetector};
-use crate::layer_adaptation::{AdaptedCapabilities, LayerCapabilityAdapter};
+use crate::deployment_layer::DeploymentLayer;
+#[cfg(feature = "runtime")]
+use crate::deployment_layer::LayerDetector;
+use crate::layer_adaptation::AdaptedCapabilities;
+#[cfg(feature = "runtime")]
+use crate::layer_adaptation::LayerCapabilityAdapter;
 use crate::self_identity::SelfIdentity;
-use crate::{ToadStoolError, ToadStoolResult};
+#[cfg(feature = "runtime")]
+use crate::ToadStoolError;
+use crate::ToadStoolResult;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 /// Fractal-aware runtime
@@ -59,6 +65,7 @@ pub struct FractalRuntime {
     identity: Arc<RwLock<SelfIdentity>>,
 }
 
+#[cfg(feature = "runtime")]
 impl FractalRuntime {
     /// Initialize fractal-aware runtime
     ///
@@ -158,7 +165,9 @@ impl FractalRuntime {
             capabilities.to_capability_list().len()
         );
     }
+}
 
+impl FractalRuntime {
     /// Get deployment layer
     pub const fn deployment_layer(&self) -> &DeploymentLayer {
         &self.layer
@@ -283,7 +292,7 @@ impl FractalServiceAdvertiser {
     /// This function currently always returns `Ok`; the `Result` type is reserved for future discovery integration.
     pub async fn advertise(&self) -> ToadStoolResult<()> {
         let identity = self.runtime.identity();
-        let _identity_read = identity.read().await;
+        let _identity_read = identity.read().unwrap_or_else(|e| e.into_inner());
 
         info!("📢 Advertising fractal-aware service...");
         debug!("   Layer: {}", self.runtime.layer);
@@ -416,7 +425,7 @@ mod tests {
     async fn test_fractal_runtime_identity() {
         let runtime = FractalRuntime::init().await.unwrap();
         let identity = runtime.identity();
-        let _guard = identity.read().await;
+        let _guard = identity.read().unwrap_or_else(|e| e.into_inner());
     }
 
     #[tokio::test]

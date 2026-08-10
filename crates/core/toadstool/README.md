@@ -152,11 +152,11 @@ cargo doc --open --package toadstool
 
 ## Contributing
 
-See the main [ToadStool repository](https://github.com/your-org/toadstool) for contribution guidelines.
+See the main ToadStool repository for contribution guidelines.
 
 ## License
 
-AGPL-3.0-only
+AGPL-3.0-or-later
 
 ---
 

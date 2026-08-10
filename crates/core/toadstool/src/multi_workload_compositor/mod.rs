@@ -85,6 +85,7 @@ impl MultiWorkloadCompositor {
     /// # Errors
     ///
     /// Returns error if the composition engine cannot be initialized.
+    #[cfg(feature = "runtime")]
     pub async fn from_runtime() -> ToadStoolResult<Self> {
         let engine = CompositionEngine::from_runtime().await?;
         Self::new(Arc::new(engine))

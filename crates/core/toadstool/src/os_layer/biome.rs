@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::execution::{ExecutionOutput, ExecutionStatus, RuntimeType};
 use crate::universal::UniversalJobType;

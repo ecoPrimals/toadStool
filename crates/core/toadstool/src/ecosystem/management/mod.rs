@@ -34,7 +34,7 @@ mod status;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::ecosystem::types::{ServiceInstance, ServiceStatus};
 

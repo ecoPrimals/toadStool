@@ -48,7 +48,7 @@ use crate::fractal_integration::FractalRuntime;
 use crate::layer_adaptation::AdaptedCapabilities;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 /// Composition engine
@@ -87,6 +87,7 @@ impl CompositionEngine {
     /// # Errors
     ///
     /// Returns error if fractal runtime initialization fails.
+    #[cfg(feature = "runtime")]
     pub async fn from_runtime() -> ToadStoolResult<Self> {
         let runtime = FractalRuntime::init().await?;
         Self::new(Arc::new(runtime))
@@ -222,7 +223,7 @@ impl CompositionEngine {
     }
 
     async fn update_stats(&self, evaluation: &ConstraintEvaluation, duration_ms: f64) {
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
 
         stats.total_evaluations += 1;
 
@@ -242,7 +243,7 @@ impl CompositionEngine {
 
     /// Get engine statistics
     pub async fn stats(&self) -> EngineStats {
-        self.stats.read().await.clone()
+        self.stats.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Get current capabilities

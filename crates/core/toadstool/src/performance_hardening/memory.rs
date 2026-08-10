@@ -6,7 +6,7 @@
 
 use super::types::{MemoryPoolConfig, PoolStats};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Memory pool for object reuse
 pub struct MemoryPool<T> {
@@ -54,8 +54,8 @@ impl<T> MemoryPool<T> {
     where
         T: Send + Sync + 'static,
     {
-        let mut available = self.available.write().await;
-        let mut stats = self.stats.write().await;
+        let mut available = self.available.write().unwrap_or_else(|e| e.into_inner());
+        let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
 
         let object = if let Some(obj) = available.pop() {
             let total = stats.total_allocations;
@@ -100,7 +100,7 @@ impl<T> MemoryPool<T> {
         reason = "MemoryPool<T> not Sync when T: !Send; design constraint"
     )]
     pub async fn get_stats(&self) -> PoolStats {
-        self.stats.read().await.clone()
+        self.stats.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 }
 

@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use toadstool_common::capability_provider::{CapabilityError, CapabilityProvider};
 use toadstool_common::primal_identity::Capability;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Errors for storage backend
 #[derive(Debug, thiserror::Error)]
@@ -127,7 +127,7 @@ impl StorageBackend {
     ///
     /// Discovers by capability: "Who can store data?"
     async fn get_provider(&self) -> Result<CapabilityProvider> {
-        let mut provider_lock = self.provider.write().await;
+        let mut provider_lock = self.provider.write().unwrap_or_else(|e| e.into_inner());
 
         if provider_lock.is_none() {
             use toadstool_common::primal_identity::StorageCapability;
@@ -296,7 +296,7 @@ impl StorageBackend {
 
     /// Get provider info (for debugging only!)
     pub async fn provider_info(&self) -> Option<String> {
-        let provider_lock = self.provider.read().await;
+        let provider_lock = self.provider.read().unwrap_or_else(|e| e.into_inner());
         provider_lock.as_ref().map(|p| p.service_name().to_string())
     }
 }

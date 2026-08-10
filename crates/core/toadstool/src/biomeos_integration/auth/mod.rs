@@ -94,6 +94,7 @@ pub struct AuthenticationManager {
     config: AuthManagerConfig,
     current_token: Option<AuthenticationToken>,
     backend: Arc<AuthBackendDispatch>,
+    #[cfg(feature = "runtime")]
     refresh_task: Option<tokio::task::JoinHandle<()>>,
 }
 
@@ -105,6 +106,8 @@ impl AuthenticationManager {
             config,
             current_token: None,
             backend,
+            #[cfg(feature = "runtime")]
+            #[cfg(feature = "runtime")]
             refresh_task: None,
         }
     }
@@ -147,7 +150,10 @@ impl AuthenticationManager {
                     config,
                     current_token: None,
                     backend: Arc::new(AuthBackendDispatch::Security(backend)),
-                    refresh_task: None,
+                    #[cfg(feature = "runtime")]
+                    #[cfg(feature = "runtime")]
+                #[cfg(feature = "runtime")]
+            refresh_task: None,
                 });
             }
             #[cfg(not(unix))]
@@ -177,7 +183,9 @@ impl AuthenticationManager {
                 config,
                 current_token: None,
                 backend: Arc::new(AuthBackendDispatch::Security(backend)),
-                refresh_task: None,
+                #[cfg(feature = "runtime")]
+                #[cfg(feature = "runtime")]
+            refresh_task: None,
             })
         }
         #[cfg(not(unix))]
@@ -197,6 +205,7 @@ impl AuthenticationManager {
             config,
             current_token: None,
             backend: Arc::new(AuthBackendDispatch::InMemory(backend)),
+            #[cfg(feature = "runtime")]
             refresh_task: None,
         }
     }
@@ -290,6 +299,7 @@ impl AuthenticationManager {
     /// # Errors
     ///
     /// Returns an error if the refresh task cannot be spawned.
+    #[cfg(feature = "runtime")]
     pub fn start_token_refresh(&mut self) -> ToadStoolResult<()> {
         let refresh_interval = self.config.token_refresh_interval;
         let backend = Arc::clone(&self.backend);
@@ -313,6 +323,7 @@ impl AuthenticationManager {
     }
 
     /// Stops the background token refresh task.
+    #[cfg(feature = "runtime")]
     pub fn stop_token_refresh(&mut self) {
         if let Some(task) = self.refresh_task.take() {
             task.abort();

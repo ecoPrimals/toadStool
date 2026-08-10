@@ -22,7 +22,7 @@ async fn test_execute_primal_with_provider_success() {
         instance_id: "compute-1".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -61,7 +61,7 @@ async fn test_execute_primal_route_failure() {
         instance_id: "compute-err".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
@@ -121,7 +121,7 @@ async fn test_execute_primal_no_provider_with_available_list() {
         instance_id: "other-1".to_string(),
         context: test_ctx(),
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {

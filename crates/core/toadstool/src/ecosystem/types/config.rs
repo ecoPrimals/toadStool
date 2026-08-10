@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use toadstool_common::constants::timeouts;
 use toadstool_common::primal_identity::Capability;
+#[cfg(feature = "runtime")]
 use toadstool_common::service_discovery::DiscoveredService;
 
 /// Discovered service instance (type alias for clarity)

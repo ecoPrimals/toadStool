@@ -64,6 +64,7 @@ use tracing::{error, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::primal_identity::Capability;
+#[cfg(feature = "runtime")]
 use toadstool_common::service_discovery::{DiscoveredService, DiscoveryMethod, ServiceDiscovery};
 
 /// Ecosystem coordinator for capability-based service integration

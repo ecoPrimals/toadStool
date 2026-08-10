@@ -95,7 +95,7 @@ async fn test_channel_operations_with_direct_insert() {
     };
 
     {
-        let mut channels = manager.channels.write().await;
+        let mut channels = manager.channels.write().unwrap_or_else(|e| e.into_inner());
         channels.insert("test-service".to_string(), channel.clone());
     }
 
@@ -137,7 +137,7 @@ async fn test_multiple_channels() {
     };
 
     {
-        let mut channels = manager.channels.write().await;
+        let mut channels = manager.channels.write().unwrap_or_else(|e| e.into_inner());
         channels.insert("svc-1".to_string(), mk_channel("svc-1", "Service 1"));
         channels.insert("svc-2".to_string(), mk_channel("svc-2", "Service 2"));
         channels.insert("svc-3".to_string(), mk_channel("svc-3", "Service 3"));
@@ -277,7 +277,7 @@ async fn test_send_heartbeat_succeeds_and_updates_timestamp() {
     };
 
     {
-        let mut channels = manager.channels.write().await;
+        let mut channels = manager.channels.write().unwrap_or_else(|e| e.into_inner());
         channels.insert("heartbeat-svc".to_string(), channel.clone());
     }
 
@@ -305,7 +305,7 @@ async fn test_remove_channel_existing_logs_info() {
     };
 
     {
-        let mut channels = manager.channels.write().await;
+        let mut channels = manager.channels.write().unwrap_or_else(|e| e.into_inner());
         channels.insert("to-remove".to_string(), channel);
     }
 
@@ -327,7 +327,7 @@ async fn test_update_channel_status_existing_channel() {
     };
 
     {
-        let mut channels = manager.channels.write().await;
+        let mut channels = manager.channels.write().unwrap_or_else(|e| e.into_inner());
         channels.insert("status-svc".to_string(), channel);
     }
 

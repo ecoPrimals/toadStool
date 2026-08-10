@@ -22,7 +22,7 @@ async fn execute_primal_success() {
         status: ResponseStatus::Success,
         fail_route: false,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -62,7 +62,7 @@ async fn execute_primal_response_error_timeout_unavailable() {
             status,
             fail_route: false,
         });
-        registry.register_primal(provider).await.unwrap();
+        registry.register_primal(provider).unwrap();
 
         let scheduler = UniversalScheduler::new(registry).await.unwrap();
         let out = scheduler
@@ -95,7 +95,7 @@ async fn execute_primal_route_handler_error_returns_failed_response() {
         status: ResponseStatus::Success,
         fail_route: true,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
@@ -124,7 +124,7 @@ async fn execute_primal_no_provider_lists_available_when_present() {
         status: ResponseStatus::Success,
         fail_route: false,
     });
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler

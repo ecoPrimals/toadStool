@@ -36,6 +36,7 @@ impl PrimalIntegration for MockPrimal {
         })
     }
 
+    #[cfg(feature = "runtime")]
     fn register_with_orchestrator(
         &self,
         _discovery: &dyn toadstool_common::infant_discovery::CapabilityDiscovery,

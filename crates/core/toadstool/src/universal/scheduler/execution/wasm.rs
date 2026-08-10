@@ -37,14 +37,17 @@ where
         debug!("Executing WASM job ({} bytes)", module.len());
 
         // Check if we have a WASM runtime engine registered
-        let engines = self.runtime_engines().read().await;
-        if let Some(wasm_engine) = engines.get(&RuntimeType::Wasm) {
+        let wasm_engine = {
+            let engines = self.runtime_engines().read().unwrap_or_else(|e| e.into_inner());
+            engines.get(&RuntimeType::Wasm).cloned()
+        };
+        if let Some(wasm_engine) = wasm_engine {
             info!("Using registered WASM runtime engine for execution");
 
             // Build execution request (clone env once, reuse for both fields)
             let env_owned = env.clone();
             let request = ExecutionRequest {
-                execution_id: Uuid::new_v4(),
+                execution_id: crate::generate_uuid(),
                 workload: WorkloadSpec::Wasm {
                     module: WasmModuleSource::Bytes {
                         data: bytes::Bytes::copy_from_slice(module),
@@ -80,7 +83,7 @@ where
         );
         warn!("{}", error_msg);
         Ok(ExecutionResponse {
-            execution_id: Uuid::new_v4(),
+            execution_id: crate::generate_uuid(),
             status: crate::execution::ExecutionStatus::Failed {
                 error: error_msg.clone().into(),
             },

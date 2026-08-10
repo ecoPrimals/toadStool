@@ -114,7 +114,7 @@ impl SelfIdentity {
     /// Everything else is discovered at runtime.
     pub fn new() -> Self {
         Self {
-            instance_id: Uuid::new_v4(),
+            instance_id: crate::generate_uuid(),
             primal_type: PRIMAL_NAME,
             version: env!("CARGO_PKG_VERSION").to_string(),
             capabilities: Self::our_capabilities(),
@@ -207,9 +207,16 @@ impl SelfIdentity {
     }
 
     fn detect_memory() -> u64 {
-        toadstool_sysmon::memory_info()
-            .map(|m| m.total)
-            .unwrap_or(0)
+        #[cfg(feature = "runtime")]
+        {
+            toadstool_sysmon::memory_info()
+                .map(|m| m.total)
+                .unwrap_or(0)
+        }
+        #[cfg(not(feature = "runtime"))]
+        {
+            0
+        }
     }
 
     /// Detect GPU availability using wgpu runtime detection.
@@ -462,7 +469,7 @@ mod tests {
         };
 
         let service = DiscoveredService {
-            instance_id: Uuid::new_v4(),
+            instance_id: crate::generate_uuid(),
             primal_type: "storage".to_string(),
             version: "1.0.0".to_string(),
             capabilities: vec![Capability {

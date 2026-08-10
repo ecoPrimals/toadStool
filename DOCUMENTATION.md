@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Aug 8, 2026 — S365
+**Last Updated**: Aug 10, 2026 — S374
 
 ---
 
@@ -31,22 +31,22 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S355 — Aug 2026)
+## Current State (S374 — Aug 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **9,008+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite. **Cross-architecture**: `cargo check --target x86_64-pc-windows-gnu` passes.
-- **112 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`.
+- **9,008+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **16/16 cross-arch native targets** (S369) — x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
+- **26/48 crates WASM** (S374) — compute kernel on `wasm32-unknown-unknown` + `wasm32-wasip1`. Tokio optional via `runtime` feature gate.
+- **126 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. Self-audit verified (S372).
 - **138 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
-- **Zero hardcoded primal name violations** (S355) — last 3 violations replaced with capability-based strings.
-- **C2 dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute.tarpc.sock` (tarpc hot-path). `primal.announce` and `identity.get` both advertise tarpc socket (S354-S355).
-- **Socket permissions** — `0o660` default (group-writable, S352). Directory `0o750` (group-traversable).
-- **Zero production files >750L**. All large files refactored via smart splits.
-- **Zero dead deps** — S351: 48 eliminated (47→39 external, 17%). Neuromorphic crates excluded from default workspace (S353, C5).
-- **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans.
+- **G68 platform containment complete** (S365) — zero rustix outside hw-safe.
+- **Tokio deep debt resolved** (S374) — needless async removed from 20+ functions, `std::sync::RwLock`/`Mutex` migration, Node Atomic AAR (silicon discovery via coralReef IPC).
+- **Zero production files >800L** (S373). Smart decomposition.
+- **Zero dead deps** — S351: 48 eliminated. ecoBin v3.0 — zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V.
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S355).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S374).
 
 ---
 

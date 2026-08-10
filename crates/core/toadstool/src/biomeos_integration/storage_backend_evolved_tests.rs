@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[tokio::test]
 async fn test_storage_backend_creation() {
     let backend = StorageBackend::new();
-    let provider_lock = backend.provider.read().await;
+    let provider_lock = backend.provider.read().unwrap_or_else(|e| e.into_inner());
     assert!(provider_lock.is_none());
 }
 

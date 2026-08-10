@@ -12,7 +12,7 @@ categories = ["authentication"]
 
 [dependencies]
 # Core ToadStool dependencies
-toadstool = { path = "../../core/toadstool" }
+toadstool = { path = "../../core/toadstool", default-features = false }
 toadstool-common = { path = "../../core/common" }
 # Async runtime
 tokio = { workspace = true }

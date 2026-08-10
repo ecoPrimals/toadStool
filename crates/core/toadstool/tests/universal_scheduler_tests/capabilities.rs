@@ -24,7 +24,7 @@ async fn test_scheduler_find_primals_by_native_capability() {
         architectures: vec!["x86_64".to_string()],
     };
     // Returns empty list when no providers registered — the API must not panic.
-    let primals = scheduler.find_primals_by_capability(&capability).await;
+    let primals = scheduler.find_primals_by_capability(&capability);
     let _ = primals.len();
 }
 
@@ -36,7 +36,7 @@ async fn test_scheduler_find_wasm_capability() {
     .await
     .unwrap();
     let capability = PrimalCapability::WasmExecution { wasi_support: true };
-    let primals = scheduler.find_primals_by_capability(&capability).await;
+    let primals = scheduler.find_primals_by_capability(&capability);
     let _ = primals.len();
 }
 
@@ -50,7 +50,7 @@ async fn test_scheduler_find_container_runtime_capability() {
     let capability = PrimalCapability::ContainerRuntime {
         orchestrators: vec!["docker".to_string()],
     };
-    let _ = scheduler.find_primals_by_capability(&capability).await;
+    let _ = scheduler.find_primals_by_capability(&capability);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -61,7 +61,7 @@ async fn test_scheduler_find_gpu_capability() {
     .await
     .unwrap();
     let capability = PrimalCapability::GpuAcceleration { cuda_support: true };
-    let _ = scheduler.find_primals_by_capability(&capability).await;
+    let _ = scheduler.find_primals_by_capability(&capability);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -75,7 +75,7 @@ async fn test_scheduler_find_custom_capability() {
         name: "custom-analytics".to_string(),
         attributes: HashMap::new(),
     };
-    let _ = scheduler.find_primals_by_capability(&capability).await;
+    let _ = scheduler.find_primals_by_capability(&capability);
 }
 
 // ── Error paths ──────────────────────────────────────────────────────────────
@@ -88,7 +88,6 @@ async fn test_scheduler_native_job_fails_when_provider_returns_error() {
             instance_id: "failing-native".to_string(),
             context: create_test_context(),
         }))
-        .await
         .unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();

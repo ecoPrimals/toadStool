@@ -1,7 +1,7 @@
 # ToadStool Server — JSON-RPC Method Reference
 
-**Last Updated**: Jul 2026 — S336+  
-**Direct handlers**: 112 (see `DIRECT_METHOD_HANDLED` in `crates/server/src/pure_jsonrpc/handler/router_tests.rs`)  
+**Last Updated**: Aug 2026 — S374  
+**Direct handlers**: 126 (see `DIRECT_METHOD_HANDLED` in `crates/server/src/pure_jsonrpc/handler/router_tests.rs`; S372: 14 science.*/inference.* entries added)  
 **Semantic aliases**: additional names resolved via `SemanticMethodRegistry` before dispatch
 
 All methods follow [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over Unix domain sockets

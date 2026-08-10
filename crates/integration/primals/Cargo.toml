@@ -16,15 +16,15 @@ categories = ["science", "network-programming"]
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
 
 # HTTP client for service communication
 
 # Workspace dependencies
-toadstool-config = { path = "../../core/config" }
-toadstool = { path = "../../core/toadstool" }
-toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config", default-features = false }
+toadstool = { path = "../../core/toadstool", default-features = false }
+toadstool-common = { path = "../../core/common", default-features = false }
 
 [dev-dependencies]
 tokio = { workspace = true }
@@ -33,7 +33,8 @@ mockall = "0.12"
 proptest = { workspace = true }
 
 [features]
-default = []
+default = ["runtime"]
+runtime = ["toadstool/runtime", "toadstool-common/runtime", "toadstool-config/runtime"]
 
 [lints]
 workspace = true

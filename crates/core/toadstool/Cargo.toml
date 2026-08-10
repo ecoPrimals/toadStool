@@ -14,13 +14,13 @@ categories.workspace = true
 readme = "README.md"
 
 [dependencies]
-# Core dependencies
-toadstool-common = { path = "../common" }
-toadstool-config = { path = "../config" }
-toadstool-core = { path = "../../toadstool-core", features = ["runtime"] }
+# Core dependencies — default-features disabled; runtime feature re-enables them
+toadstool-common = { path = "../common", default-features = false }
+toadstool-config = { path = "../config", default-features = false }
+toadstool-core = { path = "../../toadstool-core", default-features = false }
 
-# Async runtime
-tokio = { workspace = true }
+# Async runtime — optional behind `runtime` feature for WASM compatibility
+tokio = { workspace = true, optional = true }
 futures = { workspace = true }
 
 # Serialization (rc for Arc<str> zero-copy in storage types)
@@ -28,8 +28,8 @@ serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
 bytes = { workspace = true }
 
-# Unique identifiers
-uuid = { workspace = true }
+# Unique identifiers — v4 (random generation) gated behind runtime for WASM compat
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 # Logging
 tracing = { workspace = true }
@@ -42,7 +42,7 @@ thiserror = { workspace = true }
 proptest = { workspace = true, optional = true }
 
 # System monitoring — Pure Rust via /proc (replaces sysinfo)
-toadstool-sysmon = { workspace = true }
+toadstool-sysmon = { workspace = true, optional = true }
 
 # Encoding
 base64 = { workspace = true }
@@ -63,7 +63,9 @@ proptest = { workspace = true }
 [features]
 # S206: test-mocks removed from default — production builds no longer compile mock backends.
 # Run `cargo test --features test-mocks` for InMemory/mock test targets.
-default = ["mdns"]
+default = ["runtime", "mdns"]
+# Tokio async runtime + I/O modules. Disable for WASM-only types/traits builds.
+runtime = ["dep:tokio", "dep:toadstool-sysmon", "toadstool-common/runtime", "toadstool-common/mdns", "toadstool-common/btsp", "toadstool-config/runtime", "toadstool-core/runtime", "uuid/v4"]
 # Real `dlopen`/`dlclose` plugin loading (`libloading`). Omit from default so unit tests
 # without `.so` fixtures keep simulated load/unload unless this feature is enabled.
 plugin-loading = ["dep:libloading"]

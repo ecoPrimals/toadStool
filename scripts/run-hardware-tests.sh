@@ -143,8 +143,7 @@ run_npu_tests() {
 
     local failed=0
 
-    # Neuromorphic crates excluded from default workspace (C5: rustChip → Forgejo).
-    # On biomeGate (where rustChip is available), uncomment workspace members first.
+    # Neuromorphic crates require hardware (Akida NPU) or strandGate-local config.
     echo -e "${CYAN}Testing akida-driver backends...${NC}"
     cargo test -p akida-driver -- --ignored --test-threads=1 2>&1 \
         | grep -E "test result" || failed=$((failed + 1))
@@ -201,8 +200,7 @@ run_coverage() {
     fi
 
     if $HAS_AKIDA && [ -e "/dev/akida0" ]; then
-        # Neuromorphic crates excluded from default workspace (C5: rustChip → Forgejo).
-        # On biomeGate, uncomment workspace members in root Cargo.toml first.
+        # Neuromorphic crates require Akida hardware for --ignored tests.
         echo -e "${CYAN}Running NPU --ignored tests with coverage...${NC}"
         cargo llvm-cov -p akida-driver -p cross-substrate-validation \
             --no-report -- --ignored --test-threads=1 2>&1 \

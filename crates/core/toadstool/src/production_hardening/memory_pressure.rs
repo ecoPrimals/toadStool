@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{error, warn};
 
 /// Memory pressure configuration
@@ -117,7 +117,7 @@ impl MemoryPressureHandler {
 
     /// Register a callback. Accepts `Arc` so we can clone and invoke without holding lock across await.
     pub async fn register_callback(&self, callback: Arc<MemoryPressureDispatch>) {
-        let mut callbacks = self.callbacks.write().await;
+        let mut callbacks = self.callbacks.write().unwrap_or_else(|e| e.into_inner());
         callbacks.push(callback);
     }
 
@@ -139,12 +139,12 @@ impl MemoryPressureHandler {
             MemoryPressureLevel::Normal
         };
 
-        *self.current_usage.write().await = used_memory;
+        *self.current_usage.write().unwrap_or_else(|e| e.into_inner()) = used_memory;
 
         if level != MemoryPressureLevel::Normal {
             // Clone Arc refs and release lock before await (avoid holding lock across .await)
             let callback_arcs: Vec<Arc<MemoryPressureDispatch>> = {
-                let guard = self.callbacks.read().await;
+                let guard = self.callbacks.read().unwrap_or_else(|e| e.into_inner());
                 guard.iter().map(Arc::clone).collect()
             };
             for callback in callback_arcs {

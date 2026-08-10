@@ -49,8 +49,7 @@ where
 
         let providers = self
             .primal_registry()
-            .find_by_capability(&native_capability)
-            .await;
+            .find_by_capability(&native_capability);
 
         if let Some(provider) = providers.first() {
             // Create a primal request for native execution
@@ -128,8 +127,11 @@ where
             })
         } else {
             // No primal found - try local native runtime engine
-            let engines = self.runtime_engines().read().await;
-            if let Some(native_engine) = engines.get(&RuntimeType::Native) {
+            let native_engine = {
+                let engines = self.runtime_engines().read().unwrap_or_else(|e| e.into_inner());
+                engines.get(&RuntimeType::Native).cloned()
+            };
+            if let Some(native_engine) = native_engine {
                 info!("Using local native runtime engine for execution");
 
                 // Build execution request (clone env once, reuse for both fields)

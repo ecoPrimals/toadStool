@@ -157,6 +157,7 @@ pub fn validate_preflight(
 
 /// Check whether the local machine has sufficient capacity to accept a
 /// migrated workload.
+#[cfg(feature = "runtime")]
 fn check_local_capacity(requirements: &ResourceRequirements) -> ToadStoolResult<PreflightOutcome> {
     let available_cpu_cores = u32::try_from(toadstool_sysmon::cpu_count()).unwrap_or(u32::MAX);
     let available_memory_mib = toadstool_sysmon::memory_info()
@@ -182,7 +183,11 @@ fn check_local_capacity(requirements: &ResourceRequirements) -> ToadStoolResult<
     Ok(PreflightOutcome::Ok)
 }
 
-// ─── Pre-migration snapshot and rollback ─────────────────────────────────────
+#[cfg(not(feature = "runtime"))]
+fn check_local_capacity(_requirements: &ResourceRequirements) -> ToadStoolResult<PreflightOutcome> {
+    Ok(PreflightOutcome::Ok)
+}
+
 
 /// Snapshot of a workload's state immediately before migration.
 ///

@@ -36,11 +36,13 @@
 //! ```
 
 pub mod adapters;
+#[cfg(feature = "runtime")]
 pub mod detection;
 pub mod types;
 
 // Re-export all public types for external consumers
 pub use adapters::LayerCapabilityAdapter;
+#[cfg(feature = "runtime")]
 pub use detection::{
     detect_network_bandwidth, detect_storage_read_bandwidth, detect_storage_write_bandwidth,
     get_available_disk, get_total_memory,

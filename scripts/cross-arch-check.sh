@@ -44,11 +44,13 @@ TIER3_TARGETS=(
 )
 
 WASM_CRATES=(
+    "toadstool"
     "toadstool-common"
     "toadstool-config"
     "toadstool-core"
     "toadstool-hw-safe"
     "toadstool-sysmon"
+    "toadstool-integration-primals"
     "toadstool-management-resources"
     "toadstool-runtime-secure-enclave"
     "toadstool-runtime-universal"

@@ -402,7 +402,7 @@ async fn test_orchestrator_handles_rapid_registrations() {
                 _ => RuntimeType::Python,
             };
 
-            orch.register_engine(runtime_type, engine).await
+            orch.register_engine(runtime_type, engine)
         });
         handles.push(handle);
     }
@@ -479,7 +479,7 @@ async fn test_register_gpu_runtime() {
         should_fail: false,
     });
 
-    let result = orchestrator.register_engine(RuntimeType::Gpu, engine).await;
+    let result = orchestrator.register_engine(RuntimeType::Gpu, engine);
     assert!(result.is_ok());
 }
 

@@ -112,7 +112,7 @@ async fn test_scheduler_new_basic_construction() {
     let scheduler = UniversalScheduler::new(registry).await;
     assert!(scheduler.is_ok());
     let scheduler = scheduler.unwrap();
-    assert!(scheduler.available_runtimes().await.is_empty());
+    assert!(scheduler.available_runtimes().is_empty());
 }
 
 #[tokio::test]
@@ -123,7 +123,7 @@ async fn test_scheduler_with_runtime_engines() {
     let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);
     assert_eq!(runtimes[0], RuntimeType::Native);
 }
@@ -133,21 +133,19 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = SchedWithSimpleMock::create(registry).await.unwrap();
 
-    assert!(scheduler.available_runtimes().await.is_empty());
+    assert!(scheduler.available_runtimes().is_empty());
 
     scheduler
-        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine))
-        .await;
+        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
 
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);
     assert_eq!(runtimes[0], RuntimeType::Native);
 
     scheduler
-        .register_runtime_engine(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine))
-        .await;
+        .register_runtime_engine(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine));
 
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 2);
     assert!(runtimes.contains(&RuntimeType::Native));
     assert!(runtimes.contains(&RuntimeType::Wasm));
@@ -157,7 +155,7 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
 async fn test_scheduler_get_active_job_count_starts_at_zero() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
-    assert_eq!(scheduler.get_active_job_count().await, 0);
+    assert_eq!(scheduler.get_active_job_count(), 0);
 }
 
 #[tokio::test]
@@ -167,7 +165,7 @@ async fn test_scheduler_find_primals_by_capability_empty_registry() {
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
-    let providers = scheduler.find_primals_by_capability(&capability).await;
+    let providers = scheduler.find_primals_by_capability(&capability);
     assert!(providers.is_empty());
 }
 
@@ -305,12 +303,12 @@ async fn test_get_active_job_count_during_execution() {
 
     // Yield to let the spawned task run, then continue immediately
     tokio::task::yield_now().await;
-    let count = scheduler_clone.get_active_job_count().await;
+    let count = scheduler_clone.get_active_job_count();
     // Job may have already completed; either 0 or 1 is valid
     assert!(count <= 1, "active job count should be 0 or 1");
 
     let _ = handle.await.unwrap();
-    assert_eq!(scheduler_clone.get_active_job_count().await, 0);
+    assert_eq!(scheduler_clone.get_active_job_count(), 0);
 }
 
 #[tokio::test]
@@ -362,13 +360,13 @@ async fn test_find_primals_by_capability_with_registered_provider() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let inner = crate::universal::ToadStoolPrimalProvider::new(make_test_context());
     let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(inner));
-    registry.register_primal(provider).await.unwrap();
+    registry.register_primal(provider).unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
     };
-    let providers = scheduler.find_primals_by_capability(&capability).await;
+    let providers = scheduler.find_primals_by_capability(&capability);
     assert!(!providers.is_empty());
 }
 
@@ -583,7 +581,7 @@ async fn test_schedule_job_active_count_after_completion() {
     });
 
     let _ = scheduler.schedule_job(job).await;
-    let count = scheduler.get_active_job_count().await;
+    let count = scheduler.get_active_job_count();
     assert_eq!(count, 0, "active jobs should be 0 after completion");
 }
 
@@ -593,13 +591,11 @@ async fn test_register_runtime_engine_replaces_existing() {
     let scheduler = SchedWithSimpleMock::create(registry).await.unwrap();
 
     scheduler
-        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine))
-        .await;
+        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
     scheduler
-        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine))
-        .await;
+        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
 
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1, "should replace not duplicate");
 }
 
@@ -612,7 +608,7 @@ async fn test_universal_scheduler_via_crate_reexport() {
     let scheduler = UniversalScheduler::new(registry)
         .await
         .expect("scheduler creation");
-    assert_eq!(scheduler.get_active_job_count().await, 0);
+    assert_eq!(scheduler.get_active_job_count(), 0);
 }
 
 #[tokio::test]
@@ -623,7 +619,7 @@ async fn test_scheduler_with_runtime_engines_via_crate_reexport() {
     let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .expect("scheduler with engines");
-    let runtimes = scheduler.available_runtimes().await;
+    let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);
     assert_eq!(runtimes[0], RuntimeType::Wasm);
 }
@@ -656,6 +652,6 @@ async fn test_scheduler_find_primals_via_crate_reexport() {
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["aarch64".to_string()],
     };
-    let providers = scheduler.find_primals_by_capability(&capability).await;
+    let providers = scheduler.find_primals_by_capability(&capability);
     assert!(providers.is_empty());
 }

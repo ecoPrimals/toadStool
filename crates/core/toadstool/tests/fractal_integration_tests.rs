@@ -40,7 +40,7 @@ async fn test_fractal_runtime_full_initialization() {
 
     // Should have valid identity
     let identity = runtime.identity();
-    let identity_read = identity.read().await;
+    let identity_read = identity.read().unwrap();
     assert_eq!(identity_read.primal_type, "toadstool");
     assert!(
         !identity_read.capabilities.is_empty(),
@@ -173,8 +173,8 @@ async fn test_multiple_runtime_instances() {
     let id1 = runtime1.identity();
     let id2 = runtime2.identity();
 
-    let id1_read = id1.read().await;
-    let id2_read = id2.read().await;
+    let id1_read = id1.read().unwrap();
+    let id2_read = id2.read().unwrap();
 
     assert_ne!(
         id1_read.instance_id, id2_read.instance_id,
@@ -235,7 +235,7 @@ async fn test_runtime_identity_capability_sync() {
 
     let runtime_caps = runtime.capabilities();
     let identity = runtime.identity();
-    let identity_read = identity.read().await;
+    let identity_read = identity.read().unwrap();
 
     // Identity should have capabilities from runtime
     let runtime_cap_list = runtime_caps.to_capability_list();
@@ -382,7 +382,7 @@ async fn test_deep_debt_no_hardcoding() {
 async fn test_deep_debt_self_knowledge() {
     let runtime = FractalRuntime::init().await.unwrap();
     let identity = runtime.identity();
-    let identity_read = identity.read().await;
+    let identity_read = identity.read().unwrap();
 
     // Identity should know itself, not others
     assert_eq!(identity_read.primal_type, "toadstool");

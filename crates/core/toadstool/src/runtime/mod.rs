@@ -63,12 +63,12 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
     /// # Errors
     ///
     /// Returns error if registration fails.
-    pub async fn register_engine(
+    pub fn register_engine(
         &self,
         runtime_type: RuntimeType,
         engine: Arc<E>,
     ) -> ToadStoolResult<()> {
-        self.registry.register_engine(runtime_type, engine).await
+        self.registry.register_engine(runtime_type, engine)
     }
 
     /// Execute a workload using the appropriate runtime
@@ -88,10 +88,10 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
 
         request.security_context.validate()?;
 
-        let runtime_type = self.select_runtime(&request).await?;
+        let runtime_type = self.select_runtime(&request)?;
         debug!("Selected runtime: {:?}", runtime_type);
 
-        let engines = self.registry.engines().read().await;
+        let engines = self.registry.engines().read().unwrap_or_else(|e| e.into_inner());
         let engine = engines.get(&runtime_type).ok_or_else(|| {
             ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
         })?;
@@ -113,9 +113,9 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
         result
     }
 
-    async fn select_runtime(&self, request: &ExecutionRequest) -> ToadStoolResult<RuntimeType> {
+    fn select_runtime(&self, request: &ExecutionRequest) -> ToadStoolResult<RuntimeType> {
         if let Some(hint) = &request.runtime_hint {
-            if let Some(engine) = self.registry.engines().read().await.get(hint) {
+            if let Some(engine) = self.registry.engines().read().unwrap_or_else(|e| e.into_inner()).get(hint) {
                 if engine.supports_workload(&request.workload.workload_type()) {
                     return Ok(hint.clone());
                 }
@@ -125,17 +125,16 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
         let workload_type = request.workload.workload_type();
         match workload_type {
             WorkloadType::AiMl | WorkloadType::Cuda => {
-                self.select_intelligent_backend(request).await
+                self.select_intelligent_backend(request)
             }
             _ => {
                 self.selection_strategy
                     .select_runtime(request, self.registry.engines())
-                    .await
             }
         }
     }
 
-    async fn select_intelligent_backend(
+    fn select_intelligent_backend(
         &self,
         request: &ExecutionRequest,
     ) -> ToadStoolResult<RuntimeType> {
@@ -163,8 +162,7 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
             if self
                 .registry
                 .engines()
-                .read()
-                .await
+                .read().unwrap_or_else(|e| e.into_inner())
                 .contains_key(&RuntimeType::Gpu)
             {
                 Ok(RuntimeType::Gpu)
@@ -173,7 +171,7 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
                 Ok(RuntimeType::Native)
             }
         } else {
-            let engines = self.registry.engines().read().await;
+            let engines = self.registry.engines().read().unwrap_or_else(|e| e.into_inner());
             let result = if engines.contains_key(&RuntimeType::Gpu) {
                 info!("AI/ML workload: using GPU runtime");
                 Ok(RuntimeType::Gpu)

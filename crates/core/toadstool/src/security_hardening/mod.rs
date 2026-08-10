@@ -19,6 +19,7 @@
 pub mod audit;
 pub mod config;
 pub mod input_validator;
+#[cfg(feature = "runtime")]
 pub mod intrusion;
 pub mod rate_limiter;
 
@@ -29,6 +30,7 @@ pub use config::{
     ValidationRules,
 };
 pub use input_validator::InputValidator;
+#[cfg(feature = "runtime")]
 pub use intrusion::{ActivityType, IntrusionDetectionSystem};
 pub use rate_limiter::RateLimiter;
 
@@ -53,6 +55,7 @@ pub struct SecurityHardeningManager {
     /// Audit logger
     audit_logger: Arc<SecurityAuditLogger>,
     /// Intrusion detection
+    #[cfg(feature = "runtime")]
     intrusion_detection: Arc<IntrusionDetectionSystem>,
 }
 
@@ -63,6 +66,7 @@ impl SecurityHardeningManager {
         let rate_limiter = Arc::new(RateLimiter::new(config.rate_limiting.clone()));
         let input_validator = Arc::new(InputValidator::new(config.validation_rules.clone()));
         let audit_logger = Arc::new(SecurityAuditLogger::new(config.audit_config.clone()));
+        #[cfg(feature = "runtime")]
         let intrusion_detection = Arc::new(IntrusionDetectionSystem::new(
             config.intrusion_detection.clone(),
         ));
@@ -72,6 +76,7 @@ impl SecurityHardeningManager {
             rate_limiter,
             input_validator,
             audit_logger,
+            #[cfg(feature = "runtime")]
             intrusion_detection,
         }
     }
@@ -87,12 +92,13 @@ impl SecurityHardeningManager {
         context: &SecurityContext,
     ) -> ToadStoolResult<()> {
         // Check if client is banned
+        #[cfg(feature = "runtime")]
         if self.config.enable_intrusion_detection
             && self.intrusion_detection.is_banned(client_id).await
         {
             self.audit_logger
                 .log_event(SecurityAuditEvent {
-                    id: Uuid::new_v4(),
+                    id: crate::generate_uuid(),
                     event_type: SecurityEventType::IntrusionAttempt,
                     timestamp: SystemTime::now(),
                     client_id: Some(client_id.to_string()),
@@ -112,7 +118,7 @@ impl SecurityHardeningManager {
         {
             self.audit_logger
                 .log_event(SecurityAuditEvent {
-                    id: Uuid::new_v4(),
+                    id: crate::generate_uuid(),
                     event_type: SecurityEventType::RateLimitExceeded,
                     timestamp: SystemTime::now(),
                     client_id: Some(client_id.to_string()),
@@ -130,6 +136,7 @@ impl SecurityHardeningManager {
         context.validate()?;
 
         // Record successful activity
+        #[cfg(feature = "runtime")]
         if self.config.enable_intrusion_detection {
             self.intrusion_detection
                 .record_activity(client_id, ActivityType::Request)
@@ -171,6 +178,7 @@ impl SecurityHardeningManager {
 
     /// Record security failure
     pub async fn record_security_failure(&self, client_id: &str, failure_type: SecurityEventType) {
+        #[cfg(feature = "runtime")]
         if self.config.enable_intrusion_detection {
             self.intrusion_detection
                 .record_activity(client_id, ActivityType::FailedAttempt)
@@ -180,7 +188,7 @@ impl SecurityHardeningManager {
         if self.config.enable_audit_logging {
             self.audit_logger
                 .log_event(SecurityAuditEvent {
-                    id: Uuid::new_v4(),
+                    id: crate::generate_uuid(),
                     event_type: failure_type,
                     timestamp: SystemTime::now(),
                     client_id: Some(client_id.to_string()),

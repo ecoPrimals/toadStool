@@ -12,7 +12,7 @@ impl ServiceManager {
 
     /// Get unhealthy services
     pub async fn get_unhealthy_services(&self) -> Vec<String> {
-        let statuses = self.statuses.read().await;
+        let statuses = self.statuses.read().unwrap_or_else(|e| e.into_inner());
         statuses
             .iter()
             .filter(|(_, status)| status.is_error())

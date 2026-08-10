@@ -10,6 +10,7 @@
 
 use crate::error::{ToadStoolError, ToadStoolResult};
 use std::sync::Arc;
+#[cfg(feature = "runtime")]
 use toadstool_common::infant_discovery::DiscoveryEngine;
 
 /// Orchestration service client
@@ -170,6 +171,7 @@ pub async fn discover_orchestration() -> ToadStoolResult<String> {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+#[cfg(feature = "runtime")]
     use toadstool_common::infant_discovery::{DiscoveryEngine, DiscoveryError, EndpointSource};
 
     /// Mock source that returns different endpoints per capability
