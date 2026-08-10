@@ -5,7 +5,15 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 10, 2026 (Sessions 43-376+)
+## [Unreleased] - Aug 10, 2026 (Sessions 43-377+)
+
+### Session S377 (Aug 10, 2026) — NUCLEUS Manifest Convergence: 5→2 BiomeManifest Structs
+
+- **Manifest convergence: 5→2** — 3 divergent `BiomeManifest` structs replaced with re-exports of the canonical `toadstool_core::manifest::BiomeManifest` (shipped in S375). Only 2 remain: canonical source of truth (`toadstool-core`) + CLI bridge (with `From` conversion for operational types like `BiomeInfo`, `BiomeStatus`).
+- **integration-primals converged** — Both `integration_manifest.rs` and `manifest/biome.rs` replaced with `pub use toadstool_core::manifest::{BiomeManifest, BiomeMetadata}`. Added `PrimalConfig::from_manifest()` bridge method to convert `ManifestPrimalConfig` to integration trait's `PrimalConfig` at bootstrap time.
+- **biomeOS integration converged** — `biomeos_integration/types/manifest.rs` replaced local `BiomeManifest`/`BiomeMetadata` with canonical re-exports. Legacy `ServiceConfig`/`ServiceSource` retained (used by networking module).
+- **Wave 157g alignment** — Manifest convergence was HIGH priority in Wave 157g ENMESH blurb ("4 divergent BiomeManifest structs → 1 canonical `toadstool-core`"). Resolved: all subsystems (CLI, daemon, biomeOS, integration-primals) now consume the single canonical type.
+- **All tests pass** — 178 lib tests, 0 failures, 0 warnings.
 
 ### Session S376 (Aug 10, 2026) — Tokio Blast Radius Reduction: `std::fs` + `std::process` + WASM 31→38
 

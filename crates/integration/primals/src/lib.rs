@@ -169,28 +169,41 @@ mod tests {
             metadata: BiomeMetadata {
                 name: "test-biome".to_string(),
                 version: "1.0.0".to_string(),
+                description: None,
+                author: None,
+                team: None,
                 environment: None,
+                tags: vec![],
                 labels: HashMap::new(),
+                annotations: HashMap::new(),
             },
-            primals: {
-                let mut primals = HashMap::new();
-                primals.insert(
-                    "test".to_string(),
-                    PrimalConfig {
-                        name: "test".to_string(),
-                        primal_type: PrimalType::Compute,
-                        enabled: true,
-                        resources: None,
-                        dependencies: vec![],
-                        config: HashMap::new(),
-                        environment: HashMap::new(),
-                        labels: HashMap::new(),
-                        annotations: HashMap::new(),
-                    },
-                );
-                primals
-            },
+            primals: HashMap::new(),
+            services: HashMap::new(),
+            compositions: vec![],
+            resources: None,
+            security: None,
+            networking: None,
+            storage: None,
+            agents: None,
+            federation: None,
         };
+
+        let mut primals = HashMap::new();
+        primals.insert(
+            "test".to_string(),
+            toadstool_core::manifest::ManifestPrimalConfig {
+                version: None,
+                enabled: true,
+                source: None,
+                config: HashMap::new(),
+                capabilities: vec!["compute".to_string()],
+                dependencies: vec![],
+                health_check: None,
+                resources: None,
+                gossip_events: vec![],
+            },
+        );
+        let manifest = BiomeManifest { primals, ..manifest };
 
         let result = manager.bootstrap_from_manifest(&manifest).await.unwrap();
         assert_eq!(result.successful_primals, 1);

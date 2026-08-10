@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: August 10, 2026 — S376
+**Date**: August 10, 2026 — S377
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S377 (strandGate NUCLEUS Manifest Convergence — Aug 10, 2026)**: BiomeManifest
+struct convergence: 5→2. Three divergent `BiomeManifest` definitions
+(integration-primals `integration_manifest.rs`, integration-primals
+`manifest/biome.rs`, biomeOS integration `types/manifest.rs`) replaced with
+re-exports of canonical `toadstool_core::manifest::BiomeManifest`. Only canonical
+source of truth + CLI bridge remain. `PrimalConfig::from_manifest()` bridge added
+for integration trait boundary. Wave 157g HIGH priority item RESOLVED.
 
 **S376 (strandGate Tokio Blast Radius Reduction — Aug 10, 2026)**: Tokio blast
 radius reduced from workspace-wide unconditional to deployment-layer-only.

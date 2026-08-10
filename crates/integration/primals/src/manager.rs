@@ -13,7 +13,8 @@ const DEFAULT_RETRY_DELAY_SECS: u64 = 5;
 
 use crate::PrimalIntegration;
 use crate::health::{HealthCheck, HealthCheckStatus, HealthStatus};
-use crate::integration_manifest::BiomeManifest;
+use crate::BiomeManifest;
+use crate::PrimalConfig;
 use crate::service::StartupStatus;
 
 /// Primal Integration Manager
@@ -97,7 +98,8 @@ impl PrimalIntegrationManager {
             if let Some(primal) = self.primals.get(primal_name as &str)
                 && let Some(config) = manifest.primals.get(primal_name as &str)
             {
-                match primal.initialize_from_manifest(config).await {
+                let integration_config = PrimalConfig::from_manifest(primal_name, config);
+                match primal.initialize_from_manifest(&integration_config).await {
                     Ok(()) => {
                         results.insert(primal_name.clone(), PrimalBootstrapResult::Success);
                     }
@@ -297,34 +299,47 @@ mod tests {
     use std::time::Duration;
 
     use crate::mock_primal::MockPrimal;
-    use crate::primal_types::{PrimalConfig, PrimalType};
     use crate::{BiomeManifest, BiomeMetadata, PrimalIntegrationConfig, PrimalIntegrationManager};
+    use toadstool_core::manifest::ManifestPrimalConfig;
 
-    fn empty_manifest(primals: HashMap<String, PrimalConfig>) -> BiomeManifest {
+    fn empty_manifest(primals: HashMap<String, ManifestPrimalConfig>) -> BiomeManifest {
         BiomeManifest {
             api_version: "biomeOS/v1".to_string(),
             kind: "Biome".to_string(),
             metadata: BiomeMetadata {
                 name: "test-biome".to_string(),
                 version: "1.0.0".to_string(),
+                description: None,
+                author: None,
+                team: None,
                 environment: None,
+                tags: vec![],
                 labels: HashMap::new(),
+                annotations: HashMap::new(),
             },
             primals,
+            services: HashMap::new(),
+            compositions: vec![],
+            resources: None,
+            security: None,
+            networking: None,
+            storage: None,
+            agents: None,
+            federation: None,
         }
     }
 
-    fn primal_config(name: &str, dependencies: Vec<String>) -> PrimalConfig {
-        PrimalConfig {
-            name: name.to_string(),
-            primal_type: PrimalType::Compute,
+    fn primal_entry(dependencies: Vec<String>) -> ManifestPrimalConfig {
+        ManifestPrimalConfig {
+            version: None,
             enabled: true,
-            resources: None,
-            dependencies,
+            source: None,
             config: HashMap::new(),
-            environment: HashMap::new(),
-            labels: HashMap::new(),
-            annotations: HashMap::new(),
+            capabilities: vec![],
+            dependencies,
+            health_check: None,
+            resources: None,
+            gossip_events: vec![],
         }
     }
 
@@ -344,9 +359,9 @@ mod tests {
         let mut primals = HashMap::new();
         primals.insert(
             "worker".to_string(),
-            primal_config("worker", vec!["base".to_string()]),
+            primal_entry(vec!["base".to_string()]),
         );
-        primals.insert("base".to_string(), primal_config("base", vec![]));
+        primals.insert("base".to_string(), primal_entry(vec![]));
         let manifest = empty_manifest(primals);
         let order = manager.calculate_startup_order(&manifest).unwrap();
         let base_pos = order.iter().position(|n| n == "base").unwrap();
@@ -361,8 +376,8 @@ mod tests {
     fn calculate_startup_order_rejects_cycle() {
         let manager = PrimalIntegrationManager::new(PrimalIntegrationConfig::default());
         let mut primals = HashMap::new();
-        primals.insert("a".to_string(), primal_config("a", vec!["b".to_string()]));
-        primals.insert("b".to_string(), primal_config("b", vec!["a".to_string()]));
+        primals.insert("a".to_string(), primal_entry(vec!["b".to_string()]));
+        primals.insert("b".to_string(), primal_entry(vec!["a".to_string()]));
         let manifest = empty_manifest(primals);
         let err = manager.calculate_startup_order(&manifest).unwrap_err();
         assert!(err.to_string().contains("Circular dependency"), "{err}");
@@ -380,7 +395,7 @@ mod tests {
         );
 
         let mut primals = HashMap::new();
-        primals.insert("alpha".to_string(), primal_config("alpha", vec![]));
+        primals.insert("alpha".to_string(), primal_entry(vec![]));
         let manifest = empty_manifest(primals);
 
         let result = manager.bootstrap_from_manifest(&manifest).await.unwrap();

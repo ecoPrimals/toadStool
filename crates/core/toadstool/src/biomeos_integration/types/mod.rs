@@ -19,15 +19,34 @@
 //! ## Quick Start
 //!
 //! ```rust,ignore
-//! use toadstool::biomeos_integration::types::{BiomeManifest, PrimalsConfig};
+//! use std::collections::HashMap;
+//! use toadstool::biomeos_integration::types::BiomeManifest;
+//! use toadstool_core::manifest::BiomeMetadata;
 //!
-//! // Create a default manifest
-//! let manifest = BiomeManifest::default();
-//!
-//! // Access primal configurations
-//! if let Some(toadstool) = &manifest.primals.toadstool {
-//!     println!("ToadStool enabled: {}", toadstool.enabled);
-//! }
+//! let manifest = BiomeManifest {
+//!     api_version: "v1".into(),
+//!     kind: "Biome".into(),
+//!     metadata: BiomeMetadata {
+//!         name: "my-biome".into(),
+//!         version: "1.0.0".into(),
+//!         description: None,
+//!         author: None,
+//!         team: None,
+//!         environment: None,
+//!         tags: vec![],
+//!         labels: HashMap::new(),
+//!         annotations: HashMap::new(),
+//!     },
+//!     primals: HashMap::new(),
+//!     services: HashMap::new(),
+//!     compositions: vec![],
+//!     resources: None,
+//!     security: None,
+//!     networking: None,
+//!     storage: None,
+//!     agents: None,
+//!     federation: None,
+//! };
 //! ```
 //!
 //! ## Design Philosophy

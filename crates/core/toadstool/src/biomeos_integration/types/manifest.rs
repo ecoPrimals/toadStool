@@ -1,62 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core biome manifest and metadata structures
 //!
-//! This module contains the primary [`BiomeManifest`] structure that represents
-//! a complete BiomeOS deployment configuration, along with its metadata.
+//! [`BiomeManifest`] and [`BiomeMetadata`] are re-exported from the canonical
+//! `toadstool_core::manifest` module. Legacy service configuration types remain
+//! here for biomeOS integration code that predates the NUCLEUS manifest schema.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::agent::AgentConfig;
-use super::auth::BiomeSecurity;
-use super::config::PrimalsConfig;
-use super::networking::BiomeNetworking;
-use super::resources::BiomeResources;
-use super::storage::BiomeStorage;
-
-/// Enhanced `BiomeManifest` structure for Phase 4 Universal Orchestration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BiomeManifest {
-    /// API version for compatibility
-    pub api_version: String,
-    /// Manifest type (always "Biome")
-    pub kind: String,
-    /// Biome metadata
-    pub metadata: BiomeMetadata,
-    /// Primal-specific configurations
-    pub primals: PrimalsConfig,
-    /// Storage configuration and provisioning
-    pub storage: Option<BiomeStorage>,
-    /// AI agent deployment configuration
-    pub agents: Option<Vec<AgentConfig>>,
-    /// Security policies and authentication
-    pub security: Option<BiomeSecurity>,
-    /// Network configuration
-    pub networking: Option<BiomeNetworking>,
-    /// Resource allocation and limits
-    pub resources: Option<BiomeResources>,
-    /// Legacy services configuration (for backward compatibility)
-    pub services: Option<Vec<ServiceConfig>>,
-}
-
-/// Biome metadata information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BiomeMetadata {
-    /// Unique biome name
-    pub name: String,
-    /// Team or organization
-    pub team: Option<String>,
-    /// Environment type (dev, staging, prod)
-    pub environment: Option<String>,
-    /// Biome version
-    pub version: String,
-    /// Description
-    pub description: Option<String>,
-    /// Labels for categorization
-    pub labels: HashMap<String, String>,
-    /// Annotations for additional metadata
-    pub annotations: HashMap<String, String>,
-}
+pub use toadstool_core::manifest::{BiomeManifest, BiomeMetadata};
 
 /// Legacy service configuration (for backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]

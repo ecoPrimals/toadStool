@@ -36,12 +36,12 @@ impl PrimalOrchestrator {
 
     /// Validate the deployment request
     fn validate_manifest(manifest: &BiomeManifest) -> PrimalResult<()> {
-        if manifest.name.is_empty() {
+        if manifest.metadata.name.is_empty() {
             return Err(PrimalError::Validation {
                 message: "Biome manifest name cannot be empty".to_string(),
             });
         }
-        if manifest.version.is_empty() {
+        if manifest.metadata.version.is_empty() {
             return Err(PrimalError::Validation {
                 message: "Biome manifest version cannot be empty".to_string(),
             });
@@ -68,7 +68,10 @@ impl PrimalOrchestrator {
             })?,
         };
 
-        info!("Deploying biome: {} via {}", manifest.name, endpoint);
+        info!(
+            "Deploying biome: {} via {}",
+            manifest.metadata.name, endpoint
+        );
 
         let response = client.send_request(request).await?;
 
@@ -97,7 +100,7 @@ impl PrimalOrchestrator {
             .or_else(|| response.data.get("id"))
             .and_then(serde_json::Value::as_str)
             .map_or_else(
-                || format!("deployed-{}", manifest.name),
+                || format!("deployed-{}", manifest.metadata.name),
                 std::string::ToString::to_string,
             );
 
@@ -124,18 +127,28 @@ mod tests {
 
     fn manifest(name: &str, version: &str) -> BiomeManifest {
         BiomeManifest {
-            name: name.to_string(),
-            version: version.to_string(),
-            description: Some("test".to_string()),
+            api_version: "v1".to_string(),
+            kind: "Biome".to_string(),
+            metadata: crate::BiomeMetadata {
+                name: name.to_string(),
+                version: version.to_string(),
+                description: Some("test".to_string()),
+                author: None,
+                team: None,
+                environment: None,
+                tags: vec![],
+                labels: HashMap::new(),
+                annotations: HashMap::new(),
+            },
             primals: HashMap::new(),
+            services: HashMap::new(),
+            compositions: vec![],
+            resources: None,
+            security: None,
+            networking: None,
             storage: None,
             agents: None,
-            security: None,
-            services: vec![],
-            networking: None,
-            resources: None,
             federation: None,
-            health_checks: vec![],
         }
     }
 

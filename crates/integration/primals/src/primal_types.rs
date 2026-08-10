@@ -156,6 +156,71 @@ pub struct PrimalResources {
     pub custom_limits: HashMap<String, serde_json::Value>,
 }
 
+impl PrimalConfig {
+    /// Build integration config from a canonical manifest primal entry.
+    ///
+    /// The HashMap key in [`toadstool_core::manifest::BiomeManifest::primals`] is the
+    /// primal name passed here.
+    #[must_use]
+    pub fn from_manifest(
+        name: &str,
+        entry: &toadstool_core::manifest::ManifestPrimalConfig,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            primal_type: infer_primal_type(name, &entry.capabilities),
+            enabled: entry.enabled,
+            resources: entry.resources.as_ref().map(manifest_resources_to_primal),
+            dependencies: entry.dependencies.clone(),
+            config: entry.config.clone(),
+            environment: HashMap::new(),
+            labels: HashMap::new(),
+            annotations: HashMap::new(),
+        }
+    }
+}
+
+fn infer_primal_type(name: &str, capabilities: &[String]) -> PrimalType {
+    for cap in capabilities {
+        let parsed = PrimalType::parse_type(cap).unwrap();
+        if parsed.is_standard() {
+            return parsed;
+        }
+    }
+    PrimalType::parse_type(name).unwrap()
+}
+
+fn manifest_resources_to_primal(
+    resources: &toadstool_core::manifest::ManifestResources,
+) -> PrimalResources {
+    let mut custom_limits = HashMap::new();
+    if let Some(memory_limit) = &resources.memory_limit {
+        custom_limits.insert(
+            "memory_limit".to_string(),
+            serde_json::Value::String(memory_limit.clone()),
+        );
+    }
+    if let Some(storage_limit) = &resources.storage_limit {
+        custom_limits.insert(
+            "storage_limit".to_string(),
+            serde_json::Value::String(storage_limit.clone()),
+        );
+    }
+    PrimalResources {
+        cpu_cores: resources.cpu_limit,
+        memory_gb: None,
+        storage_gb: None,
+        gpu: resources.gpu_limit.map(|count| GpuAllocation {
+            count,
+            gpu_type: None,
+            memory_gb: None,
+            cuda_capability: None,
+        }),
+        network_bandwidth: None,
+        custom_limits,
+    }
+}
+
 /// GPU allocation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuAllocation {

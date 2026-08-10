@@ -22,6 +22,7 @@ tracing = { workspace = true }
 # HTTP client for service communication
 
 # Workspace dependencies
+toadstool-core = { path = "../../toadstool-core", default-features = false }
 toadstool-config = { path = "../../core/config", default-features = false }
 toadstool = { path = "../../core/toadstool", default-features = false }
 toadstool-common = { path = "../../core/common", default-features = false }
