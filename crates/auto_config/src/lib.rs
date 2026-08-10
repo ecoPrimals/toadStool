@@ -103,7 +103,7 @@ pub mod intelligent;
 pub mod installer;
 pub mod natural_language;
 
-#[cfg(feature = "runtime")]
+#[cfg(feature = "network-scan")]
 mod ecosystem_network;
 
 #[cfg(feature = "runtime")]

@@ -2,9 +2,9 @@
 //! Synchronous default for types that only support async initialization.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
-use tokio::sync::RwLock;
+use tokio::sync::RwLock as AsyncRwLock;
 
 use crate::compiler::KernelStringOptimizer;
 use crate::config::{CompilationConfig, ResourceConfig, UniversalGpuConfig};
@@ -18,8 +18,8 @@ impl Default for UniversalGpuEngine {
         // Note: Default construction creates an uninitialized engine
         // Use UniversalGpuEngine::new() for proper async initialization
         Self {
-            frameworks: Arc::new(RwLock::new(HashMap::new())),
-            devices: Arc::new(RwLock::new(HashMap::new())),
+            frameworks: Arc::new(AsyncRwLock::new(HashMap::new())),
+            devices: Arc::new(AsyncRwLock::new(HashMap::new())),
             active_sessions: Arc::new(RwLock::new(HashMap::new())),
             _kernel_compiler: Arc::new(KernelStringOptimizer::new(CompilationConfig::default())),
             resource_coordinator: Arc::new(ComputeResourceCoordinator::new(

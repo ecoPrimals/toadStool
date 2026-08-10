@@ -22,7 +22,10 @@ impl UniversalGpuEngine {
     /// Get engine statistics
     pub async fn get_statistics(&self) -> ComputeEngineStatistics {
         let devices = self.devices.read().await;
-        let sessions = self.active_sessions.read().await;
+        let sessions = self
+            .active_sessions
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let frameworks = self.frameworks.read().await;
 
         let recursive_sessions = sessions.values().filter(|s| s.recursion_depth > 0).count();
@@ -43,18 +46,27 @@ impl UniversalGpuEngine {
 
     /// Log current evolution status
     pub(super) async fn log_evolution_status(&self) {
-        let metrics = self.evolution_metrics.read().await;
+        let metrics = self
+            .evolution_metrics
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         metrics.log_status();
     }
 
     /// Get evolution metrics
     pub async fn get_evolution_metrics(&self) -> EvolutionMetrics {
-        self.evolution_metrics.read().await.clone()
+        self.evolution_metrics
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Update evolution metrics (for future dynamic tracking)
     pub async fn update_evolution_metrics(&self, metrics: EvolutionMetrics) {
-        *self.evolution_metrics.write().await = metrics;
+        *self
+            .evolution_metrics
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = metrics;
         self.log_evolution_status().await;
     }
 

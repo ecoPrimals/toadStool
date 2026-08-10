@@ -32,7 +32,7 @@ members = [
     "crates/runtime/display",         # Display backend for petalTongue (drm/evdev use kernel FFI)
     "crates/runtime/gpu",
     "crates/runtime/specialty",
-    "crates/runtime/edge",
+    # "crates/runtime/edge",           # EXCLUDED S378: orphaned crate, zero workspace dependents
     "crates/runtime/native",
     "crates/runtime/orchestration",   # NEW: Workload orchestration (Jan 31, 2026) 🎯
     "crates/runtime/wasm",
@@ -57,7 +57,7 @@ members = [
     "examples",
 ]
 
-exclude = ["fuzz"]
+exclude = ["fuzz", "crates/runtime/edge"]
 
 [workspace.package]
 version = "0.2.0"

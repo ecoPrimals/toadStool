@@ -4,7 +4,9 @@
 
 ## Summary
 
-The "irreducible" ~118-file tokio production surface was largely vestigial — primordial code reimplementing what Tower Atomic primals (songBird, bearDog, cellMembrane) and biomeOS now own. Feature-gated ~35k LOC of dead modules behind non-default features. Migrated remaining safe `tokio::time`/`tokio::sync` to `std` equivalents.
+The "irreducible" ~118-file tokio production surface was largely vestigial — primordial code reimplementing what Tower Atomic primals (songBird, bearDog, cellMembrane) and biomeOS now own. Feature-gated ~35k LOC of dead modules behind 9 non-default features. Migrated remaining safe `tokio::time`/`tokio::sync` to `std` equivalents. Excluded orphaned `runtime/edge` crate.
+
+**Result: Default-build tokio surface 118 → 65 production files (45% reduction).**
 
 ## What Changed
 
@@ -18,48 +20,43 @@ The "irreducible" ~118-file tokio production surface was largely vestigial — p
 | `legacy-protocol-client` | `protocols/client/` + root `transport` | ~2.5k | biomeOS capability routing |
 | `legacy-security-client` | `protocols/security_client/` | ~2k | bearDog via `crypto_integration` |
 | `hardening` | `performance_hardening/async_ops,caching` + `circuit_breaker` + `intrusion` | ~3k | Zero production callers |
+| `background-monitors` | `server/background/{resource,health,statistics,cleanup,capability}` + `ServerState` | ~2k | Never started in production |
+| `cli-monitoring` | `cli/monitoring/` | ~1.8k | No CLI command wiring |
+| `network-scan` | `auto_config/ecosystem_network.rs` | ~0.5k | songBird domain (TCP scanning) |
+
+### Workspace exclusion
+
+- `runtime/edge/` — Orphaned crate, zero workspace dependents → moved to `[workspace].exclude`
 
 ### Safe migrations to `std`
 
-- **`tokio::time::Duration` → `std::time::Duration`**: 8 CLI files (same type re-exported)
-- **`tokio::time::Instant` → `std::time::Instant`**: 2 files (benchmarking, intrusion)
-- **`tokio::sync::RwLock` → `std::sync::RwLock`**: 6 files (guards not held across `.await`)
-- **`tokio::sync::Mutex` → `std::sync::Mutex`**: 2 files (sync-only scoped locks)
+- **`tokio::time::Duration` → `std::time::Duration`**: 8 CLI files
+- **`tokio::time::Instant` → `std::time::Instant`**: 2 files
+- **`tokio::sync::RwLock` → `std::sync::RwLock`**: 10 files (runtime-specialty, auto_config, GPU coordinator/engine, WASM cache, distributed client)
+- **`tokio::sync::Mutex` → `std::sync::Mutex`**: 3 files (server transport, GPU coordinator, distributed scheduling)
+- **WASM `cache_wasmi.rs`**: Entire module now synchronous (wasmi is sync)
 
 ## Metrics
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Default-build tokio production files | ~118 | ~85 |
-| Vestigial LOC in default build | ~35k | 0 (gated) |
-| `tokio::time` imports | 12 | 0 |
-| `tokio::sync::RwLock` files | ~20 | ~14 |
-| `tokio::sync::Mutex` files | ~6 | ~4 |
+| Metric | Before (S377) | After (S378) |
+|--------|---------------|--------------|
+| Default-build tokio production files | 118 | **65** |
+| Vestigial LOC in default build | ~35k | **0** (gated) |
+| Non-default features (vestigial) | 1 (`legacy-coordination`) | **9** |
+| `runtime/edge` in workspace | Yes | **Excluded** |
+| GPU tokio::sync | 4 files | **2** (frameworks/devices retained — guards across await) |
+| WASM tokio | 1 file | **0** |
 
-## Verification
-
-- `cargo check --workspace` — 0 errors, 0 warnings
-- `cargo test --workspace --lib` — all pass
-- Feature-gated code compiles when features enabled
-
-## Wave 157g Alignment
-
-- **Manifest convergence** — S377 DONE (prerequisite completed last sprint)
-- **Tokio debt** — S378 continues S374-S376 deep debt arc. Remaining tokio is genuinely irreducible: networking, task spawning, async I/O, channels, signals in the deployment layer.
-
-## Remaining Irreducible Tokio (~85 files)
+## Remaining Irreducible Tokio (~65 files)
 
 Genuinely needed for the async deployment layer:
-- `server/` — JSON-RPC server, BTSP, background services, transport
-- `core/toadstool` — IPC, workload dispatch (spawn + channels)
-- `core/common` — BTSP protocol, service discovery
-- `runtime/` — display IPC, GPU dispatch, container BYOB
-- `distributed/` — coordination_integration, crypto_integration, substrate
-- `cli/` — daemon lifecycle, monitoring
-
-## Not in Scope
-
-- Deleting vestigial code (feature-gating preserves as fossil record)
-- `#[tokio::test]` migration (468 instances — separate sprint)
-- Wiring `primal_capabilities/` to server startup (future composition work)
-- Replacing `RemoteDispatcher` transport with songBird MeshRelay
+- `server/` (15) — JSON-RPC server, BTSP, cross-gate UDS, ipc_watch, silicon_discovery, pcie_keepalive
+- `core/toadstool` (8) — IPC client/server, platform sockets, ipc_helpers
+- `core/common` (9) — BTSP framing/handshake/relay, unix_jsonrpc_client
+- `runtime/display` (6) — Display IPC server/client
+- `runtime/specialty` (5) — Async adapter trait (engine, embedded, mainframe)
+- `runtime/gpu` (3) — Framework discovery (guards across await)
+- `cli/` (7) — Daemon server, signals, display_ops tail, executor lifecycle
+- `distributed/` (2) — coordination_integration, crypto_integration
+- `client/` (2) — JSON-RPC client
+- Other (6) — container BYOB, native engine, ember keepalive, testing helpers

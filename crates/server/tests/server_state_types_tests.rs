@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![cfg(feature = "background-monitors")]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,

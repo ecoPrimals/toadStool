@@ -93,7 +93,10 @@ impl UniversalGpuEngine {
 
         // Calculate recursion depth
         let recursion_depth = if let Some(parent_id) = parent_session {
-            let sessions = self.active_sessions.read().await;
+            let sessions = self
+                .active_sessions
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             sessions
                 .get(&parent_id)
                 .map_or(0, |s| s.recursion_depth + 1)
@@ -125,7 +128,10 @@ impl UniversalGpuEngine {
 
         // Update parent session if this is recursive
         if let Some(parent_id) = parent_session {
-            let mut sessions = self.active_sessions.write().await;
+            let mut sessions = self
+                .active_sessions
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(parent_session) = sessions.get_mut(&parent_id) {
                 parent_session.child_sessions.push(session_id);
             }
@@ -133,7 +139,7 @@ impl UniversalGpuEngine {
 
         self.active_sessions
             .write()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .insert(session_id, session);
         Ok(session_id)
     }
@@ -149,7 +155,10 @@ impl UniversalGpuEngine {
 
         // Update session status
         {
-            let mut sessions = self.active_sessions.write().await;
+            let mut sessions = self
+                .active_sessions
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.status = SessionStatus::Running;
             }
@@ -190,7 +199,10 @@ impl UniversalGpuEngine {
 
         // Update session status
         {
-            let mut sessions = self.active_sessions.write().await;
+            let mut sessions = self
+                .active_sessions
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.status = SessionStatus::Completed;
             }
@@ -208,7 +220,10 @@ impl UniversalGpuEngine {
     /// Destroy compute session
     pub(super) async fn destroy_compute_session(&self, session_id: Uuid) -> ToadStoolResult<()> {
         let session = {
-            let mut sessions = self.active_sessions.write().await;
+            let mut sessions = self
+                .active_sessions
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             sessions.remove(&session_id)
         };
 

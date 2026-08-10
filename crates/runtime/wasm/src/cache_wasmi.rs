@@ -8,9 +8,8 @@
 //! This is MUCH simpler and safer than wasmtime caching!
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
-use tokio::sync::RwLock;
 use tracing::debug;
 use wasmi::Module;
 
@@ -77,31 +76,31 @@ impl ModuleCache {
     }
 
     /// Get a module from cache
-    pub async fn get(&self, key: &str) -> Option<Module> {
-        let mut cache = self.cache.write().await;
+    pub fn get(&self, key: &str) -> Option<Module> {
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
 
         if let Some(entry) = cache.get_mut(key) {
             // Record hit
             entry.record_access();
-            *self.hits.write().await += 1;
+            *self.hits.write().unwrap_or_else(|e| e.into_inner()) += 1;
 
             debug!("Cache hit for key: {}", key);
             Some(entry.module.clone())
         } else {
             // Record miss
-            *self.misses.write().await += 1;
+            *self.misses.write().unwrap_or_else(|e| e.into_inner()) += 1;
             debug!("Cache miss for key: {}", key);
             None
         }
     }
 
     /// Insert a module into cache
-    pub async fn insert(&self, key: String, module: Module) {
-        let mut cache = self.cache.write().await;
+    pub fn insert(&self, key: String, module: Module) {
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
 
         // Evict old entries if at capacity
         if cache.len() >= self.max_entries {
-            self.evict_lru(&mut cache).await;
+            self.evict_lru(&mut cache);
         }
 
         let cached = CachedModule::new(module);
@@ -112,11 +111,7 @@ impl ModuleCache {
     }
 
     /// Evict least recently used entry
-    #[expect(
-        clippy::unused_async,
-        reason = "kept for API consistency with async cache interface"
-    )]
-    async fn evict_lru(&self, cache: &mut HashMap<String, CachedModule>) {
+    fn evict_lru(&self, cache: &mut HashMap<String, CachedModule>) {
         if cache.is_empty() {
             return;
         }
@@ -134,9 +129,9 @@ impl ModuleCache {
     }
 
     /// Get cache hit rate
-    pub async fn hit_rate(&self) -> f64 {
-        let hits = *self.hits.read().await;
-        let misses = *self.misses.read().await;
+    pub fn hit_rate(&self) -> f64 {
+        let hits = *self.hits.read().unwrap_or_else(|e| e.into_inner());
+        let misses = *self.misses.read().unwrap_or_else(|e| e.into_inner());
         let total = hits + misses;
 
         if total == 0 {
@@ -147,15 +142,15 @@ impl ModuleCache {
     }
 
     /// Get cache size
-    pub async fn size(&self) -> usize {
-        self.cache.read().await.len()
+    pub fn size(&self) -> usize {
+        self.cache.read().unwrap_or_else(|e| e.into_inner()).len()
     }
 
     /// Clear the cache
-    pub async fn clear(&self) {
-        self.cache.write().await.clear();
-        *self.hits.write().await = 0;
-        *self.misses.write().await = 0;
+    pub fn clear(&self) {
+        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
+        *self.hits.write().unwrap_or_else(|e| e.into_inner()) = 0;
+        *self.misses.write().unwrap_or_else(|e| e.into_inner()) = 0;
         debug!("Cache cleared");
     }
 }
@@ -165,8 +160,8 @@ mod tests {
     use super::*;
     use wasmi::Engine;
 
-    #[tokio::test]
-    async fn test_cache_insert_and_get() {
+    #[test]
+    fn test_cache_insert_and_get() {
         let cache = ModuleCache::new(10);
         let engine = Engine::default();
 
@@ -175,19 +170,19 @@ mod tests {
         let module = Module::new(&engine, &wasm[..]).unwrap();
 
         // Insert into cache
-        cache.insert("test_key".to_string(), module.clone()).await;
+        cache.insert("test_key".to_string(), module.clone());
 
         // Retrieve from cache
-        let cached = cache.get("test_key").await;
+        let cached = cache.get("test_key");
         assert!(cached.is_some(), "Module should be in cache");
 
         // Check hit rate
-        let hit_rate = cache.hit_rate().await;
+        let hit_rate = cache.hit_rate();
         assert!(hit_rate > 0.0, "Should have cache hit");
     }
 
-    #[tokio::test]
-    async fn test_cache_eviction() {
+    #[test]
+    fn test_cache_eviction() {
         let cache = ModuleCache::new(2);
         let engine = Engine::default();
 
@@ -195,14 +190,14 @@ mod tests {
         let module = Module::new(&engine, &wasm[..]).unwrap();
 
         // Fill cache
-        cache.insert("key1".to_string(), module.clone()).await;
-        cache.insert("key2".to_string(), module.clone()).await;
+        cache.insert("key1".to_string(), module.clone());
+        cache.insert("key2".to_string(), module.clone());
 
-        assert_eq!(cache.size().await, 2);
+        assert_eq!(cache.size(), 2);
 
         // This should trigger eviction
-        cache.insert("key3".to_string(), module.clone()).await;
+        cache.insert("key3".to_string(), module.clone());
 
-        assert_eq!(cache.size().await, 2, "Cache should maintain max size");
+        assert_eq!(cache.size(), 2, "Cache should maintain max size");
     }
 }

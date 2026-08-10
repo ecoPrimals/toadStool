@@ -8,7 +8,25 @@ use tracing::{debug, info};
 
 use crate::ecosystem::constants::{capability_keys, wellknown_hosts};
 use crate::ecosystem::helpers::{assemble_discovered_services, get_capability_endpoint};
+#[cfg(feature = "network-scan")]
 use crate::ecosystem_network::{discover_network_services, probe_service};
+
+#[cfg(not(feature = "network-scan"))]
+async fn discover_network_services(
+    _service_patterns: &HashMap<String, ServicePattern>,
+) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+    Ok(HashMap::new())
+}
+
+#[cfg(not(feature = "network-scan"))]
+async fn probe_service(
+    _endpoint: &str,
+    _pattern: &ServicePattern,
+) -> ToadStoolResult<ServiceInfo> {
+    Err(ToadStoolError::network(
+        "TCP service probing requires the `network-scan` feature".to_string(),
+    ))
+}
 use crate::ecosystem_types::{
     DiscoveredServices, DiscoverySummary, ServiceInfo, ServicePattern, ServiceType,
 };

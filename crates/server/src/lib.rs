@@ -70,6 +70,7 @@ pub use config::{
     RateLimitingConfig, ServerConfig,
 };
 pub use errors::{ServerError, ServerResult};
+#[cfg(feature = "background-monitors")]
 pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics};
 
 // ⚠️ IMPORTANT: Protocol Priority (wateringHole Standard)
@@ -138,6 +139,7 @@ pub mod rpc_types; // Pure RPC types (depends on tarpc service definitions)
 // server: REMOVED — axum HTTP server is not the JSON-RPC surface here; use pure_jsonrpc
 pub mod ipc_surface;
 pub mod runtime_engine_dispatch;
+#[cfg(feature = "background-monitors")]
 pub mod state;
 #[cfg(feature = "tarpc")]
 pub mod tarpc_server;
@@ -148,6 +150,7 @@ pub use runtime_engine_dispatch::GpuRuntimeEngine;
 pub use runtime_engine_dispatch::RuntimeEngineDispatch;
 
 // Re-export background services for tests
+#[cfg(feature = "background-monitors")]
 pub use background::start_background_services;
 
 // Re-export UniBin entry point for external use

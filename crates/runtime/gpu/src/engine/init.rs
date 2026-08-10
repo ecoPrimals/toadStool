@@ -2,9 +2,9 @@
 //! Engine construction, framework discovery, and device enumeration.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
-use tokio::sync::RwLock;
+use tokio::sync::RwLock as AsyncRwLock;
 use tracing::{info, warn};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -47,8 +47,8 @@ impl UniversalGpuEngine {
         config: UniversalGpuConfig,
         selection_strategy: BackendSelectionStrategy,
     ) -> ToadStoolResult<Self> {
-        let frameworks = Arc::new(RwLock::new(HashMap::new()));
-        let devices = Arc::new(RwLock::new(HashMap::new()));
+        let frameworks = Arc::new(AsyncRwLock::new(HashMap::new()));
+        let devices = Arc::new(AsyncRwLock::new(HashMap::new()));
         let active_sessions = Arc::new(RwLock::new(HashMap::new()));
         let kernel_compiler = Arc::new(KernelStringOptimizer::new(config.compilation.clone()));
         let resource_coordinator =

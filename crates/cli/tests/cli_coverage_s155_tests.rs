@@ -385,6 +385,7 @@ fn test_setup_exit_code_for_config_error() {
 // Monitoring - Types, Collectors, Metrics Store, Alerting, Dashboard
 // ============================================================================
 
+#[cfg(feature = "cli-monitoring")]
 mod monitoring_tests {
     use super::*;
     use std::collections::HashMap;

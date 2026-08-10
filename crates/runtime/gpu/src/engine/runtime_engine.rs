@@ -155,7 +155,10 @@ impl RuntimeEngine for UniversalGpuEngine {
         async {
             // Destroy all active sessions
             let session_ids: Vec<Uuid> = {
-                let sessions = self.active_sessions.read().await;
+                let sessions = self
+                    .active_sessions
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
                 sessions.keys().copied().collect()
             };
 

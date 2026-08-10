@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![cfg(feature = "background-monitors")]
 //! Targeted tests to expand server crate coverage toward 90%.
 //!
 //! Focus on error paths, edge cases, and state transitions.

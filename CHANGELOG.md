@@ -12,11 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Vestigial `distributed/` modules gated** — `cloud/` (~7.8k LOC) behind `legacy-cloud`, `security/` + `security_provider/` + `crypto_lock/` (~12k LOC) behind `legacy-security`, `universal/scheduler` + adapter + platform (~1k LOC) behind `legacy-scheduler`. All with `#[deprecated]` annotations. Pattern follows existing `legacy-coordination`.
 - **Vestigial `integration/protocols/` modules gated** — `client/` + root `transport` (~2.5k LOC) behind `legacy-protocol-client`, `security_client/` (~2k LOC) behind `legacy-security-client`. Zero production callers; biomeOS capability routing and `crypto_integration` are the canonical paths.
 - **Vestigial hardening modules gated** — `performance_hardening/async_ops` + `caching`, `production_hardening/circuit_breaker`, `security_hardening/intrusion` behind non-default `hardening` feature in core `toadstool` crate. Zero production callers confirmed.
+- **Server background monitors gated** — `background/{resource,health,statistics,cleanup,capability}` + `ServerState` behind non-default `background-monitors` feature. These services are never started in production — only test infrastructure. Production services (pcie_keepalive, ipc_watch, silicon_discovery, catalyst_watchdog, kernel_sentinel) remain ungated.
+- **CLI monitoring gated** — `cli/monitoring/` (~1,800 LOC) behind non-default `cli-monitoring` feature. Full MonitoringSystem with collectors/alerting/dashboards but zero CLI command wiring.
+- **Auto-config network scanner gated** — `ecosystem_network.rs` behind non-default `network-scan` feature. TCP port scanning is songBird's domain; biomeOS socket discovery retained.
+- **`runtime/edge` excluded from workspace** — Orphaned crate with zero dependents, moved to workspace `exclude`.
+- **GPU `tokio::sync` → `std::sync`** — `coordinator.rs`, `engine/types.rs`, `engine/init.rs`, `engine/defaults.rs`. Mutex and RwLock for `active_sessions`, `evolution_metrics` migrated. `frameworks`/`devices` retained on tokio (guards held across .await in discover).
+- **WASM `cache_wasmi.rs`** — `tokio::sync::RwLock` → `std::sync::RwLock`. Cache methods now synchronous `fn` (wasmi is entirely sync).
 - **`tokio::time::Duration` → `std::time::Duration`** — 8 CLI files migrated (same type re-exported by tokio).
 - **`tokio::time::Instant` → `std::time::Instant`** — 2 files (benchmarking, intrusion detection).
-- **`tokio::sync::RwLock` → `std::sync::RwLock`** — 6 files (runtime-specialty realtime/industrial/mainframe, auto_config interface, distributed security_impl/client). Guards not held across `.await` confirmed safe.
-- **`tokio::sync::Mutex` → `std::sync::Mutex`** — 2 files (server transport, distributed scheduling). Sync-only scoped locks.
-- **Default-build tokio surface reduced** — ~118 → ~85 production files (~28% reduction). ~35k LOC preserved as fossil record behind non-default features.
+- **`tokio::sync::RwLock` → `std::sync::RwLock`** — 6 runtime-specialty files + auto_config interface.
+- **`tokio::sync::Mutex` → `std::sync::Mutex`** — 2 files (server transport, distributed scheduling).
+- **Default-build tokio surface: 118 → 65 production files (45% reduction).**
 - **All tests pass** — workspace `cargo check` 0 errors/0 warnings, lib tests all pass.
 
 ### Session S377 (Aug 10, 2026) — NUCLEUS Manifest Convergence: 5→2 BiomeManifest Structs

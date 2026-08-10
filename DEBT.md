@@ -11,12 +11,14 @@ where applicable.
 **S378 (strandGate Tokio Vestigial Segmentation — Aug 10, 2026)**: ~35k LOC of
 vestigial code feature-gated behind non-default features (`legacy-cloud`,
 `legacy-security`, `legacy-scheduler`, `legacy-protocol-client`,
-`legacy-security-client`, `hardening`). These modules reimplemented functionality
-now owned by Tower Atomic primals (songBird, bearDog, cellMembrane) and biomeOS.
-Default-build tokio surface reduced from ~118 to ~85 production files (~28%).
+`legacy-security-client`, `hardening`, `background-monitors`, `cli-monitoring`,
+`network-scan`). These modules reimplemented functionality now owned by Tower
+Atomic primals (songBird, bearDog, cellMembrane) and biomeOS. Default-build tokio
+surface reduced from ~118 to ~65 production files (45% reduction).
 `tokio::time::Duration`/`Instant` migrated to `std::time` (10 files).
-`tokio::sync::RwLock`/`Mutex` migrated to `std::sync` (8 files). Code preserved
-as fossil record, not deleted.
+`tokio::sync::RwLock`/`Mutex` migrated to `std::sync` (12+ files including GPU
+coordinator, WASM cache, runtime-specialty, auto_config). `runtime/edge` excluded
+from workspace (orphaned). Code preserved as fossil record, not deleted.
 
 **S377 (strandGate NUCLEUS Manifest Convergence — Aug 10, 2026)**: BiomeManifest
 struct convergence: 5→2. Three divergent `BiomeManifest` definitions

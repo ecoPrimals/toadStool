@@ -53,6 +53,8 @@ runtime = [
 ]
 test-mocks = []  # Enable mock implementations for testing
 slow-tests = []  # Enable slow integration tests (hardware detection, NL processing)
+# TCP port scanner for RFC1918 ecosystem service discovery (songBird domain)
+network-scan = ["runtime"]
 
 [lints]
 workspace = true

@@ -158,6 +158,9 @@ nautilus = []
 # Workload migration CLI and orchestration stubs (platform capabilities not yet wired)
 migration-preview = []
 
+# Vestigial monitoring stack (collectors, metrics store, alerting, dashboards) — no CLI wiring yet
+cli-monitoring = []
+
 [lints]
 workspace = true
 

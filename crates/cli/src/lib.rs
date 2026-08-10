@@ -67,6 +67,7 @@ pub use error::{CliContextExt, CliError, Result};
 pub mod daemon;
 pub mod ecosystem;
 pub mod executor;
+#[cfg(feature = "cli-monitoring")]
 pub mod monitoring;
 pub mod network_config;
 pub mod setup;

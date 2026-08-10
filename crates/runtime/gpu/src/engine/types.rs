@@ -2,9 +2,9 @@
 //! Core GPU engine type and shared state.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
-use tokio::sync::RwLock;
+use tokio::sync::RwLock as AsyncRwLock;
 use uuid::Uuid;
 
 use toadstool::resources::ResourceMonitorDispatch;
@@ -20,9 +20,9 @@ use crate::types::{ComputeSession, DeviceId, GpuFramework, UniversalComputeDevic
 pub struct UniversalGpuEngine {
     /// Discovered compute frameworks and their capabilities
     pub(super) frameworks:
-        Arc<RwLock<HashMap<GpuFramework, Arc<ParallelComputeFrameworkDispatch>>>>,
+        Arc<AsyncRwLock<HashMap<GpuFramework, Arc<ParallelComputeFrameworkDispatch>>>>,
     /// Available compute devices across all frameworks
-    pub(super) devices: Arc<RwLock<HashMap<DeviceId, UniversalComputeDevice>>>,
+    pub(super) devices: Arc<AsyncRwLock<HashMap<DeviceId, UniversalComputeDevice>>>,
     /// Active compute sessions (supports recursive execution)
     pub(super) active_sessions: Arc<RwLock<HashMap<Uuid, ComputeSession>>>,
     /// Universal kernel compiler and optimizer

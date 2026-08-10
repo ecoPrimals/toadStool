@@ -72,6 +72,8 @@ default = ["gpu-discovery", "tarpc", "btsp"]
 gpu-discovery = ["wgpu", "dep:toadstool-runtime-gpu"]
 tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
 btsp = ["toadstool-common/btsp"]
+# Test-only background monitoring loop (resource, health, statistics, cleanup, capability)
+background-monitors = []
 # Cross-platform sandbox + policy enforcement (seccomp, capabilities, RBAC)
 sandbox = ["dep:toadstool-security-sandbox", "dep:toadstool-security-policies"]
 # Display / hardware transport (petalTongue domain — DRM, V4L2, serial)

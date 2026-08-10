@@ -8,9 +8,8 @@ use super::types::{
     UniversalComputeDevice,
 };
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 /// Compute resource coordinator
@@ -56,7 +55,7 @@ impl ComputeResourceCoordinator {
 
         self.resource_pools
             .write()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .insert(device.id.clone(), pool);
         Ok(())
     }
@@ -71,7 +70,10 @@ impl ComputeResourceCoordinator {
         available_devices: &[DeviceId],
         requirements: &DeviceRequirements,
     ) -> ToadStoolResult<DeviceId> {
-        let load_balancer = self.load_balancer.lock().await;
+        let load_balancer = self
+            .load_balancer
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         load_balancer.select_device(available_devices, requirements)
     }
 
@@ -85,7 +87,10 @@ impl ComputeResourceCoordinator {
         device_id: &DeviceId,
         requirements: &DeviceRequirements,
     ) -> ToadStoolResult<ResourceAllocation> {
-        let mut pools = self.resource_pools.write().await;
+        let mut pools = self
+            .resource_pools
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let pool = pools
             .get_mut(device_id)
             .ok_or_else(|| ToadStoolError::runtime("Device pool not found"))?;
@@ -132,7 +137,10 @@ impl ComputeResourceCoordinator {
         device_id: &DeviceId,
         allocation: &ResourceAllocation,
     ) -> ToadStoolResult<()> {
-        let mut pools = self.resource_pools.write().await;
+        let mut pools = self
+            .resource_pools
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let pool = pools
             .get_mut(device_id)
             .ok_or_else(|| ToadStoolError::runtime("Device pool not found"))?;
@@ -154,7 +162,10 @@ impl ComputeResourceCoordinator {
         reason = "precision loss acceptable for this conversion"
     )] // utilization ratios for display
     pub async fn get_pool_stats(&self, device_id: &DeviceId) -> Option<ResourcePoolStats> {
-        let pools = self.resource_pools.read().await;
+        let pools = self
+            .resource_pools
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         pools.get(device_id).map(|pool| ResourcePoolStats {
             total_memory: pool.total_memory,
             allocated_memory: pool.allocated_memory,
@@ -172,7 +183,10 @@ impl ComputeResourceCoordinator {
 
     /// Update device load information
     pub async fn update_device_load(&self, device_id: &DeviceId, usage: &DeviceUsage) {
-        let mut load_balancer = self.load_balancer.lock().await;
+        let mut load_balancer = self
+            .load_balancer
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         load_balancer.update_device_load(device_id, usage);
     }
 }

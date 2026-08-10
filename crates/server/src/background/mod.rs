@@ -17,12 +17,15 @@
 //! - [`catalyst_watchdog`] — Exp 229 lockup sentinel: monitors handoff liveness, emergency quench + kill
 //! - [`kernel_sentinel`] — Exp 232 kernel oops sentinel: monitors /dev/kmsg for crash signatures, saves triage reports
 
+#[cfg(feature = "background-monitors")]
 mod capability;
 #[cfg(target_os = "linux")]
 pub(crate) mod catalyst_watchdog;
 #[cfg(all(test, target_os = "linux"))]
 mod catalyst_watchdog_tests;
+#[cfg(feature = "background-monitors")]
 mod cleanup;
+#[cfg(feature = "background-monitors")]
 mod health;
 #[cfg(unix)]
 pub(crate) mod ipc_watch;
@@ -36,26 +39,33 @@ mod kernel_sentinel_tests;
 pub(crate) mod pcie_keepalive;
 #[cfg(all(test, target_os = "linux"))]
 mod pcie_keepalive_tests;
+#[cfg(feature = "background-monitors")]
 mod resource;
+#[cfg(feature = "background-monitors")]
 mod statistics;
 
-#[cfg(target_os = "linux")]
-use tracing::error;
+#[cfg(feature = "background-monitors")]
 use tracing::info;
 
+#[cfg(feature = "background-monitors")]
 use toadstool::RuntimeEngine;
 
+#[cfg(feature = "background-monitors")]
 use crate::state::ServerState;
 
 // Re-export for unit tests (only used in #[cfg(test)] mod tests)
-#[cfg(test)]
+#[cfg(all(test, feature = "background-monitors"))]
 pub(crate) use cleanup::find_timed_out_execution_ids;
-#[cfg(test)]
+#[cfg(all(test, feature = "background-monitors"))]
 pub(crate) use health::perform_health_check;
-#[cfg(test)]
+#[cfg(all(test, feature = "background-monitors"))]
 pub(crate) use resource::update_stats_on_tick;
 
-/// Start all background services
+/// Start test-only background monitoring services (resource, health, statistics, cleanup, capability).
+///
+/// Production services (`pcie_keepalive`, `catalyst_watchdog`, `kernel_sentinel`) are started
+/// directly from UniBin / JSON-RPC handler startup — not via this function.
+#[cfg(feature = "background-monitors")]
 pub async fn start_background_services<E: RuntimeEngine + 'static>(state: ServerState<E>) {
     info!("Starting background services");
 
@@ -90,35 +100,12 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
         cleanup::run(state).await;
     });
 
-    // Start PCIe bridge keepalive — pins all GPU bridge hierarchies and
-    // generates periodic CfgRd traffic to prevent D3cold (critical for PLX,
-    // AMD switches, and any multi-level PCIe topology)
-    #[cfg(target_os = "linux")]
-    tokio::spawn(async move {
-        pcie_keepalive::run().await;
-    });
-
-    // Start catalyst handoff watchdog — OS thread (not tokio) that monitors
-    // handoff liveness and performs emergency interrupt quench + process kill
-    // if the pipeline becomes unresponsive (Exp 229 diesel engine safety net)
-    #[cfg(target_os = "linux")]
-    if let Err(e) = catalyst_watchdog::start_watchdog_thread() {
-        error!(error = %e, "failed to spawn catalyst watchdog thread; handoff safety net disabled");
-    }
-
-    // Start kernel oops sentinel — monitors /dev/kmsg for crash signatures
-    // and saves triage reports before the system goes down (Exp 232)
-    #[cfg(target_os = "linux")]
-    if let Err(e) = kernel_sentinel::start_sentinel_thread() {
-        error!(error = %e, "failed to spawn kernel sentinel thread; crash forensics disabled");
-    }
-
-    info!("Background services started");
+    info!("Background monitoring services started");
 
     // Background tasks will continue running until they're aborted or process exits
     // No need for an infinite loop here - the spawned tasks run independently
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "background-monitors"))]
 #[path = "tests.rs"]
 mod tests;
