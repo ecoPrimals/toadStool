@@ -7,7 +7,6 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 use tracing::{debug, info};
-use uuid::Uuid;
 
 use toadstool_config::defaults;
 

@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 10, 2026 (Sessions 43-374+)
+## [Unreleased] - Aug 10, 2026 (Sessions 43-376+)
+
+### Session S376 (Aug 10, 2026) — Tokio Blast Radius Reduction: `std::fs` + `std::process` + WASM 31→38
+
+- **`tokio::fs` eliminated** — 37+ production files migrated to `std::fs`. Config loading, hardware detection, policy files — none were high-concurrency I/O paths.
+- **`tokio::process` eliminated** — 15 production files migrated to `std::process`. GPU detection (`nvidia-smi`, `lspci`), installer operations, cross-compilation toolchains — all fire-and-forget subprocess calls.
+- **`tokio::sync::RwLock` reduction** — From ~99 files to ~20 remaining (irreducible async contexts). 65+ files migrated to `std::sync::RwLock` with poison-tolerant `.unwrap_or_else(|e| e.into_inner())`.
+- **WASM-capable crates: 31→38/48** — 7 new crates feature-gated: `auto-config`, `client`, `integration-protocols`, `management-monitoring`, `distributed`, `runtime-wasm`, `runtime-gpu`.
+- **Workspace tokio features trimmed** — Removed `fs` and `process` from workspace-level tokio features (9→7 features). Irreducible core: `rt-multi-thread`, `macros`, `sync`, `time`, `net`, `io-util`, `signal`.
+- **Functions made sync** — 30+ functions across all crates converted from `async fn` to `fn` where `tokio::fs`/`tokio::process` was the only async operation.
+- **Native-only crates reduced** — From 17 to 10 crates that inherently require OS networking/processes.
 
 ### Session S374 (Aug 9-10, 2026) — Tokio Deep Debt: `runtime` Feature Gate + Needless Async Removal
 

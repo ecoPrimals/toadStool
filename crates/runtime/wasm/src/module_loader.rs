@@ -80,7 +80,7 @@ impl ModuleLoader {
             match module_source {
                 WasmModuleSource::File { path } => {
                     debug!("Loading WASM module from file: {}", path.display());
-                    let bytes = tokio::fs::read(path).await.map_err(|e| {
+                    let bytes = std::fs::read(path).map_err(|e| {
                         ToadStoolError::io(format!(
                             "Failed to read WASM file {}: {}",
                             path.display(),

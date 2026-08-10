@@ -313,23 +313,21 @@ async fn try_unix_servers(
     jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
 ) -> ServerResult<()> {
     if let Some(parent) = socket_path.parent() {
-        tokio::fs::create_dir_all(parent)
-            .await
+        std::fs::create_dir_all(parent)
             .map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
     if jsonrpc_listener.is_none()
         && let Some(parent) = jsonrpc_socket.parent()
     {
-        tokio::fs::create_dir_all(parent)
-            .await
+        std::fs::create_dir_all(parent)
             .map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
 
-    if let Err(e) = tokio::fs::remove_file(socket_path).await {
+    if let Err(e) = std::fs::remove_file(socket_path) {
         tracing::debug!("Socket cleanup: {e}");
     }
     if jsonrpc_listener.is_none()
-        && let Err(e) = tokio::fs::remove_file(jsonrpc_socket).await
+        && let Err(e) = std::fs::remove_file(jsonrpc_socket)
     {
         tracing::debug!("Socket cleanup: {e}");
     }
@@ -354,7 +352,7 @@ async fn try_unix_servers(
         let jsonrpc_socket_clone = jsonrpc_socket.clone();
         tokio::spawn(async move {
             // Bind a new listener for G65
-            match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_clone).await {
+            match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_clone) {
                 Ok(listener) => {
                     if let Err(e) =
                         serve_unix_g65(jsonrpc_handler, g65_tarpc, Arc::new(listener)).await

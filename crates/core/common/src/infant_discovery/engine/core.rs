@@ -4,7 +4,7 @@
 //! Construction, registration, endpoint resolution, substrate detection, and cache clearing.
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::super::capabilities::{
     DetectedSubstrate, DiscoveryError, EndpointSource, SubstrateDetector, SubstrateType,
@@ -32,13 +32,13 @@ impl DiscoveryEngine {
 
     /// Register an endpoint source.
     pub async fn register_source(&self, source: Arc<dyn EndpointSource>) {
-        let mut sources = self.sources.write().await;
+        let mut sources = self.sources.write().unwrap_or_else(|e| e.into_inner());
         sources.push(source);
     }
 
     /// Register a substrate detector.
     pub async fn register_detector(&self, detector: Arc<dyn SubstrateDetector>) {
-        let mut detectors = self.detectors.write().await;
+        let mut detectors = self.detectors.write().unwrap_or_else(|e| e.into_inner());
         detectors.push(detector);
     }
 
@@ -50,7 +50,7 @@ impl DiscoveryEngine {
     pub async fn discover_endpoint(&self, capability: &str) -> Result<String, DiscoveryError> {
         // Try each source in order (clone to avoid holding lock across await)
         let sources: Vec<Arc<dyn EndpointSource>> =
-            self.sources.read().await.iter().map(Arc::clone).collect();
+            self.sources.read().unwrap_or_else(|e| e.into_inner()).iter().map(Arc::clone).collect();
 
         for source in &sources {
             match source.resolve(capability).await {
@@ -91,7 +91,7 @@ impl DiscoveryEngine {
     /// Returns `DiscoveryError` if substrate detection fails or no detectors are available.
     pub async fn detect_substrate(&self) -> Result<DetectedSubstrate, DiscoveryError> {
         let detectors: Vec<Arc<dyn SubstrateDetector>> =
-            self.detectors.read().await.iter().map(Arc::clone).collect();
+            self.detectors.read().unwrap_or_else(|e| e.into_inner()).iter().map(Arc::clone).collect();
 
         for detector in &detectors {
             match detector.detect().await {
@@ -129,7 +129,7 @@ impl DiscoveryEngine {
 
     /// Clear the cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache.clear();
     }
 }

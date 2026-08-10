@@ -19,7 +19,7 @@ impl BiomeExecutor {
         timeout_secs: u64,
     ) -> crate::Result<()> {
         let running_biome = {
-            let mut biomes = self.biomes.write().await;
+            let mut biomes = self.biomes.write().unwrap_or_else(|e| e.into_inner());
             biomes
                 .remove(biome_name)
                 .ok_or_else(|| crate::CliError::Other(format!("Biome '{biome_name}' not found")))?

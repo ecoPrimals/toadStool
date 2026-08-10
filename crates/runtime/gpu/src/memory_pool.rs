@@ -5,7 +5,7 @@
 //! OpenCL buffer pooling was removed S198; use barraCuda/coralReef for vendor pools.
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Memory pool for GPU buffers
 ///
@@ -52,7 +52,10 @@ impl MemoryPool {
 
     /// Get pool statistics
     pub async fn statistics(&self) -> PoolStatistics {
-        self.stats.read().await.clone()
+        self.stats
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Clear all buffers from pool
@@ -66,7 +69,7 @@ impl MemoryPool {
         reason = "precision loss acceptable for this conversion"
     )] // display percentage from counts
     pub async fn hit_rate(&self) -> f64 {
-        let stats = self.stats.read().await;
+        let stats = self.stats.read().unwrap_or_else(|e| e.into_inner());
         let total = stats.cache_hits + stats.cache_misses;
 
         if total == 0 {

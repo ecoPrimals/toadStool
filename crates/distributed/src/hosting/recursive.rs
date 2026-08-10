@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use toadstool::ToadStoolResult;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::types::{
     InstanceStatus, ProcessHandle, ResourceAllocation, ResourceLimits, ToadStoolHostingConfig,
@@ -96,7 +96,10 @@ impl RecursiveHostingManager {
         };
 
         {
-            let mut instances = self.child_instances.write().await;
+            let mut instances = self
+                .child_instances
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             instances.insert(instance_id.clone(), instance.clone());
         }
 

@@ -38,10 +38,10 @@ use tokio::net::{UnixListener, UnixStream};
 pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
     let path = path.as_ref();
 
-    // Create parent directory if needed — async to avoid blocking the runtime
+    // Create parent directory if needed
     if let Some(parent) = path.parent() {
         if !parent.exists() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| {
+            std::fs::create_dir_all(parent).map_err(|e| {
                 ToadStoolError::integration(format!(
                     "Failed to create socket directory {}: {}",
                     parent.display(),
@@ -53,7 +53,7 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
 
     // Remove stale socket if exists
     if path.exists() {
-        tokio::fs::remove_file(path).await.map_err(|e| {
+        std::fs::remove_file(path).map_err(|e| {
             ToadStoolError::integration(format!(
                 "Failed to remove stale socket {}: {}",
                 path.display(),

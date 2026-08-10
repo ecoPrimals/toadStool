@@ -11,41 +11,19 @@ categories = ["wasm", "development-tools"]
 
 [dependencies]
 # Core ToadStool dependencies
-toadstool = { path = "../../core/toadstool" }
-toadstool-common = { path = "../../core/common" }
+toadstool = { path = "../../core/toadstool", default-features = false }
+toadstool-common = { path = "../../core/common", default-features = false }
 bytes = { workspace = true }
 
-# Async runtime
-tokio = { workspace = true }
-futures = { workspace = true }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
 
-# WebAssembly runtime - Pure Rust Evolution (Jan 17, 2026)
-# 
-# OLD: wasmtime 20.0.0 (JIT compiler with C dependencies)
-#   ❌ C code in wasmtime-runtime (signal handling)
-#   ❌ C code in wasmtime-fiber (stack switching)
-#   ❌ C code in Cranelift JIT
-#   ❌ Blocked ARM cross-compilation
-#   ✅ Fast execution (~10x faster than interpreter)
-#   ⚠️ Higher memory (JIT code)
-#   ⚠️ Slower startup (JIT compilation)
-#
-# NEW: wasmi 1.0.7 (Pure Rust interpreter - STABLE!)
-#   ✅ 100% Pure Rust (ZERO C dependencies!)
-#   ✅ Trivial ARM cross-compilation
-#   ✅ Instant startup (no JIT warmup)
-#   ✅ Lower memory usage
-#   ✅ Better security (no JIT exploits)
-#   ⚠️ Slower execution (~10x slower than JIT)
-#   ✅ PERFECT for ToadStool's short-lived WASM workloads!
-#
-# Architectural Decision: Short WASM (seconds-minutes) via wasmi interpreter.
-# For truly long WASM compute: Phase 2 will orchestrate wasmtime as subprocess.
-# This achieves 100% Pure Rust core while supporting all workload types!
+# wasmi 1.0 — Pure Rust WASM interpreter (instant startup, zero C deps)
 wasmi = { version = "1.0", features = ["std"] }
-wasmi_wasi = { version = "1.0" }
+wasmi_wasi = { version = "1.0", optional = true }
 
-# Kept for development/testing WAT format
+# WAT format support
 wat = "1.0"
 
 # Serialization
@@ -53,23 +31,19 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Utilities
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
-# System integration
 sha2 = { workspace = true }
 
 [features]
-# PURE RUST: default features simplified
-default = []
-
-# Component model support (Phase 2 - wasmtime subprocess)
+default = ["runtime"]
+runtime = ["dep:tokio", "dep:futures", "dep:wasmi_wasi", "toadstool/runtime", "toadstool-common/runtime", "uuid/v4"]
 component-model = []
 
 [dev-dependencies]
 toadstool-testing = { path = "../../testing" }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-# wat moved to main dependencies (needed for wasmi parsing)
 
 [lints]
 workspace = true

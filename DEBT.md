@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: August 10, 2026 — S374
+**Date**: August 10, 2026 — S376
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S376 (strandGate Tokio Blast Radius Reduction — Aug 10, 2026)**: Tokio blast
+radius reduced from workspace-wide unconditional to deployment-layer-only.
+`tokio::fs` eliminated (37 files → `std::fs`). `tokio::process` eliminated
+(15 files → `std::process`). `tokio::sync::RwLock` reduced from ~99 to ~20 files
+(irreducible async contexts). 7 more crates feature-gated (31→38/48 WASM).
+Workspace tokio features trimmed from 9 to 7. 30+ functions made sync. Native-only
+crates reduced from 17 to 10.
 
 **S374 (strandGate Tokio Deep Debt — Aug 9-10, 2026)**: Tokio made optional via
 `runtime` feature gate in `crates/core/toadstool/`. 26/48 crates now compile on

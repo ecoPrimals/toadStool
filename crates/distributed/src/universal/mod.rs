@@ -1,18 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-/// Universal adapter for cross-platform execution.
-pub mod adapter;
-/// Platform detection and capabilities.
-pub mod platform;
-/// Universal scheduler for job distribution.
-pub mod scheduler;
-
-// Universal substrate modules
-mod detection;
-/// Substrate detection (biological, quantum, neuromorphic, etc.).
+/// Substrate type definitions (biological, quantum, neuromorphic, etc.).
 pub mod substrate;
 mod types;
 
-pub use adapter::*;
-pub use platform::*;
-pub use scheduler::*;
 pub use substrate::*;
+pub use types::*;
+
+#[cfg(feature = "runtime")]
+/// Universal adapter for cross-platform execution.
+pub mod adapter;
+#[cfg(feature = "runtime")]
+/// Platform detection and capabilities.
+pub mod platform;
+#[cfg(feature = "runtime")]
+/// Universal scheduler for job distribution.
+pub mod scheduler;
+#[cfg(feature = "runtime")]
+mod detection;
+
+#[cfg(feature = "runtime")]
+pub use adapter::*;
+#[cfg(feature = "runtime")]
+pub use platform::*;
+#[cfg(feature = "runtime")]
+pub use scheduler::*;

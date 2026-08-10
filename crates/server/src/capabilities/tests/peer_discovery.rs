@@ -22,13 +22,13 @@ async fn test_announce_success() {
             metadata: HashMap::new(),
         };
 
-        let result = caps.announce().await;
+        let result = caps.announce();
         assert!(result.is_ok());
 
         let file_path = discovery_base.join("announce-test-id.json");
         assert!(file_path.exists());
 
-        let contents = tokio::fs::read_to_string(&file_path).await.unwrap();
+        let contents = std::fs::read_to_string(&file_path).unwrap();
         let parsed: PrimalCapabilities = serde_json::from_str(&contents).unwrap();
         assert_eq!(parsed.primal_id, "announce-test-id");
         assert!(parsed.capabilities.contains(&"gpu-nvidia".to_string()));
@@ -66,11 +66,10 @@ async fn test_find_peer_with_success() {
         };
 
         let path = discovery_base.join("peer-gpu-123.json");
-        tokio::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap())
-            .await
+        std::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap())
             .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base).await;
+        let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base);
         assert!(found.is_ok());
         let found = found.unwrap();
         assert_eq!(found.primal_id, "peer-gpu-123");
@@ -100,11 +99,10 @@ async fn test_find_peer_with_partial_match() {
         };
 
         let path = discovery_base.join("peer-partial.json");
-        tokio::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap())
-            .await
+        std::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap())
             .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with_in("nvidia", &discovery_base).await;
+        let found = PrimalCapabilities::find_peer_with_in("nvidia", &discovery_base);
         assert!(found.is_ok());
         assert!(
             found
@@ -121,8 +119,7 @@ async fn test_find_peer_with_partial_match() {
 async fn test_find_peer_with_not_found() {
     with_temp_discovery(|discovery_base| async move {
         let result =
-            PrimalCapabilities::find_peer_with_in("nonexistent-capability-xyz", &discovery_base)
-                .await;
+            PrimalCapabilities::find_peer_with_in("nonexistent-capability-xyz", &discovery_base);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("No peer found"));
@@ -134,7 +131,7 @@ async fn test_find_peer_with_not_found() {
 #[tokio::test]
 async fn test_find_peer_with_empty_dir() {
     with_temp_discovery(|discovery_base| async move {
-        let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base).await;
+        let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base);
         assert!(result.is_err());
     })
     .await;
@@ -147,7 +144,7 @@ async fn test_find_peer_with_nonexistent_discovery_dir() {
     let base_str = base.to_string_lossy().to_string();
     temp_env::async_with_vars([("XDG_RUNTIME_DIR", Some(base_str.as_str()))], async {
         let _keep = temp;
-        let result = PrimalCapabilities::find_peer_with("compute").await;
+        let result = PrimalCapabilities::find_peer_with("compute");
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(
@@ -167,7 +164,7 @@ async fn test_find_all_peers_nonexistent_discovery_dir() {
     let base_str = base.to_string_lossy().to_string();
     temp_env::async_with_vars([("XDG_RUNTIME_DIR", Some(base_str.as_str()))], async {
         let _keep = temp;
-        let result = PrimalCapabilities::find_all_peers().await;
+        let result = PrimalCapabilities::find_all_peers();
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(
@@ -183,7 +180,7 @@ async fn test_find_all_peers_nonexistent_discovery_dir() {
 #[tokio::test]
 async fn test_find_all_peers_empty() {
     with_temp_discovery(|discovery_base| async move {
-        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base);
         assert!(peers.is_ok());
         assert!(peers.unwrap().is_empty());
     })
@@ -226,20 +223,18 @@ async fn test_find_all_peers_populated() {
             metadata: HashMap::new(),
         };
 
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("peer-1.json"),
             serde_json::to_string_pretty(&peer1).unwrap(),
         )
-        .await
         .unwrap();
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("peer-2.json"),
             serde_json::to_string_pretty(&peer2).unwrap(),
         )
-        .await
         .unwrap();
 
-        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base);
         assert!(peers.is_ok());
         let peers = peers.unwrap();
         assert_eq!(peers.len(), 2);
@@ -253,14 +248,10 @@ async fn test_find_all_peers_populated() {
 #[tokio::test]
 async fn test_find_all_peers_skips_non_json() {
     with_temp_discovery(|discovery_base| async move {
-        tokio::fs::write(discovery_base.join("data.txt"), "not json")
-            .await
-            .unwrap();
-        tokio::fs::write(discovery_base.join("config.toml"), "x = 1")
-            .await
-            .unwrap();
+        std::fs::write(discovery_base.join("data.txt"), "not json").unwrap();
+        std::fs::write(discovery_base.join("config.toml"), "x = 1").unwrap();
 
-        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base);
         assert!(peers.is_ok());
         assert!(peers.unwrap().is_empty());
     })
@@ -287,10 +278,10 @@ async fn test_cleanup_removes_file() {
             metadata: HashMap::new(),
         };
 
-        caps.announce().await.unwrap();
+        caps.announce().unwrap();
         assert!(discovery_base.join("cleanup-test-id.json").exists());
 
-        let result = caps.cleanup().await;
+        let result = caps.cleanup();
         assert!(result.is_ok());
         assert!(!discovery_base.join("cleanup-test-id.json").exists());
     })
@@ -317,7 +308,7 @@ async fn test_cleanup_idempotent_no_file() {
             metadata: HashMap::new(),
         };
 
-        let result = caps.cleanup().await;
+        let result = caps.cleanup();
         assert!(result.is_ok());
     })
     .await;
@@ -347,7 +338,7 @@ async fn test_announce_creates_discovery_dir() {
             socket_path: PathBuf::from("/tmp/test.sock"),
             metadata: HashMap::new(),
         };
-        let result = caps.announce().await;
+        let result = caps.announce();
         assert!(result.is_ok());
         assert!(discovery_base.exists());
         assert!(discovery_base.join("dir-create-test.json").exists());

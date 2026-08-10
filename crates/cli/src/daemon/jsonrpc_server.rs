@@ -154,14 +154,14 @@ pub async fn start_jsonrpc_server(
         workload_manager,
     };
 
-    // Remove existing socket if present — async to avoid blocking the runtime
+    // Remove existing socket if present
     if socket_path.exists() {
-        tokio::fs::remove_file(socket_path).await?;
+        std::fs::remove_file(socket_path)?;
     }
 
     // Ensure parent directory exists
     if let Some(parent) = socket_path.parent() {
-        tokio::fs::create_dir_all(parent).await?;
+        std::fs::create_dir_all(parent)?;
     }
 
     // Bind Unix socket

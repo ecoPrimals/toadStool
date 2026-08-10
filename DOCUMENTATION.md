@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Aug 10, 2026 — S374
+**Last Updated**: Aug 10, 2026 — S376
 
 ---
 
@@ -31,22 +31,22 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S374 — Aug 2026)
+## Current State (S376 — Aug 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **9,008+ lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **16/16 cross-arch native targets** (S369) — x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
-- **26/48 crates WASM** (S374) — compute kernel on `wasm32-unknown-unknown` + `wasm32-wasip1`. Tokio optional via `runtime` feature gate.
+- **38/48 crates WASM** (S376) — compute kernel on `wasm32-unknown-unknown` + `wasm32-wasip1`. Tokio optional via `runtime` feature gate. `tokio::fs`/`tokio::process` fully eliminated from production code.
 - **126 JSON-RPC methods** (17 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. Self-audit verified (S372).
 - **138 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **G68 platform containment complete** (S365) — zero rustix outside hw-safe.
-- **Tokio deep debt resolved** (S374) — needless async removed from 20+ functions, `std::sync::RwLock`/`Mutex` migration, Node Atomic AAR (silicon discovery via coralReef IPC).
+- **Tokio blast radius reduced** (S376) — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, workspace features 9→7. S374 — initial `runtime` feature gate, 20+ needless async→sync.
 - **Zero production files >800L** (S373). Smart decomposition.
 - **Zero dead deps** — S351: 48 eliminated. ecoBin v3.0 — zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V.
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S374).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S376).
 
 ---
 

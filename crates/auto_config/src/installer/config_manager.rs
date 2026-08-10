@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use tokio::fs;
+use std::fs;
 use tracing::info;
 
 use toadstool_config::ToadStoolConfig;
@@ -41,30 +41,30 @@ impl ConfigManager {
         info!("⚙️ Applying ToadStool configuration...");
 
         if !self.config_path.exists() {
-            fs::create_dir_all(&self.config_path).await?;
+            fs::create_dir_all(&self.config_path)?;
         }
 
         // Write main configuration file
         let config_json = serde_json::to_string_pretty(config)?;
-        fs::write(self.config_path.join("toadstool.json"), config_json).await?;
+        fs::write(self.config_path.join("toadstool.json"), config_json)?;
 
         // Write runtime-specific configurations
-        self.write_runtime_configs(config).await?;
+        self.write_runtime_configs(config)?;
 
         // Write security configuration
-        self.write_security_config(config).await?;
+        self.write_security_config(config)?;
 
         // Write logging/observability configuration
-        self.write_observability_config(config).await?;
+        self.write_observability_config(config)?;
 
         info!("✅ Configuration applied successfully");
         Ok(())
     }
 
-    async fn write_runtime_configs(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
+    fn write_runtime_configs(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
         let runtime_dir = self.config_path.join("runtimes");
         if !runtime_dir.exists() {
-            fs::create_dir_all(&runtime_dir).await?;
+            fs::create_dir_all(&runtime_dir)?;
         }
 
         // Native runtime config (always enabled)
@@ -77,8 +77,7 @@ impl ConfigManager {
         fs::write(
             runtime_dir.join("native.json"),
             serde_json::to_string_pretty(&native_config)?,
-        )
-        .await?;
+        )?;
 
         // Container runtime config
         let container_config = serde_json::json!({
@@ -90,8 +89,7 @@ impl ConfigManager {
         fs::write(
             runtime_dir.join("container.json"),
             serde_json::to_string_pretty(&container_config)?,
-        )
-        .await?;
+        )?;
 
         // WASM runtime config
         let wasm_config = serde_json::json!({
@@ -102,8 +100,7 @@ impl ConfigManager {
         fs::write(
             runtime_dir.join("wasm.json"),
             serde_json::to_string_pretty(&wasm_config)?,
-        )
-        .await?;
+        )?;
 
         // GPU runtime config (if present)
         if config.runtime.gpu.is_some() {
@@ -115,14 +112,13 @@ impl ConfigManager {
             fs::write(
                 runtime_dir.join("gpu.json"),
                 serde_json::to_string_pretty(&gpu_config)?,
-            )
-            .await?;
+            )?;
         }
 
         Ok(())
     }
 
-    async fn write_security_config(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
+    fn write_security_config(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
         let security_config = serde_json::json!({
             "auth": {
                 "enabled": config.security.auth.enabled,
@@ -142,13 +138,12 @@ impl ConfigManager {
         fs::write(
             self.config_path.join("security.json"),
             serde_json::to_string_pretty(&security_config)?,
-        )
-        .await?;
+        )?;
 
         Ok(())
     }
 
-    async fn write_observability_config(
+    fn write_observability_config(
         &self,
         config: &ToadStoolConfig,
     ) -> Result<(), ToadStoolError> {
@@ -168,8 +163,7 @@ impl ConfigManager {
         fs::write(
             self.config_path.join("observability.json"),
             serde_json::to_string_pretty(&observability_config)?,
-        )
-        .await?;
+        )?;
 
         Ok(())
     }

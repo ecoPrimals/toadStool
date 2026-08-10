@@ -45,10 +45,10 @@ pub(crate) fn mbps_to_bytes_per_sec(mbps: u64) -> u64 {
 }
 
 /// Get total system memory (bytes)
-pub async fn get_total_memory() -> Option<u64> {
+pub fn get_total_memory() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {
-        let meminfo = tokio::fs::read_to_string(procfs::MEMINFO).await.ok()?;
+        let meminfo = fs::read_to_string(procfs::MEMINFO).ok()?;
         parse_meminfo_kb(&meminfo).map(|kb| kb * 1024)
     }
     #[cfg(not(target_os = "linux"))]

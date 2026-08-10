@@ -5,7 +5,6 @@ use std::collections::HashMap;
 
 use bytes::Bytes;
 use tracing::{debug, warn};
-use uuid::Uuid;
 
 use crate::ToadStoolResult;
 use crate::execution::{ExecutionResponse, RuntimeEngine};

@@ -73,7 +73,7 @@ impl BiomeExecutor {
     }
 
     pub(super) async fn show_log_file(&self, log_file: &Path, lines: Option<usize>) -> Result<()> {
-        let content = fs::read_to_string(log_file).await?;
+        let content = fs::read_to_string(log_file)?;
 
         if let Some(n) = lines {
             // Show last N lines
@@ -96,7 +96,7 @@ impl BiomeExecutor {
         self.show_log_file(log_file, Some(initial_lines)).await?;
 
         // Open file for tailing
-        let file = fs::File::open(log_file).await?;
+        let file = tokio::fs::File::from_std(fs::File::open(log_file)?);
         let mut reader = BufReader::new(file);
         let mut line = String::new();
 

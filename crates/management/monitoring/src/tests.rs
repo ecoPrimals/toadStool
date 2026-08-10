@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
-use crate::process::ProcessInfo;
+use crate::metric_types::ProcessInfo;
 use crate::reporting::{memory_usage_percent, read_system_info};
 use std::path::Path;
 use std::time::Duration;
@@ -379,7 +379,10 @@ async fn monitoring_tick_applies_injected_process_info_fields() {
     let last_cpu_time = 4_200u64;
     let memory_usage = 512 * 1024u64;
     {
-        let mut map = monitor.process_map.write().await;
+        let mut map = monitor
+            .process_map
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         map.insert(
             "mock-w".to_string(),
             ProcessInfo {

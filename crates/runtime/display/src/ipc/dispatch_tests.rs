@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use toadstool_common::constants::PRIMAL_NAME;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::dispatch::handle_request;
 use crate::input::InputManager;

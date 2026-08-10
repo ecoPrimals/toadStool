@@ -14,16 +14,15 @@ categories = ["api-bindings", "network-programming"]
 
 [dependencies]
 # Core dependencies
-toadstool = { path = "../core/toadstool" }
-toadstool-config = { path = "../core/config" }
-toadstool-common = { path = "../core/common" }
+toadstool = { path = "../core/toadstool", default-features = false }
+toadstool-config = { path = "../core/config", default-features = false }
+toadstool-common = { path = "../core/common", default-features = false }
 
 # HTTP client and networking
-# PURE RUST: reqwest removed - unix sockets only! ✅
 url = { workspace = true }
 
-# Async runtime
-tokio = { workspace = true }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
 
 # Serialization
 serde = { workspace = true }
@@ -36,9 +35,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # UUID support
-uuid = { workspace = true }
-
-# base64 removed: no usage found in source
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 # tarpc client (optional - for primal-to-primal RPC)
 tarpc = { workspace = true, optional = true }
@@ -47,8 +44,9 @@ bytes = { workspace = true, optional = true }
 toadstool-integration-protocols = { path = "../integration/protocols", optional = true }
 
 [features]
-default = []
-tarpc = ["dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-protocols", "toadstool-integration-protocols/tarpc-transport"]
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool/runtime", "toadstool-config/runtime", "toadstool-common/runtime", "uuid/v4"]
+tarpc = ["runtime", "dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-protocols", "toadstool-integration-protocols/tarpc-transport"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

@@ -100,7 +100,7 @@ async fn test_discover_self_returns_valid() {
 #[tokio::test]
 async fn test_find_peer_with_in_empty_dir() {
     with_temp_discovery(|discovery_base| async move {
-        let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base).await;
+        let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("No peer found"));
     })
@@ -110,9 +110,7 @@ async fn test_find_peer_with_in_empty_dir() {
 #[tokio::test]
 async fn test_find_all_peers_in_empty_dir() {
     with_temp_discovery(|discovery_base| async move {
-        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base)
-            .await
-            .unwrap();
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).unwrap();
         assert_eq!(peers.len(), 0);
     })
     .await;
@@ -138,15 +136,13 @@ async fn test_find_peer_with_capability_contains_match() {
             metadata: HashMap::new(),
         };
 
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("contain-match.json"),
             serde_json::to_string_pretty(&peer).unwrap(),
         )
-        .await
         .unwrap();
 
         let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base)
-            .await
             .unwrap();
         assert_eq!(found.primal_id, "contain-match");
     })
@@ -172,7 +168,7 @@ async fn test_cleanup_when_file_not_exists() {
             socket_path: PathBuf::from("/tmp/nonexistent.sock"),
             metadata: HashMap::new(),
         };
-        let result = caps.cleanup().await;
+        let result = caps.cleanup();
         assert!(result.is_ok());
     })
     .await;
@@ -207,16 +203,14 @@ async fn test_find_all_peers_in_returns_multiple() {
                 socket_path: PathBuf::from("/tmp/p.sock"),
                 metadata: HashMap::new(),
             };
-            tokio::fs::write(
+            std::fs::write(
                 discovery_base.join(format!("multi-{i}.json")),
                 serde_json::to_string_pretty(&peer).unwrap(),
             )
-            .await
             .unwrap();
         }
 
         let peers = PrimalCapabilities::find_all_peers_in(&discovery_base)
-            .await
             .unwrap();
         assert_eq!(peers.len(), 3);
     })

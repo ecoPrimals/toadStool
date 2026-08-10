@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 #[cfg(feature = "serial-transport")]
 use tokio::sync::Mutex;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 use toadstool::error::ToadStoolResult;

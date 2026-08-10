@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use toadstool::ToadStoolError;
 use toadstool::ToadStoolResult as Result;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::context::BenchmarkContext;
 use super::reporting::PerformanceReport;
@@ -57,7 +57,7 @@ impl PerformanceTestManager {
 
         // Register active benchmark
         {
-            let mut active = self.active_benchmarks.write().await;
+            let mut active = self.active_benchmarks.write().unwrap_or_else(|e| e.into_inner());
             active.insert(test_name.clone(), context);
         }
 
@@ -81,7 +81,7 @@ impl PerformanceTestManager {
                     // Sample resource usage periodically
                     if i % 10 == 0 && self.config.memory_profiling {
                         // Get mutable reference to context for resource sampling
-                        if let Some(ctx) = self.active_benchmarks.write().await.get_mut(&test_name)
+                        if let Some(ctx) = self.active_benchmarks.write().unwrap_or_else(|e| e.into_inner()).get_mut(&test_name)
                         {
                             ctx.resource_monitor.sample_resources();
                         }
@@ -96,8 +96,7 @@ impl PerformanceTestManager {
         // Calculate results (extract data and drop lock before await)
         let custom_metrics = self
             .active_benchmarks
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .get(&test_name)
             .ok_or_else(|| {
                 ToadStoolError::runtime(format!(
@@ -112,13 +111,13 @@ impl PerformanceTestManager {
 
         // Remove from active benchmarks (now safe to acquire write lock)
         {
-            let mut active = self.active_benchmarks.write().await;
+            let mut active = self.active_benchmarks.write().unwrap_or_else(|e| e.into_inner());
             active.remove(&test_name);
         }
 
         // Store result
         {
-            let mut results = self.results.write().await;
+            let mut results = self.results.write().unwrap_or_else(|e| e.into_inner());
             results.push(result.clone());
         }
 
@@ -259,7 +258,7 @@ impl PerformanceTestManager {
 
     /// Generate performance report
     pub async fn generate_report(&self) -> PerformanceReport {
-        let results = self.results.read().await.clone();
+        let results = self.results.read().unwrap_or_else(|e| e.into_inner()).clone();
 
         PerformanceReport {
             total_benchmarks: results.len(),

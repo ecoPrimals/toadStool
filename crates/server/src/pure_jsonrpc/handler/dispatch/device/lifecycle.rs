@@ -8,7 +8,7 @@ impl DispatchHandler {
     /// Check whether a BDF has an active ember device handle or cached VFIO session.
     pub(crate) async fn has_device_handle(&self, bdf: &str) -> bool {
         {
-            let pool = self.device_pool.read().await;
+            let pool = self.device_pool.read().unwrap_or_else(|e| e.into_inner());
             if pool.contains_key(bdf) {
                 return true;
             }
@@ -33,7 +33,7 @@ impl DispatchHandler {
                 .get(bdf)
                 .is_some_and(|dev| dev.dma_backend().is_some());
             drop(cache);
-            let in_pool = self.device_pool.read().await.contains_key(bdf);
+            let in_pool = self.device_pool.read().unwrap_or_else(|e| e.into_inner()).contains_key(bdf);
             let dma_ready = dma_ready || in_pool;
             return Ok(serde_json::json!({
                 "bdf": bdf,
@@ -70,7 +70,7 @@ impl DispatchHandler {
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
         {
-            let mut pool = self.device_pool.write().await;
+            let mut pool = self.device_pool.write().unwrap_or_else(|e| e.into_inner());
             pool.remove(bdf);
         }
         {

@@ -8,8 +8,8 @@ use super::types::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::RwLock;
 use toadstool::error::ToadStoolResult;
-use tokio::sync::RwLock;
 
 /// Kernel source string optimizer (not a shader compiler — see coralReef for AOT compilation).
 pub struct KernelStringOptimizer {
@@ -73,7 +73,7 @@ impl KernelStringOptimizer {
         let cache_key = self.generate_cache_key(kernel_source, &format, &target_framework, device);
 
         if self.config.caching.enabled {
-            let cache = self.cache.read().await;
+            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
             if let Some(cached_kernel) = cache.get(&cache_key) {
                 return Ok(Arc::clone(cached_kernel));
             }
@@ -87,7 +87,7 @@ impl KernelStringOptimizer {
         )?);
 
         if self.config.caching.enabled {
-            let mut cache = self.cache.write().await;
+            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
             cache.insert(cache_key, Arc::clone(&compiled_kernel));
         }
 
@@ -151,13 +151,13 @@ impl KernelStringOptimizer {
 
     /// Clear compilation cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache.clear();
     }
 
     /// Get cache statistics
     pub async fn get_cache_stats(&self) -> CacheStatistics {
-        let cache = self.cache.read().await;
+        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
         CacheStatistics {
             entries: cache.len(),
             memory_usage_bytes: cache.values().map(|k| k.binary.len()).sum::<usize>() as u64,
@@ -209,7 +209,7 @@ mod compiler_tests {
         PerformanceCharacteristics, UniversalComputeDevice,
     };
     use std::sync::Arc;
-    use tokio::sync::RwLock;
+    use std::sync::RwLock;
 
     fn make_test_device() -> UniversalComputeDevice {
         UniversalComputeDevice {

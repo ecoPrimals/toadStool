@@ -6,17 +6,17 @@
 use crate::Result;
 use std::collections::HashMap;
 use std::future::Future;
-use tokio::fs;
-use tokio::process::Command;
+use std::fs;
+use std::process::Command;
 use tokio::time::Instant;
 
 use crate::universal::types::{BenchmarkTest, BenchmarkType, SystemInfo};
 
 /// Detect if Docker or Podman is available. Returns (name, command_path).
-async fn detect_container_runtime() -> Option<(String, String)> {
+fn detect_container_runtime() -> Option<(String, String)> {
     // Prefer Docker, then Podman
     for (name, cmd) in [("docker", "docker"), ("podman", "podman")] {
-        if let Ok(output) = Command::new(cmd).arg("--version").output().await {
+        if let Ok(output) = Command::new(cmd).arg("--version").output() {
             if output.status.success() {
                 return Some((name.to_string(), cmd.to_string()));
             }
@@ -173,14 +173,14 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let data = vec![0u8; 1024 * 1024]; // 1MB
 
         // Write test
-        if let Err(e) = fs::write(&test_file, &data).await {
-            let _ = fs::remove_file(&test_file).await;
+        if let Err(e) = fs::write(&test_file, &data) {
+            let _ = fs::remove_file(&test_file);
             return Err(crate::CliError::Other(format!("Storage write failed: {e}")));
         }
 
         // Read test
-        let read_result = fs::read(&test_file).await;
-        let _ = fs::remove_file(&test_file).await;
+        let read_result = fs::read(&test_file);
+        let _ = fs::remove_file(&test_file);
         let _read_data = read_result?;
 
         let duration = start.elapsed();
@@ -238,7 +238,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
     }
 
     async fn run_container_benchmark(&self) -> Result<BenchmarkTest> {
-        let runtime = detect_container_runtime().await;
+        let runtime = detect_container_runtime();
         let (runtime_name, runtime_cmd) = match runtime {
             Some((name, cmd)) => (name, cmd),
             None => {
@@ -262,10 +262,9 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let start = Instant::now();
 
         // Use alpine (small) or busybox - run simple compute: echo + exit
-        let output = tokio::process::Command::new(&runtime_cmd)
+        let output = Command::new(&runtime_cmd)
             .args(["run", "--rm", "alpine", "sh", "-c", "echo done && exit 0"])
             .output()
-            .await
             .map_err(|e| {
                 crate::CliError::Other(format!(
                     "Container runtime '{runtime_name}' failed: {e}. \

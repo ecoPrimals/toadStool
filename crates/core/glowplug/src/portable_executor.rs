@@ -13,7 +13,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::device_id::DeviceId;
 use crate::swap::{SwapExecutor, SwapObservation};
@@ -72,7 +72,7 @@ impl PortableSwapExecutor {
 
     /// Query the current personality for a device, if tracked.
     pub async fn current_personality(&self, device: &DeviceId) -> Option<String> {
-        let map = self.personalities.read().await;
+        let map = self.personalities.read().unwrap_or_else(|e| e.into_inner());
         map.get(&device.to_string()).cloned()
     }
 }
@@ -95,12 +95,12 @@ impl SwapExecutor for PortableSwapExecutor {
         let key = device.to_string();
 
         let from = {
-            let map = self.personalities.read().await;
+            let map = self.personalities.read().unwrap_or_else(|e| e.into_inner());
             map.get(&key).cloned().unwrap_or_else(|| "unbound".into())
         };
 
         {
-            let mut map = self.personalities.write().await;
+            let mut map = self.personalities.write().unwrap_or_else(|e| e.into_inner());
             map.insert(key, target_personality.to_string());
         }
 
@@ -120,7 +120,7 @@ impl SwapExecutor for PortableSwapExecutor {
 
     async fn release(&self, device: &DeviceId) -> Result<(), Self::Error> {
         let key = device.to_string();
-        let mut map = self.personalities.write().await;
+        let mut map = self.personalities.write().unwrap_or_else(|e| e.into_inner());
         map.insert(key, "unbound".to_string());
         Ok(())
     }

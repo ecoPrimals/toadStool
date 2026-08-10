@@ -196,7 +196,7 @@ impl DaemonServer {
         info!("🧹 Performing graceful shutdown...");
 
         if self.socket_path.exists() {
-            match tokio::fs::remove_file(&self.socket_path).await {
+            match std::fs::remove_file(&self.socket_path) {
                 Ok(()) => info!("Removed socket: {}", self.socket_path.display()),
                 Err(e) => warn!(
                     "Failed to remove socket {}: {e}",

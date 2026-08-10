@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 #[cfg(feature = "webgpu")]
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 /// `WebGPU` adapter wrapper for conditional compilation.

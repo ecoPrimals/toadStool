@@ -39,7 +39,7 @@ use crate::{CliContextExt, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs;
+use std::fs;
 use tracing::{info, warn};
 
 use toadstool_config::ToadStoolConfig;
@@ -88,7 +88,7 @@ pub struct BiomeExecutor {
     /// Distributed coordinator for ecosystem integration
     distributed: Arc<DistributedCoordinator>,
     /// Running biomes registry
-    biomes: Arc<tokio::sync::RwLock<HashMap<String, RunningBiome>>>,
+    biomes: Arc<std::sync::RwLock<HashMap<String, RunningBiome>>>,
     /// Configuration
     _config: ToadStoolConfig,
 }

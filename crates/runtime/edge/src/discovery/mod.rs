@@ -7,7 +7,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -173,7 +173,7 @@ impl DeviceDiscoveryService {
 
         // Update discovered devices cache
         {
-            let mut discovered = self.discovered_devices.write().await;
+            let mut discovered = self.discovered_devices.write().unwrap_or_else(|e| e.into_inner());
             discovered.clear();
             for device in &all_devices {
                 discovered.insert(device.get_id(), device.clone());
@@ -182,7 +182,7 @@ impl DeviceDiscoveryService {
 
         // Update last discovery time
         {
-            let mut last_discovery = self.last_discovery.write().await;
+            let mut last_discovery = self.last_discovery.write().unwrap_or_else(|e| e.into_inner());
             *last_discovery = Some(Instant::now());
         }
 
@@ -195,19 +195,19 @@ impl DeviceDiscoveryService {
 
     /// Get discovered devices
     pub async fn get_discovered_devices(&self) -> Vec<Arc<dyn EdgeDevice>> {
-        let discovered = self.discovered_devices.read().await;
+        let discovered = self.discovered_devices.read().unwrap_or_else(|e| e.into_inner());
         discovered.values().cloned().collect()
     }
 
     /// Get device by ID
     pub async fn get_device(&self, id: Uuid) -> Option<Arc<dyn EdgeDevice>> {
-        let discovered = self.discovered_devices.read().await;
+        let discovered = self.discovered_devices.read().unwrap_or_else(|e| e.into_inner());
         discovered.get(&id).cloned()
     }
 
     /// Check if discovery is needed
     pub async fn needs_discovery(&self) -> bool {
-        let last_discovery = self.last_discovery.read().await;
+        let last_discovery = self.last_discovery.read().unwrap_or_else(|e| e.into_inner());
         match *last_discovery {
             Some(last) => last.elapsed() > Duration::from_secs(self.config.discovery_timeout_secs),
             None => true,

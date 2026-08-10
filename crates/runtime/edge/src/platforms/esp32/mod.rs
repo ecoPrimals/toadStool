@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 use uuid::Uuid;
 
@@ -102,7 +102,7 @@ impl EdgeDevice for ESP32Device {
     fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
         let dev = self.clone_handles();
         Box::pin(async move {
-            let connection = dev.connection.read().await;
+            let connection = dev.connection.read().unwrap_or_else(|e| e.into_inner());
             connection.as_ref().map(|c| c.is_connected).unwrap_or(false)
         })
     }
@@ -115,7 +115,7 @@ impl EdgeDevice for ESP32Device {
     fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let dev = self.clone_handles();
         Box::pin(async move {
-            let mut connection = dev.connection.write().await;
+            let mut connection = dev.connection.write().unwrap_or_else(|e| e.into_inner());
             *connection = None;
             Ok(())
         })
@@ -134,7 +134,7 @@ impl EdgeDevice for ESP32Device {
             let started_at = std::time::Instant::now();
 
             {
-                let mut executions = dev.active_executions.write().await;
+                let mut executions = dev.active_executions.write().unwrap_or_else(|e| e.into_inner());
                 executions.insert(
                     execution_id,
                     ESP32Execution {
@@ -152,7 +152,7 @@ impl EdgeDevice for ESP32Device {
                 .unwrap_or_else(|_| "ESP32 execution completed".to_string());
 
             {
-                let mut executions = dev.active_executions.write().await;
+                let mut executions = dev.active_executions.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(execution) = executions.get_mut(&execution_id) {
                     execution.status = ExecutionStatus::Success;
                 }
@@ -196,7 +196,7 @@ impl EdgeDevice for ESP32Device {
             let _response = dev.send_command("STOP").await?;
 
             {
-                let mut executions = dev.active_executions.write().await;
+                let mut executions = dev.active_executions.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(execution) = executions.get_mut(&execution_id) {
                     execution.status = ExecutionStatus::Cancelled;
                 }
@@ -211,7 +211,7 @@ impl EdgeDevice for ESP32Device {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>> {
         let dev = self.clone_handles();
         Box::pin(async move {
-            let connection = dev.connection.read().await;
+            let connection = dev.connection.read().unwrap_or_else(|e| e.into_inner());
             if connection.as_ref().map(|c| c.is_connected).unwrap_or(false) {
                 Ok(DeviceStatus::Online)
             } else {

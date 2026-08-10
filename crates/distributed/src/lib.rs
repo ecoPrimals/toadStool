@@ -45,107 +45,83 @@
 )]
 #![forbid(unsafe_code)]
 
-// Core modules
-/// Compatibility layer for legacy distributed APIs.
-pub mod compatibility;
-/// Core coordinator, config, and execution environment types.
-pub mod core;
-/// Ecosystem auth, registry, and service discovery.
-pub mod ecosystem;
+// Always available: pure types and shared abstractions
 /// Error types for the distributed layer.
 pub mod error;
-/// Recursive hosting and resource management.
-pub mod hosting;
-/// Metrics collection for distributed workloads.
-pub mod metrics;
-/// Network load balancing, distribution, and fault tolerance.
-pub mod network;
-/// OS-layer abstraction for cross-platform execution.
-pub mod os_layer;
 /// Shared types for jobs, resources, and execution.
 pub mod types;
-/// Universal adapter and substrate detection.
-pub mod universal;
-
-// Common distributed abstractions (shared across Coordination, Cloud, etc.)
+/// Common distributed abstractions (shared across Coordination, Cloud, etc.)
 pub mod common;
 
-// Cloud integration - universal cloud orchestration
+// Universal substrate types (pure serde definitions, no async runtime)
+/// Substrate type definitions for biological, quantum, neuromorphic, and edge platforms.
+pub mod universal;
+
+// Runtime-gated modules: networking, coordination, security, hosting, execution
+#[cfg(feature = "runtime")]
+/// Compatibility layer for legacy distributed APIs.
+pub mod compatibility;
+#[cfg(feature = "runtime")]
+/// Core coordinator, config, and execution environment types.
+pub mod core;
+#[cfg(feature = "runtime")]
+/// Ecosystem auth, registry, and service discovery.
+pub mod ecosystem;
+#[cfg(feature = "runtime")]
+/// Recursive hosting and resource management.
+pub mod hosting;
+#[cfg(feature = "runtime")]
+/// Metrics collection for distributed workloads.
+pub mod metrics;
+#[cfg(feature = "runtime")]
+/// Network load balancing, distribution, and fault tolerance.
+pub mod network;
+#[cfg(feature = "runtime")]
+/// OS-layer abstraction for cross-platform execution.
+pub mod os_layer;
+#[cfg(feature = "runtime")]
+/// Cloud integration - universal cloud orchestration.
 pub mod cloud;
-
-// Coordination integration - vendor-agnostic service coordination (NEW)
+#[cfg(feature = "runtime")]
+/// Coordination integration - vendor-agnostic service coordination.
 pub mod coordination_integration;
-
-// Coordination integration - universal signal coordination (DEPRECATED: use coordination_integration)
-#[cfg(feature = "legacy-coordination")]
+#[cfg(all(feature = "runtime", feature = "legacy-coordination"))]
 #[deprecated(
     since = "2.0.0",
     note = "Use coordination_integration for vendor-agnostic coordination services"
 )]
+/// Coordination integration - universal signal coordination (DEPRECATED: use coordination_integration).
 pub mod coordination;
-
-// Crypto lock system - primal-agnostic cryptographic access control
+#[cfg(feature = "runtime")]
+/// Crypto lock system - primal-agnostic cryptographic access control.
 pub mod crypto_lock;
-
-// Security provider abstraction - ANY primal can implement (NEW: Phase 1B)
+#[cfg(feature = "runtime")]
+/// Security provider abstraction - ANY primal can implement.
 pub mod security_provider;
-
-// Crypto integration - vendor-agnostic cryptographic services (NEW)
+#[cfg(feature = "runtime")]
+/// Crypto integration - vendor-agnostic cryptographic services.
 pub mod crypto_integration;
-
-// Security integration - capability-based encryption services (DEPRECATED: use crypto_integration)
+#[cfg(feature = "runtime")]
 #[deprecated(
     since = "2.0.0",
     note = "Use crypto_integration for vendor-agnostic crypto services"
 )]
+/// Security integration - capability-based encryption services (DEPRECATED: use crypto_integration).
 pub mod security;
-
-// Substrate detection for universal compute platforms
+#[cfg(feature = "runtime")]
+/// Substrate detection for universal compute platforms.
 pub mod substrate_detection;
-
-// Primal capability system - agnostic integration with any primal (Coordination, Intelligence, Security, etc.)
+#[cfg(feature = "runtime")]
+/// Primal capability system - agnostic integration with any primal.
 pub mod primal_capabilities;
 
-// Re-export main types and functionality
-// Note: compatibility now re-exports from canonical core implementation
-pub use compatibility::{
-    CompatibilityLayer, LegacyCompatConfig, LegacyCompatibilityLayer, LinuxCompatConfig,
-    LinuxCompatibilityLayer, MacOSCompatConfig, MacOSCompatibilityLayer, WindowsCompatConfig,
-    WindowsCompatibilityLayer,
-};
-pub use core::{
-    CoordinationConfig, DistributedConfig, DistributedCoordinator, ExecutionEnvironment,
-    PlatformCapabilities, StandaloneConfig, StandaloneExecutor, ToadStoolCapabilities,
-};
-pub use ecosystem::{
-    AuthToken, AuthenticationManager, Credentials, RegisteredService, ServiceRegistry,
-};
-pub use metrics::{
-    EcosystemMetrics, LocalMetrics, NetworkMetrics, RecursiveHostingMetrics,
-    UniversalMetricsCollector,
-};
-pub use network::{
-    CircuitBreaker, CircuitBreakerState, FaultToleranceManager, NetworkDistributor,
-    NetworkDistributorConfig, NetworkLoadBalancer, NetworkMetricsCollector, NetworkMetricsData,
-    NodeHealth, RetryManager,
-};
-
-// Specific exports to avoid ambiguous glob re-exports
-pub use hosting::{
-    ChildResourceAllocator, ChildToadStoolInstance, CommunicationChannel, HostingResourceConfig,
-    HostingResourceManager, InterInstanceCommunication, RecursiveHostingManager,
-};
-pub use os_layer::{OSLayerConfig, OSLayerManager};
+// Re-exports: always available
 pub use types::{
     BackoffStrategy, CompatibilityMode, CpuRequirements, DistributedRetryConfig, ExecutionTarget,
     GpuRequirements, InstanceStatus, JobPriority, LoadBalancingStrategy, MemoryRequirements,
     NetworkRequirements, ProcessHandle, ResourceAllocation, ResourceConstraints, ResourceLimits,
     ResourceRequirements, RetryCondition, StorageRequirements, ToadStoolHostingConfig,
     UniversalExecutionResult, UniversalJob, UniversalJobQueue, UniversalJobType,
-};
-pub use universal::{
-    AdapterConfig, RecursiveHostingConfig, UniversalAdapter, UniversalScheduler,
-    UniversalSchedulerConfig,
 };
 
 /// Substrate detection types for biological, quantum, neuromorphic, and edge platforms.
@@ -157,30 +133,71 @@ pub mod substrate {
     };
 }
 
-// Also re-export substrate types directly
 pub use universal::substrate::{
     BiologicalComputingPlatform, ContainerPlatform, EdgeIoTPlatform, ExperimentalPlatform,
     LanguageRuntime, NeuromorphicPlatform, OperatingSystemSupport, QuantumPlatform,
     SpecializedArchitecture, TraditionalPlatform, UniversalSubstrateCapabilities,
 };
 
-// Re-export existing modules with specific types
+// Re-exports: runtime-gated
+#[cfg(feature = "runtime")]
+pub use compatibility::{
+    CompatibilityLayer, LegacyCompatConfig, LegacyCompatibilityLayer, LinuxCompatConfig,
+    LinuxCompatibilityLayer, MacOSCompatConfig, MacOSCompatibilityLayer, WindowsCompatConfig,
+    WindowsCompatibilityLayer,
+};
+#[cfg(feature = "runtime")]
+pub use core::{
+    CoordinationConfig, DistributedConfig, DistributedCoordinator, ExecutionEnvironment,
+    PlatformCapabilities, StandaloneConfig, StandaloneExecutor, ToadStoolCapabilities,
+};
+#[cfg(feature = "runtime")]
+pub use ecosystem::{
+    AuthToken, AuthenticationManager, Credentials, RegisteredService, ServiceRegistry,
+};
+#[cfg(feature = "runtime")]
+pub use metrics::{
+    EcosystemMetrics, LocalMetrics, NetworkMetrics, RecursiveHostingMetrics,
+    UniversalMetricsCollector,
+};
+#[cfg(feature = "runtime")]
+pub use network::{
+    CircuitBreaker, CircuitBreakerState, FaultToleranceManager, NetworkDistributor,
+    NetworkDistributorConfig, NetworkLoadBalancer, NetworkMetricsCollector, NetworkMetricsData,
+    NodeHealth, RetryManager,
+};
+#[cfg(feature = "runtime")]
+pub use hosting::{
+    ChildResourceAllocator, ChildToadStoolInstance, CommunicationChannel, HostingResourceConfig,
+    HostingResourceManager, InterInstanceCommunication, RecursiveHostingManager,
+};
+#[cfg(feature = "runtime")]
+pub use os_layer::{OSLayerConfig, OSLayerManager};
+#[cfg(feature = "runtime")]
+pub use universal::{
+    AdapterConfig, RecursiveHostingConfig, UniversalAdapter, UniversalScheduler,
+    UniversalSchedulerConfig,
+};
+#[cfg(feature = "runtime")]
 pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
+#[cfg(feature = "runtime")]
 pub use crypto_lock::{
     AccessPolicies, CryptoValidator, DelegationValidator, PermissionHolder,
     PermissionRevocationList, SecurityPermissionValidator, SecurityProviderPermission,
     ToadStoolCryptoLock,
 };
+#[cfg(feature = "runtime")]
 pub use primal_capabilities::{
     Capability, CapabilityProvider, CapabilityRegistry, CoordinationAdapter, PrimalAdapter,
     WorkloadExecutor, WorkloadRequest, WorkloadResponse,
 };
+#[cfg(feature = "runtime")]
 pub use security_provider::ExternalTarget;
-
+#[cfg(feature = "runtime")]
 pub use substrate_detection::{PlatformType, SubstrateCapabilities, SubstrateDetector};
 
 // Tests module
-#[cfg(test)]
+#[cfg(all(test, feature = "runtime"))]
 mod tests {
     use super::*;
 

@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::UniversalJob;
 

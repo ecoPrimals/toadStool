@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::CapabilityTracker;
 use super::NetworkHealthMonitor;

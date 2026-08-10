@@ -16,6 +16,17 @@ const DEFAULT_REGISTRATION_TTL_SECS: u64 = 300;
 const DEFAULT_DISCOVERY_REFRESH_INTERVAL_SECS: u64 = 60;
 const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
 
+fn default_service_id() -> Arc<str> {
+    #[cfg(feature = "runtime")]
+    {
+        Arc::from(format!("toadstool-{}", uuid::Uuid::new_v4()))
+    }
+    #[cfg(not(feature = "runtime"))]
+    {
+        Arc::from("toadstool-default")
+    }
+}
+
 /// Protocol client configuration
 #[derive(Debug, Clone)]
 pub struct ProtocolConfig {
@@ -50,7 +61,7 @@ pub struct ProtocolConfig {
 impl Default for ProtocolConfig {
     fn default() -> Self {
         Self {
-            service_id: Arc::from(format!("toadstool-{}", uuid::Uuid::new_v4())),
+            service_id: default_service_id(),
             default_format: MessageFormat::Json,
             supported_transports: vec![TransportType::Http, TransportType::TRpc], // WebSocket removed — use JSON-RPC 2.0
             auth_config: None,

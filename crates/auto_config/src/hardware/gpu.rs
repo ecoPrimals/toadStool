@@ -33,12 +33,12 @@ pub async fn detect_gpus(_detector: &HardwareDetector) -> ToadStoolResult<Vec<Gp
     let mut gpus = Vec::new();
 
     // Try to detect NVIDIA GPUs using nvidia-smi
-    if let Ok(nvidia_gpus) = detect_nvidia_gpus().await {
+    if let Ok(nvidia_gpus) = detect_nvidia_gpus() {
         gpus.extend(nvidia_gpus);
     }
 
     // Try to detect AMD GPUs
-    if let Ok(amd_gpus) = detect_amd_gpus().await {
+    if let Ok(amd_gpus) = detect_amd_gpus() {
         gpus.extend(amd_gpus);
     }
 
@@ -76,12 +76,11 @@ pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
 }
 
 /// Detect NVIDIA GPUs
-async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
-    let gpus = if let Ok(output) = tokio::process::Command::new("nvidia-smi")
+fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
+    let gpus = if let Ok(output) = std::process::Command::new("nvidia-smi")
         .arg("--query-gpu=name,memory.total,driver_version")
         .arg("--format=csv,noheader,nounits")
         .output()
-        .await
     {
         parse_nvidia_smi_csv(&String::from_utf8_lossy(&output.stdout))
     } else {
@@ -92,13 +91,12 @@ async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 }
 
 /// Detect AMD GPUs
-async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
+fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
     let mut gpus = Vec::new();
 
-    if let Ok(output) = tokio::process::Command::new("rocm-smi")
+    if let Ok(output) = std::process::Command::new("rocm-smi")
         .arg("--showproductname")
         .output()
-        .await
         && output.status.success()
     {
         let output_str = String::from_utf8_lossy(&output.stdout);
@@ -108,13 +106,13 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
             .map(|l| l.trim().to_string())
             .unwrap_or_else(|| "AMD GPU (unknown model)".to_string());
 
-        let memory_gb = detect_amd_memory_gb().await;
+        let memory_gb = detect_amd_memory_gb();
 
         gpus.push(GpuInfo {
             name,
             vendor: "AMD".to_string(),
             memory_gb,
-            driver_version: detect_amd_driver_version().await,
+            driver_version: detect_amd_driver_version(),
             compute_capability: "RDNA".to_string(),
             supports_cuda: false,
         });
@@ -123,12 +121,11 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
     Ok(gpus)
 }
 
-async fn detect_amd_memory_gb() -> f64 {
-    if let Ok(output) = tokio::process::Command::new("rocm-smi")
+fn detect_amd_memory_gb() -> f64 {
+    if let Ok(output) = std::process::Command::new("rocm-smi")
         .arg("--showmeminfo")
         .arg("vram")
         .output()
-        .await
         && output.status.success()
     {
         let s = String::from_utf8_lossy(&output.stdout);
@@ -145,10 +142,10 @@ async fn detect_amd_memory_gb() -> f64 {
     0.0
 }
 
-async fn detect_amd_driver_version() -> String {
+fn detect_amd_driver_version() -> String {
     let rocm_path = std::env::var("ROCM_PATH").unwrap_or_else(|_| "/opt/rocm".to_string());
     let version_file = std::path::Path::new(&rocm_path).join(".info/version");
-    if let Ok(ver) = tokio::fs::read_to_string(&version_file).await {
+    if let Ok(ver) = std::fs::read_to_string(&version_file) {
         let ver = ver.trim();
         if !ver.is_empty() {
             return ver.to_string();

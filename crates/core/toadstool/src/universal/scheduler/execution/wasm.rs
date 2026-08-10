@@ -7,7 +7,6 @@ use std::time::Duration;
 const DEFAULT_EXECUTION_TIMEOUT_SECS: u64 = 300;
 
 use tracing::{debug, info, warn};
-use uuid::Uuid;
 
 use crate::execution::{
     ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType,

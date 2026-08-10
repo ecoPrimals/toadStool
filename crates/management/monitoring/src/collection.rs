@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tokio::time;
 use tracing::{error, info, warn};
 
@@ -14,7 +14,7 @@ use toadstool::resources::RuntimeMetrics;
 
 use crate::metric_types::SystemResourceMonitor;
 use crate::platform;
-use crate::process::ProcessInfo;
+use crate::metric_types::ProcessInfo;
 use crate::types::{MonitoringConfig, ResourceMonitorError};
 
 impl SystemResourceMonitor {
@@ -42,7 +42,7 @@ impl SystemResourceMonitor {
         self.config = config;
 
         // Restart monitoring with new configuration if currently monitoring
-        let is_monitoring = *self.is_monitoring.read().await;
+        let is_monitoring = *self.is_monitoring.read().unwrap_or_else(|e| e.into_inner());
         if is_monitoring {
             self.stop_monitoring_loop().await?;
             self.start_monitoring_loop().await?;
@@ -53,7 +53,7 @@ impl SystemResourceMonitor {
 
     /// Starts the monitoring loop
     pub async fn start_monitoring_loop(&self) -> Result<(), ToadStoolError> {
-        let mut is_monitoring = self.is_monitoring.write().await;
+        let mut is_monitoring = self.is_monitoring.write().unwrap_or_else(|e| e.into_inner());
         if *is_monitoring {
             return Ok(());
         }
@@ -72,12 +72,12 @@ impl SystemResourceMonitor {
         tokio::spawn(async move {
             let mut interval_timer = time::interval(interval);
 
-            while *is_monitoring_flag.read().await {
+            while *is_monitoring_flag.read().unwrap_or_else(|e| e.into_inner()) {
                 interval_timer.tick().await;
 
                 // Snapshot process list and release lock before await (avoid holding lock across .await)
                 let process_snapshot: Vec<(String, ProcessInfo)> = {
-                    let processes = process_map.read().await;
+                    let processes = process_map.read().unwrap_or_else(|e| e.into_inner());
                     processes
                         .iter()
                         .map(|(k, v)| (k.clone(), v.clone()))
@@ -109,8 +109,8 @@ impl SystemResourceMonitor {
                 }
 
                 // Update usage data and check thresholds
-                let mut usage_data_guard = usage_data.write().await;
-                let thresholds = threshold_data.read().await;
+                let mut usage_data_guard = usage_data.write().unwrap_or_else(|e| e.into_inner());
+                let thresholds = threshold_data.read().unwrap_or_else(|e| e.into_inner());
 
                 for (workload_id, metrics) in updated_metrics {
                     usage_data_guard.insert(workload_id.clone(), metrics.clone());
@@ -139,7 +139,7 @@ impl SystemResourceMonitor {
     /// Stops the monitoring loop
     pub async fn stop_monitoring_loop(&self) -> ToadStoolResult<()> {
         {
-            let mut is_monitoring = self.is_monitoring.write().await;
+            let mut is_monitoring = self.is_monitoring.write().unwrap_or_else(|e| e.into_inner());
             *is_monitoring = false;
         }
         info!("Stopped resource monitoring");
@@ -231,23 +231,23 @@ mod tests {
     #[tokio::test]
     async fn not_monitoring_after_construction() {
         let m = SystemResourceMonitor::new();
-        assert!(!*m.is_monitoring.read().await);
+        assert!(!*m.is_monitoring.read().unwrap_or_else(|e| e.into_inner()));
     }
 
     #[tokio::test]
     async fn stop_monitoring_loop_without_start_succeeds() {
         let m = SystemResourceMonitor::new();
         assert!(m.stop_monitoring_loop().await.is_ok());
-        assert!(!*m.is_monitoring.read().await);
+        assert!(!*m.is_monitoring.read().unwrap_or_else(|e| e.into_inner()));
     }
 
     #[tokio::test]
     async fn start_then_stop_monitoring_loop() {
         let m = SystemResourceMonitor::new();
         assert!(m.start_monitoring_loop().await.is_ok());
-        assert!(*m.is_monitoring.read().await);
+        assert!(*m.is_monitoring.read().unwrap_or_else(|e| e.into_inner()));
         assert!(m.stop_monitoring_loop().await.is_ok());
-        assert!(!*m.is_monitoring.read().await);
+        assert!(!*m.is_monitoring.read().unwrap_or_else(|e| e.into_inner()));
     }
 
     #[tokio::test]

@@ -599,7 +599,7 @@ impl JsonRpcHandler {
     /// from the silicon registry (populated by background IPC query).
     #[cfg(unix)]
     async fn silicon_registry_status(&self) -> JsonRpcResult {
-        let reg = self.silicon_registry.read().await;
+        let reg = self.silicon_registry.read().unwrap_or_else(|e| e.into_inner());
         let status = match &reg.status {
             toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Unknown => {
                 "unknown"

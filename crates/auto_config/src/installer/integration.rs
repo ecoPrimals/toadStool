@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use tokio::fs;
+use std::fs;
 use tracing::info;
 
 use toadstool_common::interned_strings::socket_env;
@@ -41,10 +41,10 @@ pub async fn add_to_path(
                 bin_path.display()
             );
 
-            if let Ok(content) = fs::read_to_string(&profile_path).await
+            if let Ok(content) = fs::read_to_string(&profile_path)
                 && !content.contains("ToadStool")
             {
-                fs::write(&profile_path, format!("{content}{path_export}")).await?;
+                fs::write(&profile_path, format!("{content}{path_export}"))?;
                 info!("✅ Added ToadStool to PATH in {}", shell_profile);
             }
         }
@@ -100,7 +100,7 @@ Categories=Development;System;
                     installation_path.display()
                 );
 
-                fs::write(format!("{desktop_dir}/ToadStool.desktop"), desktop_file).await?;
+                fs::write(format!("{desktop_dir}/ToadStool.desktop"), desktop_file)?;
             }
         }
         Platform::MacOS => {
@@ -121,7 +121,7 @@ pub async fn setup_shell_completion(installation_path: &Path) -> Result<(), Toad
 
     let completion_dir = installation_path.join("completion");
     if !completion_dir.exists() {
-        fs::create_dir_all(&completion_dir).await?;
+        fs::create_dir_all(&completion_dir)?;
     }
 
     let bash_completion = r#"# ToadStool completion
@@ -152,7 +152,7 @@ _toadstool_complete() {
 complete -F _toadstool_complete toadstool
 "#;
 
-    fs::write(completion_dir.join("toadstool.bash"), bash_completion).await?;
+    fs::write(completion_dir.join("toadstool.bash"), bash_completion)?;
 
     info!("🐚 Shell completion installed");
     Ok(())

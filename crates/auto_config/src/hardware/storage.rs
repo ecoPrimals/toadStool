@@ -74,11 +74,10 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
 
     // Linux storage detection
     if cfg!(target_os = "linux")
-        && let Ok(output) = tokio::process::Command::new("df")
+        && let Ok(output) = std::process::Command::new("df")
             .arg("-BG")
             .arg("/")
             .output()
-            .await
     {
         let output_str = String::from_utf8_lossy(&output.stdout);
         if let Some((total_gb, available_gb)) = parse_df_available(&output_str) {
@@ -88,7 +87,7 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
     }
 
     // Detect storage type (SSD vs HDD)
-    storage_info.storage_type = detect_storage_type().await?;
+    storage_info.storage_type = detect_storage_type()?;
 
     debug!(
         "Detected storage: {:.1} GB total, {:.1} GB available, type: {:?}",
@@ -99,10 +98,10 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
 }
 
 /// Detect storage type (SSD vs HDD)
-async fn detect_storage_type() -> ToadStoolResult<StorageType> {
+fn detect_storage_type() -> ToadStoolResult<StorageType> {
     // Linux: check rotational attribute
     if cfg!(target_os = "linux")
-        && let Ok(rotational) = tokio::fs::read_to_string(sysfs::BLOCK_SDA_QUEUE_ROTATIONAL).await
+        && let Ok(rotational) = std::fs::read_to_string(sysfs::BLOCK_SDA_QUEUE_ROTATIONAL)
     {
         return Ok(classify_rotational(rotational.trim()));
     }

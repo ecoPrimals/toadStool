@@ -13,7 +13,7 @@ use crate::window::{CreateWindowRequest, Size, WindowId, WindowManager};
 use crate::{DisplayError, Result};
 use std::sync::Arc;
 use toadstool_common::constants::PRIMAL_NAME;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Handle a single JSON-RPC request
 ///
@@ -55,7 +55,7 @@ async fn dispatch_method(
                 .and_then(|p| CreateWindowRequest::deserialize(p).ok())
                 .unwrap_or_default();
 
-            let window_id = manager.write().await.create_window(params)?;
+            let window_id = manager.write().unwrap_or_else(|e| e.into_inner()).create_window(params)?;
 
             Ok(serde_json::json!({
                 "window_id": window_id.as_string()
@@ -70,7 +70,7 @@ async fn dispatch_method(
                 .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
             let window_id = WindowId::from_string(window_id_str)?;
 
-            manager.write().await.destroy_window(window_id)?;
+            manager.write().unwrap_or_else(|e| e.into_inner()).destroy_window(window_id)?;
 
             Ok(serde_json::json!({"destroyed": true}))
         }
@@ -101,8 +101,7 @@ async fn dispatch_method(
                 as u32;
 
             manager
-                .write()
-                .await
+                .write().unwrap_or_else(|e| e.into_inner())
                 .resize_window(window_id, Size { width, height })?;
 
             Ok(serde_json::json!({"resized": true}))
@@ -116,7 +115,7 @@ async fn dispatch_method(
                 .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
             let window_id = WindowId::from_string(window_id_str)?;
 
-            let info = manager.read().await.get_window_info(window_id)?;
+            let info = manager.read().unwrap_or_else(|e| e.into_inner()).get_window_info(window_id)?;
 
             Ok(serde_json::to_value(info)
                 .map_err(|e| DisplayError::IpcError(format!("Serialization error: {e}")))?)
@@ -132,8 +131,7 @@ async fn dispatch_method(
             let window_id = WindowId::from_string(window_id_str)?;
 
             let pixels = if let Some(shm_path) = params.get("shm_path").and_then(|v| v.as_str()) {
-                tokio::fs::read(shm_path)
-                    .await
+                std::fs::read(shm_path)
                     .map_err(|e| DisplayError::IpcError(format!("Failed to read shm_path: {e}")))?
             } else if let Some(data) = params.get("data").and_then(|v| v.as_str()) {
                 base64::engine::general_purpose::STANDARD
@@ -145,7 +143,7 @@ async fn dispatch_method(
                 ));
             };
 
-            manager.write().await.present_window(window_id, &pixels)?;
+            manager.write().unwrap_or_else(|e| e.into_inner()).present_window(window_id, &pixels)?;
 
             Ok(serde_json::json!({"presented": true}))
         }
@@ -158,7 +156,7 @@ async fn dispatch_method(
                 .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
             let window_id = WindowId::from_string(window_id_str)?;
 
-            input.write().await.set_focus(Some(window_id));
+            input.write().unwrap_or_else(|e| e.into_inner()).set_focus(Some(window_id));
 
             Ok(serde_json::json!({
                 "subscribed": true,
@@ -166,7 +164,7 @@ async fn dispatch_method(
             }))
         }
         "display.poll_events" => {
-            let events = input.write().await.poll_events()?;
+            let events = input.write().unwrap_or_else(|e| e.into_inner()).poll_events()?;
 
             Ok(serde_json::json!({
                 "events": events,
@@ -181,8 +179,8 @@ async fn dispatch_method(
             "has_gpu_acceleration": true,
             "vsync_available": true,
             "display_count": 1,
-            "input_device_count": input.read().await.device_count(),
-            "window_count": manager.read().await.window_count(),
+            "input_device_count": input.read().unwrap_or_else(|e| e.into_inner()).device_count(),
+            "window_count": manager.read().unwrap_or_else(|e| e.into_inner()).window_count(),
             "isomorphic": true,
         })),
         _ => Err(DisplayError::IpcError(format!(

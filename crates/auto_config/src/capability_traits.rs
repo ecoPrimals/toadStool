@@ -5,7 +5,7 @@
 //! Enables dependency injection and testing with mock implementations.
 
 use crate::ToadStoolResult;
-use crate::ecosystem::DiscoveredServices;
+use crate::ecosystem_types::DiscoveredServices;
 use crate::hardware::SystemCapabilities;
 
 /// Trait for hardware capability detection
@@ -46,6 +46,7 @@ impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
 }
 
 /// Adapter to make `EcosystemDiscoverer` implement the trait
+#[cfg(feature = "runtime")]
 impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
         Self::discover_services(self).await
@@ -133,7 +134,7 @@ impl MockEcosystemDiscoverer {
         Self {
             services: DiscoveredServices {
                 discovered_services: std::collections::HashMap::new(),
-                discovery_summary: crate::ecosystem::DiscoverySummary {
+                discovery_summary: crate::ecosystem_types::DiscoverySummary {
                     total_services_found: 0,
                     discovery_methods_used: vec!["mock".to_string()],
                     services_by_type: std::collections::HashMap::new(),

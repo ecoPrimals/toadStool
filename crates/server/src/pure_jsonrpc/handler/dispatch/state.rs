@@ -18,12 +18,12 @@ impl DispatchHandler {
         Self {
             coral_client,
             crypto_client,
-            cached_purpose_key: Arc::new(tokio::sync::RwLock::new(None)),
-            jobs: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            pipelines: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            cached_purpose_key: Arc::new(std::sync::RwLock::new(None)),
+            jobs: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            pipelines: Arc::new(std::sync::RwLock::new(HashMap::new())),
             dispatch_count: std::sync::atomic::AtomicU64::new(0),
             #[cfg(target_os = "linux")]
-            device_pool: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            device_pool: Arc::new(std::sync::RwLock::new(HashMap::new())),
             #[cfg(target_os = "linux")]
             local_device_factory: None,
             #[cfg(target_os = "linux")]

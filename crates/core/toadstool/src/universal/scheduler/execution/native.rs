@@ -164,11 +164,10 @@ where
             // Sovereign fallback: attempt direct local process execution.
             let start = std::time::Instant::now();
             let execution_id = Uuid::new_v4();
-            match tokio::process::Command::new(executable)
+            match std::process::Command::new(executable)
                 .args(args)
                 .envs(env)
                 .output()
-                .await
             {
                 Ok(output) => {
                     let duration = start.elapsed();

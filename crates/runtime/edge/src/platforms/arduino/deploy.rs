@@ -16,7 +16,7 @@ impl ArduinoDevice {
 
         // Check cache first
         {
-            let cache = self.compilation_cache.read().await;
+            let cache = self.compilation_cache.read().unwrap_or_else(|e| e.into_inner());
             if let Some(compiled) = cache.get(&code_hash) {
                 debug!("Using cached compilation for Arduino code");
                 return Ok(compiled.clone());
@@ -64,7 +64,7 @@ impl ArduinoDevice {
 
         // Cache compiled code
         {
-            let mut cache = self.compilation_cache.write().await;
+            let mut cache = self.compilation_cache.write().unwrap_or_else(|e| e.into_inner());
             cache.insert(code_hash, compiled_code.clone());
         }
 

@@ -4,11 +4,10 @@
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::Stdio;
+use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::process::{Child, Command as TokioCommand};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tokio::time::timeout;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -91,7 +90,7 @@ impl NativeRuntimeEngine {
             _ => None,
         };
 
-        let mut command = TokioCommand::new(&executable_path);
+        let mut command = Command::new(&executable_path);
         command.args(&args);
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
@@ -112,12 +111,8 @@ impl NativeRuntimeEngine {
 
         let active_processes = Arc::clone(&self.active_processes);
         let execution_future = async move {
-            let child = command
-                .spawn()
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to spawn process: {e}")))?;
-
             {
-                let mut processes = active_processes.write().await;
+                let mut processes = active_processes.write().unwrap_or_else(|e| e.into_inner());
                 processes.insert(
                     request.execution_id,
                     ProcessHandle {
@@ -129,9 +124,9 @@ impl NativeRuntimeEngine {
                 );
             }
 
-            let output = child
-                .wait_with_output()
+            let output = tokio::task::spawn_blocking(move || command.output())
                 .await
+                .map_err(|e| ToadStoolError::runtime(format!("Process task failed: {e}")))?
                 .map_err(|e| ToadStoolError::runtime(format!("Process execution failed: {e}")))?;
 
             Ok::<_, ToadStoolError>(output)
@@ -238,23 +233,29 @@ impl RuntimeEngine for NativeRuntimeEngine {
         async move {
             info!("Executing native workload: {}", request.execution_id);
 
-            let processes = self.active_processes.read().await;
-            if processes.len()
-                >= self.capabilities.max_concurrent_executions.unwrap_or(100) as usize
             {
-                return Ok(ExecutionResponse {
-                    execution_id: request.execution_id,
-                    status: ExecutionStatus::Failed {
-                        error: std::borrow::Cow::Borrowed("Maximum concurrent processes exceeded"),
-                    },
-                    output: ExecutionOutput::default(),
-                    metrics: RuntimeMetrics::default(),
-                    duration: Duration::from_secs(0),
-                    runtime_used: RuntimeType::Native,
-                    warnings: vec!["Maximum concurrent processes exceeded".to_string()],
-                });
+                let processes = self
+                    .active_processes
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                if processes.len()
+                    >= self.capabilities.max_concurrent_executions.unwrap_or(100) as usize
+                {
+                    return Ok(ExecutionResponse {
+                        execution_id: request.execution_id,
+                        status: ExecutionStatus::Failed {
+                            error: std::borrow::Cow::Borrowed(
+                                "Maximum concurrent processes exceeded",
+                            ),
+                        },
+                        output: ExecutionOutput::default(),
+                        metrics: RuntimeMetrics::default(),
+                        duration: Duration::from_secs(0),
+                        runtime_used: RuntimeType::Native,
+                        warnings: vec!["Maximum concurrent processes exceeded".to_string()],
+                    });
+                }
             }
-            drop(processes);
 
             request.workload.validate()?;
             validation::validate_resource_requirements(&request)?;
@@ -287,7 +288,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
         &self,
     ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         async {
-            if self.active_processes.read().await.is_empty() {
+            if self.active_processes.read().unwrap_or_else(|e| e.into_inner()).is_empty() {
                 return Ok(RuntimeMetrics::default());
             }
 
@@ -300,7 +301,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
             info!("Shutting down Native Runtime Engine");
 
             let to_kill: Vec<(Uuid, Option<Child>)> = {
-                let mut processes = self.active_processes.write().await;
+                let mut processes = self.active_processes.write().unwrap_or_else(|e| e.into_inner());
                 processes
                     .drain()
                     .map(|(id, mut h)| (id, h.child.take()))
@@ -309,7 +310,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
             for (execution_id, child_opt) in to_kill {
                 if let Some(mut child) = child_opt
-                    && let Err(e) = child.kill().await
+                    && let Err(e) = child.kill()
                 {
                     warn!("Failed to kill process {}: {}", execution_id, e);
                 }

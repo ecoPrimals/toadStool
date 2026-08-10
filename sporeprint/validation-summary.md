@@ -1,6 +1,6 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,008+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 26/48 WASM, C2 dual-socket, G68 platform containment, Tokio deep debt resolved"
+description = "Sovereign compute hardware primal — 9,008+ lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 138 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, Tokio blast radius reduced"
 date = 2026-08-10
 
 [taxonomies]
@@ -11,6 +11,7 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 ## Status
 
 - **Version**: 0.2.0 (Session S374, Aug 10, 2026)
+- **S376**: Tokio blast radius reduction — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, 7 crates feature-gated (31→38/48 WASM), workspace tokio features 9→7.
 - **S374**: Tokio deep debt — `runtime` feature gate, needless async removal, std::sync migration, 26/48 WASM. Node Atomic AAR: silicon discovery via coralReef IPC.
 - **S373**: Large file decomposition, hardcoding → runtime discovery, zero `missing_docs`.
 - **S372**: Vertebrate self-audit (126/126 methods verified), types extraction to `toadstool-core`.
@@ -19,7 +20,7 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 - **Lib tests**: 9,008+ (0 failures, unlimited parallelism)
 - **JSON-RPC methods**: 126 (direct) + semantic registry aliases
 - **Workspace crates**: 48
-- **Cross-arch**: 16/16 native targets, 26/48 WASM crates
+- **Cross-arch**: 16/16 native targets, 38/48 WASM crates
 - **Clippy**: 0 warnings (`-D warnings`)
 - **Doc warnings**: 0
 - **`cargo deny`**: Clean (aws-lc-sys, ring, openssl, zstd-sys banned; 19+ bans)

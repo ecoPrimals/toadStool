@@ -75,7 +75,7 @@ impl EdgeDevice for ArduinoDevice {
             let started_at = std::time::Instant::now();
 
             {
-                let mut executions = dev.active_executions.write().await;
+                let mut executions = dev.active_executions.write().unwrap_or_else(|e| e.into_inner());
                 executions.insert(
                     execution_id,
                     ArduinoExecution {
@@ -101,7 +101,7 @@ impl EdgeDevice for ArduinoDevice {
             };
 
             {
-                let mut executions = dev.active_executions.write().await;
+                let mut executions = dev.active_executions.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(execution) = executions.get_mut(&execution_id) {
                     execution.status = ExecutionStatus::Success;
                 }
@@ -151,7 +151,7 @@ impl EdgeDevice for ArduinoDevice {
             let _response = dev.send_command("RESET").await?;
 
             {
-                let mut executions = dev.active_executions.write().await;
+                let mut executions = dev.active_executions.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(execution) = executions.get_mut(&execution_id) {
                     execution.status = ExecutionStatus::Cancelled;
                 }

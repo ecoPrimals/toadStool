@@ -80,7 +80,7 @@ async fn test_refresh_clears_cache() {
     discovery.refresh().await.unwrap();
 
     // Cache should be cleared (need to refetch)
-    let cache = discovery.cache.read().await;
+    let cache = discovery.cache.read().unwrap();
     assert!(cache.is_empty());
 }
 

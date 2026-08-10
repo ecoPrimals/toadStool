@@ -7,7 +7,7 @@ use crate::types::{BackoffStrategy, LoadBalancingStrategy};
 /// Network load balancer for distributed execution
 pub struct NetworkLoadBalancer {
     _strategies: Vec<LoadBalancingStrategy>,
-    pub(crate) node_health: Arc<tokio::sync::RwLock<HashMap<String, NodeHealth>>>,
+    pub(crate) node_health: Arc<std::sync::RwLock<HashMap<String, NodeHealth>>>,
 }
 
 /// Health snapshot for a load-balanced node.
@@ -29,23 +29,32 @@ impl NetworkLoadBalancer {
     pub fn new() -> Self {
         Self {
             _strategies: vec![LoadBalancingStrategy::RoundRobin],
-            node_health: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            node_health: Arc::new(std::sync::RwLock::new(HashMap::new())),
         }
     }
 
     /// Register or update a node's health metrics. Called by Coordination capability discovery.
     pub async fn register_node(&self, node_id: String, health: NodeHealth) {
-        self.node_health.write().await.insert(node_id, health);
+        self.node_health
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(node_id, health);
     }
 
     /// Deregister a node (e.g. after health probe failure).
     pub async fn deregister_node(&self, node_id: &str) {
-        self.node_health.write().await.remove(node_id);
+        self.node_health
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(node_id);
     }
 
     /// Select the least-loaded healthy node. Returns `None` if no remote nodes are registered.
     pub async fn select_node(&self) -> Option<String> {
-        let health = self.node_health.read().await;
+        let health = self
+            .node_health
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         health
             .iter()
             .filter(|(_, h)| h.healthy)
@@ -62,7 +71,10 @@ impl NetworkLoadBalancer {
 
     /// Snapshot of current node health for diagnostics.
     pub async fn node_health_snapshot(&self) -> HashMap<String, NodeHealth> {
-        self.node_health.read().await.clone()
+        self.node_health
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 }
 
@@ -74,7 +86,7 @@ impl Default for NetworkLoadBalancer {
 
 /// Fault tolerance manager for network distribution
 pub struct FaultToleranceManager {
-    _circuit_breakers: Arc<tokio::sync::RwLock<HashMap<String, CircuitBreaker>>>,
+    _circuit_breakers: Arc<std::sync::RwLock<HashMap<String, CircuitBreaker>>>,
     #[cfg_attr(
         not(test),
         expect(
@@ -122,7 +134,7 @@ impl FaultToleranceManager {
         const DEFAULT_BACKOFF_BASE_MS: u64 = 1_000;
         const DEFAULT_BACKOFF_MAX_MS: u64 = 30_000;
         Self {
-            _circuit_breakers: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            _circuit_breakers: Arc::new(std::sync::RwLock::new(HashMap::new())),
             retries: Arc::new(RetryManager {
                 max_retries: 3,
                 backoff_strategy: BackoffStrategy::Exponential {

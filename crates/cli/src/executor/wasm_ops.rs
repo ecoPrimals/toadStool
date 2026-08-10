@@ -42,7 +42,7 @@ impl BiomeExecutor {
                 "HTTP WASM loading: requires runtime.wasm.http-fetch capability".to_string(),
             ));
         } else {
-            fs::read(source).await?
+            fs::read(source)?
         };
 
         verify_sha256(&module_data, expected_checksum)?;

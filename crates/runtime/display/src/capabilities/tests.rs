@@ -139,7 +139,7 @@ async fn test_serialization_roundtrip() {
     use tempfile::TempDir;
     let tmp = TempDir::new().unwrap();
     let discovery_dir = tmp.path().join("ecoPrimals/discovery");
-    tokio::fs::create_dir_all(&discovery_dir).await.unwrap();
+    std::fs::create_dir_all(&discovery_dir).unwrap();
 
     let caps = make_caps();
 
@@ -147,17 +147,17 @@ async fn test_serialization_roundtrip() {
     let filename = format!("{}.json", caps.primal_id);
     let filepath = discovery_dir.join(&filename);
     let json = serde_json::to_string_pretty(&caps).unwrap();
-    tokio::fs::write(&filepath, &json).await.unwrap();
+    std::fs::write(&filepath, &json).unwrap();
     assert!(filepath.exists());
 
     // Read back like find_all() does
-    let content = tokio::fs::read_to_string(&filepath).await.unwrap();
+    let content = std::fs::read_to_string(&filepath).unwrap();
     let found: DisplayCapabilities = serde_json::from_str(&content).unwrap();
     assert_eq!(found.primal_id, caps.primal_id);
     assert_eq!(found.displays.len(), 1);
 
     // Cleanup
-    tokio::fs::remove_file(&filepath).await.unwrap();
+    std::fs::remove_file(&filepath).unwrap();
     assert!(!filepath.exists());
 }
 

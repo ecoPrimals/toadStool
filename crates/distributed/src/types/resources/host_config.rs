@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use serde::{Deserialize, Serialize};
-use toadstool::IsolationLevel;
+use toadstool_core::security::IsolationLevel;
 
 /// Network configuration for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,7 +55,7 @@ pub struct SecurityConfig {
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
-            isolation_level: toadstool::IsolationLevel::Standard,
+            isolation_level: IsolationLevel::Standard,
             sandboxing_enabled: true,
             resource_limits_enforced: true,
         }

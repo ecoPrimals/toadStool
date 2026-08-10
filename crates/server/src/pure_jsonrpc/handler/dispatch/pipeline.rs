@@ -114,7 +114,7 @@ impl DispatchHandler {
                     stages_completed: 0,
                     stage_results: Vec::new(),
                 };
-                let mut pipelines = self.pipelines.write().await;
+                let mut pipelines = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
                 pipelines.insert(pipeline_id, pipeline_job);
                 return Ok(response);
             }
@@ -132,7 +132,7 @@ impl DispatchHandler {
         };
 
         {
-            let mut pipelines = self.pipelines.write().await;
+            let mut pipelines = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
             pipelines.insert(pipeline_id.clone(), pipeline_job);
         }
 
@@ -146,7 +146,7 @@ impl DispatchHandler {
             let stage = stage_map[stage_id.as_str()];
 
             {
-                let mut pipelines = self.pipelines.write().await;
+                let mut pipelines = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(pj) = pipelines.get_mut(&pipeline_id) {
                     pj.status = PipelineStatus::Running {
                         current_stage: stage_id.clone(),
@@ -228,7 +228,7 @@ impl DispatchHandler {
                     });
 
                     {
-                        let mut pipelines = self.pipelines.write().await;
+                        let mut pipelines = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
                         if let Some(pj) = pipelines.get_mut(&pipeline_id) {
                             pj.status = PipelineStatus::PartialFailure {
                                 completed,
@@ -265,7 +265,7 @@ impl DispatchHandler {
         });
 
         {
-            let mut pipelines = self.pipelines.write().await;
+            let mut pipelines = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
             if let Some(pj) = pipelines.get_mut(&pipeline_id) {
                 pj.status = PipelineStatus::Completed;
                 pj.stages_completed = stages.len();
@@ -288,7 +288,7 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'pipeline_id'"))?;
 
-        let pipelines = self.pipelines.read().await;
+        let pipelines = self.pipelines.read().unwrap_or_else(|e| e.into_inner());
         let pj = pipelines.get(pipeline_id).ok_or_else(|| {
             JsonRpcError::internal_error(format!("Pipeline {pipeline_id} not found"))
         })?;

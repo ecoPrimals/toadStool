@@ -13,7 +13,7 @@ use crate::pure_jsonrpc::types::JsonRpcError;
 /// Handles GPU job queue operations and gate routing.
 pub(super) struct JobHandler {
     pub(super) job_queue: GpuJobQueue,
-    pub(super) router: Arc<tokio::sync::RwLock<JobRouter>>,
+    pub(super) router: Arc<std::sync::RwLock<JobRouter>>,
     pub(super) gate_ownership: Arc<GateOwnership>,
 }
 
@@ -21,7 +21,7 @@ impl JobHandler {
     pub(super) fn new(gate_ownership: Arc<GateOwnership>) -> Self {
         Self {
             job_queue: GpuJobQueue::new(JobQueueConfig::default()),
-            router: Arc::new(tokio::sync::RwLock::new(JobRouter::new(
+            router: Arc::new(std::sync::RwLock::new(JobRouter::new(
                 gate_ownership.local_gate_id.as_ref(),
             ))),
             gate_ownership,
@@ -71,7 +71,7 @@ impl JobHandler {
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
 
         let routing = {
-            let router = self.router.read().await;
+            let router = self.router.read().unwrap_or_else(|e| e.into_inner());
             let model = match &job_type {
                 crate::gpu_job_queue::JobType::Inference { model, .. } => model.as_str(),
                 _ => "",
@@ -80,39 +80,43 @@ impl JobHandler {
         };
 
         // If routing to a remote gate, forward the job instead of local submit
-        {
-            let router = self.router.read().await;
-            if router.is_remote_gate(routing.gate_id.as_ref())
-                && let Some(endpoint) = router.gate_endpoint(routing.gate_id.as_ref())
+        let remote_forward = {
+            let router = self.router.read().unwrap_or_else(|e| e.into_inner());
+            if router.is_remote_gate(routing.gate_id.as_ref()) {
+                router
+                    .gate_endpoint(routing.gate_id.as_ref())
+                    .map(|endpoint| (endpoint, routing.clone()))
+            } else {
+                None
+            }
+        };
+        if let Some((endpoint, routing)) = remote_forward {
+            match crate::cross_gate::RemoteDispatcher::forward(
+                &endpoint,
+                "compute.submit",
+                params.clone(),
+            )
+            .await
             {
-                drop(router);
-                match crate::cross_gate::RemoteDispatcher::forward(
-                    &endpoint,
-                    "compute.submit",
-                    params.clone(),
-                )
-                .await
-                {
-                    Ok(remote_result) => {
-                        return Ok(serde_json::json!({
-                            "routing": {
-                                "gate_id": routing.gate_id.as_ref(),
-                                "reason": routing.reason,
-                                "estimated_wait_ms": routing.estimated_wait_ms,
-                            },
-                            "forwarded": true,
-                            "remote_gate": routing.gate_id.as_ref(),
-                            "remote_result": remote_result,
-                        }));
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            gate = routing.gate_id.as_ref(),
-                            error = %e,
-                            "remote dispatch failed, falling back to local"
-                        );
-                        // Fall through to local submission
-                    }
+                Ok(remote_result) => {
+                    return Ok(serde_json::json!({
+                        "routing": {
+                            "gate_id": routing.gate_id.as_ref(),
+                            "reason": routing.reason,
+                            "estimated_wait_ms": routing.estimated_wait_ms,
+                        },
+                        "forwarded": true,
+                        "remote_gate": routing.gate_id.as_ref(),
+                        "remote_result": remote_result,
+                    }));
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        gate = routing.gate_id.as_ref(),
+                        error = %e,
+                        "remote dispatch failed, falling back to local"
+                    );
+                    // Fall through to local submission
                 }
             }
         }
@@ -227,7 +231,7 @@ impl JobHandler {
         } else if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id.as_ref() {
             self.gate_ownership.revert_to_local_owner().await;
         }
-        self.router.write().await.update_gate(gate_info);
+        self.router.write().unwrap_or_else(|e| e.into_inner()).update_gate(gate_info);
         Ok(serde_json::json!({"updated": true, "gate_id": gate_id.as_ref()}))
     }
 
@@ -242,12 +246,12 @@ impl JobHandler {
         if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id {
             self.gate_ownership.revert_to_local_owner().await;
         }
-        self.router.write().await.remove_gate(gate_id);
+        self.router.write().unwrap_or_else(|e| e.into_inner()).remove_gate(gate_id);
         Ok(serde_json::json!({"removed": true, "gate_id": gate_id}))
     }
 
     pub(super) async fn gate_list(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let router = self.router.read().await;
+        let router = self.router.read().unwrap_or_else(|e| e.into_inner());
         let gates: Vec<&crate::cross_gate::GateGpuInfo> = router.gates().values().collect();
         Ok(serde_json::json!({"gates": gates}))
     }
@@ -262,7 +266,7 @@ impl JobHandler {
             .get("vram_required_mb")
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(4096);
-        let router = self.router.read().await;
+        let router = self.router.read().unwrap_or_else(|e| e.into_inner());
         let decision = router.route(model, vram);
         Ok(serde_json::json!({
             "gate_id": decision.gate_id.as_ref(),

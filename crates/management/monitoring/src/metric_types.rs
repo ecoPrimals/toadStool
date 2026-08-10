@@ -4,11 +4,20 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use toadstool::resources::{ResourceRequirements, RuntimeMetrics};
-use tokio::sync::RwLock;
+use toadstool_core::resources::{ResourceRequirements, RuntimeMetrics};
+use std::sync::RwLock;
 
-use crate::process::ProcessInfo;
 use crate::types::MonitoringConfig;
+
+/// Internal process information for monitoring
+#[derive(Clone, Debug)]
+pub(crate) struct ProcessInfo {
+    pub pid: u32,
+    pub name: String,
+    pub last_cpu_time: u64,
+    pub memory_usage: u64,
+    pub start_time: u64,
+}
 
 /// Concrete implementation of `ResourceMonitor` trait that provides
 /// configurable, high-granularity resource monitoring

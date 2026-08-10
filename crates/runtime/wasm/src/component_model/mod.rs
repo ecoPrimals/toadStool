@@ -14,18 +14,21 @@
 
 pub mod core;
 pub mod instances;
+#[cfg(feature = "runtime")]
 pub mod linking;
+#[cfg(feature = "runtime")]
 pub mod registry;
 
-// Re-export all public types for backward compatibility
 pub use core::*;
 pub use instances::*;
+#[cfg(feature = "runtime")]
 pub use linking::*;
+#[cfg(feature = "runtime")]
 pub use registry::*;
 
 use toadstool::ToadStoolResult;
 
-// Re-export for backwards compatibility
+#[cfg(feature = "runtime")]
 pub use crate::WasmRuntimeEngine;
 
 /// Component model support trait

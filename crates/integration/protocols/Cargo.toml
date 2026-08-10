@@ -10,24 +10,33 @@ keywords = ["protocols", "integration", "primal", "rpc"]
 categories = ["api-bindings", "network-programming"]
 
 [features]
-default = []
-tarpc-transport = ["dep:tarpc"]
+default = ["runtime"]
+# Tokio async runtime, transport, and client modules. Disable for WASM-only types builds.
+runtime = [
+    "dep:tokio",
+    "dep:toadstool",
+    "dep:bytes",
+    "toadstool/runtime",
+    "toadstool-common/runtime",
+    "toadstool-config/runtime",
+    "uuid/v4",
+    "tarpc-transport",
+]
+tarpc-transport = ["dep:tarpc", "dep:bytes"]
 # MessagePack + length-delimited framing (`tarpc::serde_transport`) for Rust-to-Rust peers
 binary-transport = ["tarpc-transport", "dep:tokio-serde", "dep:tokio-util", "dep:futures"]
 
 [dependencies]
 # Core ToadStool types
-toadstool = { path = "../../core/toadstool" }
-toadstool-common = { path = "../../core/common" }
-toadstool-config = { path = "../../core/config" }
+toadstool = { path = "../../core/toadstool", default-features = false, optional = true }
+toadstool-common = { path = "../../core/common", default-features = false }
+toadstool-config = { path = "../../core/config", default-features = false }
 
 # RPC frameworks
 tarpc = { workspace = true, optional = true }
 
-# HTTP client
-
-# Async runtime
-tokio = { workspace = true }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
 
 # Binary framing (optional; `binary-transport` feature)
 futures = { workspace = true, optional = true }
@@ -37,7 +46,7 @@ tokio-util = { workspace = true, optional = true }
 # Serialization (rc for Arc<str> zero-copy serialization)
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
-bytes = { workspace = true }
+bytes = { workspace = true, optional = true }
 
 # Error handling
 thiserror = { workspace = true }
@@ -46,7 +55,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # UUID support
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 [dev-dependencies]
 temp-env = { workspace = true }
@@ -55,4 +64,3 @@ tokio-test = { workspace = true }
 
 [lints]
 workspace = true
-

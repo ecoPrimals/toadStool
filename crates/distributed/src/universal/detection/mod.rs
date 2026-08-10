@@ -111,8 +111,8 @@ impl UniversalSubstrateCapabilities {
                 power_consumption_mw: AKIDA_POWER_MW,
             };
 
-            if let Ok(mut entries) = tokio::fs::read_dir("/dev").await {
-                while let Ok(Some(entry)) = entries.next_entry().await {
+            if let Ok(entries) = std::fs::read_dir("/dev") {
+                for entry in entries.flatten() {
                     if entry.file_name().to_string_lossy().starts_with("akida") {
                         platforms.push(make_akida());
                         break;
@@ -146,8 +146,8 @@ impl UniversalSubstrateCapabilities {
             let has_gpio = std::path::Path::new(sysfs::CLASS_GPIO).exists();
 
             let mut serial_count = 0u32;
-            if let Ok(mut entries) = tokio::fs::read_dir("/dev").await {
-                while let Ok(Some(entry)) = entries.next_entry().await {
+            if let Ok(entries) = std::fs::read_dir("/dev") {
+                for entry in entries.flatten() {
                     let file_name = entry.file_name();
                     let name = file_name.to_string_lossy();
                     if name.starts_with("ttyUSB") || name.starts_with("ttyACM") {

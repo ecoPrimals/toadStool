@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use tokio::fs;
+use std::fs;
 use tracing::{debug, warn};
 
 use super::byob_types::ServiceSpec;
@@ -44,13 +44,13 @@ impl ResourceMetricsReader {
     }
 
     /// Sample metrics for `pid`, using `prev` for CPU and I/O deltas.
-    pub async fn sample(
+    pub fn sample(
         &self,
         pid: u32,
         prev: Option<&ResourcePollState>,
     ) -> (DeploymentResourceSample, ResourcePollState) {
         let now = Instant::now();
-        let cgroup_dir = self.discover_cgroup_v2_dir(pid).await;
+        let cgroup_dir = self.discover_cgroup_v2_dir(pid);
 
         let mut cgroup_mem: Option<u64> = None;
         let mut cgroup_cpu_usec: Option<u64> = None;
@@ -58,11 +58,10 @@ impl ResourceMetricsReader {
         let mut cgroup_io_w: u64 = 0;
 
         if let Some(ref dir) = cgroup_dir {
-            if let Some(s) = read_file_join(dir, "memory.current").await {
+            if let Some(s) = read_file_join(dir, "memory.current") {
                 cgroup_mem = parse_single_u64_line(&s);
             }
             let cgroup_mem_max = read_file_join(dir, "memory.max")
-                .await
                 .as_deref()
                 .and_then(parse_cgroup_memory_max);
             debug!(
@@ -70,19 +69,19 @@ impl ResourceMetricsReader {
                 memory_max = cgroup_mem_max,
                 "cgroup v2 memory"
             );
-            if let Some(s) = read_file_join(dir, "cpu.stat").await {
+            if let Some(s) = read_file_join(dir, "cpu.stat") {
                 cgroup_cpu_usec = parse_cpu_stat_usage_usec(&s);
             }
-            if let Some(s) = read_file_join(dir, "io.stat").await {
+            if let Some(s) = read_file_join(dir, "io.stat") {
                 let (r, w) = parse_io_stat_rbytes_wbytes(&s);
                 cgroup_io_r = r;
                 cgroup_io_w = w;
             }
         }
 
-        let status = read_proc_file(pid, "status").await;
-        let stat = read_proc_file(pid, "stat").await;
-        let net_dev = read_proc_file(pid, "net/dev").await;
+        let status = read_proc_file(pid, "status");
+        let stat = read_proc_file(pid, "stat");
+        let net_dev = read_proc_file(pid, "net/dev");
 
         let proc_vmrss = status.as_deref().and_then(parse_status_vmrss_kb);
         let proc_ticks = stat.as_deref().and_then(parse_proc_stat_utime_stime_ticks);
@@ -160,8 +159,8 @@ pub(crate) struct DeploymentResourceSample {
 }
 
 impl ResourceMetricsReader {
-    async fn discover_cgroup_v2_dir(&self, pid: u32) -> Option<PathBuf> {
-        let content = read_proc_file(pid, "cgroup").await?;
+    fn discover_cgroup_v2_dir(&self, pid: u32) -> Option<PathBuf> {
+        let content = read_proc_file(pid, "cgroup")?;
         cgroup_v2_relative_path(&content).map(|rel| {
             let rel = rel.as_path().strip_prefix("/").unwrap_or(rel.as_path());
             self.cgroup_root.join(rel)
@@ -169,14 +168,14 @@ impl ResourceMetricsReader {
     }
 }
 
-async fn read_file_join(dir: &Path, name: &str) -> Option<String> {
+fn read_file_join(dir: &Path, name: &str) -> Option<String> {
     let path = dir.join(name);
-    fs::read_to_string(&path).await.ok()
+    fs::read_to_string(&path).ok()
 }
 
-async fn read_proc_file(pid: u32, rest: &str) -> Option<String> {
+fn read_proc_file(pid: u32, rest: &str) -> Option<String> {
     let path = PathBuf::from(format!("/proc/{pid}/{rest}"));
-    fs::read_to_string(&path).await.ok()
+    fs::read_to_string(&path).ok()
 }
 
 /// Linux `USER_HZ` is almost always 100; used for `/proc/[pid]/stat` times.

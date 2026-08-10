@@ -71,7 +71,7 @@ pub struct CpuFeatures {
 /// Detect CPU capabilities and characteristics
 pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo> {
     #[cfg(target_os = "linux")]
-    let mut cpu_info = if let Ok(cpuinfo) = tokio::fs::read_to_string(procfs::CPUINFO).await {
+    let mut cpu_info = if let Ok(cpuinfo) = std::fs::read_to_string(procfs::CPUINFO) {
         parse_linux_cpuinfo(&cpuinfo)
     } else {
         CpuInfo::default()
@@ -79,11 +79,11 @@ pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo
 
     // Try to get CPU info from sysctl on macOS
     #[cfg(target_os = "macos")]
-    let mut cpu_info = detect_macos_cpu().await?;
+    let mut cpu_info = detect_macos_cpu()?;
 
     // Try to get CPU info from WMI on Windows
     #[cfg(target_os = "windows")]
-    let mut cpu_info = detect_windows_cpu().await?;
+    let mut cpu_info = detect_windows_cpu()?;
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     let mut cpu_info = CpuInfo::default();
@@ -168,24 +168,22 @@ fn parse_linux_cpuinfo(cpuinfo: &str) -> CpuInfo {
 
 /// Detect macOS CPU information
 #[cfg(target_os = "macos")]
-async fn detect_macos_cpu() -> ToadStoolResult<CpuInfo> {
+fn detect_macos_cpu() -> ToadStoolResult<CpuInfo> {
     let mut cpu_info = CpuInfo::default();
 
     // Use sysctl to get CPU information
-    if let Ok(output) = tokio::process::Command::new("sysctl")
+    if let Ok(output) = std::process::Command::new("sysctl")
         .arg("-n")
         .arg("machdep.cpu.brand_string")
         .output()
-        .await
     {
         cpu_info.model_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
     }
 
-    if let Ok(output) = tokio::process::Command::new("sysctl")
+    if let Ok(output) = std::process::Command::new("sysctl")
         .arg("-n")
         .arg("hw.physicalcpu")
         .output()
-        .await
     {
         if let Ok(cores) = String::from_utf8_lossy(&output.stdout)
             .trim()
@@ -195,11 +193,10 @@ async fn detect_macos_cpu() -> ToadStoolResult<CpuInfo> {
         }
     }
 
-    if let Ok(output) = tokio::process::Command::new("sysctl")
+    if let Ok(output) = std::process::Command::new("sysctl")
         .arg("-n")
         .arg("hw.logicalcpu")
         .output()
-        .await
     {
         if let Ok(cores) = String::from_utf8_lossy(&output.stdout)
             .trim()
@@ -214,17 +211,16 @@ async fn detect_macos_cpu() -> ToadStoolResult<CpuInfo> {
 
 /// Detect Windows CPU information
 #[cfg(target_os = "windows")]
-async fn detect_windows_cpu() -> ToadStoolResult<CpuInfo> {
+fn detect_windows_cpu() -> ToadStoolResult<CpuInfo> {
     let mut cpu_info = CpuInfo::default();
 
     // Use WMI to get CPU information (simplified implementation)
-    if let Ok(output) = tokio::process::Command::new("wmic")
+    if let Ok(output) = std::process::Command::new("wmic")
         .arg("cpu")
         .arg("get")
         .arg("Name,NumberOfCores,NumberOfLogicalProcessors")
         .arg("/format:csv")
         .output()
-        .await
     {
         let output_str = String::from_utf8_lossy(&output.stdout);
         // Parse WMI output (simplified)

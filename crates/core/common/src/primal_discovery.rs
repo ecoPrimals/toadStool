@@ -29,7 +29,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Primal endpoint discovered at runtime
 #[derive(Clone, Debug)]
@@ -269,7 +269,7 @@ impl PrimalDiscovery {
     /// This implementation always succeeds. Returns [`DiscoveryError`] for API compatibility
     /// with implementations that may fail during refresh.
     pub async fn refresh(&self) -> Result<(), DiscoveryError> {
-        self.cache.write().await.clear();
+        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
         tracing::debug!("Discovery cache cleared");
         Ok(())
     }
@@ -277,7 +277,7 @@ impl PrimalDiscovery {
     // Internal helpers
 
     async fn get_from_cache(&self, capability: &str) -> Option<PrimalEndpoint> {
-        let cache = self.cache.read().await;
+        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
         cache
             .get(capability)
             .and_then(|endpoints| endpoints.first())
@@ -285,7 +285,7 @@ impl PrimalDiscovery {
     }
 
     async fn cache_endpoint(&self, capability: &str, endpoint: PrimalEndpoint) {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache
             .entry(capability.to_string())
             .or_insert_with(Vec::new)

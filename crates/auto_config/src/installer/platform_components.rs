@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use tokio::fs;
+use std::fs;
 use tracing::info;
 
 use toadstool_common::platform_paths::Platform;
@@ -35,10 +35,10 @@ WantedBy=multi-user.target
 
     let systemd_dir = installation_path.join("systemd");
     if !systemd_dir.exists() {
-        fs::create_dir_all(&systemd_dir).await?;
+        fs::create_dir_all(&systemd_dir)?;
     }
 
-    fs::write(systemd_dir.join("toadstool.service"), service_content).await?;
+    fs::write(systemd_dir.join("toadstool.service"), service_content)?;
 
     info!("🐧 Linux components installed");
     Ok(())
@@ -78,14 +78,13 @@ pub async fn install_macos_components(installation_path: &Path) -> Result<(), To
 
     let launchd_dir = installation_path.join("launchd");
     if !launchd_dir.exists() {
-        fs::create_dir_all(&launchd_dir).await?;
+        fs::create_dir_all(&launchd_dir)?;
     }
 
     fs::write(
         launchd_dir.join("dev.toadstool.daemon.plist"),
         plist_content,
-    )
-    .await?;
+    )?;
 
     info!("🍎 macOS components installed");
     Ok(())
@@ -106,14 +105,13 @@ pub async fn install_windows_components(installation_path: &Path) -> Result<(), 
 
     let service_dir = installation_path.join("service");
     if !service_dir.exists() {
-        fs::create_dir_all(&service_dir).await?;
+        fs::create_dir_all(&service_dir)?;
     }
 
     fs::write(
         service_dir.join("service.json"),
         serde_json::to_string_pretty(&service_config)?,
-    )
-    .await?;
+    )?;
 
     info!("🪟 Windows components installed");
     Ok(())

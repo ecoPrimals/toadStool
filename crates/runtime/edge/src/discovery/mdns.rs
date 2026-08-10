@@ -79,12 +79,12 @@ impl MDNSDiscovery {
         }
 
         let mut devices = Vec::new();
-        let mut entries = match tokio::fs::read_dir(&biomeos_dir).await {
+        let entries = match std::fs::read_dir(&biomeos_dir) {
             Ok(e) => e,
             Err(_) => return Ok(None),
         };
 
-        while let Ok(Some(entry)) = entries.next_entry().await {
+        for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "sock") {
                 let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
@@ -124,15 +124,15 @@ impl MDNSDiscovery {
         }
 
         let mut devices = Vec::new();
-        let mut entries = match tokio::fs::read_dir(&edge_dir).await {
+        let entries = match std::fs::read_dir(&edge_dir) {
             Ok(e) => e,
             Err(_) => return Ok(None),
         };
 
-        while let Ok(Some(entry)) = entries.next_entry().await {
+        for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "json")
-                && let Ok(content) = tokio::fs::read_to_string(&path).await
+                && let Ok(content) = std::fs::read_to_string(&path)
                 && let Ok(device) = self.parse_edge_registry_entry(&content)
             {
                 devices.push(device);

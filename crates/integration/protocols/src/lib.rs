@@ -13,19 +13,26 @@
 //!
 //! Pure Rust: Unix sockets for inter-service communication (no reqwest!)
 
-// Sub-modules
-pub mod client;
+// Protocol definitions (WASM-safe)
 pub mod config;
-pub mod security_client;
-#[cfg(feature = "tarpc-transport")]
-pub mod tarpc_service;
-pub mod transport;
 pub mod types;
 
+// Runtime transport and client modules (require tokio)
+#[cfg(feature = "runtime")]
+pub mod client;
+#[cfg(feature = "runtime")]
+pub mod security_client;
+#[cfg(feature = "runtime")]
+pub mod transport;
+
+#[cfg(feature = "tarpc-transport")]
+pub mod tarpc_service;
+
 // Re-export Security / PKI security types at crate root
+#[cfg(feature = "runtime")]
 pub use security_client::*;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "runtime"))]
 mod tests {
     use super::*;
     use std::collections::HashMap;

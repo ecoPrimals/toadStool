@@ -40,7 +40,7 @@ impl UsageLearner {
         let mut usage_hints = UsageHints::default();
 
         // Check for development environment indicators
-        if self.is_development_environment().await? {
+        if self.is_development_environment()? {
             usage_hints
                 .predicted_workload_types
                 .push("development".to_string());
@@ -49,7 +49,7 @@ impl UsageLearner {
         }
 
         // Check for machine learning environment indicators
-        if self.is_ml_environment().await? {
+        if self.is_ml_environment()? {
             usage_hints
                 .predicted_workload_types
                 .push("machine_learning".to_string());
@@ -59,7 +59,7 @@ impl UsageLearner {
         }
 
         // Check for web development indicators
-        if self.is_web_development_environment().await? {
+        if self.is_web_development_environment()? {
             usage_hints
                 .predicted_workload_types
                 .push("web_development".to_string());
@@ -69,7 +69,7 @@ impl UsageLearner {
         }
 
         // Check for data processing indicators
-        if self.is_data_processing_environment().await? {
+        if self.is_data_processing_environment()? {
             usage_hints
                 .predicted_workload_types
                 .push("data_processing".to_string());
@@ -85,7 +85,7 @@ impl UsageLearner {
     }
 
     /// Check if this appears to be a development environment
-    async fn is_development_environment(&self) -> ToadStoolResult<bool> {
+    fn is_development_environment(&self) -> ToadStoolResult<bool> {
         // Look for common development tools and directories
         let dev_indicators = [
             ".git",
@@ -101,7 +101,7 @@ impl UsageLearner {
         ];
 
         for indicator in &dev_indicators {
-            if tokio::fs::metadata(indicator).await.is_ok() {
+            if std::fs::metadata(indicator).is_ok() {
                 return Ok(true);
             }
         }
@@ -110,7 +110,7 @@ impl UsageLearner {
     }
 
     /// Check if this appears to be a machine learning environment
-    async fn is_ml_environment(&self) -> ToadStoolResult<bool> {
+    fn is_ml_environment(&self) -> ToadStoolResult<bool> {
         // Look for ML-specific files and tools
         let ml_indicators = [
             "requirements.txt",
@@ -123,17 +123,16 @@ impl UsageLearner {
         ];
 
         for indicator in &ml_indicators {
-            if tokio::fs::metadata(indicator).await.is_ok() {
+            if std::fs::metadata(indicator).is_ok() {
                 return Ok(true);
             }
         }
 
         // Check for Python ML packages
-        if tokio::process::Command::new("python")
+        if std::process::Command::new("python")
             .arg("-c")
             .arg("import torch, tensorflow, scikit-learn")
             .output()
-            .await
             .is_ok()
         {
             return Ok(true);
@@ -143,7 +142,7 @@ impl UsageLearner {
     }
 
     /// Check if this appears to be a web development environment
-    async fn is_web_development_environment(&self) -> ToadStoolResult<bool> {
+    fn is_web_development_environment(&self) -> ToadStoolResult<bool> {
         // Look for web development indicators
         let web_indicators = [
             "package.json",
@@ -159,7 +158,7 @@ impl UsageLearner {
         ];
 
         for indicator in &web_indicators {
-            if tokio::fs::metadata(indicator).await.is_ok() {
+            if std::fs::metadata(indicator).is_ok() {
                 return Ok(true);
             }
         }
@@ -168,7 +167,7 @@ impl UsageLearner {
     }
 
     /// Check if this appears to be a data processing environment
-    async fn is_data_processing_environment(&self) -> ToadStoolResult<bool> {
+    fn is_data_processing_environment(&self) -> ToadStoolResult<bool> {
         // Look for data processing indicators
         let data_indicators = [
             "data",
@@ -182,7 +181,7 @@ impl UsageLearner {
         ];
 
         for indicator in &data_indicators {
-            if tokio::fs::metadata(indicator).await.is_ok() {
+            if std::fs::metadata(indicator).is_ok() {
                 return Ok(true);
             }
         }

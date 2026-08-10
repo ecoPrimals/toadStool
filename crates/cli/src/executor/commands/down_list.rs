@@ -61,7 +61,7 @@ impl BiomeExecutor {
         show_resources: bool,
         _status_filter: Option<&str>,
     ) -> Result<()> {
-        let biomes = self.biomes.read().await;
+        let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
         let biome_refs: Vec<&RunningBiome> = biomes.values().collect();
         self.print_biomes_table(&biome_refs, show_resources).await?;
 

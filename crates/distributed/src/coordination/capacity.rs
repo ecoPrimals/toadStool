@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use toadstool::error::ToadStoolResult;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::types::{
     CapacityConfig, CapacityInfo, LocalCapacityManager, NodeCapabilities, ResourceReservation,
@@ -22,7 +22,11 @@ impl LocalCapacityManager {
 
     /// Return a snapshot of this node's available CPU, memory, and storage.
     pub async fn get_available_capacity(&self) -> ToadStoolResult<CapacityInfo> {
-        Ok(self.available_capacity.read().await.clone())
+        Ok(self
+            .available_capacity
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone())
     }
 
     /// Accept the job if this node has enough CPU, memory, and storage capacity.
@@ -30,7 +34,10 @@ impl LocalCapacityManager {
         &self,
         requirements: &crate::ResourceRequirements,
     ) -> ToadStoolResult<bool> {
-        let cap = self.available_capacity.read().await;
+        let cap = self
+            .available_capacity
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         Ok(requirements.cpu.min_cores <= cap.cpu_cores
             && requirements.memory.min_bytes <= cap.memory_bytes
             && requirements.storage.min_bytes <= cap.storage_bytes)
@@ -43,7 +50,10 @@ impl LocalCapacityManager {
         requirements: &crate::ResourceRequirements,
     ) -> ToadStoolResult<ResourceReservation> {
         {
-            let mut cap = self.available_capacity.write().await;
+            let mut cap = self
+                .available_capacity
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             cap.cpu_cores = (cap.cpu_cores - requirements.cpu.min_cores).max(0.0);
             cap.memory_bytes = cap
                 .memory_bytes
@@ -64,7 +74,10 @@ impl LocalCapacityManager {
         reservation: ResourceReservation,
     ) -> ToadStoolResult<()> {
         {
-            let mut cap = self.available_capacity.write().await;
+            let mut cap = self
+                .available_capacity
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             cap.cpu_cores += reservation.resources.cpu.min_cores;
             cap.memory_bytes += reservation.resources.memory.min_bytes;
             cap.storage_bytes += reservation.resources.storage.min_bytes;
@@ -80,7 +93,10 @@ impl LocalCapacityManager {
 
     /// Report current node capabilities sourced from the real system.
     pub async fn get_current_capabilities(&self) -> ToadStoolResult<NodeCapabilities> {
-        let cap = self.available_capacity.read().await;
+        let cap = self
+            .available_capacity
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let gb = |bytes: u64| bytes as f64 / (1024.0 * 1024.0 * 1024.0);
         Ok(NodeCapabilities {
             cpu_cores: cap.cpu_cores,

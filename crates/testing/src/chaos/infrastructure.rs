@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tokio::time::timeout;
 use tracing::{debug, info};
 
@@ -298,7 +298,7 @@ impl ChaosEngine {
         }
 
         // Track active fault
-        self.active_faults.write().await.push(ActiveFault {
+        self.active_faults.write().unwrap_or_else(|e| e.into_inner()).push(ActiveFault {
             _fault_type: fault.clone(),
             _injected_at: Instant::now(),
         });
@@ -315,7 +315,7 @@ impl ChaosEngine {
         debug!("Simulating network partition for {}ms", duration_ms);
 
         {
-            let mut state = self.system_state.write().await;
+            let mut state = self.system_state.write().unwrap_or_else(|e| e.into_inner());
             state.cluster_healthy = false;
         }
 
@@ -323,12 +323,12 @@ impl ChaosEngine {
         tokio::time::sleep(duration).await;
 
         {
-            let mut state = self.system_state.write().await;
+            let mut state = self.system_state.write().unwrap_or_else(|e| e.into_inner());
             state.cluster_healthy = true;
             state.recovery_count += 1;
         }
         {
-            let mut metrics = self.metrics.write().await;
+            let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
             metrics.recovery_count += 1;
         }
 
@@ -345,7 +345,7 @@ impl ChaosEngine {
         debug!("Simulating resource exhaustion for {}ms", duration_ms);
 
         // Simulate by slowing operations
-        let mut metrics = self.metrics.write().await;
+        let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
         metrics.max_latency_ms = metrics.max_latency_ms.max(duration_ms);
         drop(metrics);
 
@@ -364,7 +364,7 @@ impl ChaosEngine {
         );
 
         {
-            let mut state = self.system_state.write().await;
+            let mut state = self.system_state.write().unwrap_or_else(|e| e.into_inner());
             state.cluster_healthy = false;
         }
 
@@ -372,12 +372,12 @@ impl ChaosEngine {
         tokio::time::sleep(Duration::from_millis(restart_delay_ms)).await;
 
         {
-            let mut state = self.system_state.write().await;
+            let mut state = self.system_state.write().unwrap_or_else(|e| e.into_inner());
             state.cluster_healthy = true;
             state.recovery_count += 1;
         }
         {
-            let mut metrics = self.metrics.write().await;
+            let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
             metrics.recovery_count += 1;
         }
 
@@ -389,7 +389,7 @@ impl ChaosEngine {
         debug!("Injecting timeout: {}ms delay", delay_ms);
 
         {
-            let mut metrics = self.metrics.write().await;
+            let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
             metrics.operations_attempted += 1;
         }
 
@@ -397,7 +397,7 @@ impl ChaosEngine {
         tokio::time::sleep(Duration::from_millis(delay_ms)).await;
 
         {
-            let mut metrics = self.metrics.write().await;
+            let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
             metrics.operations_succeeded += 1;
             metrics.avg_latency_ms = f64::midpoint(metrics.avg_latency_ms, delay_ms as f64);
         }
@@ -407,13 +407,13 @@ impl ChaosEngine {
 
     /// Collect current metrics
     async fn collect_metrics(&self) -> ToadStoolResult<ChaosMetrics> {
-        let metrics = self.metrics.read().await;
+        let metrics = self.metrics.read().unwrap_or_else(|e| e.into_inner());
         Ok(metrics.clone())
     }
 
     /// Get current system state
     async fn get_system_state(&self) -> ToadStoolResult<SystemState> {
-        let state = self.system_state.read().await;
+        let state = self.system_state.read().unwrap_or_else(|e| e.into_inner());
         Ok(state.clone())
     }
 
@@ -421,11 +421,11 @@ impl ChaosEngine {
     async fn heal_all(&self) -> ToadStoolResult<()> {
         debug!("Healing all active faults");
 
-        self.active_faults.write().await.clear();
+        self.active_faults.write().unwrap_or_else(|e| e.into_inner()).clear();
 
         // Ensure system is healthy
         {
-            let mut state = self.system_state.write().await;
+            let mut state = self.system_state.write().unwrap_or_else(|e| e.into_inner());
             state.cluster_healthy = true;
         }
 

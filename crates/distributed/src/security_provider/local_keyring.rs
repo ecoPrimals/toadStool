@@ -12,7 +12,7 @@
 use std::future::Future;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use toadstool::error::ToadStoolResult;
@@ -77,7 +77,10 @@ impl LocalKeyringProvider {
     }
 
     async fn track_key(&self, key_id: &str) {
-        let mut keys = self.known_keys.write().await;
+        let mut keys = self
+            .known_keys
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if !keys.contains(&key_id.to_string()) {
             keys.push(key_id.to_string());
             drop(keys);

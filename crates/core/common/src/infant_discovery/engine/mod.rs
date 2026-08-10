@@ -7,7 +7,7 @@
 //! start with zero knowledge and discover everything dynamically.
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::capabilities::{DiscoveredService, EndpointSource, SubstrateDetector};
 use super::config::ServiceDiscoveryConfig;
@@ -35,7 +35,7 @@ impl DiscoveryEngine {
         }
 
         let service = {
-            let cache = self.cache.read().await;
+            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
             cache.get(capability)?.clone()
         };
 
@@ -54,7 +54,7 @@ impl DiscoveryEngine {
             return;
         }
 
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache.insert(service.capability.clone(), service);
     }
 }

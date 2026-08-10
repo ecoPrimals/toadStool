@@ -44,7 +44,7 @@ use std::sync::Arc;
 use toadstool_common::constants::network::LOCALHOST_IPV4;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// IPC transport type
 #[derive(Debug, Clone)]
@@ -147,13 +147,12 @@ impl DisplayServer {
 
         // Create parent directory if needed
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
+            std::fs::create_dir_all(parent)
                 .map_err(|e| DisplayError::IpcError(format!("Failed to create socket dir: {e}")))?;
         }
 
         // Remove existing socket
-        let _ = tokio::fs::remove_file(&path).await;
+        let _ = std::fs::remove_file(&path);
 
         // Bind listener (this is where platform constraints appear!)
         let listener = UnixListener::bind(&path)
@@ -165,7 +164,7 @@ impl DisplayServer {
         );
 
         // Update transport
-        *self.transport.write().await = Some(IpcTransport::UnixSocket);
+        *self.transport.write().unwrap_or_else(|e| e.into_inner()) = Some(IpcTransport::UnixSocket);
 
         // Accept loop
         loop {
@@ -206,7 +205,7 @@ impl DisplayServer {
         platform::write_tcp_discovery_file(&local_addr);
 
         // Update transport
-        *self.transport.write().await = Some(IpcTransport::TcpFallback(local_addr));
+        *self.transport.write().unwrap_or_else(|e| e.into_inner()) = Some(IpcTransport::TcpFallback(local_addr));
 
         tracing::info!("   Status: READY ✅ (isomorphic TCP fallback active)");
 
@@ -325,7 +324,7 @@ impl DisplayServer {
 
     /// Get current transport
     pub async fn transport(&self) -> Option<IpcTransport> {
-        self.transport.read().await.clone()
+        self.transport.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 }
 

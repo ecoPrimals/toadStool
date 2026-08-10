@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -54,9 +54,7 @@ impl CrossPlatformSandboxManager {
         info!("Creating cross-platform sandbox manager");
 
         // Ensure sandbox directories exist
-        tokio::fs::create_dir_all(&config.sandbox_root)
-            .await
-            .map_err(|e| {
+        std::fs::create_dir_all(&config.sandbox_root).map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "Failed to create sandbox root directory {}: {}",
                     config.sandbox_root.display(),
@@ -64,9 +62,7 @@ impl CrossPlatformSandboxManager {
                 ))
             })?;
 
-        tokio::fs::create_dir_all(&config.temp_dir)
-            .await
-            .map_err(|e| {
+        std::fs::create_dir_all(&config.temp_dir).map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "Failed to create temp directory {}: {}",
                     config.temp_dir.display(),
@@ -107,7 +103,7 @@ impl CrossPlatformSandboxManager {
 
             // Ensure target directory exists
             if let Some(parent) = target_path.parent() {
-                tokio::fs::create_dir_all(parent).await.map_err(|e| {
+                std::fs::create_dir_all(parent).map_err(|e| {
                     ToadStoolError::configuration(format!(
                         "Failed to create mount target directory {}: {}",
                         parent.display(),
@@ -147,11 +143,11 @@ impl SandboxManager for CrossPlatformSandboxManager {
         let sandbox_id = spec.sandbox_id.clone();
 
         // Validate specification
-        helpers::validate_sandbox_spec(&spec).await?;
+        helpers::validate_sandbox_spec(&spec)?;
 
         // Create sandbox directories
         let sandbox_dir =
-            helpers::create_sandbox_directories(&self.config.sandbox_root, &sandbox_id).await?;
+            helpers::create_sandbox_directories(&self.config.sandbox_root, &sandbox_id)?;
 
         // Setup filesystem mounts
         self.setup_filesystem_mounts(&sandbox_id, &sandbox_dir, &spec.filesystem_mounts)
@@ -160,7 +156,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
         // Prepare the sandbox working directory if specified
         if let Some(ref wd) = spec.working_directory {
             let wd_path = sandbox_dir.join(wd.strip_prefix("/").unwrap_or(wd));
-            tokio::fs::create_dir_all(&wd_path).await.map_err(|e| {
+            std::fs::create_dir_all(&wd_path).map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "Failed to create sandbox working directory {}: {e}",
                     wd_path.display()
@@ -192,7 +188,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Store sandbox info
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             sandboxes.insert(sandbox_id.clone(), sandbox_info);
         }
 
@@ -214,7 +210,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status to ready
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             if let Some(info) = sandboxes.get_mut(&sandbox_id) {
                 info.status = SandboxStatus::Ready;
                 info.updated_at = SystemTime::now();
@@ -230,7 +226,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status to running
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 if info.status != SandboxStatus::Ready {
                     return Err(ToadStoolError::runtime(format!(
@@ -276,7 +272,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 info.status = SandboxStatus::Completed;
                 info.updated_at = SystemTime::now();
@@ -293,7 +289,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status to destroying
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 info.status = SandboxStatus::Destroying;
                 info.updated_at = SystemTime::now();
@@ -320,7 +316,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
         // Remove sandbox directory
         let sandbox_dir = self.config.sandbox_root.join(sandbox_id);
         if sandbox_dir.exists() {
-            tokio::fs::remove_dir_all(&sandbox_dir).await.map_err(|e| {
+            std::fs::remove_dir_all(&sandbox_dir).map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "Failed to remove sandbox directory {}: {}",
                     sandbox_dir.display(),
@@ -331,7 +327,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Remove from tracking
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             sandboxes.remove(sandbox_id);
         }
 
@@ -340,7 +336,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
     }
 
     async fn get_sandbox_info(&self, sandbox_id: &str) -> ToadStoolResult<SandboxInfo> {
-        let sandboxes = self.sandboxes.read().await;
+        let sandboxes = self.sandboxes.read().unwrap_or_else(|e| e.into_inner());
         sandboxes
             .get(sandbox_id)
             .cloned()
@@ -348,7 +344,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
     }
 
     async fn list_sandboxes(&self) -> ToadStoolResult<Vec<String>> {
-        let sandboxes = self.sandboxes.read().await;
+        let sandboxes = self.sandboxes.read().unwrap_or_else(|e| e.into_inner());
         Ok(sandboxes.keys().cloned().collect())
     }
 
@@ -370,7 +366,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update stored resource usage
         {
-            let mut sandboxes = self.sandboxes.write().await;
+            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 info.resource_usage = usage.clone();
                 info.updated_at = SystemTime::now();

@@ -22,7 +22,7 @@ pub fn generate_sandbox_id() -> String {
 /// # Errors
 ///
 /// Returns [`ToadStoolError`] when the specification fails validation.
-pub async fn validate_sandbox_spec(spec: &SandboxSpec) -> ToadStoolResult<()> {
+pub fn validate_sandbox_spec(spec: &SandboxSpec) -> ToadStoolResult<()> {
     // Validate resource limits
     if let Some(memory) = spec.resource_limits.max_memory_bytes
         && memory == 0
@@ -73,13 +73,13 @@ pub async fn validate_sandbox_spec(spec: &SandboxSpec) -> ToadStoolResult<()> {
 /// # Errors
 ///
 /// Returns [`ToadStoolError`] when directory creation fails.
-pub async fn create_sandbox_directories(
+pub fn create_sandbox_directories(
     sandbox_root: &Path,
     sandbox_id: &str,
 ) -> ToadStoolResult<PathBuf> {
     let sandbox_dir = sandbox_root.join(sandbox_id);
 
-    tokio::fs::create_dir_all(&sandbox_dir).await.map_err(|e| {
+    std::fs::create_dir_all(&sandbox_dir).map_err(|e| {
         ToadStoolError::configuration(format!(
             "Failed to create sandbox directory {}: {}",
             sandbox_dir.display(),
@@ -91,7 +91,7 @@ pub async fn create_sandbox_directories(
     let dirs = ["bin", "etc", "tmp", "var", "proc", "sys", "dev"];
     for dir in &dirs {
         let dir_path = sandbox_dir.join(dir);
-        tokio::fs::create_dir_all(&dir_path).await.map_err(|e| {
+        std::fs::create_dir_all(&dir_path).map_err(|e| {
             ToadStoolError::configuration(format!(
                 "Failed to create sandbox subdirectory {}: {}",
                 dir_path.display(),

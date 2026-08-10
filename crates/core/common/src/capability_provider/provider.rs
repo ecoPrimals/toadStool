@@ -12,7 +12,7 @@ use std::path::PathBuf;
 #[cfg(unix)]
 use std::sync::Arc;
 #[cfg(unix)]
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 #[cfg(unix)]
 use super::discovery;
@@ -94,7 +94,7 @@ impl CapabilityProvider {
     #[cfg(unix)]
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let client = {
-            let mut client_lock = self.client.write().await;
+            let mut client_lock = self.client.write().unwrap_or_else(|e| e.into_inner());
 
             #[expect(
                 clippy::option_if_let_else,

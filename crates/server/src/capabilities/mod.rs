@@ -38,7 +38,7 @@ mod paths;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tokio::fs;
+use std::fs;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
@@ -157,15 +157,13 @@ impl PrimalCapabilities {
     /// # Errors
     ///
     /// Returns error string if directory creation, serialization, or file write fails.
-    pub async fn announce(&self) -> Result<(), String> {
+    pub fn announce(&self) -> Result<(), String> {
         let discovery_dir = paths::discovery_directory();
         let eco_root = paths::ecoprimals_root_directory();
 
         fs::create_dir_all(&discovery_dir)
-            .await
             .map_err(|e| format!("Failed to create discovery directory: {e}"))?;
         fs::create_dir_all(&eco_root)
-            .await
             .map_err(|e| format!("Failed to create ecoPrimals root: {e}"))?;
 
         let json = serde_json::to_string_pretty(&self)
@@ -175,12 +173,10 @@ impl PrimalCapabilities {
 
         let canonical = discovery_dir.join(&filename);
         fs::write(&canonical, &json)
-            .await
             .map_err(|e| format!("Failed to write capability file: {e}"))?;
 
         let compat = eco_root.join(&filename);
         fs::write(&compat, &json)
-            .await
             .map_err(|e| format!("Failed to write compat capability file: {e}"))?;
 
         info!("📢 Announced capabilities: {}", canonical.display());
@@ -196,8 +192,8 @@ impl PrimalCapabilities {
     /// # Errors
     ///
     /// Returns error string if discovery directory read fails or no peer with the capability is found.
-    pub async fn find_peer_with(capability: &str) -> Result<Self, String> {
-        Self::find_peer_with_in(capability, &paths::discovery_directory()).await
+    pub fn find_peer_with(capability: &str) -> Result<Self, String> {
+        Self::find_peer_with_in(capability, &paths::discovery_directory())
     }
 
     /// Find peer with specific capability in a given discovery directory.
@@ -207,22 +203,18 @@ impl PrimalCapabilities {
     /// # Errors
     ///
     /// Returns error string if directory read fails, file parse fails, or no peer with the capability is found.
-    pub async fn find_peer_with_in(
+    pub fn find_peer_with_in(
         capability: &str,
         discovery_dir: &std::path::Path,
     ) -> Result<Self, String> {
         debug!("🔍 Searching for peer with capability: {}", capability);
 
         // Read all capability files
-        let mut entries = fs::read_dir(&discovery_dir)
-            .await
+        let entries = fs::read_dir(discovery_dir)
             .map_err(|e| format!("Failed to read discovery directory: {e}"))?;
 
-        while let Some(entry) = entries
-            .next_entry()
-            .await
-            .map_err(|e| format!("Failed to read entry: {e}"))?
-        {
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {e}"))?;
             let path = entry.path();
 
             if path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -231,7 +223,6 @@ impl PrimalCapabilities {
 
             // Read peer capability file
             let json = fs::read_to_string(&path)
-                .await
                 .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
             let peer: PrimalCapabilities = serde_json::from_slice(json.as_bytes())
@@ -257,8 +248,8 @@ impl PrimalCapabilities {
     /// # Errors
     ///
     /// Returns error string if discovery directory read fails.
-    pub async fn find_all_peers() -> Result<Vec<Self>, String> {
-        Self::find_all_peers_in(&paths::discovery_directory()).await
+    pub fn find_all_peers() -> Result<Vec<Self>, String> {
+        Self::find_all_peers_in(&paths::discovery_directory())
     }
 
     /// Find all peers in a given discovery directory.
@@ -268,20 +259,16 @@ impl PrimalCapabilities {
     /// # Errors
     ///
     /// Returns error string if discovery directory read fails.
-    pub async fn find_all_peers_in(discovery_dir: &std::path::Path) -> Result<Vec<Self>, String> {
+    pub fn find_all_peers_in(discovery_dir: &std::path::Path) -> Result<Vec<Self>, String> {
         debug!("🔍 Discovering all peers");
         let mut peers = Vec::new();
 
         // Read all capability files
-        let mut entries = fs::read_dir(&discovery_dir)
-            .await
+        let entries = fs::read_dir(discovery_dir)
             .map_err(|e| format!("Failed to read discovery directory: {e}"))?;
 
-        while let Some(entry) = entries
-            .next_entry()
-            .await
-            .map_err(|e| format!("Failed to read entry: {e}"))?
-        {
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {e}"))?;
             let path = entry.path();
 
             if path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -289,7 +276,7 @@ impl PrimalCapabilities {
             }
 
             // Read peer capability file
-            match fs::read_to_string(&path).await {
+            match fs::read_to_string(&path) {
                 Ok(json) => match serde_json::from_slice::<PrimalCapabilities>(json.as_bytes()) {
                     Ok(peer) => peers.push(peer),
                     Err(e) => warn!("Failed to parse {}: {}", path.display(), e),
@@ -307,20 +294,18 @@ impl PrimalCapabilities {
     /// # Errors
     ///
     /// Returns error string if capability file removal fails.
-    pub async fn cleanup(&self) -> Result<(), String> {
+    pub fn cleanup(&self) -> Result<(), String> {
         let filename = format!("{}.json", self.primal_id);
 
         let canonical = paths::discovery_directory().join(&filename);
         if canonical.exists() {
             fs::remove_file(&canonical)
-                .await
                 .map_err(|e| format!("Failed to remove capability file: {e}"))?;
         }
 
         let compat = paths::ecoprimals_root_directory().join(&filename);
         if compat.exists() {
             fs::remove_file(&compat)
-                .await
                 .map_err(|e| format!("Failed to remove compat capability file: {e}"))?;
         }
 

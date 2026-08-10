@@ -5,8 +5,8 @@
 
 use tracing::{error, warn};
 
-use toadstool::error::ToadStoolResult;
-use toadstool::resources::{ResourceRequirements, RuntimeMetrics};
+use toadstool_common::ToadStoolResult;
+use toadstool_core::resources::{ResourceRequirements, RuntimeMetrics};
 
 use crate::types::{ResourceMonitorError, ThresholdAction};
 
@@ -21,7 +21,7 @@ impl SystemResourceMonitor {
     ) -> ToadStoolResult<()> {
         self.threshold_data
             .write()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), requirements);
         tracing::debug!("Set thresholds for workload: {}", workload_id);
         Ok(())

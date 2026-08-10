@@ -10,14 +10,14 @@ keywords = ["gpu", "compute", "webgpu", "vulkan", "hardware"]
 categories = ["hardware-support", "science"]
 
 [dependencies]
-toadstool = { path = "../../core/toadstool" }
-toadstool-common = { path = "../../core/common" }
-toadstool-glowplug = { path = "../../core/glowplug" }
-tokio = { workspace = true }
+toadstool = { path = "../../core/toadstool", default-features = false }
+toadstool-common = { path = "../../core/common", default-features = false }
+toadstool-glowplug = { path = "../../core/glowplug", default-features = false, optional = true }
+tokio = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = { workspace = true }
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 toadstool-sysmon = { workspace = true }
@@ -30,8 +30,17 @@ toadstool-hw-safe = { path = "../../core/hw-safe" }
 nvpmu = { path = "../../core/nvpmu" }
 
 [features]
-default = ["webgpu"]
-webgpu = ["wgpu"]
+default = ["runtime"]
+runtime = [
+    "dep:tokio",
+    "dep:toadstool-glowplug",
+    "toadstool/runtime",
+    "toadstool-common/runtime",
+    "toadstool-glowplug/runtime",
+    "uuid/v4",
+    "webgpu",
+]
+webgpu = ["dep:wgpu"]
 vulkan = ["vulkano"]
 ai-ml = ["webgpu"]
 all-backends = ["webgpu", "vulkan"]
@@ -47,7 +56,7 @@ tracing-subscriber = { workspace = true }
 [[example]]
 name = "universal_compute_demo"
 path = "examples/universal_compute_demo.rs"
-required-features = []
+required-features = ["runtime"]
 
 [lints]
 workspace = true

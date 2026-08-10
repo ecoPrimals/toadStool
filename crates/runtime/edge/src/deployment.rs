@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 use uuid::Uuid;
 
@@ -95,7 +95,7 @@ impl DeploymentCoordinator {
 
         // Store deployment info
         {
-            let mut deployments = self.active_deployments.write().await;
+            let mut deployments = self.active_deployments.write().unwrap_or_else(|e| e.into_inner());
             deployments.insert(deployment_id, deployment_info);
         }
 
@@ -104,7 +104,7 @@ impl DeploymentCoordinator {
 
         // Update deployment status
         {
-            let mut deployments = self.active_deployments.write().await;
+            let mut deployments = self.active_deployments.write().unwrap_or_else(|e| e.into_inner());
             if let Some(deployment) = deployments.get_mut(&deployment_id) {
                 match result {
                     Ok(_) => {
@@ -124,13 +124,13 @@ impl DeploymentCoordinator {
 
     /// Get deployment status
     pub async fn get_deployment_status(&self, deployment_id: Uuid) -> Option<DeploymentInfo> {
-        let deployments = self.active_deployments.read().await;
+        let deployments = self.active_deployments.read().unwrap_or_else(|e| e.into_inner());
         deployments.get(&deployment_id).cloned()
     }
 
     /// Get active deployments
     pub async fn get_active_deployments(&self) -> Vec<DeploymentInfo> {
-        let deployments = self.active_deployments.read().await;
+        let deployments = self.active_deployments.read().unwrap_or_else(|e| e.into_inner());
         deployments.values().cloned().collect()
     }
 }

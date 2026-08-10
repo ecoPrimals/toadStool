@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -84,8 +84,7 @@ impl WindowsSandboxManager {
     ) -> ToadStoolResult<()> {
         debug!("Creating Windows sandbox: {}", spec.sandbox_id);
         self.runtime
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .entry(spec.sandbox_id.clone())
             .or_insert_with(WindowsSandboxRuntime::default);
         info!("Windows sandbox {} created successfully", spec.sandbox_id);
@@ -102,7 +101,7 @@ impl WindowsSandboxManager {
     /// Stop execution in Windows sandbox.
     pub async fn stop_execution(&self, sandbox_id: &str) -> ToadStoolResult<()> {
         debug!("Stopping execution in Windows sandbox: {sandbox_id}");
-        self.processes.write().await.remove(sandbox_id);
+        self.processes.write().unwrap_or_else(|e| e.into_inner()).remove(sandbox_id);
         info!("Stopped execution in Windows sandbox: {sandbox_id}");
         Ok(())
     }
@@ -111,7 +110,7 @@ impl WindowsSandboxManager {
     pub async fn destroy_sandbox(&self, sandbox_id: &str) -> ToadStoolResult<()> {
         debug!("Destroying Windows sandbox: {sandbox_id}");
         self.stop_execution(sandbox_id).await?;
-        self.runtime.write().await.remove(sandbox_id);
+        self.runtime.write().unwrap_or_else(|e| e.into_inner()).remove(sandbox_id);
         info!("Windows sandbox {sandbox_id} destroyed successfully");
         Ok(())
     }
@@ -128,8 +127,7 @@ impl WindowsSandboxManager {
         );
 
         self.runtime
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .values_mut()
             .next()
             .map(|runtime| runtime.mounts.push(target_path.to_path_buf()));

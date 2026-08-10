@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::error;
 
 use super::config::IntrusionDetectionConfig;
@@ -63,7 +63,7 @@ impl IntrusionDetectionSystem {
 
     /// Record client activity
     pub async fn record_activity(&self, client_id: &str, activity_type: ActivityType) {
-        let mut activities = self.client_activity.write().await;
+        let mut activities = self.client_activity.write().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         let activity = activities
@@ -120,7 +120,7 @@ impl IntrusionDetectionSystem {
         reason = "mutable borrow needed for remove(); map_or closure cannot mutate"
     )]
     pub async fn is_banned(&self, client_id: &str) -> bool {
-        let mut banned = self.banned_clients.write().await;
+        let mut banned = self.banned_clients.write().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         if let Some(ban_info) = banned.get(client_id) {
@@ -140,7 +140,7 @@ impl IntrusionDetectionSystem {
     pub async fn ban_client(&self, client_id: &str, duration: Duration, reason: &str) {
         let now = Instant::now();
 
-        self.banned_clients.write().await.insert(
+        self.banned_clients.write().unwrap_or_else(|e| e.into_inner()).insert(
             client_id.to_string(),
             BanInfo {
                 ban_start: now,

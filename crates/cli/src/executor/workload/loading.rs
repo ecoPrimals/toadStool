@@ -79,8 +79,7 @@ fn expand_env_vars(input: &str) -> String {
 /// Supports TOML (`.toml`) and JSON (`.json`) formats.
 /// Environment variables (`${VAR}`, `$VAR`) are expanded before parsing.
 pub(super) async fn load_workload_file(path: &PathBuf) -> Result<WorkloadFile> {
-    let raw = tokio::fs::read_to_string(path)
-        .await
+    let raw = std::fs::read_to_string(path)
         .context(format!("Failed to read workload file: {}", path.display()))?;
 
     let content = expand_env_vars(&raw);

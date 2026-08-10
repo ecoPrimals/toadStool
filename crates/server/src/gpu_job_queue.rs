@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 /// Job identifier
@@ -139,7 +139,7 @@ impl GpuJobQueue {
     /// # Errors
     /// Returns an error if the queue is full.
     pub async fn submit(&self, job_type: JobType, priority: u32) -> Result<JobId, JobQueueError> {
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         let pending_count = jobs
             .values()
             .filter(|j| j.state == JobState::Pending)
@@ -164,7 +164,7 @@ impl GpuJobQueue {
             priority,
         };
 
-        let mut jobs = self.jobs.write().await;
+        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
         jobs.insert(id, job);
 
         tracing::info!(%id, "Compute job submitted");
@@ -177,7 +177,7 @@ impl GpuJobQueue {
     ///
     /// Returns [`JobQueueError`] if the job is not found.
     pub async fn status(&self, job_id: JobId) -> Result<ComputeJob, JobQueueError> {
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         jobs.get(&job_id)
             .cloned()
             .ok_or(JobQueueError::JobNotFound { id: job_id })
@@ -191,7 +191,7 @@ impl GpuJobQueue {
     ///
     /// Returns [`JobQueueError`] if the job is not found, not complete, failed, or was cancelled.
     pub async fn result(&self, job_id: JobId) -> Result<serde_json::Value, JobQueueError> {
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         let job = jobs
             .get(&job_id)
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
@@ -216,7 +216,7 @@ impl GpuJobQueue {
     ///
     /// Returns [`JobQueueError`] if the job is not found or cannot be cancelled (e.g., already completed).
     pub async fn cancel(&self, job_id: JobId) -> Result<(), JobQueueError> {
-        let mut jobs = self.jobs.write().await;
+        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
         let job = jobs
             .get_mut(&job_id)
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
@@ -237,7 +237,7 @@ impl GpuJobQueue {
 
     /// List all jobs, optionally filtered by state
     pub async fn list(&self, state_filter: Option<JobState>) -> Vec<ComputeJob> {
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         let mut result: Vec<ComputeJob> = if let Some(state) = state_filter {
             jobs.values()
                 .filter(|j| j.state == state)
@@ -257,7 +257,7 @@ impl GpuJobQueue {
     ///
     /// Returns [`JobQueueError`] if the job is not found or not in Pending state.
     pub async fn mark_running(&self, job_id: JobId) -> Result<(), JobQueueError> {
-        let mut jobs = self.jobs.write().await;
+        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
         let job = jobs
             .get_mut(&job_id)
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
@@ -285,7 +285,7 @@ impl GpuJobQueue {
         job_id: JobId,
         result: serde_json::Value,
     ) -> Result<(), JobQueueError> {
-        let mut jobs = self.jobs.write().await;
+        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
         let job = jobs
             .get_mut(&job_id)
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
@@ -307,7 +307,7 @@ impl GpuJobQueue {
         job_id: JobId,
         error: impl Into<String>,
     ) -> Result<(), JobQueueError> {
-        let mut jobs = self.jobs.write().await;
+        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
         let job = jobs
             .get_mut(&job_id)
             .ok_or(JobQueueError::JobNotFound { id: job_id })?;
@@ -321,7 +321,7 @@ impl GpuJobQueue {
 
     /// Get the next pending job (highest priority, oldest first)
     pub async fn next_pending(&self) -> Option<ComputeJob> {
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         jobs.values()
             .filter(|j| j.state == JobState::Pending)
             .min_by(|a, b| {
@@ -334,7 +334,7 @@ impl GpuJobQueue {
 
     /// Count jobs by state
     pub async fn counts(&self) -> HashMap<String, usize> {
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         let mut counts = HashMap::new();
         for job in jobs.values() {
             let key = format!("{:?}", job.state).to_lowercase();
@@ -347,7 +347,7 @@ impl GpuJobQueue {
     /// Clean up old completed/failed/cancelled jobs older than the given duration
     pub async fn cleanup(&self, max_age: std::time::Duration) {
         let cutoff = SystemTime::now() - max_age;
-        let mut jobs = self.jobs.write().await;
+        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
         jobs.retain(|_, job| {
             match job.state {
                 JobState::Completed | JobState::Failed | JobState::Cancelled => {

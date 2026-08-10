@@ -158,7 +158,7 @@ async fn test_display_server_socket_path_contains_toadstool() {
 async fn test_handle_request_with_empty_line() {
     use crate::input::InputManager;
     use crate::ipc::dispatch;
-    use tokio::sync::RwLock;
+    use std::sync::RwLock;
 
     let Some(manager) = test_manager_owned().await else {
         return;
@@ -173,7 +173,7 @@ async fn test_handle_request_with_empty_line() {
 async fn test_handle_request_invalid_json() {
     use crate::input::InputManager;
     use crate::ipc::dispatch;
-    use tokio::sync::RwLock;
+    use std::sync::RwLock;
 
     let Some(manager) = test_manager_owned().await else {
         return;

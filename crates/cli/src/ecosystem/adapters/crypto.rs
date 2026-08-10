@@ -289,7 +289,7 @@ impl CryptoAdapter {
         permissions_path: &std::path::Path,
         validate_only: bool,
     ) -> Result<()> {
-        use tokio::fs;
+        use std::fs;
         use tracing::info;
 
         info!(
@@ -298,7 +298,7 @@ impl CryptoAdapter {
         );
 
         // Read permissions file
-        let permissions_data = fs::read_to_string(permissions_path).await.context(format!(
+        let permissions_data = fs::read_to_string(permissions_path).context(format!(
             "Failed to read permissions file: {}",
             permissions_path.display()
         ))?;

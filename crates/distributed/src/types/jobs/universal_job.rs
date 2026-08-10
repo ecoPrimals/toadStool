@@ -7,8 +7,10 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use toadstool::JobPriority;
-use toadstool::{ExecutionRequest, ToadStoolError};
+use toadstool_common::ToadStoolError;
+use toadstool_core::execution::ExecutionRequest;
+
+use super::priority::JobPriority;
 
 use super::execution_target::ExecutionTarget;
 use crate::types::resources::{DistributedRetryConfig, ResourceRequirements};

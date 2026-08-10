@@ -10,7 +10,7 @@ use std::process::Command;
 use std::sync::Arc;
 
 use sha2::{Digest, Sha256};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
@@ -91,7 +91,7 @@ impl CrossCompilationToolchain {
 
     /// Initialize default toolchains
     async fn initialize_toolchains(&self) -> ToadStoolResult<()> {
-        let mut toolchains = self.toolchains.write().await;
+        let mut toolchains = self.toolchains.write().unwrap_or_else(|e| e.into_inner());
 
         // Arduino toolchain
         if let Some(arduino_toolchain) = self.detect_arduino_toolchain().await? {
@@ -136,7 +136,7 @@ impl CrossCompilationToolchain {
 
         // Check cache first
         {
-            let cache = self.cache.read().await;
+            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
             if let Some(cached) = cache.get(&cache_key) {
                 info!("Using cached compilation result");
                 return Ok(cached.compiled_binary.clone());
@@ -156,7 +156,7 @@ impl CrossCompilationToolchain {
 
         // Cache result
         {
-            let mut cache = self.cache.write().await;
+            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
             cache.insert(
                 cache_key,
                 CompilationCache {
@@ -241,7 +241,7 @@ impl CrossCompilationToolchain {
 
     /// Get toolchain by name
     async fn get_toolchain(&self, name: &str) -> ToadStoolResult<ToolchainInfo> {
-        let toolchains = self.toolchains.read().await;
+        let toolchains = self.toolchains.read().unwrap_or_else(|e| e.into_inner());
         toolchains
             .get(name)
             .cloned()
@@ -590,20 +590,20 @@ impl CrossCompilationToolchain {
 
     /// Get available toolchains
     pub async fn get_available_toolchains(&self) -> Vec<ToolchainInfo> {
-        let toolchains = self.toolchains.read().await;
+        let toolchains = self.toolchains.read().unwrap_or_else(|e| e.into_inner());
         toolchains.values().cloned().collect()
     }
 
     /// Clear compilation cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache.clear();
         info!("Compilation cache cleared");
     }
 
     /// Get cache statistics
     pub async fn get_cache_stats(&self) -> HashMap<String, u64> {
-        let cache = self.cache.read().await;
+        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
         let mut stats = HashMap::new();
 
         stats.insert("total_entries".to_string(), cache.len() as u64);

@@ -32,7 +32,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use tokio::fs;
+use std::fs;
 use tracing::{error, info, warn};
 
 use toadstool_distributed::substrate_detection::{SubstrateCapabilities, SubstrateDetector};

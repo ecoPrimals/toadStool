@@ -161,7 +161,7 @@ impl EntropyClient {
                 )
             });
 
-        if tokio::fs::metadata(&socket_path).await.is_ok() {
+        if std::fs::metadata(&socket_path).is_ok() {
             tracing::debug!("Found crypto service via Unix socket: {:?}", socket_path);
             return Ok(format!("unix://{}", socket_path.display()));
         }

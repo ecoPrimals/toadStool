@@ -213,8 +213,7 @@ impl WorkloadManager {
         let temp_dir = std::env::temp_dir();
         let manifest_path = temp_dir.join(format!("workload-{}.yaml", metadata.id));
 
-        tokio::fs::write(&manifest_path, &metadata.biome_yaml)
-            .await
+        std::fs::write(&manifest_path, &metadata.biome_yaml)
             .context("Failed to write manifest file")?;
 
         info!("📄 Manifest written to: {}", manifest_path.display());
@@ -234,7 +233,7 @@ impl WorkloadManager {
         info!("✅ Workload {} completed", metadata.id);
 
         // Clean up manifest file
-        if let Err(e) = tokio::fs::remove_file(&manifest_path).await {
+        if let Err(e) = std::fs::remove_file(&manifest_path) {
             warn!("⚠️  Failed to remove manifest file: {}", e);
         }
 

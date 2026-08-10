@@ -38,9 +38,9 @@ impl ResourceMonitor for SystemResourceMonitor {
         let threshold_data = Arc::clone(&self.threshold_data);
 
         tokio::spawn(async move {
-            process_map.write().await.remove(&workload_id);
-            usage_data.write().await.remove(&workload_id);
-            threshold_data.write().await.remove(&workload_id);
+            process_map.write().unwrap_or_else(|e| e.into_inner()).remove(&workload_id);
+            usage_data.write().unwrap_or_else(|e| e.into_inner()).remove(&workload_id);
+            threshold_data.write().unwrap_or_else(|e| e.into_inner()).remove(&workload_id);
         });
         Ok(())
     }
@@ -52,7 +52,7 @@ impl ResourceMonitor for SystemResourceMonitor {
         let workload_id = workload_id.to_string();
         async move {
             // Modern async access - no blocking!
-            let usage_data = self.usage_data.read().await;
+            let usage_data = self.usage_data.read().unwrap_or_else(|e| e.into_inner());
 
             usage_data.get(&workload_id).cloned().ok_or_else(|| {
                 ResourceMonitorError::ProcessNotRegistered(workload_id.clone()).into()

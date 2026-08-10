@@ -18,7 +18,7 @@ fn make_universal_job(
     UniversalJob {
         job_id: Uuid::new_v4(),
         job_type,
-        execution_request: toadstool::ExecutionRequest::default(),
+        execution_request: toadstool_core::execution::ExecutionRequest::default(),
         target,
         priority,
         dependencies: vec![],

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use crate::constants::PRIMAL_NAME;
@@ -116,7 +116,7 @@ impl ServiceDiscovery {
             DiscoveryMethod::Auto => self.discover_auto().await,
             DiscoveryMethod::Environment => self.discover_from_env(),
             DiscoveryMethod::Mdns => discover_via_mdns().await,
-            DiscoveryMethod::ConfigFile { path } => discover_from_config(path).await,
+            DiscoveryMethod::ConfigFile { path } => discover_from_config(path),
             DiscoveryMethod::Registry { endpoint } => discover_from_registry(endpoint).await,
             DiscoveryMethod::Multi(methods) => self.discover_multi(methods).await,
         }?;
@@ -160,7 +160,7 @@ impl ServiceDiscovery {
         match method {
             DiscoveryMethod::Environment => self.discover_from_env(),
             DiscoveryMethod::Mdns => discover_via_mdns().await,
-            DiscoveryMethod::ConfigFile { path } => discover_from_config(path).await,
+            DiscoveryMethod::ConfigFile { path } => discover_from_config(path),
             DiscoveryMethod::Registry { endpoint } => discover_from_registry(endpoint).await,
             _ => Ok(Vec::new()),
         }
@@ -254,7 +254,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         capability: &Capability,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
         let cached: Vec<DiscoveredService> = {
-            let cache = self.cache.read().await;
+            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
             cache
                 .values()
                 .filter(|s| s.has_capability(capability))
@@ -275,7 +275,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         // within the cache TTL and found nothing, return empty rather than
         // re-scanning for every capability lookup.
         {
-            let lr = self.last_refreshed.read().await;
+            let lr = self.last_refreshed.read().unwrap_or_else(|e| e.into_inner());
             if let Some(t) = *lr {
                 if t.elapsed() < self.config.cache_ttl {
                     debug!(
@@ -290,14 +290,14 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
 
         let services = self.discover_via_method().await?;
         {
-            let mut cache = self.cache.write().await;
+            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
             for service in &services {
                 cache
                     .entry(service.id.clone())
                     .or_insert_with(|| service.clone());
             }
         }
-        *self.last_refreshed.write().await = Some(Instant::now());
+        *self.last_refreshed.write().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
         Ok(services
             .into_iter()
             .filter(|s| s.has_capability(capability))
@@ -321,14 +321,14 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
     async fn refresh(&self) -> DiscoveryResult<()> {
         let services = self.discover_via_method().await?;
         let count = {
-            let mut cache = self.cache.write().await;
+            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
             cache.clear();
             for service in services {
                 cache.insert(service.id.clone(), service);
             }
             cache.len()
         };
-        *self.last_refreshed.write().await = Some(Instant::now());
+        *self.last_refreshed.write().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
         info!("Discovery cache refreshed: {count} services");
         Ok(())
     }

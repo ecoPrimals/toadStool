@@ -4,7 +4,7 @@
 //! **Design**: Runtime discovery via mDNS, Coordination registry, or config
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use toadstool_common::constants::timeouts;
 use toadstool_common::{ToadStoolError, ToadStoolResult};
@@ -63,7 +63,11 @@ impl SecurityDiscovery {
         }
 
         // Cache discovered endpoints
-        (*self.discovered_endpoints.write().await).clone_from(&endpoints);
+        (*self
+            .discovered_endpoints
+            .write()
+            .unwrap_or_else(|e| e.into_inner()))
+        .clone_from(&endpoints);
 
         Ok(endpoints)
     }
@@ -174,7 +178,10 @@ impl SecurityDiscovery {
         reason = "drop order is intentional"
     )] // healthy_endpoints are refs from endpoints
     pub async fn get_best_endpoint(&self) -> ToadStoolResult<SecurityEndpoint> {
-        let endpoints = self.discovered_endpoints.read().await;
+        let endpoints = self
+            .discovered_endpoints
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         if endpoints.is_empty() {
             return Err(ToadStoolError::not_found(

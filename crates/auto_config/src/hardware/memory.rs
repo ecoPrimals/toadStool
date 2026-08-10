@@ -36,7 +36,7 @@ impl Default for MemoryInfo {
 /// Detect memory configuration
 pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<MemoryInfo> {
     let memory_info = if cfg!(target_os = "linux")
-        && let Ok(meminfo) = tokio::fs::read_to_string(procfs::MEMINFO).await
+        && let Ok(meminfo) = std::fs::read_to_string(procfs::MEMINFO)
     {
         parse_linux_meminfo(&meminfo)
     } else {
@@ -47,11 +47,10 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
     #[cfg(target_os = "macos")]
     let memory_info = {
         let mut m = memory_info;
-        if let Ok(output) = tokio::process::Command::new("sysctl")
+        if let Ok(output) = std::process::Command::new("sysctl")
             .arg("-n")
             .arg("hw.memsize")
             .output()
-            .await
         {
             if let Ok(bytes) = String::from_utf8_lossy(&output.stdout)
                 .trim()
@@ -67,13 +66,12 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
     #[cfg(target_os = "windows")]
     let memory_info = {
         let mut m = memory_info;
-        if let Ok(output) = tokio::process::Command::new("wmic")
+        if let Ok(output) = std::process::Command::new("wmic")
             .arg("computersystem")
             .arg("get")
             .arg("TotalPhysicalMemory")
             .arg("/format:csv")
             .output()
-            .await
         {
             let output_str = String::from_utf8_lossy(&output.stdout);
             for line in output_str.lines().skip(1) {

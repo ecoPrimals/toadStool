@@ -11,7 +11,7 @@ use super::types::RemoteTowerEndpoint;
 use crate::universal::ComputeRequirements;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Manages remote tower discovery and health monitoring
 pub struct TowerManager {
@@ -38,7 +38,7 @@ impl TowerManager {
 
     /// Register a remote tower discovered via the coordination service
     pub async fn register_tower(&self, endpoint: RemoteTowerEndpoint) {
-        let mut towers = self.remote_towers.write().await;
+        let mut towers = self.remote_towers.write().unwrap_or_else(|e| e.into_inner());
 
         // Remove stale entry if exists
         towers.retain(|t| t.tower_id != endpoint.tower_id);
@@ -57,7 +57,7 @@ impl TowerManager {
     pub async fn available_tower_ids(&self) -> Vec<String> {
         let mut ids = vec![self.tower_id.clone()];
 
-        let remote = self.remote_towers.read().await;
+        let remote = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
         ids.extend(remote.iter().map(|t| t.tower_id.clone()));
 
         ids
@@ -65,7 +65,7 @@ impl TowerManager {
 
     /// Get count of available towers
     pub async fn tower_count(&self) -> usize {
-        let remote = self.remote_towers.read().await;
+        let remote = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
         1 + remote.len() // local + remote
     }
 
@@ -85,7 +85,7 @@ impl TowerManager {
         &self,
         requirements: &ComputeRequirements,
     ) -> ToadStoolResult<String> {
-        let towers = self.remote_towers.read().await;
+        let towers = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
 
         if towers.is_empty() {
             // No remote towers, use local (graceful degradation)
@@ -141,7 +141,7 @@ impl TowerManager {
     ) -> ToadStoolResult<Vec<String>> {
         let mut selected = vec![self.tower_id.clone()]; // Always include local
 
-        let towers = self.remote_towers.read().await;
+        let towers = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
 
         // Add remote towers sorted by latency (clone to allow early drop of lock)
         let mut sorted: Vec<_> = towers.iter().cloned().collect();
@@ -172,7 +172,7 @@ impl TowerManager {
     ///
     /// Currently always returns `Ok`; reserved for future capability resolution failures.
     pub async fn select_by_capability(&self, capability: &str) -> ToadStoolResult<String> {
-        let towers = self.remote_towers.read().await;
+        let towers = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
 
         tracing::debug!("Selecting tower for capability: {}", capability);
 
@@ -199,13 +199,13 @@ impl TowerManager {
 
     /// Get endpoint for remote tower
     pub async fn get_tower_endpoint(&self, tower_id: &str) -> Option<RemoteTowerEndpoint> {
-        let towers = self.remote_towers.read().await;
+        let towers = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
         towers.iter().find(|t| t.tower_id == tower_id).cloned()
     }
 
     /// Prune stale towers (not seen recently)
     pub async fn prune_stale_towers(&self, max_age_secs: u64) {
-        let mut towers = self.remote_towers.write().await;
+        let mut towers = self.remote_towers.write().unwrap_or_else(|e| e.into_inner());
         let now = std::time::Instant::now();
 
         let before_count = towers.len();
@@ -220,7 +220,7 @@ impl TowerManager {
 
     /// Get remote towers (for statistics)
     pub async fn remote_tower_count(&self) -> usize {
-        let towers = self.remote_towers.read().await;
+        let towers = self.remote_towers.read().unwrap_or_else(|e| e.into_inner());
         towers.len()
     }
 }

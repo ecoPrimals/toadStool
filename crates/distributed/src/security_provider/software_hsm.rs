@@ -18,7 +18,7 @@ use aes_gcm::{Aes256Gcm, Nonce};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::RngCore;
 use std::future::Future;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::debug;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -127,7 +127,10 @@ impl SecurityProvider for SoftwareHsmProvider {
                 .and_then(|o| o.key_id)
                 .unwrap_or_else(|| "default".to_string());
 
-            let mut store = self.keys.write().await;
+            let mut store = self
+                .keys
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             let raw_key = store.get_or_create_symmetric(&key_id).to_vec();
             drop(store);
 
@@ -174,7 +177,10 @@ impl SecurityProvider for SoftwareHsmProvider {
             let (nonce_bytes, ct_and_tag) = ciphertext.split_at(12);
             let nonce = Nonce::from_slice(nonce_bytes);
 
-            let store = self.keys.read().await;
+            let store = self
+                .keys
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             let raw_key = store
                 .get_symmetric(&metadata.key_id)
                 .ok_or_else(|| {
@@ -214,7 +220,10 @@ impl SecurityProvider for SoftwareHsmProvider {
                 .and_then(|o| o.key_id)
                 .unwrap_or_else(|| "default".to_string());
 
-            let mut store = self.keys.write().await;
+            let mut store = self
+                .keys
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             let signing_key = store.get_or_create_signing(&key_id);
             let signature: Signature = signing_key.sign(data);
             let key_id_clone = key_id.clone();
@@ -236,7 +245,10 @@ impl SecurityProvider for SoftwareHsmProvider {
         public_key_id: &'a str,
     ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a {
         async move {
-            let store = self.keys.read().await;
+            let store = self
+                .keys
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             let signing_key = store.get_signing(public_key_id).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Key '{public_key_id}' not found"))
             })?;
@@ -291,7 +303,10 @@ impl SecurityProvider for SoftwareHsmProvider {
         async move {
             // Check revocation list
             {
-                let revoked = self.revoked.read().await;
+                let revoked = self
+                    .revoked
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
                 if revoked.contains(&permission.permission_id) {
                     return Ok(PermissionValidationResult::Revoked);
                 }
@@ -337,7 +352,10 @@ impl SecurityProvider for SoftwareHsmProvider {
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
             debug!(?permission_id, reason, "SoftwareHSM: revoking permission");
-            let mut revoked = self.revoked.write().await;
+            let mut revoked = self
+                .revoked
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             if !revoked.contains(permission_id) {
                 revoked.push(*permission_id);
                 drop(revoked);

@@ -93,7 +93,7 @@ async fn test_report_generation() {
 
     // Add some test results
     {
-        let mut results = manager.results.write().await;
+        let mut results = manager.results.write().unwrap_or_else(|e| e.into_inner());
         results.push(IntegrationTestResult {
             test_name: "test1".to_string(),
             status: TestStatus::Passed,

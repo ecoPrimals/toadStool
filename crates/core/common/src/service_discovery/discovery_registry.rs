@@ -35,7 +35,7 @@ pub async fn discover_from_registry(endpoint: &str) -> DiscoveryResult<Vec<Disco
         let path = resolved
             .trim_start_matches("file://")
             .trim_start_matches("unix://");
-        return discover_from_config(path).await;
+        return discover_from_config(path);
     }
 
     // HTTP registry: use tokio TCP to issue a minimal HTTP/1.1 GET request

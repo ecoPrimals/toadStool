@@ -30,12 +30,11 @@ pub fn resolve_config_path(path: &str) -> String {
 }
 
 /// Discover services from a config file at the given path.
-pub async fn discover_from_config(path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
+pub fn discover_from_config(path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
     let resolved_path = resolve_config_path(path);
 
     let content =
-        tokio::fs::read(&resolved_path)
-            .await
+        std::fs::read(&resolved_path)
             .map_err(|e| DiscoveryError::MethodUnavailable {
                 method: format!("cannot read discovery config {resolved_path:?}: {e}"),
             })?;

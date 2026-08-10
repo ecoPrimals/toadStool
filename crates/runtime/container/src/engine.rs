@@ -199,11 +199,11 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             #[cfg(feature = "docker")]
             if let Some(docker) = &self.docker {
                 let container_ids: Vec<Uuid> = {
-                    let containers = self.active_containers.read().await;
+                    let containers = self.active_containers.read().unwrap_or_else(|e| e.into_inner());
                     containers.keys().copied().collect()
                 };
                 let ids: Vec<String> = {
-                    let containers = self.active_containers.read().await;
+                    let containers = self.active_containers.read().unwrap_or_else(|e| e.into_inner());
                     container_ids
                         .iter()
                         .filter_map(|id| containers.get(id).map(|h| h.container_id.clone()))
@@ -213,7 +213,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             }
 
             {
-                let mut containers = self.active_containers.write().await;
+                let mut containers = self.active_containers.write().unwrap_or_else(|e| e.into_inner());
                 containers.clear();
             }
 
@@ -228,7 +228,7 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    use tokio::sync::RwLock;
+    use std::sync::RwLock;
     use uuid::Uuid;
 
     use toadstool::execution::RuntimeEngine;
@@ -434,7 +434,7 @@ mod tests {
     async fn shutdown_clears_active_containers() {
         let mut engine = test_engine();
         {
-            let mut containers = engine.active_containers.write().await;
+            let mut containers = engine.active_containers.write().unwrap_or_else(|e| e.into_inner());
             containers.insert(
                 Uuid::new_v4(),
                 crate::ContainerHandle {
@@ -445,8 +445,8 @@ mod tests {
                 },
             );
         }
-        assert_eq!(engine.active_containers.read().await.len(), 1);
+        assert_eq!(engine.active_containers.read().unwrap_or_else(|e| e.into_inner()).len(), 1);
         engine.shutdown().await.unwrap();
-        assert!(engine.active_containers.read().await.is_empty());
+        assert!(engine.active_containers.read().unwrap_or_else(|e| e.into_inner()).is_empty());
     }
 }

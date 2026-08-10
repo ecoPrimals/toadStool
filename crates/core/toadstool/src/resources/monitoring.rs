@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 #[cfg(feature = "runtime")]
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::ToadStoolResult;
 
@@ -174,8 +174,7 @@ impl SystemResourceMonitor {
         };
 
         self.workload_metrics
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), metrics);
         tracing::info!("Started real-time monitoring for workload: {workload_id}");
         Ok(())
@@ -246,8 +245,7 @@ impl SystemResourceMonitor {
         };
 
         self.workload_metrics
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), updated_metrics);
         Ok(())
     }
@@ -274,7 +272,7 @@ impl ResourceMonitor for SystemResourceMonitor {
             let workload_metrics = self.workload_metrics.clone();
             let workload_id = workload_id.to_string();
             async move {
-                let mut metrics_map = workload_metrics.write().await;
+                let mut metrics_map = workload_metrics.write().unwrap_or_else(|e| e.into_inner());
                 metrics_map.insert(workload_id, metrics);
             }
         });
@@ -289,7 +287,7 @@ impl ResourceMonitor for SystemResourceMonitor {
             let workload_metrics = self.workload_metrics.clone();
             let workload_id = workload_id.to_string();
             async move {
-                let mut metrics_map = workload_metrics.write().await;
+                let mut metrics_map = workload_metrics.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(metrics) = metrics_map.get_mut(&workload_id) {
                     let end_time = SystemTime::now();
                     metrics.timing.end_time = Some(end_time);
@@ -311,7 +309,7 @@ impl ResourceMonitor for SystemResourceMonitor {
         let workload_id = workload_id.to_string();
 
         async move {
-            let metrics_map = workload_metrics.read().await;
+            let metrics_map = workload_metrics.read().unwrap_or_else(|e| e.into_inner());
             Ok(metrics_map.get(&workload_id).cloned().unwrap_or_default())
         }
     }

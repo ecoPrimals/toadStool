@@ -5,7 +5,7 @@
 
 use crate::Result;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
-use tokio::fs;
+use std::fs;
 use tracing::info;
 use uuid::Uuid;
 
@@ -38,12 +38,12 @@ impl<'a> ResourceManager<'a> {
         let log_dir = paths.toadstool_log_dir().join(biome_name);
 
         if data_dir.exists() {
-            fs::remove_dir_all(&data_dir).await?;
+            fs::remove_dir_all(&data_dir)?;
             info!("🗑️  Removed data directory: {}", data_dir.display());
         }
 
         if log_dir.exists() {
-            fs::remove_dir_all(&log_dir).await?;
+            fs::remove_dir_all(&log_dir)?;
             info!("🗑️  Removed log directory: {}", log_dir.display());
         }
 
@@ -57,7 +57,7 @@ impl<'a> ResourceManager<'a> {
     /// Returns an error if PID cannot be found
     #[cfg(test)]
     pub async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
-        let biomes = self._executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().unwrap_or_else(|e| e.into_inner());
 
         if let Some(biome) = biomes.get(biome_name) {
             // Return the first valid PID
@@ -78,7 +78,7 @@ impl<'a> ResourceManager<'a> {
 
     /// Find process by execution ID
     pub async fn find_process_pid(&self, execution_id: &Uuid) -> Option<u32> {
-        let biomes = self._executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().unwrap_or_else(|e| e.into_inner());
         let result = 'block: {
             for (_biome_name, biome) in biomes.iter() {
                 for process in &biome.process_handles {
@@ -95,14 +95,14 @@ impl<'a> ResourceManager<'a> {
 
     /// Check if biome exists
     pub async fn biome_exists(&self, biome_name: &str) -> bool {
-        let biomes = self._executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().unwrap_or_else(|e| e.into_inner());
         biomes.contains_key(biome_name)
     }
 
     /// Get biome info (convert from RunningBiome)
     #[cfg(test)]
     pub async fn get_biome_info(&self, biome_name: &str) -> Option<BiomeInfo> {
-        let biomes = self._executor.biomes.read().await;
+        let biomes = self._executor.biomes.read().unwrap_or_else(|e| e.into_inner());
         biomes.get(biome_name).map(|rb| rb.info.clone())
     }
 }

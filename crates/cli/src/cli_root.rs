@@ -3,7 +3,7 @@
 
 use clap::Parser;
 use std::path::PathBuf;
-use tokio::fs;
+use std::fs;
 
 use crate::biome_model::BiomeManifest;
 use crate::error::{CliContextExt, Result};
@@ -81,7 +81,6 @@ impl CliContext {
 /// to the CLI's internal representation via `From`.
 pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
     let content = fs::read_to_string(path)
-        .await
         .context(format!("Failed to read manifest file: {}", path.display()))?;
 
     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");

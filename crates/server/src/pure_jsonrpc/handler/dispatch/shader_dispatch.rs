@@ -121,7 +121,7 @@ impl DispatchHandler {
         };
 
         {
-            let mut jobs = self.jobs.write().await;
+            let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
             jobs.insert(job_id.clone(), job);
         }
 
@@ -159,7 +159,7 @@ impl DispatchHandler {
                                 success: true,
                             },
                         );
-                        let mut jobs = self.jobs.write().await;
+                        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
                             job.result = Some(local_output.clone());
@@ -215,7 +215,7 @@ impl DispatchHandler {
                                 success: true,
                             },
                         );
-                        let mut jobs = self.jobs.write().await;
+                        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
                             job.result = Some(wgpu_output.clone());
@@ -261,7 +261,7 @@ impl DispatchHandler {
                     success: false,
                 },
             );
-            let mut jobs = self.jobs.write().await;
+            let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
                     "visualization/shader service not available — vfio/drm dispatch requires it"
@@ -323,7 +323,7 @@ impl DispatchHandler {
                                 success: true,
                             },
                         );
-                        let mut jobs = self.jobs.write().await;
+                        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
                             job.result = Some(result.clone());
@@ -362,7 +362,7 @@ impl DispatchHandler {
                                 success: false,
                             },
                         );
-                        let mut jobs = self.jobs.write().await;
+                        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Failed(e.to_string());
                         }

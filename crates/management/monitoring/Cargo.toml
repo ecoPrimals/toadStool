@@ -11,16 +11,30 @@ keywords = ["monitoring", "metrics", "observability", "telemetry"]
 categories = ["development-tools::profiling"]
 
 [dependencies]
-toadstool = { path = "../../core/toadstool" }
-toadstool-common = { path = "../../core/common" }
-toadstool-sysmon = { path = "../../core/sysmon" }
+toadstool = { path = "../../core/toadstool", default-features = false, optional = true }
+toadstool-common = { path = "../../core/common", default-features = false }
+toadstool-core = { path = "../../toadstool-core", default-features = false }
+toadstool-sysmon = { path = "../../core/sysmon", optional = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
 serde = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-toadstool-hw-safe = { path = "../../core/hw-safe" }
+toadstool-hw-safe = { path = "../../core/hw-safe", optional = true }
+
+[features]
+default = ["runtime"]
+runtime = [
+    "dep:tokio",
+    "dep:toadstool",
+    "dep:toadstool-sysmon",
+    "dep:toadstool-hw-safe",
+    "toadstool/runtime",
+    "toadstool-common/runtime",
+    "uuid/v4",
+]
 
 [dev-dependencies]
 serde_json = { workspace = true }

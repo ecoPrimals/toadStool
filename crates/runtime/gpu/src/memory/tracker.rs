@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Tracks GPU memory allocations
 pub struct MemoryTracker {
@@ -59,10 +59,13 @@ impl MemoryTracker {
             stack_trace: None, // Could capture backtrace in debug builds
         };
 
-        let mut allocations = self.allocations.write().await;
+        let mut allocations = self
+            .allocations
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         allocations.insert(id, info);
 
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
         stats.total_allocated += size as u64;
         stats.current_usage += size as u64;
         stats.allocation_count += 1;
@@ -77,11 +80,14 @@ impl MemoryTracker {
 
     /// Record a deallocation
     pub async fn track_deallocation(&self, id: &str) -> Option<usize> {
-        let mut allocations = self.allocations.write().await;
+        let mut allocations = self
+            .allocations
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(info) = allocations.remove(id) {
             let size = info.size_bytes;
 
-            let mut stats = self.stats.write().await;
+            let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
             stats.total_freed += size as u64;
             stats.current_usage -= size as u64;
             stats.free_count += 1;
@@ -98,19 +104,30 @@ impl MemoryTracker {
 
     /// Get current memory statistics
     pub async fn stats(&self) -> MemoryStats {
-        self.stats.read().await.clone()
+        self.stats
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Get active allocations
     pub async fn active_allocations(&self) -> Vec<AllocationInfo> {
-        self.allocations.read().await.values().cloned().collect()
+        self.allocations
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .cloned()
+            .collect()
     }
 
     /// Check for memory leaks
     ///
     /// Returns allocations that have been alive for longer than threshold
     pub async fn check_leaks(&self, threshold: std::time::Duration) -> Vec<AllocationInfo> {
-        let allocations = self.allocations.read().await;
+        let allocations = self
+            .allocations
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let now = tokio::time::Instant::now();
 
         allocations
@@ -122,7 +139,7 @@ impl MemoryTracker {
 
     /// Check if memory usage is above threshold
     pub async fn is_over_threshold(&self, threshold_percent: f32) -> bool {
-        let stats = self.stats.read().await;
+        let stats = self.stats.read().unwrap_or_else(|e| e.into_inner());
         if stats.peak_usage == 0 {
             return false;
         }
@@ -132,7 +149,7 @@ impl MemoryTracker {
 
     /// Get memory pressure level
     pub async fn memory_pressure(&self) -> MemoryPressure {
-        let stats = self.stats.read().await;
+        let stats = self.stats.read().unwrap_or_else(|e| e.into_inner());
         if stats.peak_usage == 0 {
             return MemoryPressure::Low;
         }

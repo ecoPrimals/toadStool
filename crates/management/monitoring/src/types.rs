@@ -8,7 +8,7 @@ use std::time::Duration;
 
 const DEFAULT_METRICS_RETENTION_SECS: u64 = 3600;
 
-use toadstool::ToadStoolError;
+use toadstool_common::ToadStoolError;
 
 /// Monitoring granularity for high-precision resource tracking
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use toadstool::resources::{
+use toadstool_core::resources::{
     CpuRequirements as CoreCpuRequirements, GpuRequirements as CoreGpuRequirements,
     MemoryRequirements as CoreMemoryRequirements, NetworkRequirements as CoreNetworkRequirements,
     ResourceRequirements as CoreResourceRequirements,

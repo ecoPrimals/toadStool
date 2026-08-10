@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use tokio::fs;
+use std::fs;
 use tracing::info;
 
 use toadstool_common::constants::primal_identity::PRIMAL_BINARY_NAME;
@@ -17,7 +17,7 @@ pub async fn ensure_installation_directory(installation_path: &Path) -> Result<(
             "📁 Creating installation directory: {}",
             installation_path.display()
         );
-        fs::create_dir_all(installation_path).await?;
+        fs::create_dir_all(installation_path)?;
     }
     Ok(())
 }
@@ -33,7 +33,7 @@ pub async fn install_core_components(installation_path: &Path) -> Result<(), Toa
 
     for dir in [&bin_dir, &config_dir, &data_dir, &logs_dir] {
         if !dir.exists() {
-            fs::create_dir_all(dir).await?;
+            fs::create_dir_all(dir)?;
         }
     }
 
@@ -75,7 +75,7 @@ echo "  help    - Show help"
     };
     let script_path = bin_dir.join(script_name);
 
-    fs::write(&script_path, toadstool_script).await?;
+    fs::write(&script_path, toadstool_script)?;
 
     toadstool_common::platform::set_access(
         &script_path,

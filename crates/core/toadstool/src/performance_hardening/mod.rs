@@ -46,7 +46,7 @@ use std::hash::Hash;
 #[cfg(feature = "runtime")]
 use std::sync::Arc;
 #[cfg(feature = "runtime")]
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 #[cfg(feature = "runtime")]
 use tracing::info;
 
@@ -165,8 +165,7 @@ impl PerformanceHardeningManager {
         ));
 
         self.memory_pools
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(name.to_string(), pool.clone());
 
         Ok(pool)
@@ -193,8 +192,7 @@ impl PerformanceHardeningManager {
         cache.start_cleanup_task().await;
 
         self.caches
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(name.to_string(), cache.clone());
 
         Ok(cache)

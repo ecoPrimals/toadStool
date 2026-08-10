@@ -3,6 +3,7 @@
 use super::*;
 use crate::security::SecurityContext;
 use std::time::Duration;
+use uuid::Uuid;
 use toadstool_common::constants::network::LOCALHOST_IPV4;
 
 // ============================================================================

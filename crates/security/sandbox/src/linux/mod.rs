@@ -14,7 +14,7 @@ use std::process::Command;
 
 use toadstool_common::platform::FilesystemIsolation;
 use toadstool_hw_safe::LinuxFilesystemIsolation;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use toadstool::error::{SecurityError, ToadStoolResult};
@@ -119,7 +119,7 @@ impl LinuxSandboxManager {
         debug!("Creating Linux sandbox: {}", spec.sandbox_id);
 
         {
-            let mut rt = self.runtime.write().await;
+            let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
             rt.entry(spec.sandbox_id.clone())
                 .or_insert_with(|| SandboxLinuxRuntime {
                     namespaces_created: false,
@@ -154,7 +154,7 @@ impl LinuxSandboxManager {
         debug!("Stopping execution in Linux sandbox: {}", sandbox_id);
 
         let pid = {
-            let processes = self.processes.read().await;
+            let processes = self.processes.read().unwrap_or_else(|e| e.into_inner());
             processes.get(sandbox_id).copied()
         };
 
@@ -165,7 +165,7 @@ impl LinuxSandboxManager {
         }
 
         {
-            let mut processes = self.processes.write().await;
+            let mut processes = self.processes.write().unwrap_or_else(|e| e.into_inner());
             processes.remove(sandbox_id);
         }
 
@@ -186,7 +186,7 @@ impl LinuxSandboxManager {
         let mut had_mounts = false;
         let mut had_namespaces = false;
         {
-            let mut rt = self.runtime.write().await;
+            let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
             if let Some(state) = rt.get_mut(sandbox_id) {
                 had_namespaces = state.namespaces_created;
                 had_mounts = !state.mounts.is_empty();
@@ -267,7 +267,7 @@ impl LinuxSandboxManager {
 
         match result {
             Ok(()) => {
-                let mut rt = self.runtime.write().await;
+                let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
                 let e = rt.entry(sandbox_id.to_string()).or_default();
                 e.mounts.push(target_path.to_path_buf());
                 info!("Filesystem mount applied at {}", target_path.display());
@@ -300,7 +300,7 @@ impl LinuxSandboxManager {
         debug!("Monitoring Linux sandbox: {}", sandbox_id);
 
         let pid = {
-            let processes = self.processes.read().await;
+            let processes = self.processes.read().unwrap_or_else(|e| e.into_inner());
             processes.get(sandbox_id).copied()
         };
 
@@ -313,7 +313,7 @@ impl LinuxSandboxManager {
         };
 
         let cgroup_rel = {
-            let rt = self.runtime.read().await;
+            let rt = self.runtime.read().unwrap_or_else(|e| e.into_inner());
             rt.get(sandbox_id)
                 .and_then(|s| s.cgroup_v2_rel.clone())
                 .or_else(|| {
@@ -322,7 +322,7 @@ impl LinuxSandboxManager {
                 })
         };
 
-        let mut rt = self.runtime.write().await;
+        let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
         let entry = rt.entry(sandbox_id.to_string()).or_default();
         if entry.cgroup_v2_rel.is_none()
             && let Ok(cg) = std::fs::read_to_string(format!("/proc/{pid}/cgroup"))
@@ -407,7 +407,7 @@ impl LinuxSandboxManager {
 
         let single = base.join(format!("{sandbox_id}.log"));
         if single.is_file() {
-            let content = tokio::fs::read_to_string(&single).await.map_err(|e| {
+            let content = std::fs::read_to_string(&single).map_err(|e| {
                 toadstool::error::ToadStoolError::io(format!(
                     "read sandbox log {}: {e}",
                     single.display()
@@ -418,21 +418,22 @@ impl LinuxSandboxManager {
 
         let subdir = base.join(sandbox_id);
         if subdir.is_dir() {
-            let mut rd = tokio::fs::read_dir(&subdir).await.map_err(|e| {
+            let rd = std::fs::read_dir(&subdir).map_err(|e| {
                 toadstool::error::ToadStoolError::io(format!(
                     "read sandbox log dir {}: {e}",
                     subdir.display()
                 ))
             })?;
-            while let Some(ent) = rd.next_entry().await.map_err(|e| {
-                toadstool::error::ToadStoolError::io(format!(
-                    "read sandbox log dir entry {}: {e}",
-                    subdir.display()
-                ))
-            })? {
+            for ent in rd {
+                let ent = ent.map_err(|e| {
+                    toadstool::error::ToadStoolError::io(format!(
+                        "read sandbox log dir entry {}: {e}",
+                        subdir.display()
+                    ))
+                })?;
                 let p = ent.path();
                 if p.is_file()
-                    && let Ok(content) = tokio::fs::read_to_string(&p).await
+                    && let Ok(content) = std::fs::read_to_string(&p)
                 {
                     lines.push(format!(
                         "--- {} ---",

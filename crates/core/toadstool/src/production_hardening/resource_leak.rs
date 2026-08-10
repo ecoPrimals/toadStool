@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{error, warn};
 use uuid::Uuid;
 
@@ -48,13 +48,13 @@ impl ResourceLeakDetector {
 
     /// Tracks a new resource allocation for leak detection.
     pub async fn track_allocation(&self, allocation: ResourceAllocation) {
-        let mut allocations = self.allocations.write().await;
+        let mut allocations = self.allocations.write().unwrap_or_else(|e| e.into_inner());
         allocations.insert(allocation.id, allocation);
     }
 
     /// Updates last-accessed timestamp for a tracked resource.
     pub async fn update_access(&self, resource_id: Uuid) {
-        let mut allocations = self.allocations.write().await;
+        let mut allocations = self.allocations.write().unwrap_or_else(|e| e.into_inner());
         if let Some(allocation) = allocations.get_mut(&resource_id) {
             allocation.last_accessed = Instant::now();
         }
@@ -62,13 +62,13 @@ impl ResourceLeakDetector {
 
     /// Removes a resource from tracking (normal deallocation).
     pub async fn remove_allocation(&self, resource_id: Uuid) {
-        let mut allocations = self.allocations.write().await;
+        let mut allocations = self.allocations.write().unwrap_or_else(|e| e.into_inner());
         allocations.remove(&resource_id);
     }
 
     /// Scans for and removes allocations exceeding leak threshold.
     pub async fn cleanup_leaked_resources(&self) -> Vec<ResourceAllocation> {
-        let mut allocations = self.allocations.write().await;
+        let mut allocations = self.allocations.write().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
         let mut leaked = Vec::new();
 

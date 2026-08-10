@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::taxonomy::CapabilityId;
 use toadstool_common::infant_discovery::{DiscoveredService, ServiceHealth, ServiceMetadata};
@@ -83,7 +83,7 @@ impl CapabilityRegistry {
     /// Register a service provider for a capability
     pub async fn register(&self, capability: impl Into<CapabilityId>, provider: ServiceProvider) {
         let capability = capability.into();
-        let mut providers = self.providers.write().await;
+        let mut providers = self.providers.write().unwrap_or_else(|e| e.into_inner());
 
         let provider_list = providers.entry(capability).or_insert_with(Vec::new);
 
@@ -108,7 +108,7 @@ impl CapabilityRegistry {
             self.cleanup_stale_providers().await;
         }
 
-        let providers = self.providers.read().await;
+        let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
         providers.get(capability).cloned().unwrap_or_default()
     }
 
@@ -132,13 +132,13 @@ impl CapabilityRegistry {
 
     /// Get all registered capabilities
     pub async fn list_capabilities(&self) -> Vec<CapabilityId> {
-        let providers = self.providers.read().await;
+        let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
         providers.keys().cloned().collect()
     }
 
     /// Remove a provider
     pub async fn unregister(&self, capability: &CapabilityId, endpoint: &str) {
-        let mut providers = self.providers.write().await;
+        let mut providers = self.providers.write().unwrap_or_else(|e| e.into_inner());
 
         if let Some(provider_list) = providers.get_mut(capability) {
             provider_list.retain(|p| p.endpoint != endpoint);
@@ -152,7 +152,7 @@ impl CapabilityRegistry {
 
     /// Clean up stale providers (older than TTL)
     pub async fn cleanup_stale_providers(&self) {
-        let mut providers = self.providers.write().await;
+        let mut providers = self.providers.write().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         providers.retain(|_, provider_list| {
@@ -163,13 +163,13 @@ impl CapabilityRegistry {
 
     /// Clear all providers
     pub async fn clear(&self) {
-        let mut providers = self.providers.write().await;
+        let mut providers = self.providers.write().unwrap_or_else(|e| e.into_inner());
         providers.clear();
     }
 
     /// Get statistics
     pub async fn stats(&self) -> RegistryStats {
-        let providers = self.providers.read().await;
+        let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
         let total_capabilities = providers.len();
         let total_providers: usize = providers.values().map(|v| v.len()).sum();
         let healthy_providers = providers

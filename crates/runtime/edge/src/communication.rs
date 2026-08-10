@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tokio::time::timeout;
 use tracing::info;
 
@@ -93,7 +93,7 @@ impl CommunicationManager {
                 baud_rates: vec![9600, 115200, 57600, 38400],
             };
             if serial.is_available().await {
-                let mut protocols = self.protocols.write().await;
+                let mut protocols = self.protocols.write().unwrap_or_else(|e| e.into_inner());
                 protocols.insert("serial".to_string(), Box::new(serial));
                 info!("Registered Serial communication protocol");
             }
@@ -104,12 +104,12 @@ impl CommunicationManager {
             timeout: timeout_ms,
         };
         if network.is_available().await {
-            let mut protocols = self.protocols.write().await;
+            let mut protocols = self.protocols.write().unwrap_or_else(|e| e.into_inner());
             protocols.insert("tcp".to_string(), Box::new(network));
             info!("Registered TCP network communication protocol");
         }
 
-        let count = self.protocols.read().await.len();
+        let count = self.protocols.read().unwrap_or_else(|e| e.into_inner()).len();
         info!("Communication protocols initialized: {} active", count);
         Ok(())
     }
@@ -132,7 +132,7 @@ impl CommunicationManager {
             ));
         }
 
-        let protocols = self.protocols.read().await;
+        let protocols = self.protocols.read().unwrap_or_else(|e| e.into_inner());
         let protocol = protocols.get(key).ok_or_else(|| {
             ToadStoolError::runtime(format!("No suitable protocol for address: {}", address))
         })?;
@@ -149,7 +149,7 @@ impl CommunicationManager {
             ));
         }
 
-        let protocols = self.protocols.read().await;
+        let protocols = self.protocols.read().unwrap_or_else(|e| e.into_inner());
         let protocol = protocols.get(key).ok_or_else(|| {
             ToadStoolError::runtime(format!("No suitable protocol for address: {}", address))
         })?;
@@ -406,7 +406,7 @@ mod tests {
     async fn manager_creation_registers_tcp() {
         let config = EdgeRuntimeConfig::default();
         let manager = CommunicationManager::new(&config).await.unwrap();
-        let protocols = manager.protocols.read().await;
+        let protocols = manager.protocols.read().unwrap_or_else(|e| e.into_inner());
         assert!(protocols.contains_key("tcp"));
     }
 

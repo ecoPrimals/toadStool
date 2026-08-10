@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::access_control::AccessResult;
 use super::permissions::ExternalTarget;
@@ -34,7 +34,10 @@ impl PermissionCache {
 
     /// Look up cached permission result for the target, returning `None` for expired entries.
     pub async fn get(&self, target: &ExternalTarget) -> Option<CachedResult> {
-        let guard = self.inner.read().await;
+        let guard = self
+            .inner
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         guard
             .get(target)
             .filter(|cached| !cached.is_expired())
@@ -47,13 +50,19 @@ impl PermissionCache {
             result,
             cached_at: std::time::Instant::now(),
         };
-        let mut guard = self.inner.write().await;
+        let mut guard = self
+            .inner
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         guard.insert(target, cached);
     }
 
     /// Remove cached entry for the target (e.g. when permission is installed/updated)
     pub async fn invalidate_for_target(&self, target: &ExternalTarget) {
-        let mut guard = self.inner.write().await;
+        let mut guard = self
+            .inner
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         guard.remove(target);
     }
 }

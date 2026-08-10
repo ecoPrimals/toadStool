@@ -54,32 +54,46 @@
 //!
 //! For truly long-running WASM: Phase 2 will orchestrate wasmtime as subprocess.
 
-// Module declarations
+// Pure modules — types, config, metrics (WASM-compatible)
 pub mod cache_metrics;
-pub mod cache_wasmi;
 pub mod config;
-pub mod engine_wasmi;
-pub mod execution_wasmi;
 pub mod metrics;
-pub mod module_loader;
+#[cfg(feature = "runtime")]
 pub mod wasi_context;
 
-// Component model: Always available, enabled/disabled at runtime (not compile-time!)
-// EVOLVED: From feature-gated to runtime capability-based
+// Runtime-dependent modules (tokio::spawn, tokio::sync across await)
+#[cfg(feature = "runtime")]
+pub mod cache_wasmi;
+#[cfg(feature = "runtime")]
+pub mod engine_wasmi;
+#[cfg(feature = "runtime")]
+pub mod execution_wasmi;
+#[cfg(feature = "runtime")]
+pub mod module_loader;
+
+// Component model: core types always available, registry/linker need runtime
 pub mod component_model;
 
 // Re-export public API
 pub use cache_metrics::CacheMetrics;
-pub use cache_wasmi::ModuleCache;
 pub use config::{SecurityLevel, WasmRuntimeConfig, WasmRuntimeConfigBuilder};
+
+#[cfg(feature = "runtime")]
+pub use cache_wasmi::ModuleCache;
+#[cfg(feature = "runtime")]
 pub use engine_wasmi::WasmRuntimeEngine;
+#[cfg(feature = "runtime")]
 pub use execution_wasmi::ModuleExecutor;
+#[cfg(feature = "runtime")]
 pub use module_loader::ModuleLoader;
+#[cfg(feature = "runtime")]
 pub use wasi_context::{WasiConfig, create_wasi_context};
 
-// EVOLVED: Component model always exported, capability detected at runtime
 pub use component_model::{
-    ComponentInstance, ComponentInterface, ComponentLinker, ComponentModelConfig,
-    ComponentModelSupport, ComponentRegistry, ComponentResourceUsage, ComponentState,
+    ComponentInstance, ComponentInterface, ComponentModelConfig,
+    ComponentModelSupport, ComponentResourceUsage, ComponentState,
     ComponentStats, ComponentValue, InterfaceFunction, InterfaceType,
 };
+
+#[cfg(feature = "runtime")]
+pub use component_model::{ComponentLinker, ComponentRegistry};

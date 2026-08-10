@@ -311,7 +311,7 @@ impl InputManager {
 }
 
 /// Thread-safe wrapper for `InputManager`
-pub type SharedInputManager = std::sync::Arc<tokio::sync::RwLock<InputManager>>;
+pub type SharedInputManager = std::sync::Arc<std::sync::RwLock<InputManager>>;
 
 #[cfg(test)]
 mod tests {

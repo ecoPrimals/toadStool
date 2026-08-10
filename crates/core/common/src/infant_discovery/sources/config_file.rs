@@ -38,7 +38,7 @@ impl EndpointSource for ConfigFileSource {
         let config_path = self.config_path.clone();
 
         Box::pin(async move {
-            match tokio::fs::read_to_string(&config_path).await {
+            match std::fs::read_to_string(&config_path) {
                 Ok(contents) => match toml::from_str::<toml::Value>(&contents) {
                     Ok(config) => {
                         let patterns = vec![

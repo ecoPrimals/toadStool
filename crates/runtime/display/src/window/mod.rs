@@ -34,7 +34,7 @@ use crate::drm::{DrmBackend, DumbBuffer};
 use crate::{DisplayError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 pub use crate::WindowId;
 
@@ -188,7 +188,7 @@ impl WindowManager {
         tracing::info!("🪟 Initializing window manager...");
 
         // Discover DRM device (runtime discovery, no hardcoding!)
-        let drm_path = Self::discover_drm_device().await?;
+        let drm_path = Self::discover_drm_device()?;
         tracing::info!("Found DRM device: {}", drm_path.display());
 
         // Open DRM backend
@@ -204,13 +204,13 @@ impl WindowManager {
     /// Discover DRM device path
     ///
     /// **Capability-based discovery**: Checks common paths, no hardcoding!
-    async fn discover_drm_device() -> Result<std::path::PathBuf> {
+    fn discover_drm_device() -> Result<std::path::PathBuf> {
         // Check common DRM device paths
         let candidates = ["/dev/dri/card0", "/dev/dri/card1", "/dev/dri/renderD128"];
 
         for path in &candidates {
             let path_buf = std::path::PathBuf::from(path);
-            if tokio::fs::metadata(&path_buf).await.is_ok() {
+            if std::fs::metadata(&path_buf).is_ok() {
                 return Ok(path_buf);
             }
         }

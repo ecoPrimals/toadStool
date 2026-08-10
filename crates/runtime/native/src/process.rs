@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::process::Child;
-use tokio::sync::RwLock;
+use std::process::Child;
+use std::sync::RwLock;
 use tracing::warn;
 use uuid::Uuid;
 
@@ -21,10 +21,10 @@ pub async fn cleanup_process(
     processes: &Arc<RwLock<HashMap<Uuid, ProcessHandle>>>,
     execution_id: &Uuid,
 ) {
-    let mut processes_guard = processes.write().await;
+    let mut processes_guard = processes.write().unwrap_or_else(|e| e.into_inner());
     if let Some(mut process_handle) = processes_guard.remove(execution_id)
         && let Some(mut child) = process_handle.child.take()
-        && let Err(e) = child.kill().await
+        && let Err(e) = child.kill()
     {
         warn!("Failed to kill process {}: {}", execution_id, e);
     }

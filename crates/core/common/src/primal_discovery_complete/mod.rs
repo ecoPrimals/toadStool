@@ -38,7 +38,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use crate::constants::discovery_ports::{
@@ -442,7 +442,7 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
 
     /// Get service from cache
     async fn get_from_cache(&self, capability: &str) -> Option<CachedEndpoint> {
-        self.cache.read().await.get(capability).cloned()
+        self.cache.read().unwrap_or_else(|e| e.into_inner()).get(capability).cloned()
     }
 
     /// Cache discovered service
@@ -455,21 +455,20 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
         };
 
         self.cache
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(capability.to_string(), cached);
     }
 
     /// Clear cache (useful for testing or forced refresh)
     pub async fn clear_cache(&self) {
-        self.cache.write().await.clear();
+        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
         debug!("Discovery cache cleared");
     }
 
     /// Get cache statistics
     pub async fn cache_stats(&self) -> CacheStats {
         let (total, fresh) = {
-            let cache = self.cache.read().await;
+            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
             let total = cache.len();
             let fresh = cache
                 .values()

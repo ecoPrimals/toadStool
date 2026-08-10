@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::path::Path;
-use tokio::process::Command as TokioCommand;
+use std::process::Command;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 #[cfg(any(unix, target_os = "linux"))]
 use tracing::info;
 use tracing::{debug, warn};
@@ -58,10 +60,10 @@ fn resolve_working_dir(
 }
 
 pub fn apply_security_context(
-    mut command: TokioCommand,
+    mut command: Command,
     security_context: &SecurityContext,
     workload_working_dir: Option<&Path>,
-) -> TokioCommand {
+) -> Command {
     if let Some(wd) = resolve_working_dir(security_context, workload_working_dir) {
         command.current_dir(&wd);
         debug!(working_dir = %wd.display(), "Process working directory set");

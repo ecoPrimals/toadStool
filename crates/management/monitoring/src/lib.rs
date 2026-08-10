@@ -13,19 +13,25 @@
 //!
 //! Cross-platform resource monitoring with configurable granularity.
 
-// Module declarations
-pub mod platform;
-pub mod process;
+// Module declarations — types always available (WASM-safe)
 pub mod thresholds;
 pub mod types;
 
-mod collection;
 mod metric_types;
+
+#[cfg(feature = "runtime")]
+pub mod platform;
+#[cfg(feature = "runtime")]
+pub mod process;
+
+#[cfg(feature = "runtime")]
+mod collection;
+#[cfg(feature = "runtime")]
 mod reporting;
 
 // Re-export types for backward compatibility
 pub use metric_types::SystemResourceMonitor;
 pub use types::{MonitoringConfig, MonitoringGranularity, ResourceMonitorError, ThresholdAction};
 
-#[cfg(test)]
+#[cfg(all(test, feature = "runtime"))]
 mod tests;

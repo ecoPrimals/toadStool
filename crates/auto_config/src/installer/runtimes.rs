@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
-use tokio::fs;
-use tokio::process::Command as AsyncCommand;
+use std::fs;
+use std::process::Command as ProcessCommand;
 use tracing::info;
 
 use crate::ToadStoolError;
@@ -14,10 +14,9 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
     info!("🐳 Setting up container runtime support...");
 
     // Verify Docker is working
-    if let Ok(output) = AsyncCommand::new("docker")
+    if let Ok(output) = ProcessCommand::new("docker")
         .args(["version", "--format", "{{.Server.Version}}"])
         .output()
-        .await
         && output.status.success()
     {
         let version = String::from_utf8_lossy(&output.stdout);
@@ -27,7 +26,7 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
     // Create Docker configuration if needed
     let docker_config_dir = installation_path.join("config").join("docker");
     if !docker_config_dir.exists() {
-        fs::create_dir_all(&docker_config_dir).await?;
+        fs::create_dir_all(&docker_config_dir)?;
 
         let docker_config = serde_json::json!({
             "default_runtime": "runc",
@@ -42,8 +41,7 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
         fs::write(
             docker_config_dir.join("daemon.json"),
             serde_json::to_string_pretty(&docker_config)?,
-        )
-        .await?;
+        )?;
     }
 
     Ok(())
@@ -53,17 +51,16 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
 pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStoolError> {
     info!("🎮 Setting up GPU runtime support...");
 
-    if let Ok(output) = AsyncCommand::new("nvidia-smi")
+    if let Ok(output) = ProcessCommand::new("nvidia-smi")
         .arg("--version")
         .output()
-        .await
         && output.status.success()
     {
         info!("🎮 NVIDIA GPU runtime detected");
 
         let gpu_config_dir = installation_path.join("config").join("gpu");
         if !gpu_config_dir.exists() {
-            fs::create_dir_all(&gpu_config_dir).await?;
+            fs::create_dir_all(&gpu_config_dir)?;
 
             let nvidia_config = serde_json::json!({
                 "runtime": "nvidia",
@@ -74,8 +71,7 @@ pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStool
             fs::write(
                 gpu_config_dir.join("nvidia.json"),
                 serde_json::to_string_pretty(&nvidia_config)?,
-            )
-            .await?;
+            )?;
         }
     }
 

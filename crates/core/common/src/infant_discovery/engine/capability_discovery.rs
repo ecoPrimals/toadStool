@@ -110,7 +110,7 @@ impl CapabilityDiscovery for DiscoveryEngine {
 
                 if !is_local {
                     // Try to find a local alternative from cache
-                    let cache = self.cache.read().await;
+                    let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
                     if let Some(cached) = cache.get(&capability_str) {
                         let is_cached_local =
                             cached.endpoint.contains(crate::constants::DEFAULT_HOSTNAME)
@@ -142,7 +142,7 @@ impl CapabilityDiscovery for DiscoveryEngine {
         Box::pin(async move {
             let mut discovered_services = Vec::new();
             let sources: Vec<Arc<dyn EndpointSource>> =
-                self.sources.read().await.iter().map(Arc::clone).collect();
+                self.sources.read().unwrap_or_else(|e| e.into_inner()).iter().map(Arc::clone).collect();
 
             // Query all sources sequentially (avoid lifetime issues)
             for source in &sources {

@@ -37,7 +37,6 @@ pub use rate_limiter::RateLimiter;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
-use uuid::Uuid;
 
 use crate::security::SecurityContext;
 use crate::{ToadStoolError, ToadStoolResult};

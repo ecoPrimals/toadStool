@@ -97,51 +97,73 @@
 
 pub mod ai_mcp_interface;
 pub mod capability_traits;
-pub mod ecosystem;
-mod ecosystem_network;
 mod ecosystem_types;
 pub mod hardware;
-pub mod installer;
 pub mod intelligent;
+pub mod installer;
 pub mod natural_language;
+
+#[cfg(feature = "runtime")]
+mod ecosystem_network;
+
+#[cfg(feature = "runtime")]
+pub mod ecosystem;
+
+mod error;
+mod system_summary;
+
+#[cfg(feature = "runtime")]
+mod bootstrap;
+#[cfg(feature = "runtime")]
+mod config_builder;
 
 // Re-export the main types for easy access
 pub use ai_mcp_interface::{
-    AiMcpInterface, AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, McpRequest,
-    McpRequestType, McpResponse, PerformanceExpectations, ResourceHints, SessionInfo,
+    AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, McpRequest, McpRequestType,
+    McpResponse, PerformanceExpectations, ResourceHints, SessionInfo,
 };
+#[cfg(feature = "runtime")]
+pub use ai_mcp_interface::AiMcpInterface;
 pub use capability_traits::{EcosystemServiceDiscoverer, HardwareCapabilityDetector};
 
 /// Mock implementations for testing only. Production uses real `HardwareDetector` and
 /// `EcosystemDiscoverer`. Evolution: Mocks avoid I/O in tests; real impls use toadstool-sysmon + network scan.
 #[cfg(any(test, feature = "test-mocks"))]
 pub use capability_traits::{MockEcosystemDiscoverer, MockHardwareDetector};
-pub use ecosystem::{DiscoveredServices, EcosystemDiscoverer, ServiceInfo, ServiceType};
+pub use ecosystem_types::{
+    DiscoveredServices, DiscoverySummary, ServiceInfo, ServicePattern, ServiceStatus, ServiceType,
+};
+#[cfg(feature = "runtime")]
+pub use ecosystem::EcosystemDiscoverer;
 pub use hardware::{
     CpuInfo, GpuInfo, HardwareDetector, MemoryInfo, PerformanceClass, StorageInfo, StorageType,
     SystemCapabilities,
 };
-pub use installer::{ConfigManager, InstallationConfig, InstallationResult, SmartInstaller};
+pub use installer::{InstallationConfig, InstallationResult};
+#[cfg(feature = "runtime")]
+pub use installer::{ConfigManager, SmartInstaller};
 pub use intelligent::{
-    ConfigSnapshot, IntelligentAutoConfig, PlatformConfig, PlatformOptimizer, UsageHints,
-    UsageLearner,
+    ConfigSnapshot, PlatformConfig, PlatformOptimizer, UsageHints, UsageLearner,
 };
+#[cfg(feature = "runtime")]
+pub use intelligent::IntelligentAutoConfig;
 pub use natural_language::{
     ConfigurationIntent, ConfigurationTemplate, ExplicitPreferences, IntentAnalysis,
-    NaturalLanguageConfig, PerformancePreference, ResourcePreferences, RuntimePreferences,
-    SecurityPreference, UsagePattern,
+    PerformancePreference, ResourcePreferences, RuntimePreferences, SecurityPreference,
+    UsagePattern,
 };
+#[cfg(feature = "runtime")]
+pub use natural_language::NaturalLanguageConfig;
 
-mod bootstrap;
-mod config_builder;
-mod error;
-mod system_summary;
-
+#[cfg(feature = "runtime")]
 pub use bootstrap::quick_start;
+#[cfg(feature = "runtime")]
 pub use config_builder::ConfigBuilder;
 pub use error::{ToadStoolError, ToadStoolResult};
-pub use system_summary::{SystemSummary, get_system_summary};
+pub use system_summary::SystemSummary;
+#[cfg(feature = "runtime")]
+pub use system_summary::get_system_summary;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "runtime"))]
 #[path = "lib_tests.rs"]
 mod tests;

@@ -30,7 +30,7 @@ impl BiomeExecutor {
             (target.to_owned(), None)
         };
         // Get biome
-        let biomes = self.biomes.read().await;
+        let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
         let biome = biomes.get(&biome_name).ok_or_else(|| {
             crate::CliError::Other(format!("Biome '{biome_name}' is not running"))
         })?;

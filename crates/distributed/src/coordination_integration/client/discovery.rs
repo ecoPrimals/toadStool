@@ -5,7 +5,7 @@
 //! Multi-strategy discovery (mDNS, registry, environment).
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use toadstool_common::primal_identity::Capability;
 use toadstool_common::service_discovery::{DiscoveredService, DiscoveryMethod, ServiceDiscovery};
@@ -63,7 +63,11 @@ impl CoordinationDiscovery {
         let filtered = self.filter_by_location(&services);
 
         // Cache discovered services
-        (*self.discovered_services.write().await).clone_from(&filtered);
+        (*self
+            .discovered_services
+            .write()
+            .unwrap_or_else(|e| e.into_inner()))
+        .clone_from(&filtered);
 
         Ok(filtered)
     }
@@ -112,6 +116,9 @@ impl CoordinationDiscovery {
 
     /// Get cached services
     pub async fn get_cached(&self) -> Vec<DiscoveredService> {
-        self.discovered_services.read().await.clone()
+        self.discovered_services
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 }

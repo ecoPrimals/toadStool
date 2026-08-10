@@ -4,8 +4,8 @@ use crate::ToadStoolResult;
 use tracing::{debug, info};
 use uuid::Uuid;
 
-use super::session::{AiPreferences, AiSession};
-use super::types::{
+use super::super::session::{AiPreferences, AiSession};
+use super::super::types::{
     ConfigurationSummary, ExecutionIntent, McpResponse, MemoryPattern, ResourceAllocation,
     SessionInfo,
 };

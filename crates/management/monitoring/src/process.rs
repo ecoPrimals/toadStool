@@ -10,18 +10,9 @@ use tracing::info;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::resources::RuntimeMetrics;
 
+use crate::metric_types::ProcessInfo;
 use crate::SystemResourceMonitor;
 use crate::types::ResourceMonitorError;
-
-/// Internal process information for monitoring
-#[derive(Clone, Debug)]
-pub(crate) struct ProcessInfo {
-    pub pid: u32,
-    pub name: String,
-    pub last_cpu_time: u64,
-    pub memory_usage: u64,
-    pub start_time: u64,
-}
 
 impl SystemResourceMonitor {
     /// Registers a process for resource monitoring
@@ -44,8 +35,7 @@ impl SystemResourceMonitor {
         };
 
         self.process_map
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), process_info);
         info!(
             "Registered process {} with PID {} for monitoring",
@@ -56,10 +46,10 @@ impl SystemResourceMonitor {
 
     /// Unregisters a process from monitoring
     pub async fn unregister_process(&self, workload_id: &str) -> Result<(), ToadStoolError> {
-        let was_registered = self.process_map.write().await.remove(workload_id).is_some();
+        let was_registered = self.process_map.write().unwrap_or_else(|e| e.into_inner()).remove(workload_id).is_some();
         if was_registered {
-            self.usage_data.write().await.remove(workload_id);
-            self.threshold_data.write().await.remove(workload_id);
+            self.usage_data.write().unwrap_or_else(|e| e.into_inner()).remove(workload_id);
+            self.threshold_data.write().unwrap_or_else(|e| e.into_inner()).remove(workload_id);
             info!("Unregistered process {} from monitoring", workload_id);
             Ok(())
         } else {
@@ -69,7 +59,7 @@ impl SystemResourceMonitor {
 
     /// Gets current metrics for a workload (async version)
     pub async fn get_metrics_async(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
-        let usage_data = self.usage_data.read().await;
+        let usage_data = self.usage_data.read().unwrap_or_else(|e| e.into_inner());
         usage_data.get(workload_id).cloned().ok_or_else(|| {
             ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into()
         })

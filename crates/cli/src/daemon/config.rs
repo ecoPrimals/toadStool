@@ -102,8 +102,7 @@ impl DaemonConfig {
 
     /// Load configuration from file
     async fn load_from_file(path: &PathBuf) -> Result<Self> {
-        let content = tokio::fs::read_to_string(path)
-            .await
+        let content = std::fs::read_to_string(path)
             .context(format!("Failed to read config file: {}", path.display()))?;
 
         let config: Self = toml::from_str(&content)

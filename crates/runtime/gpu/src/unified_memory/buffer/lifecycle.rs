@@ -131,13 +131,15 @@ impl Drop for UnifiedBuffer {
                 metrics.total_allocated = new_total;
             }
 
-            let backend = Arc::clone(&self.backend);
             let size = self.size;
             let id = self.id;
 
             // Drop cannot await: schedule async `free_unified` on the current runtime when present,
             // otherwise run it on a one-shot runtime in a dedicated thread.
-            match tokio::runtime::Handle::try_current() {
+            #[cfg(feature = "runtime")]
+            {
+                let backend = Arc::clone(&self.backend);
+                match tokio::runtime::Handle::try_current() {
                 Ok(handle) => {
                     // We're in a tokio runtime, spawn a blocking task
                     handle.spawn(async move {
@@ -191,6 +193,12 @@ impl Drop for UnifiedBuffer {
                     });
                 }
             }
+            }
+
+            // Without the runtime feature, rely on BackendAllocation drop semantics
+            // (CPU heap / aligned alloc; wgpu buffers when webgpu is enabled).
+            #[cfg(not(feature = "runtime"))]
+            drop(allocation);
 
             tracing::debug!(
                 "Dropped buffer {} ({} bytes), cleanup scheduled",

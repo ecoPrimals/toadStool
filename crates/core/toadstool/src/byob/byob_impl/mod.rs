@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
@@ -148,14 +148,13 @@ impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
 
         if let Some(deployment) = self
             .active_deployments
-            .write()
-            .await
+            .write().unwrap_or_else(|e| e.into_inner())
             .get_mut(&deployment_id)
         {
             let pid = std::process::id();
             let reader = ResourceMetricsReader::new();
             let prev = deployment.resource_poll_state.as_ref();
-            let (sample, new_state) = reader.sample(pid, prev).await;
+            let (sample, new_state) = reader.sample(pid, prev);
             deployment.resource_poll_state = Some(new_state);
 
             let usage = merge_sample_with_gpu(sample, &deployment.request.services);
@@ -198,7 +197,7 @@ impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
 
             // Check concurrent deployment limit
             {
-                let deployments = self.active_deployments.read().await;
+                let deployments = self.active_deployments.read().unwrap_or_else(|e| e.into_inner());
                 if deployments.len() >= self.config.max_concurrent_deployments as usize {
                     return Err(ToadStoolError::resource(
                         "Maximum concurrent deployments reached".to_string(),
@@ -222,7 +221,7 @@ impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
 
             // Store active deployment
             {
-                let mut deployments = self.active_deployments.write().await;
+                let mut deployments = self.active_deployments.write().unwrap_or_else(|e| e.into_inner());
                 deployments.insert(dep_id, active_deployment);
             }
 
@@ -243,8 +242,7 @@ impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
     ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_ {
         async move {
             self.active_deployments
-                .read()
-                .await
+                .read().unwrap_or_else(|e| e.into_inner())
                 .get(&deployment_id)
                 .map_or_else(
                     || {
@@ -265,15 +263,14 @@ impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
             info!("🛑 Stopping deployment: {}", deployment_id);
 
             // Cancel background health monitor for this deployment
-            let removed = self.health_handles.write().await.remove(&deployment_id);
+            let removed = self.health_handles.write().unwrap_or_else(|e| e.into_inner()).remove(&deployment_id);
             if let Some(handle) = removed {
                 handle.abort();
             }
 
             if let Some(deployment) = self
                 .active_deployments
-                .write()
-                .await
+                .write().unwrap_or_else(|e| e.into_inner())
                 .get_mut(&deployment_id)
             {
                 deployment.update_status(DeploymentStatus::Stopping);
@@ -345,8 +342,7 @@ impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
         async move {
             let responses = self
                 .active_deployments
-                .read()
-                .await
+                .read().unwrap_or_else(|e| e.into_inner())
                 .values()
                 .inspect(|d| {
                     if d.is_completed() {
@@ -374,8 +370,7 @@ impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
             self.update_resource_usage(deployment_id).await?;
 
             self.active_deployments
-                .read()
-                .await
+                .read().unwrap_or_else(|e| e.into_inner())
                 .get(&deployment_id)
                 .map_or_else(
                     || {

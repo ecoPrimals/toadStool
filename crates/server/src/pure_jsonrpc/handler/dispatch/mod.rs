@@ -41,7 +41,7 @@ use toadstool_ember::VfioAnchor;
 use toadstool_ember::held_resource::HeldResource;
 #[cfg(target_os = "linux")]
 use toadstool_ember::vfio_handle::VfioResourceHandle;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use types::{DispatchJob, PipelineJob};
 
 /// Shared collection of VFIO warm-keepalive anchors.

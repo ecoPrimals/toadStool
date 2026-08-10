@@ -11,7 +11,7 @@
 use crate::visualization_client::SharedVisualizationClient;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 use toadstool_integration_primals::shader_compiler::{
@@ -78,14 +78,15 @@ pub async fn run(
                         "silicon registry: compiler capabilities discovered"
                     );
 
-                    let mut reg = registry.write().await;
-                    reg.status = ShaderCompilerStatus::Available(
-                        caps.compiler_version
-                            .clone()
-                            .unwrap_or_else(|| "unknown".to_string()),
-                    );
-                    reg.capabilities = Some(caps);
-                    drop(reg);
+                    {
+                        let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
+                        reg.status = ShaderCompilerStatus::Available(
+                            caps.compiler_version
+                                .clone()
+                                .unwrap_or_else(|| "unknown".to_string()),
+                        );
+                        reg.capabilities = Some(caps);
+                    }
 
                     debug!(
                         backend_count,
@@ -95,20 +96,22 @@ pub async fn run(
                 }
                 Err(e) => {
                     debug!(error = %e, "shader.compile.capabilities query failed — will retry");
-                    let mut reg = registry.write().await;
-                    reg.status = ShaderCompilerStatus::Error(e.clone());
-                    drop(reg);
+                    {
+                        let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
+                        reg.status = ShaderCompilerStatus::Error(e.clone());
+                    }
 
                     tokio::time::sleep(RETRY_INTERVAL).await;
                 }
             }
         } else {
-            let mut reg = registry.write().await;
-            if reg.status != ShaderCompilerStatus::Unavailable {
-                debug!("shader compiler not yet available — silicon registry pending");
-                reg.status = ShaderCompilerStatus::Unavailable;
+            {
+                let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
+                if reg.status != ShaderCompilerStatus::Unavailable {
+                    debug!("shader compiler not yet available — silicon registry pending");
+                    reg.status = ShaderCompilerStatus::Unavailable;
+                }
             }
-            drop(reg);
 
             tokio::time::sleep(RETRY_INTERVAL).await;
         }
@@ -162,7 +165,7 @@ mod tests {
     async fn test_registry_write_read() {
         let registry = create_silicon_registry();
         {
-            let mut reg = registry.write().await;
+            let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
             reg.capabilities = Some(ShaderCompilerCapabilities {
                 backends: vec!["ptx".to_string(), "spirv".to_string()],
                 precision_modes: vec![],
@@ -175,7 +178,7 @@ mod tests {
                 ShaderCompilerStatus::Available("coralReef-v1.2".to_string());
         }
 
-        let reg = registry.read().await;
+        let reg = registry.read().unwrap_or_else(|e| e.into_inner());
         let caps = reg.capabilities.as_ref().unwrap();
         assert_eq!(caps.backends, vec!["ptx", "spirv"]);
         assert!(caps.gemm_tiling);

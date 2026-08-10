@@ -153,7 +153,7 @@ pub async fn run_server_main(
     let (early_stop_tx, early_stop_rx) = tokio::sync::watch::channel(false);
     #[cfg(unix)]
     let jsonrpc_listener =
-        match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path).await {
+        match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path) {
             Ok(listener) => {
                 let listener = Arc::new(listener);
                 let _early_health =
@@ -462,19 +462,19 @@ pub async fn run_server_main(
     server_handle.abort();
 
     if tarpc_socket_path.exists()
-        && let Err(e) = tokio::fs::remove_file(&tarpc_socket_path).await
+        && let Err(e) = std::fs::remove_file(&tarpc_socket_path)
     {
         warn!("Failed to remove tarpc socket: {}", e);
     }
     if jsonrpc_socket.exists()
-        && let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await
+        && let Err(e) = std::fs::remove_file(&jsonrpc_socket)
     {
         warn!("Failed to remove JSON-RPC socket: {}", e);
     }
     // Clean up legacy symlink
     if let Some(ref legacy) = legacy_socket
         && (legacy.exists() || legacy.symlink_metadata().is_ok())
-        && let Err(e) = tokio::fs::remove_file(legacy).await
+        && let Err(e) = std::fs::remove_file(legacy)
     {
         warn!("Failed to remove legacy symlink: {}", e);
     }
@@ -489,7 +489,7 @@ pub async fn run_server_main(
         };
         let old_path = dir.join(old_name);
         if old_path.symlink_metadata().is_ok() {
-            let _ = tokio::fs::remove_file(&old_path).await;
+            let _ = std::fs::remove_file(&old_path);
         }
     }
 

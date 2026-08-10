@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -202,7 +202,10 @@ impl StandaloneExecutor {
 
         // Check if we're at capacity
         {
-            let active_executions = self.active_executions.read().await;
+            let active_executions = self
+                .active_executions
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             if active_executions.len() >= self.config.max_concurrent_executions as usize {
                 warn!("Rejecting execution - at capacity");
                 return Err(toadstool::ToadStoolError::resource(
@@ -213,7 +216,10 @@ impl StandaloneExecutor {
 
         // Add to active executions
         {
-            let mut active_executions = self.active_executions.write().await;
+            let mut active_executions = self
+                .active_executions
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             active_executions.insert(execution_id, session);
         }
 
@@ -225,7 +231,10 @@ impl StandaloneExecutor {
     }
 
     async fn cancel_execution(&self, execution_id: Uuid) -> ToadStoolResult<()> {
-        let mut active_executions = self.active_executions.write().await;
+        let mut active_executions = self
+            .active_executions
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let session = active_executions.remove(&execution_id).ok_or_else(|| {
             toadstool::ToadStoolError::execution(format!(
                 "Execution {execution_id} not found (already completed or never submitted)"

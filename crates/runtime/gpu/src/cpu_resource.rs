@@ -14,7 +14,7 @@ use crate::universal::{
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 use crate::cpu_pool_resilience;
@@ -280,7 +280,10 @@ impl UniversalComputeResource for CpuComputeResource {
     }
 
     async fn utilization(&self) -> f32 {
-        *self.utilization.read().await
+        *self
+            .utilization
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
     }
 
     #[expect(
@@ -335,7 +338,10 @@ impl ComputeContext for CpuComputeContext {
 
         // Update utilization
         {
-            let mut util = self.utilization.write().await;
+            let mut util = self
+                .utilization
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             *util = 1.0; // Mark as busy
         }
 
@@ -358,7 +364,10 @@ impl ComputeContext for CpuComputeContext {
 
         // Update utilization
         {
-            let mut util = self.utilization.write().await;
+            let mut util = self
+                .utilization
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             *util = 0.0; // Mark as idle
         }
 

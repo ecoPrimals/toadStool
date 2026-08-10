@@ -38,7 +38,7 @@ async fn test_cache_service() {
 
     client.cache_service(service.clone()).await;
 
-    let cache = client.cache.read().await;
+    let cache = client.cache.read().unwrap();
     assert!(cache.contains_key("test-service"));
 }
 
@@ -228,6 +228,6 @@ async fn test_cache_service_id_from_endpoint_when_no_id() {
 
     client.cache_service(service).await;
 
-    let cache = client.cache.read().await;
+    let cache = client.cache.read().unwrap();
     assert!(cache.contains_key("10.0.0.1:7777"));
 }

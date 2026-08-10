@@ -39,14 +39,18 @@ pub mod aggregation;
 pub mod compiler;
 pub mod compute_dispatch;
 pub mod config;
+#[cfg(feature = "runtime")]
 pub mod coordinator;
 mod cpu_pool_resilience;
 pub mod cpu_resource;
+#[cfg(feature = "runtime")]
 pub mod distributed; // Refactored from distributed_scheduler
+#[cfg(feature = "runtime")]
 pub mod engine;
 pub mod frameworks;
 pub mod memory_pool;
 pub mod parallel_framework_dispatch;
+#[cfg(feature = "runtime")]
 pub mod scheduler;
 pub mod strategy;
 pub mod traits;
@@ -57,6 +61,7 @@ pub mod universal;
 pub mod unified_memory;
 
 // glowPlug/ember GPU implementation (hardware-agnostic lifecycle traits)
+#[cfg(feature = "runtime")]
 pub mod glowplug;
 
 // Real GPU backends (no mocks): WebGPU + Vulkan in-tree; CUDA stub for API compatibility.
@@ -74,8 +79,10 @@ pub use config::{
     RecursionConfig, RecursiveSchedulingStrategy, ResourceConfig, UniversalGpuConfig,
     UniversalIrConfig, UniversalIrFormat,
 };
+#[cfg(feature = "runtime")]
 pub use coordinator::ComputeResourceCoordinator;
 pub use cpu_resource::CpuComputeResource;
+#[cfg(feature = "runtime")]
 pub use engine::UniversalGpuEngine;
 pub use frameworks::{FallbackFramework, WebGPUAdapter, WebGpuFramework};
 pub use parallel_framework_dispatch::ParallelComputeFrameworkDispatch;
@@ -85,12 +92,14 @@ pub use traits::{KernelOptimizer, LoadBalancer, ParallelComputeFramework};
 pub use types::*;
 
 // Re-export the main engine as the default runtime
+#[cfg(feature = "runtime")]
 pub use engine::UniversalGpuEngine as GpuRuntime;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(feature = "runtime")]
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_gpu_engine_creation() {
         let result = UniversalGpuEngine::new().await;

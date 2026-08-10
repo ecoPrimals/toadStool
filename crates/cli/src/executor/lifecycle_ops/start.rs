@@ -8,7 +8,7 @@ use std::time::Duration;
 const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
 
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
-use tokio::fs;
+use std::fs;
 use tracing::info;
 use uuid::Uuid;
 
@@ -48,7 +48,7 @@ impl BiomeExecutor {
         let env = PathEnv::from_env();
         let paths = PlatformPaths::new(&env);
         let log_dir = paths.toadstool_log_dir().join(biome_name);
-        fs::create_dir_all(&log_dir).await?;
+        fs::create_dir_all(&log_dir)?;
 
         let environment = parse_env_vars(&env_vars);
 
@@ -161,7 +161,7 @@ impl BiomeExecutor {
         };
 
         {
-            let mut biomes = self.biomes.write().await;
+            let mut biomes = self.biomes.write().unwrap_or_else(|e| e.into_inner());
             biomes.insert(biome_name.to_string(), running_biome);
         }
 

@@ -303,7 +303,7 @@ mod tests {
                     max_power_watts: 200.0,
                 },
             },
-            usage: Arc::new(RwLock::new(crate::types::DeviceUsage::default())),
+            usage: Arc::new(std::sync::RwLock::new(crate::types::DeviceUsage::default())),
             framework_handle: None,
         }
     }

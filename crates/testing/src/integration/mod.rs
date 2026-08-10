@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use toadstool::ToadStoolResult as Result;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 
 /// Integration test result

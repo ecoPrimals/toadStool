@@ -2,6 +2,7 @@
 // Implementation for IntegrationTestManager
 // This file was extracted from integration.rs for better code organization
 
+use std::sync::RwLock;
 use super::*;
 
 impl IntegrationTestManager {
@@ -651,7 +652,7 @@ impl IntegrationTestManager {
 
         // Store results
         {
-            let mut stored_results = self.results.write().await;
+            let mut stored_results = self.results.write().unwrap_or_else(|e| e.into_inner());
             stored_results.extend(results.clone());
         }
 
@@ -664,7 +665,7 @@ impl IntegrationTestManager {
 
     /// Get test results
     pub async fn get_results(&self) -> Vec<IntegrationTestResult> {
-        self.results.read().await.clone()
+        self.results.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Generate test report

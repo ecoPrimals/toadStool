@@ -5,7 +5,7 @@ use crate::{CliContextExt, Result};
 use std::future::Future;
 use toadstool_common::constants::network::LOCALHOST_IPV4;
 use toadstool_common::constants::platform_paths::procfs;
-use tokio::process::Command;
+use std::process::Command;
 use tracing::{debug, info};
 
 use super::types::*;
@@ -24,25 +24,25 @@ impl DiscoveryExt for ZeroConfigDeployment {
         info!("🖥️ Discovering system capabilities");
 
         // Discover CPU information
-        self.system_info.cpu = self.discover_cpu().await?;
+        self.system_info.cpu = self.discover_cpu()?;
 
         // Discover memory information
-        self.system_info.memory = self.discover_memory().await?;
+        self.system_info.memory = self.discover_memory()?;
 
         // Discover storage information
-        self.system_info.storage = self.discover_storage().await?;
+        self.system_info.storage = self.discover_storage()?;
 
         // Discover network information
-        self.system_info.network = self.discover_network().await?;
+        self.system_info.network = self.discover_network()?;
 
         // Discover OS information
-        self.system_info.os = self.discover_os().await?;
+        self.system_info.os = self.discover_os()?;
 
         // Discover container runtime
-        self.system_info.container_runtime = self.discover_container_runtime().await?;
+        self.system_info.container_runtime = self.discover_container_runtime()?;
 
         // Discover GPU information
-        self.system_info.gpu = self.discover_gpu().await?;
+        self.system_info.gpu = self.discover_gpu()?;
 
         info!("✅ System discovery completed");
         Ok(())
@@ -75,13 +75,12 @@ impl DiscoveryExt for ZeroConfigDeployment {
 
 impl ZeroConfigDeployment {
     /// Discover CPU information
-    async fn discover_cpu(&self) -> Result<CpuInfo> {
+    fn discover_cpu(&self) -> Result<CpuInfo> {
         debug!("Discovering CPU information");
 
         // Use /proc/cpuinfo on Linux
         let output = Command::new("nproc")
             .output()
-            .await
             .context("Failed to run nproc")?;
 
         let cores = String::from_utf8(output.stdout)?
@@ -92,7 +91,6 @@ impl ZeroConfigDeployment {
         // Get CPU model from /proc/cpuinfo
         let model = self
             .get_cpu_model()
-            .await
             .unwrap_or_else(|_| "Unknown".to_string());
 
         Ok(CpuInfo {
@@ -105,11 +103,10 @@ impl ZeroConfigDeployment {
     }
 
     /// Get CPU model information
-    async fn get_cpu_model(&self) -> Result<String> {
+    fn get_cpu_model(&self) -> Result<String> {
         let output = Command::new("cat")
             .arg(procfs::CPUINFO)
             .output()
-            .await
             .context("Failed to read /proc/cpuinfo")?;
 
         let content = String::from_utf8(output.stdout)?;
@@ -126,13 +123,12 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover memory information
-    async fn discover_memory(&self) -> Result<MemoryInfo> {
+    fn discover_memory(&self) -> Result<MemoryInfo> {
         debug!("Discovering memory information");
 
         let output = Command::new("cat")
             .arg(procfs::MEMINFO)
             .output()
-            .await
             .context("Failed to read /proc/meminfo")?;
 
         let content = String::from_utf8(output.stdout)?;
@@ -159,14 +155,13 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover storage information
-    async fn discover_storage(&self) -> Result<StorageInfo> {
+    fn discover_storage(&self) -> Result<StorageInfo> {
         debug!("Discovering storage information");
 
         let output = Command::new("df")
             .arg("-B1")
             .arg("/")
             .output()
-            .await
             .context("Failed to run df")?;
 
         let content = String::from_utf8(output.stdout)?;
@@ -191,14 +186,13 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover network information
-    async fn discover_network(&self) -> Result<NetworkInfo> {
+    fn discover_network(&self) -> Result<NetworkInfo> {
         debug!("Discovering network information");
 
         let output = Command::new("ip")
             .arg("addr")
             .arg("show")
             .output()
-            .await
             .context("Failed to run ip addr")?;
 
         let content = String::from_utf8(output.stdout)?;
@@ -234,13 +228,12 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover OS information
-    async fn discover_os(&self) -> Result<OsInfo> {
+    fn discover_os(&self) -> Result<OsInfo> {
         debug!("Discovering OS information");
 
         let output = Command::new("uname")
             .arg("-a")
             .output()
-            .await
             .context("Failed to run uname")?;
 
         let content = String::from_utf8(output.stdout)?;
@@ -255,31 +248,28 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover container runtime
-    async fn discover_container_runtime(&self) -> Result<ContainerRuntimeInfo> {
+    fn discover_container_runtime(&self) -> Result<ContainerRuntimeInfo> {
         debug!("Discovering container runtime");
 
         let docker = Command::new("docker")
             .arg("--version")
             .output()
-            .await
             .is_ok();
 
         let podman = Command::new("podman")
             .arg("--version")
             .output()
-            .await
             .is_ok();
 
         let containerd = Command::new("containerd")
             .arg("--version")
             .output()
-            .await
             .is_ok();
 
         let version = if docker {
-            self.get_docker_version().await.ok()
+            self.get_docker_version().ok()
         } else if podman {
-            self.get_podman_version().await.ok()
+            self.get_podman_version().ok()
         } else {
             None
         };
@@ -293,37 +283,34 @@ impl ZeroConfigDeployment {
     }
 
     /// Get Docker version
-    async fn get_docker_version(&self) -> Result<String> {
+    fn get_docker_version(&self) -> Result<String> {
         let output = Command::new("docker")
             .arg("--version")
             .output()
-            .await
             .context("Failed to get Docker version")?;
 
         Ok(String::from_utf8(output.stdout)?.trim().to_string())
     }
 
     /// Get Podman version
-    async fn get_podman_version(&self) -> Result<String> {
+    fn get_podman_version(&self) -> Result<String> {
         let output = Command::new("podman")
             .arg("--version")
             .output()
-            .await
             .context("Failed to get Podman version")?;
 
         Ok(String::from_utf8(output.stdout)?.trim().to_string())
     }
 
     /// Discover GPU information
-    async fn discover_gpu(&self) -> Result<GpuInfo> {
+    fn discover_gpu(&self) -> Result<GpuInfo> {
         debug!("Discovering GPU information");
 
         // Try to detect NVIDIA GPU
         let nvidia_output = Command::new("nvidia-smi")
             .arg("--query-gpu=count,name,memory.total")
             .arg("--format=csv,noheader,nounits")
-            .output()
-            .await;
+            .output();
 
         if let Ok(output) = nvidia_output {
             if output.status.success() {

@@ -34,7 +34,7 @@ use crate::pure_jsonrpc::handler::ConnectionTrustHints;
 ///
 /// Returns [`ServerError`] if directory creation, socket bind, or permission setting fails.
 pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> ServerResult<()> {
-    let listener = Arc::new(prebind_unix_listener(&socket_path).await?);
+    let listener = Arc::new(prebind_unix_listener(&socket_path)?);
     serve_unix_prebound(handler, listener).await
 }
 
@@ -44,11 +44,11 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
 /// [`serve_unix_prebound`] after constructing the handler. This
 /// ensures `connect()` succeeds as soon as the socket path exists,
 /// even before the full handler is ready.
-pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResult<UnixListener> {
+pub fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResult<UnixListener> {
     info!("Pre-binding JSON-RPC Unix socket: {:?}", socket_path);
 
     if let Some(parent) = socket_path.parent() {
-        tokio::fs::create_dir_all(parent).await.map_err(|e| {
+        std::fs::create_dir_all(parent).map_err(|e| {
             ServerError::Initialization(format!(
                 "Failed to create socket directory {}: {e}",
                 parent.display()
@@ -58,9 +58,7 @@ pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResul
 
     if socket_path.exists() {
         warn!("Removing old JSON-RPC socket: {:?}", socket_path);
-        tokio::fs::remove_file(socket_path)
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
+        std::fs::remove_file(socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
     }
 
     let listener =

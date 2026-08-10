@@ -15,7 +15,7 @@ use toadstool_common::infant_discovery::{
     DiscoveredService, DiscoveryEngine, DiscoverySource, ServiceHealth, ServiceMetadata,
 };
 use toadstool_common::interned_strings::capabilities;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use super::types::CoordinationTransport;
@@ -144,13 +144,19 @@ impl CapabilityClient {
 
         // Update cache
         {
-            let mut cache = self.cached_services.write().await;
+            let mut cache = self
+                .cached_services
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             *cache = discovered_services.clone();
         }
 
         // Update last discovery time
         {
-            let mut last = self.last_discovery.write().await;
+            let mut last = self
+                .last_discovery
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             *last = Some(SystemTime::now());
         }
 
@@ -160,7 +166,10 @@ impl CapabilityClient {
     /// Get available services (from cache or refresh if stale)
     pub async fn get_available_services(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
         let should_refresh = {
-            let last = self.last_discovery.read().await;
+            let last = self
+                .last_discovery
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             (*last).is_none_or(|last_time| {
                 let age = SystemTime::now()
                     .duration_since(last_time)
@@ -173,7 +182,10 @@ impl CapabilityClient {
             debug!("Cache stale, refreshing discovery");
             self.refresh_discovery().await
         } else {
-            let cache = self.cached_services.read().await;
+            let cache = self
+                .cached_services
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             Ok(cache.clone())
         }
     }
@@ -271,8 +283,14 @@ impl CapabilityClient {
 
     /// Get client statistics
     pub async fn get_stats(&self) -> ClientStats {
-        let services = self.cached_services.read().await;
-        let last = self.last_discovery.read().await;
+        let services = self
+            .cached_services
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
+        let last = self
+            .last_discovery
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         ClientStats {
             available_services: services.len(),

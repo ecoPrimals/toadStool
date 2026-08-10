@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::error::{IntegrationError, ToadStoolError, ToadStoolResult};
 use crate::primal_identity::{Capability, DiscoveredService};
@@ -63,7 +63,7 @@ impl<C: DiscoveryClient> RuntimeDiscovery<C> {
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
         // Check cache first
         {
-            let cache = self.cache.read().await;
+            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
             if let Some(services) = cache.get_by_capability(capability) {
                 if !services.is_empty() {
                     // Clone Arc contents only at API boundary
@@ -119,7 +119,7 @@ impl<C: DiscoveryClient> RuntimeDiscovery<C> {
 
                 // Return cached services as fallback
                 // Clone Arc contents only at API boundary
-                let cache = self.cache.read().await;
+                let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
                 Ok(cache.get_all().iter().map(|s| (**s).clone()).collect())
             }
         }
@@ -211,7 +211,7 @@ impl<C: DiscoveryClient> RuntimeDiscovery<C> {
 
     /// Update the service cache
     async fn update_cache(&self, services: &[DiscoveredService]) {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         for service in services {
             cache.insert(service.clone());
         }
@@ -219,7 +219,7 @@ impl<C: DiscoveryClient> RuntimeDiscovery<C> {
 
     /// Clear the cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache.clear();
     }
 }

@@ -4,8 +4,9 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::SystemTime;
 
-use toadstool::JobPriority;
-use toadstool::ToadStoolResult;
+use toadstool_common::ToadStoolResult;
+
+use super::priority::JobPriority;
 use uuid::Uuid;
 
 use super::universal_job::{UniversalJob, UniversalJobType};

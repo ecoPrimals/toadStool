@@ -132,7 +132,7 @@ pub async fn execute_zero_config_deployment() -> Result<()> {
 
     // Save configuration for future use
     let config_json = serde_json::to_string_pretty(&summary.config)?;
-    tokio::fs::write("toadstool-auto-config.json", config_json).await?;
+    std::fs::write("toadstool-auto-config.json", config_json)?;
 
     println!("💾 Configuration saved to toadstool-auto-config.json");
 

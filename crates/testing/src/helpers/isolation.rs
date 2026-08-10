@@ -12,7 +12,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Isolated test environment with its own temporary directory
 pub struct IsolatedEnv {
@@ -36,13 +36,13 @@ impl IsolatedEnv {
 
     /// Set an environment variable for the duration of the test
     pub async fn set_var(&self, key: impl Into<String>, value: impl Into<String>) {
-        let mut vars = self.env_vars.write().await;
+        let mut vars = self.env_vars.write().unwrap_or_else(|e| e.into_inner());
         vars.push((key.into(), value.into()));
     }
 
     /// Get an environment variable previously set via set_var
     pub async fn get_var(&self, key: &str) -> Option<String> {
-        let vars = self.env_vars.read().await;
+        let vars = self.env_vars.read().unwrap_or_else(|e| e.into_inner());
         vars.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
     }
 
@@ -74,13 +74,13 @@ impl IsolatedConfig {
 
     /// Set a config value by key
     pub async fn set(&self, key: &str, value: serde_json::Value) {
-        let mut data = self.data.write().await;
+        let mut data = self.data.write().unwrap_or_else(|e| e.into_inner());
         data[key] = value;
     }
 
     /// Get a config value by key
     pub async fn get(&self, key: &str) -> Option<serde_json::Value> {
-        let data = self.data.read().await;
+        let data = self.data.read().unwrap_or_else(|e| e.into_inner());
         data.get(key).cloned()
     }
 

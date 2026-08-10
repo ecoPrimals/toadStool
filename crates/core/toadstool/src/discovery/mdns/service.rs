@@ -12,7 +12,7 @@ use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -148,8 +148,7 @@ impl MdnsDiscoveryService {
 
                         // Update cache
                         self.services
-                            .write()
-                            .await
+                            .write().unwrap_or_else(|e| e.into_inner())
                             .insert(service.instance_id, service.clone());
 
                         discovered.push(service);
@@ -196,7 +195,7 @@ impl MdnsDiscoveryService {
 
     /// Get cached services
     pub async fn get_cached_services(&self) -> Vec<DiscoveredService> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
         services.values().cloned().collect()
     }
 }

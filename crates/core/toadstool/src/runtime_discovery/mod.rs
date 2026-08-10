@@ -15,7 +15,7 @@ mod state;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -80,7 +80,7 @@ impl RuntimeDiscovery {
     ///
     /// Returns error if discovery is already running.
     pub async fn start(&self) -> ToadStoolResult<()> {
-        let mut state = self.state.write().await;
+        let mut state = self.state.write().unwrap_or_else(|e| e.into_inner());
         if state.running {
             return Err(ToadStoolError::runtime("Discovery already running"));
         }
@@ -101,7 +101,7 @@ impl RuntimeDiscovery {
     ///
     /// This function currently always returns `Ok`.
     pub async fn stop(&self) -> ToadStoolResult<()> {
-        let mut state = self.state.write().await;
+        let mut state = self.state.write().unwrap_or_else(|e| e.into_inner());
         if !state.running {
             return Ok(());
         }
@@ -127,8 +127,7 @@ impl RuntimeDiscovery {
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
         let matching: Vec<DiscoveredService> = self
             .services
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|service| {
                 service
@@ -159,8 +158,7 @@ impl RuntimeDiscovery {
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
         let matching: Vec<DiscoveredService> = self
             .services
-            .read()
-            .await
+            .read().unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|service| self.identity.matches_requirement(requirement, service))
             .cloned()
@@ -173,13 +171,13 @@ impl RuntimeDiscovery {
 
     /// Get all discovered services
     pub async fn get_all_services(&self) -> Vec<DiscoveredService> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(|e| e.into_inner());
         services.values().cloned().collect()
     }
 
     /// Get discovery statistics
     pub async fn get_stats(&self) -> DiscoveryStats {
-        let state = self.state.read().await;
+        let state = self.state.read().unwrap_or_else(|e| e.into_inner());
         DiscoveryStats {
             total_discovered: state.stats.total_discovered,
             active_services: state.stats.active_services,
@@ -196,7 +194,7 @@ impl RuntimeDiscovery {
     ///
     /// Returns error if the maximum service limit is reached.
     pub async fn register_service(&self, service: DiscoveredService) -> ToadStoolResult<()> {
-        let mut services = self.services.write().await;
+        let mut services = self.services.write().unwrap_or_else(|e| e.into_inner());
 
         // Check max services limit
         if services.len() >= self.config.max_services {
@@ -214,7 +212,7 @@ impl RuntimeDiscovery {
         let services_len = services.len();
         drop(services);
 
-        let mut state = self.state.write().await;
+        let mut state = self.state.write().unwrap_or_else(|e| e.into_inner());
         state.stats.total_discovered += 1;
         state.stats.active_services = services_len;
         drop(state);
@@ -228,7 +226,7 @@ impl RuntimeDiscovery {
     ///
     /// This function currently always returns `Ok`.
     pub async fn remove_service(&self, instance_id: &Uuid) -> ToadStoolResult<()> {
-        let mut services = self.services.write().await;
+        let mut services = self.services.write().unwrap_or_else(|e| e.into_inner());
 
         let removed = services.remove(instance_id).is_some();
         let len = services.len();
@@ -236,7 +234,7 @@ impl RuntimeDiscovery {
 
         if removed {
             info!("🗑️ Removed service: {}", instance_id);
-            let mut state = self.state.write().await;
+            let mut state = self.state.write().unwrap_or_else(|e| e.into_inner());
             state.stats.active_services = len;
         }
 
@@ -261,7 +259,7 @@ impl RuntimeDiscovery {
 
                 // Check if still running
                 {
-                    let state_read = state.read().await;
+                    let state_read = state.read().unwrap_or_else(|e| e.into_inner());
                     if !state_read.running {
                         break;
                     }
@@ -279,7 +277,7 @@ impl RuntimeDiscovery {
         state: &Arc<RwLock<DiscoveryState>>,
         config: &DiscoveryConfig,
     ) {
-        let mut services_write = services.write().await;
+        let mut services_write = services.write().unwrap_or_else(|e| e.into_inner());
         let now = std::time::SystemTime::now();
         let timeout = config.service_timeout;
 
@@ -298,7 +296,7 @@ impl RuntimeDiscovery {
                 services_write.remove(id);
             }
 
-            let mut state_write = state.write().await;
+            let mut state_write = state.write().unwrap_or_else(|e| e.into_inner());
             let stale_count = stale_ids.len();
             let timeout_delta = stale_count as u64;
             state_write.stats.timeouts += timeout_delta;

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -109,7 +109,7 @@ impl FilePolicyManager {
     }
 
     /// Load policy from file
-    async fn load_policy_from_file(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {
+    fn load_policy_from_file(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {
         let file_path = self.policy_file_path(policy_id);
 
         if !file_path.exists() {
@@ -119,7 +119,7 @@ impl FilePolicyManager {
             )));
         }
 
-        let content = tokio::fs::read_to_string(&file_path).await.map_err(|e| {
+        let content = std::fs::read_to_string(&file_path).map_err(|e| {
             ToadStoolError::configuration(format!(
                 "Failed to read policy file {}: {}",
                 file_path.display(),
@@ -150,7 +150,7 @@ impl FilePolicyManager {
     }
 
     /// Save policy to file (TOML format - ecoBin compliant)
-    async fn save_policy_to_file(&self, policy: &SecurityPolicy) -> ToadStoolResult<()> {
+    fn save_policy_to_file(&self, policy: &SecurityPolicy) -> ToadStoolResult<()> {
         // Always save as TOML (ecoBin compliant, pure Rust)
         let file_path = self.config.policy_dir.join(format!("{}.toml", policy.id));
 
@@ -161,7 +161,7 @@ impl FilePolicyManager {
             ))
         })?;
 
-        tokio::fs::write(&file_path, content).await.map_err(|e| {
+        std::fs::write(&file_path, content).map_err(|e| {
             ToadStoolError::configuration(format!(
                 "Failed to write policy file {}: {}",
                 file_path.display(),
@@ -180,7 +180,7 @@ impl PolicyManager for FilePolicyManager {
 
         // Check cache first; update LRU metadata on hit.
         {
-            let mut cache = self.policy_cache.write().await;
+            let mut cache = self.policy_cache.write().unwrap_or_else(|e| e.into_inner());
             if let Some(cached) = cache.get_mut(policy_id)
                 && is_cache_valid(cached, &self.config)
             {
@@ -195,11 +195,11 @@ impl PolicyManager for FilePolicyManager {
         }
 
         // Load from file
-        let policy = self.load_policy_from_file(policy_id).await?;
+        let policy = self.load_policy_from_file(policy_id)?;
 
         // Update cache
         if self.config.cache_enabled {
-            let mut cache = self.policy_cache.write().await;
+            let mut cache = self.policy_cache.write().unwrap_or_else(|e| e.into_inner());
             cache.insert(
                 policy_id.to_string(),
                 CachedPolicy {
@@ -227,11 +227,11 @@ impl PolicyManager for FilePolicyManager {
         }
 
         // Save to file
-        self.save_policy_to_file(policy).await?;
+        self.save_policy_to_file(policy)?;
 
         // Update cache
         if self.config.cache_enabled {
-            let mut cache = self.policy_cache.write().await;
+            let mut cache = self.policy_cache.write().unwrap_or_else(|e| e.into_inner());
             cache.insert(
                 policy.id.clone(),
                 CachedPolicy {
@@ -252,7 +252,7 @@ impl PolicyManager for FilePolicyManager {
         let file_path = self.policy_file_path(policy_id);
 
         if file_path.exists() {
-            tokio::fs::remove_file(&file_path).await.map_err(|e| {
+            std::fs::remove_file(&file_path).map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "Failed to delete policy file {}: {}",
                     file_path.display(),
@@ -262,7 +262,7 @@ impl PolicyManager for FilePolicyManager {
         }
 
         // Remove from cache
-        self.policy_cache.write().await.remove(policy_id);
+        self.policy_cache.write().unwrap_or_else(|e| e.into_inner()).remove(policy_id);
 
         info!("Deleted policy: {}", policy_id);
         Ok(())
@@ -272,19 +272,18 @@ impl PolicyManager for FilePolicyManager {
         debug!("Listing policies in {}", self.config.policy_dir.display());
 
         let mut policies = Vec::new();
-        let mut dir = tokio::fs::read_dir(&self.config.policy_dir)
-            .await
-            .map_err(|e| {
-                ToadStoolError::configuration(format!(
-                    "Failed to read policy directory {}: {}",
-                    self.config.policy_dir.display(),
-                    e
-                ))
-            })?;
+        let dir = std::fs::read_dir(&self.config.policy_dir).map_err(|e| {
+            ToadStoolError::configuration(format!(
+                "Failed to read policy directory {}: {}",
+                self.config.policy_dir.display(),
+                e
+            ))
+        })?;
 
-        while let Some(entry) = dir.next_entry().await.map_err(|e| {
-            ToadStoolError::configuration(format!("Failed to read directory entry: {e}"))
-        })? {
+        for entry in dir {
+            let entry = entry.map_err(|e| {
+                ToadStoolError::configuration(format!("Failed to read directory entry: {e}"))
+            })?;
             let path = entry.path();
             // Policies are persisted as TOML (see save_policy_to_file).
             if path.extension().and_then(|s| s.to_str()) == Some("toml")

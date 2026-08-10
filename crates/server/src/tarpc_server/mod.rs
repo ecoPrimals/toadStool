@@ -25,7 +25,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 use tarpc::context::Context;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::info;
 #[cfg(unix)]
 use tracing::warn;
@@ -65,7 +65,7 @@ impl ToadStoolTarpcServer {
     /// - Returns 0.0-1.0 utilization percentage
     /// - Graceful degradation on query failure
     async fn calculate_resource_utilization(&self) -> f32 {
-        let active_count = self.workloads.read().await.len();
+        let active_count = self.workloads.read().unwrap_or_else(|e| e.into_inner()).len();
         let max_capacity =
             std::thread::available_parallelism().map_or(4, std::num::NonZero::get) * 4; // ~4 workloads per core
 
@@ -142,7 +142,7 @@ impl ToadStoolTarpcServer {
 
         // Ensure parent directory exists (biomeOS requirement for custom socket paths)
         if let Some(parent) = socket_path.parent() {
-            if let Err(e) = tokio::fs::create_dir_all(parent).await {
+            if let Err(e) = std::fs::create_dir_all(parent) {
                 warn!(
                     "Failed to create socket directory {parent:?}: {e}; continuing without creating parent"
                 );
@@ -152,7 +152,7 @@ impl ToadStoolTarpcServer {
         }
 
         // Clean up old socket if present
-        match tokio::fs::remove_file(socket_path).await {
+        match std::fs::remove_file(socket_path) {
             Ok(()) => info!("Removed old socket file: {:?}", socket_path),
             Err(e) if e.kind() == ErrorKind::NotFound => {}
             Err(e) => return Err(ServerError::Network(e.to_string())),
@@ -279,7 +279,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         // ✅ OPTIMIZED: Use Entry API; Arc::clone(workload_id) and result.clone() are cheap
         // (Bytes clone = refcount bump, Arc<str> clone = refcount bump)
         {
-            let mut workloads = self.workloads.write().await;
+            let mut workloads = self.workloads.write().unwrap_or_else(|e| e.into_inner());
             workloads
                 .entry(Arc::clone(&result.workload_id))
                 .or_insert_with(|| result.clone());
@@ -293,7 +293,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         _context: Context,
         workload_id: String,
     ) -> Result<WorkloadResult, ServiceError> {
-        let workloads = self.workloads.read().await;
+        let workloads = self.workloads.read().unwrap_or_else(|e| e.into_inner());
         workloads.get(workload_id.as_str()).cloned().ok_or_else(|| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
             ServiceError::WorkloadNotFound { workload_id }
@@ -310,7 +310,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         })?;
 
         // Update status
-        let mut workloads = self.workloads.write().await;
+        let mut workloads = self.workloads.write().unwrap_or_else(|e| e.into_inner());
         if let Some(result) = workloads.get_mut(workload_id.as_str()) {
             result.status = WorkloadStatus::Cancelled;
         }
@@ -323,7 +323,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         _context: Context,
         _filter: Option<std::collections::HashMap<String, String>>,
     ) -> Result<Vec<WorkloadResult>, ServiceError> {
-        let workloads = self.workloads.read().await;
+        let workloads = self.workloads.read().unwrap_or_else(|e| e.into_inner());
         Ok(workloads.values().cloned().collect())
     }
 
@@ -343,15 +343,18 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
 
     async fn health_check(self, _context: Context) -> Result<HealthStatus, ServiceError> {
         let uptime = self.start_time.elapsed();
-        let workloads = self.workloads.read().await;
-        let active_count = workloads
-            .values()
-            .filter(|w| matches!(w.status, WorkloadStatus::Running | WorkloadStatus::Queued))
-            .count();
-        let queued_count = workloads
-            .values()
-            .filter(|w| matches!(w.status, WorkloadStatus::Queued))
-            .count();
+        let (active_count, queued_count) = {
+            let workloads = self.workloads.read().unwrap_or_else(|e| e.into_inner());
+            let active_count = workloads
+                .values()
+                .filter(|w| matches!(w.status, WorkloadStatus::Running | WorkloadStatus::Queued))
+                .count();
+            let queued_count = workloads
+                .values()
+                .filter(|w| matches!(w.status, WorkloadStatus::Queued))
+                .count();
+            (active_count, queued_count)
+        };
 
         #[expect(
             clippy::cast_possible_truncation,

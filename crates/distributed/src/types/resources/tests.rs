@@ -175,7 +175,7 @@ fn resource_requirements_to_from_core() {
             compute_capability: Some("7.5".to_string()),
         }),
     };
-    let core_req: toadstool::resources::ResourceRequirements = distributed.clone().into();
+    let core_req: toadstool_core::resources::ResourceRequirements = distributed.clone().into();
     let back: ResourceRequirements = core_req.into();
     assert!((back.cpu.min_cores - distributed.cpu.min_cores).abs() < f64::EPSILON);
     assert_eq!(back.memory.min_bytes, distributed.memory.min_bytes);

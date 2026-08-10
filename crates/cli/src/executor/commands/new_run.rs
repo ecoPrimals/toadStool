@@ -32,7 +32,7 @@ impl BiomeExecutor {
 
         Ok(Self {
             distributed,
-            biomes: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            biomes: Arc::new(std::sync::RwLock::new(HashMap::new())),
             _config: config,
         })
     }
@@ -69,7 +69,7 @@ impl BiomeExecutor {
 
         // Check if biome is already running
         {
-            let biomes = self.biomes.read().await;
+            let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
             if biomes.contains_key(&biome_name) {
                 return Err(crate::CliError::Other(format!(
                     "Biome '{biome_name}' is already running"

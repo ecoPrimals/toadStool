@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S374 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 2026 | S376 | v0.2.0
 
 ---
 
@@ -40,7 +40,7 @@ Nest    = Tower  + Storage            <- storage
 |------|--------|
 | `cargo build --workspace` | Clean |
 | `cargo check --workspace` (16 arch targets) | **16/16 PASS** (x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch — Linux/macOS/Windows/iOS/Android) |
-| `cargo check` WASM Tier 3 (compute kernel) | **31/48 crates** on `wasm32-unknown-unknown` + `wasm32-wasip1` |
+| `cargo check` WASM Tier 3 (compute kernel) | **38/48 crates** on `wasm32-unknown-unknown` + `wasm32-wasip1` |
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |

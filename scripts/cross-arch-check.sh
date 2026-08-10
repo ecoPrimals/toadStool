@@ -75,6 +75,13 @@ WASM_CRATES=(
     "akida-setup"
     "akida-reservoir-research"
     "neurobench-runner"
+    "toadstool-auto-config"
+    "toadstool-client"
+    "toadstool-integration-protocols"
+    "toadstool-management-monitoring"
+    "toadstool-distributed"
+    "toadstool-runtime-wasm"
+    "toadstool-runtime-gpu"
 )
 
 if [[ "${1:-full}" == "quick" ]]; then

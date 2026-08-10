@@ -10,25 +10,41 @@ keywords = ["distributed", "compute", "orchestration", "coordination"]
 categories = ["asynchronous", "network-programming"]
 
 [features]
-default = []
-testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
+default = ["runtime"]
+# Tokio async runtime + networking/coordination modules. Disable for WASM-only types builds.
+runtime = [
+    "dep:tokio",
+    "dep:tokio-util",
+    "dep:futures",
+    "dep:rand",
+    "dep:base64",
+    "dep:toadstool-sysmon",
+    "dep:toadstool",
+    "dep:toadstool-config",
+    "toadstool/runtime",
+    "toadstool-config/runtime",
+    "toadstool-common/runtime",
+    "uuid/v4",
+]
+testing = ["runtime", "dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
 dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
 # Stub for `security_provider` mock gates (`MockSecurityProvider`); cloud `test_mocks` uses `#[cfg(test)]` only
 test-mocks = []
 # Deprecated `coordination` module (~6k LOC); production uses `coordination_integration`
-legacy-coordination = []
+legacy-coordination = ["runtime"]
 
 [dependencies]
 # Core ToadStool dependencies
-toadstool = { path = "../core/toadstool" }
-toadstool-common = { path = "../core/common" }
-toadstool-config = { path = "../core/config" }
+toadstool = { path = "../core/toadstool", default-features = false, optional = true }
+toadstool-core = { path = "../toadstool-core", default-features = false }
+toadstool-common = { path = "../core/common", default-features = false }
+toadstool-config = { path = "../core/config", default-features = false, optional = true }
 # toadstool-management-analytics = { path = "../management/analytics" }  # Disabled: optional analytics integration
 
-# Async runtime
-tokio = { workspace = true }
-tokio-util = { workspace = true }
-futures = { workspace = true }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
+tokio-util = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
 
 # Serialization
 serde = { workspace = true }
@@ -36,20 +52,20 @@ serde_json = { workspace = true }
 humantime-serde = { workspace = true }
 bytes = { workspace = true }
 
-# Clustering and load balancing
-base64 = { workspace = true }
-rand = { workspace = true }
+# Clustering and load balancing (runtime-only)
+base64 = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
 aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
 
 # Utilities
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 # dashmap removed: evolved to std::sync::RwLock<HashMap> (no usage in source)
 
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
-toadstool-sysmon = { workspace = true }
+toadstool-sysmon = { workspace = true, optional = true }
 
 [[test]]
 name = "cloud_orchestrator_coverage_tests"
@@ -69,9 +85,11 @@ required-features = ["legacy-coordination"]
 
 [[test]]
 name = "beardog_client_coverage_tests"
+required-features = ["runtime"]
 
 [[test]]
 name = "access_control_coverage_tests"
+required-features = ["runtime"]
 
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }

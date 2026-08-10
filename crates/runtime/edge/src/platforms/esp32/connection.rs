@@ -54,7 +54,7 @@ pub(crate) struct ESP32Execution {
 impl ESP32Device {
     /// Connect to ESP32 device
     pub(crate) async fn establish_connection(&self) -> ToadStoolResult<()> {
-        let mut connection = self.connection.write().await;
+        let mut connection = self.connection.write().unwrap_or_else(|e| e.into_inner());
 
         if connection.is_some() {
             return Ok(());
@@ -89,7 +89,7 @@ impl ESP32Device {
 
     /// Send command to ESP32
     pub(crate) async fn send_command(&self, command: &str) -> ToadStoolResult<String> {
-        let connection = self.connection.read().await;
+        let connection = self.connection.read().unwrap_or_else(|e| e.into_inner());
 
         let conn = connection
             .as_ref()

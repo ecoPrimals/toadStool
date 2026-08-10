@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use crate::ecosystem::{DiscoveredServices, EcosystemDiscoverer};
+use crate::ecosystem_types::DiscoveredServices;
+use crate::hardware::SystemCapabilities;
+
+#[cfg(feature = "runtime")]
+use crate::ecosystem::EcosystemDiscoverer;
+#[cfg(feature = "runtime")]
+use crate::hardware::HardwareDetector;
+#[cfg(feature = "runtime")]
 use crate::error::ToadStoolResult;
-use crate::hardware::{HardwareDetector, SystemCapabilities};
 
 /// System information summary for display and debugging.
 #[derive(Debug, Clone)]
@@ -88,6 +94,7 @@ impl SystemSummary {
 ///     Ok(())
 /// }
 /// ```
+#[cfg(feature = "runtime")]
 pub async fn get_system_summary() -> ToadStoolResult<SystemSummary> {
     let mut hardware_detector = HardwareDetector::new();
     let mut ecosystem_discoverer = EcosystemDiscoverer::new();

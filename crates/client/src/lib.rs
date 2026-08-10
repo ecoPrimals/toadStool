@@ -108,15 +108,11 @@ mod tarpc_client;
 
 // Re-export all public types and functions
 pub use client::{
-    // Configuration
     AuthConfig,
     ClientConfig,
-    // Error handling
     ClientError,
     ClientResult,
-    // Execution types
     ClusterStatus,
-    // Workload types and builders
     ContainerWorkloadBuilder,
     ExecutionInfo,
     ExecutionMetrics,
@@ -126,14 +122,14 @@ pub use client::{
     NativeWorkloadBuilder,
     PythonWorkloadBuilder,
     ResourceRequirements,
-    ToadStoolClient,
     ToadStoolEvent,
     WasmWorkloadBuilder,
     WorkloadSubmission,
     WorkloadType,
-    // Main client
-    execution_submit_method,
 };
+
+#[cfg(feature = "runtime")]
+pub use client::{ToadStoolClient, execution_submit_method};
 
 #[cfg(feature = "tarpc")]
 pub use tarpc_client::{ClientEndpoint, TarpcClientError, ToadStoolTarpcClient};

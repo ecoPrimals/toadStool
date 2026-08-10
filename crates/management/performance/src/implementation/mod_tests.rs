@@ -351,8 +351,9 @@ fn test_create_optimizer_custom_weights() {
     let _ = opt;
 }
 
-#[tokio::test]
-async fn test_predict_resources_returns_ok() {
+#[test]
+fn test_predict_resources_returns_ok() {
+    use futures::executor::block_on;
     use std::path::PathBuf;
     use toadstool::workload::ExecutableSource;
 
@@ -368,23 +369,27 @@ async fn test_predict_resources_returns_ok() {
         env_vars: std::collections::HashMap::default(),
         user: None,
     };
-    let pred = opt.predict_resources(&workload).await.unwrap();
+    let pred = block_on(opt.predict_resources(&workload)).unwrap();
     assert!(pred.confidence > 0.0);
 }
 
-#[tokio::test]
-async fn test_get_recommendations_returns_empty() {
+#[test]
+fn test_get_recommendations_returns_empty() {
+    use futures::executor::block_on;
+
     let config = PerformanceConfig::default();
     let opt =
         IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::FastestExecution);
-    let recs = opt.get_recommendations().await.unwrap();
+    let recs = block_on(opt.get_recommendations()).unwrap();
     assert!(recs.is_empty());
 }
 
-#[tokio::test]
-async fn test_update_model_returns_ok() {
+#[test]
+fn test_update_model_returns_ok() {
+    use futures::executor::block_on;
+
     let config = PerformanceConfig::default();
     let opt =
         IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::FastestExecution);
-    opt.update_model().await.unwrap();
+    block_on(opt.update_model()).unwrap();
 }

@@ -9,7 +9,7 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
@@ -156,7 +156,7 @@ impl EdgeDevice for LinuxEdgeDevice {
 
     fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
         let dev = self.clone_handles();
-        Box::pin(async move { *dev.connected.read().await })
+        Box::pin(async move { *dev.connected.read().unwrap_or_else(|e| e.into_inner()) })
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
@@ -168,7 +168,7 @@ impl EdgeDevice for LinuxEdgeDevice {
                     dev.socket_path
                 )));
             }
-            *dev.connected.write().await = true;
+            *dev.connected.write().unwrap_or_else(|e| e.into_inner()) = true;
             debug!("Connected to LinuxEdge device via {:?}", dev.socket_path);
             Ok(())
         })
@@ -177,7 +177,7 @@ impl EdgeDevice for LinuxEdgeDevice {
     fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let dev = self.clone_handles();
         Box::pin(async move {
-            *dev.connected.write().await = false;
+            *dev.connected.write().unwrap_or_else(|e| e.into_inner()) = false;
             debug!("Disconnected from LinuxEdge device {}", dev.id);
             Ok(())
         })
@@ -190,7 +190,7 @@ impl EdgeDevice for LinuxEdgeDevice {
         let dev = self.clone_handles();
         let _ = request;
         Box::pin(async move {
-            if !*dev.connected.read().await {
+            if !*dev.connected.read().unwrap_or_else(|e| e.into_inner()) {
                 return Err(ToadStoolError::network("Not connected"));
             }
             let id = Uuid::new_v4();
@@ -234,7 +234,7 @@ impl EdgeDevice for LinuxEdgeDevice {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>> {
         let dev = self.clone_handles();
         Box::pin(async move {
-            if *dev.connected.read().await && dev.socket_path.exists() {
+            if *dev.connected.read().unwrap_or_else(|e| e.into_inner()) && dev.socket_path.exists() {
                 Ok(DeviceStatus::Online)
             } else {
                 Ok(DeviceStatus::Offline)
@@ -272,9 +272,7 @@ impl EdgeDevice for LinuxEdgeDevice {
                 "Download {} from LinuxEdge {} - delegating to host fs",
                 path, dev.id
             );
-            tokio::fs::read(path)
-                .await
-                .map_err(|e| ToadStoolError::io(e.to_string()))
+            std::fs::read(path).map_err(|e| ToadStoolError::io(e.to_string()))
         })
     }
 

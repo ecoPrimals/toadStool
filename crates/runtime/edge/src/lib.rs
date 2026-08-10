@@ -24,7 +24,7 @@ pub mod udev_pure;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -206,7 +206,7 @@ impl EdgeRuntimeEngine {
         info!("Starting device discovery");
 
         let discovered_devices = self.discovery.discover_devices().await?;
-        let mut devices = self.devices.write().await;
+        let mut devices = self.devices.write().unwrap_or_else(|e| e.into_inner());
 
         for device in discovered_devices {
             let device_id = device.get_id();
@@ -227,7 +227,7 @@ impl EdgeRuntimeEngine {
 
     /// Get connected devices
     pub async fn get_connected_devices(&self) -> Vec<EdgeDeviceInfo> {
-        let devices = self.devices.read().await;
+        let devices = self.devices.read().unwrap_or_else(|e| e.into_inner());
         devices.values().map(|d| d.get_info()).collect()
     }
 
@@ -238,10 +238,13 @@ impl EdgeRuntimeEngine {
         code: &[u8],
         target_platform: EdgePlatform,
     ) -> ToadStoolResult<String> {
-        let devices = self.devices.read().await;
-        let device = devices
-            .get(&device_id)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Device {} not found", device_id)))?;
+        let device = {
+            let devices = self.devices.read().unwrap_or_else(|e| e.into_inner());
+            devices
+                .get(&device_id)
+                .ok_or_else(|| ToadStoolError::not_found(format!("Device {} not found", device_id)))?
+                .clone()
+        };
 
         // Cross-compile if necessary
         let compiled_code = self.toolchain.cross_compile(code, &target_platform).await?;
@@ -261,10 +264,13 @@ impl EdgeRuntimeEngine {
         device_id: Uuid,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
-        let devices = self.devices.read().await;
-        let device = devices
-            .get(&device_id)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Device {} not found", device_id)))?;
+        let device = {
+            let devices = self.devices.read().unwrap_or_else(|e| e.into_inner());
+            devices
+                .get(&device_id)
+                .ok_or_else(|| ToadStoolError::not_found(format!("Device {} not found", device_id)))?
+                .clone()
+        };
 
         let execution_id = Uuid::new_v4();
         let started_at = std::time::SystemTime::now();
@@ -287,7 +293,7 @@ impl EdgeRuntimeEngine {
 
         // Store execution handle
         {
-            let mut executions = self.active_executions.write().await;
+            let mut executions = self.active_executions.write().unwrap_or_else(|e| e.into_inner());
             executions.insert(execution_id, handle);
         }
 
@@ -296,7 +302,7 @@ impl EdgeRuntimeEngine {
 
         // Update execution status
         {
-            let mut executions = self.active_executions.write().await;
+            let mut executions = self.active_executions.write().unwrap_or_else(|e| e.into_inner());
             if let Some(handle) = executions.get_mut(&execution_id) {
                 handle.status = match &result {
                     Ok(_) => ExecutionStatus::Success,
@@ -370,7 +376,7 @@ impl RuntimeEngine for EdgeRuntimeEngine {
 
     fn get_metrics(&self) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         Box::pin(async {
-            let executions = self.active_executions.read().await;
+            let executions = self.active_executions.read().unwrap_or_else(|e| e.into_inner());
             let mut total_cpu = 0.0;
             let mut total_memory = 0u64;
             let mut total_storage = 0u64;
@@ -423,22 +429,43 @@ impl RuntimeEngine for EdgeRuntimeEngine {
         Box::pin(async {
             info!("Cleaning up edge runtime engine");
 
-            let mut executions = self.active_executions.write().await;
-            for (id, handle) in executions.drain() {
-                info!("Stopping execution: {} on device: {}", id, handle.device_id);
-                if let Ok(devices) = self.devices.try_read()
-                    && let Some(device) = devices.get(&handle.device_id)
-                    && let Err(e) = device.stop_execution(id).await
+            let pending_stops: Vec<(Uuid, Uuid)> = {
+                let mut executions = self
+                    .active_executions
+                    .write()
+                    .unwrap_or_else(|e| e.into_inner());
+                executions
+                    .drain()
+                    .map(|(id, handle)| (id, handle.device_id))
+                    .collect()
+            };
+
+            for (execution_id, device_id) in pending_stops {
+                info!(
+                    "Stopping execution: {} on device: {}",
+                    execution_id, device_id
+                );
+                let device = {
+                    let devices = self.devices.read().unwrap_or_else(|e| e.into_inner());
+                    devices.get(&device_id).cloned()
+                };
+                if let Some(device) = device
+                    && let Err(e) = device.stop_execution(execution_id).await
                 {
                     warn!(
                         "Failed to stop execution {} on device {}: {}",
-                        id, handle.device_id, e
+                        execution_id, device_id, e
                     );
                 }
             }
 
-            let mut devices = self.devices.write().await;
-            for (id, device) in devices.drain() {
+            let devices_to_disconnect: Vec<Arc<dyn EdgeDevice>> = {
+                let mut devices = self.devices.write().unwrap_or_else(|e| e.into_inner());
+                devices.drain().map(|(_, device)| device).collect()
+            };
+
+            for device in devices_to_disconnect {
+                let id = device.get_id();
                 info!("Disconnecting device: {}", id);
                 if let Err(e) = device.disconnect().await {
                     warn!("Failed to disconnect device {}: {}", id, e);
@@ -454,7 +481,7 @@ impl RuntimeEngine for EdgeRuntimeEngine {
 impl EdgeRuntimeEngine {
     /// Find suitable device for execution based on requirements
     async fn find_suitable_device(&self, _request: &ExecutionRequest) -> ToadStoolResult<Uuid> {
-        let devices = self.devices.read().await;
+        let devices = self.devices.read().unwrap_or_else(|e| e.into_inner());
 
         if devices.is_empty() {
             return Err(ToadStoolError::not_found(

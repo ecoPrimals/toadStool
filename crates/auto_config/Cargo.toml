@@ -13,22 +13,23 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-# Core ToadStool dependencies
-toadstool = { path = "../core/toadstool" }
-toadstool-common = { path = "../core/common" }
-toadstool-config = { path = "../core/config" }
+# Core ToadStool dependencies (toadstool optional — lib uses common/config only)
+toadstool = { path = "../core/toadstool", default-features = false, optional = true }
+toadstool-common = { path = "../core/common", default-features = false }
+toadstool-config = { path = "../core/config", default-features = false }
+
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
 
 # Workspace dependencies
-tokio = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true, optional = true }
 thiserror = { workspace = true }
-futures = { workspace = true }
 # PURE RUST: reqwest removed - unix sockets only! ✅
-url = { workspace = true }
+url = { workspace = true, optional = true }
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon (pure Rust /proc)
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
@@ -39,10 +40,19 @@ tempfile = { workspace = true }
 temp-env = { workspace = true }
 
 [features]
-default = []
+default = ["runtime"]
+runtime = [
+    "dep:tokio",
+    "dep:tracing-subscriber",
+    "dep:url",
+    "dep:toadstool",
+    "toadstool/runtime",
+    "toadstool-common/runtime",
+    "toadstool-config/runtime",
+    "uuid/v4",
+]
 test-mocks = []  # Enable mock implementations for testing
 slow-tests = []  # Enable slow integration tests (hardware detection, NL processing)
 
 [lints]
 workspace = true
-

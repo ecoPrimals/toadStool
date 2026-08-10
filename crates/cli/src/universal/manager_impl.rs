@@ -142,7 +142,7 @@ impl UniversalComputeManager {
             };
 
             let json_content = serde_json::to_string_pretty(&detection_results)?;
-            fs::write(&output_path, json_content).await?;
+            fs::write(&output_path, json_content)?;
             info!("💾 Results saved to: {}", output_path.display());
         }
 

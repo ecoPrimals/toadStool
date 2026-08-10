@@ -149,10 +149,10 @@ async fn test_announce_and_cleanup_with_temp_dir() {
     // Override get_discovery_dir by writing directly
     let filepath = discovery_dir.join(format!("{}.json", caps.primal_id));
     let json = serde_json::to_string_pretty(&caps).unwrap();
-    tokio::fs::write(&filepath, &json).await.unwrap();
+    std::fs::write(&filepath, &json).unwrap();
     assert!(filepath.exists());
 
     // Simulate cleanup
-    let _ = tokio::fs::remove_file(&filepath).await;
+    let _ = std::fs::remove_file(&filepath);
     assert!(!filepath.exists());
 }

@@ -26,7 +26,7 @@ pub mod byob_server;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 #[cfg(feature = "docker")]

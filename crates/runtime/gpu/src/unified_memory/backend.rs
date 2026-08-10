@@ -85,6 +85,7 @@ pub enum BackendAllocation {
     Vulkan(VulkanAllocation),
 
     /// `WebGPU` buffer allocation
+    #[cfg(feature = "webgpu")]
     WebGpu(WebGpuAllocation),
 
     /// CPU shared memory allocation
@@ -105,6 +106,7 @@ pub struct VulkanAllocation {
 }
 
 /// `WebGPU` allocation details
+#[cfg(feature = "webgpu")]
 pub struct WebGpuAllocation {
     /// Actual wgpu buffer (kept alive)
     pub buffer: Option<wgpu::Buffer>,
@@ -116,6 +118,7 @@ pub struct WebGpuAllocation {
     pub mapped_ptr: Option<GpuPtr>,
 }
 
+#[cfg(feature = "webgpu")]
 impl std::fmt::Debug for WebGpuAllocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WebGpuAllocation")
@@ -345,10 +348,9 @@ mod tests {
         use std::mem::size_of;
 
         // Note: Sizes are approximate and may vary by platform/compiler
-        // WebGpuAllocation contains wgpu::Buffer which is larger
-        assert!(size_of::<BackendAllocation>() <= 512); // Increased for WebGpu
+        assert!(size_of::<BackendAllocation>() <= 512);
         assert!(size_of::<VulkanAllocation>() <= 32);
-        // WebGpuAllocation is larger due to containing wgpu::Buffer (complex type)
+        #[cfg(feature = "webgpu")]
         assert!(size_of::<WebGpuAllocation>() <= 256);
         assert!(size_of::<CpuAllocation>() <= 24);
 
@@ -357,6 +359,7 @@ mod tests {
             "BackendAllocation: {} bytes",
             size_of::<BackendAllocation>()
         );
+        #[cfg(feature = "webgpu")]
         println!("WebGpuAllocation: {} bytes", size_of::<WebGpuAllocation>());
     }
 
@@ -366,6 +369,7 @@ mod tests {
         fn assert_send_sync<T: Send + Sync>() {}
 
         assert_send_sync::<VulkanAllocation>();
+        #[cfg(feature = "webgpu")]
         assert_send_sync::<WebGpuAllocation>();
         assert_send_sync::<CpuAllocation>();
         assert_send_sync::<BackendAllocation>();

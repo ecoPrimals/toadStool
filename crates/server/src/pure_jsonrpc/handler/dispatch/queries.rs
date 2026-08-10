@@ -14,7 +14,7 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'job_id'"))?;
 
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         let job = jobs.get(job_id).ok_or_else(|| {
             JsonRpcError::internal_error(format!("Dispatch job {job_id} not found"))
         })?;
@@ -48,7 +48,7 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'job_id'"))?;
 
-        let jobs = self.jobs.read().await;
+        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
         let job = jobs.get(job_id).ok_or_else(|| {
             JsonRpcError::internal_error(format!("Dispatch job {job_id} not found"))
         })?;

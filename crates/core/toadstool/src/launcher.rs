@@ -28,7 +28,7 @@ use std::time::Duration;
 use toadstool_common::constants::primal_identity::{PRIMAL_BINARY_NAME, PRIMAL_NAME};
 use toadstool_common::constants::timeouts;
 use toadstool_common::interned_strings::socket_env;
-use tokio::process::Command;
+use std::process::Command;
 use tracing::info;
 
 /// ToadStool launch configuration
@@ -86,7 +86,7 @@ impl std::fmt::Display for Endpoint {
 /// use toadstool::launcher::discover_toadstool_endpoint;
 ///
 /// # async fn example() -> ToadStoolResult<()> {
-/// let endpoint = discover_toadstool_endpoint().await?;
+/// let endpoint = discover_toadstool_endpoint()?;
 /// println!("Found toadstool at: {}", endpoint);
 /// # Ok(())
 /// # }
@@ -95,11 +95,11 @@ impl std::fmt::Display for Endpoint {
 /// # Errors
 ///
 /// Returns error if no Unix socket or TCP discovery file yields a valid endpoint.
-pub async fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
+pub fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
     // Try Unix socket paths (XDG-compliant)
     let unix_paths = get_toadstool_socket_paths();
     for path in unix_paths {
-        if tokio::fs::metadata(&path).await.is_ok() {
+        if std::fs::metadata(&path).is_ok() {
             info!("✅ Discovered Unix socket: {}", path.display());
             return Ok(Endpoint::Unix(path));
         }
@@ -108,7 +108,7 @@ pub async fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
     // Try TCP discovery file
     let discovery_files = get_tcp_discovery_file_paths();
     for file in discovery_files {
-        if let Ok(contents) = tokio::fs::read_to_string(&file).await {
+        if let Ok(contents) = std::fs::read_to_string(&file) {
             // Parse format: tcp:127.0.0.1:PORT
             if let Some(addr_str) = contents.trim().strip_prefix("tcp:") {
                 if let Ok(addr) = addr_str.parse() {
@@ -261,7 +261,7 @@ pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
         }
 
         // Try endpoint discovery
-        match discover_toadstool_endpoint().await {
+        match discover_toadstool_endpoint() {
             Ok(endpoint) => {
                 info!("   ✅ Endpoint discovered: {}", endpoint);
                 return Ok(());
@@ -323,7 +323,6 @@ pub async fn check_toadstool_health() -> ToadStoolResult<()> {
 /// Returns error if no endpoint can be discovered.
 pub async fn verify_endpoint_exists() -> ToadStoolResult<()> {
     discover_toadstool_endpoint()
-        .await
         .map_err(|e| ToadStoolError::runtime(format!("Endpoint verification failed: {e}")))?;
     Ok(())
 }

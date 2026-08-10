@@ -4,7 +4,7 @@
 use tracing::{debug, info};
 
 use crate::ToadStoolResult;
-use crate::ecosystem::DiscoveredServices;
+use crate::ecosystem_types::DiscoveredServices;
 use crate::hardware::SystemCapabilities;
 use toadstool_config::{GpuConfig, SecurityConfig, ToadStoolConfig};
 
@@ -240,7 +240,7 @@ mod tests {
     fn empty_ecosystem() -> DiscoveredServices {
         DiscoveredServices {
             discovered_services: std::collections::HashMap::new(),
-            discovery_summary: crate::ecosystem::DiscoverySummary::default(),
+            discovery_summary: crate::ecosystem_types::DiscoverySummary::default(),
             discovery_timestamp: std::time::SystemTime::now(),
         }
     }

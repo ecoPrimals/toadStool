@@ -23,7 +23,7 @@ tokio = { workspace = true, optional = true }
 
 [features]
 default = ["runtime"]
-runtime = ["dep:tokio", "toadstool-cylinder/runtime", "toadstool-ember/runtime"]
+runtime = ["dep:tokio", "toadstool-cylinder/runtime", "toadstool-cylinder/vfio", "toadstool-ember/runtime"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

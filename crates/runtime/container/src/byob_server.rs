@@ -101,7 +101,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     }
 
     // Fallback: self-bind from config (Tier 5: debug/standalone only)
-    let loaded = load_config_inner(config.config_path.as_deref()).await?;
+    let loaded = load_config_inner(config.config_path.as_deref())?;
     let bind_address = config
         .bind_address
         .as_deref()
@@ -132,10 +132,9 @@ struct LoadedConfig {
     port: u16,
 }
 
-async fn load_config_inner(config_path: Option<&str>) -> ToadStoolResult<LoadedConfig> {
+fn load_config_inner(config_path: Option<&str>) -> ToadStoolResult<LoadedConfig> {
     if let Some(path) = config_path {
-        let content = tokio::fs::read_to_string(path)
-            .await
+        let content = std::fs::read_to_string(path)
             .map_err(|e| ToadStoolError::configuration(format!("Failed to read config: {e}")))?;
 
         let config: ByobServerConfigFile = toml::from_str(&content)

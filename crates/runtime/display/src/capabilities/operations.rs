@@ -145,7 +145,7 @@ impl DisplayCapabilities {
         let discovery_dir = get_discovery_dir();
 
         // Create directory if needed
-        tokio::fs::create_dir_all(&discovery_dir).await?;
+        std::fs::create_dir_all(&discovery_dir)?;
 
         // Write capability file
         let filename = format!("{}.json", self.primal_id);
@@ -154,7 +154,7 @@ impl DisplayCapabilities {
         let json = serde_json::to_string_pretty(self)
             .map_err(|e| DisplayError::IpcError(format!("JSON serialization failed: {e}")))?;
 
-        tokio::fs::write(&filepath, json).await?;
+        std::fs::write(&filepath, json)?;
 
         tracing::info!("📢 Announced capabilities: {}", filepath.display());
 
@@ -194,13 +194,14 @@ impl DisplayCapabilities {
 
         let mut capabilities = Vec::new();
 
-        let mut entries = tokio::fs::read_dir(&discovery_dir).await?;
-        while let Some(entry) = entries.next_entry().await? {
+        let entries = std::fs::read_dir(&discovery_dir)?;
+        for entry in entries {
+            let entry = entry?;
             let path = entry.path();
 
             // Only JSON files
             if path.extension().and_then(|e| e.to_str()) == Some("json") {
-                match tokio::fs::read_to_string(&path).await {
+                match std::fs::read_to_string(&path) {
                     Ok(json) => match serde_json::from_str::<Self>(&json) {
                         Ok(cap) => capabilities.push(cap),
                         Err(e) => {
@@ -234,7 +235,7 @@ impl DisplayCapabilities {
         let filepath = discovery_dir.join(filename);
 
         if filepath.exists() {
-            tokio::fs::remove_file(&filepath).await?;
+            std::fs::remove_file(&filepath)?;
             tracing::info!("🧹 Cleaned up capability file: {}", filepath.display());
         }
 

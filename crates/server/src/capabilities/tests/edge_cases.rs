@@ -270,10 +270,8 @@ async fn test_announce_preserves_metadata() {
             metadata,
         };
 
-        caps.announce().await.unwrap();
-        let contents = tokio::fs::read_to_string(discovery_base.join("metadata-test.json"))
-            .await
-            .unwrap();
+        caps.announce().unwrap();
+        let contents = std::fs::read_to_string(discovery_base.join("metadata-test.json")).unwrap();
         let parsed: PrimalCapabilities = serde_json::from_str(&contents).unwrap();
         assert_eq!(parsed.metadata.get("region"), Some(&"eu-west".to_string()));
         assert_eq!(parsed.metadata.get("tier"), Some(&"premium".to_string()));
@@ -284,14 +282,10 @@ async fn test_announce_preserves_metadata() {
 #[tokio::test]
 async fn test_find_peer_with_skips_non_json() {
     with_temp_discovery(|discovery_base| async move {
-        tokio::fs::write(discovery_base.join("notes.txt"), "not json")
-            .await
-            .unwrap();
-        tokio::fs::write(discovery_base.join("config.yaml"), "key: value")
-            .await
-            .unwrap();
+        std::fs::write(discovery_base.join("notes.txt"), "not json").unwrap();
+        std::fs::write(discovery_base.join("config.yaml"), "key: value").unwrap();
 
-        let result = PrimalCapabilities::find_peer_with("compute").await;
+        let result = PrimalCapabilities::find_peer_with("compute");
         assert!(result.is_err());
     })
     .await;
@@ -333,22 +327,18 @@ async fn test_find_peer_with_multiple_peers_returns_first_match() {
             metadata: HashMap::new(),
         };
 
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("first-match.json"),
             serde_json::to_string_pretty(&peer1).unwrap(),
         )
-        .await
         .unwrap();
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("second-match.json"),
             serde_json::to_string_pretty(&peer2).unwrap(),
         )
-        .await
         .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with("gpu-nvidia")
-            .await
-            .unwrap();
+        let found = PrimalCapabilities::find_peer_with("gpu-nvidia").unwrap();
         assert!(
             found.primal_id == "first-match" || found.primal_id == "second-match",
             "Should find one of the matching peers"
@@ -361,11 +351,9 @@ async fn test_find_peer_with_multiple_peers_returns_first_match() {
 #[tokio::test]
 async fn test_find_peer_with_invalid_json_fails() {
     with_temp_discovery(|discovery_base| async move {
-        tokio::fs::write(discovery_base.join("bad-peer.json"), "{ invalid json }")
-            .await
-            .unwrap();
+        std::fs::write(discovery_base.join("bad-peer.json"), "{ invalid json }").unwrap();
 
-        let result = PrimalCapabilities::find_peer_with("compute").await;
+        let result = PrimalCapabilities::find_peer_with("compute");
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("Failed to parse") || err.contains("parse"));
@@ -393,17 +381,14 @@ async fn test_find_all_peers_mixed_valid_invalid_json() {
             metadata: HashMap::new(),
         };
 
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("valid-peer.json"),
             serde_json::to_string_pretty(&valid_peer).unwrap(),
         )
-        .await
         .unwrap();
-        tokio::fs::write(discovery_base.join("invalid.json"), "{ broken }")
-            .await
-            .unwrap();
+        std::fs::write(discovery_base.join("invalid.json"), "{ broken }").unwrap();
 
-        let peers = PrimalCapabilities::find_all_peers().await.unwrap();
+        let peers = PrimalCapabilities::find_all_peers().unwrap();
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].primal_id, "valid-peer");
     })
@@ -430,14 +415,13 @@ async fn test_find_peer_with_empty_capability_match() {
             metadata: HashMap::new(),
         };
 
-        tokio::fs::write(
+        std::fs::write(
             discovery_base.join("empty-cap-peer.json"),
             serde_json::to_string_pretty(&peer).unwrap(),
         )
-        .await
         .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with("arch").await;
+        let found = PrimalCapabilities::find_peer_with("arch");
         assert!(found.is_ok());
         assert!(
             found
@@ -470,11 +454,11 @@ async fn test_cleanup_twice_idempotent() {
             metadata: HashMap::new(),
         };
 
-        caps.announce().await.unwrap();
+        caps.announce().unwrap();
         assert!(discovery_base.join("double-cleanup-id.json").exists());
 
-        let r1 = caps.cleanup().await;
-        let r2 = caps.cleanup().await;
+        let r1 = caps.cleanup();
+        let r2 = caps.cleanup();
         assert!(r1.is_ok());
         assert!(r2.is_ok());
         assert!(!discovery_base.join("double-cleanup-id.json").exists());

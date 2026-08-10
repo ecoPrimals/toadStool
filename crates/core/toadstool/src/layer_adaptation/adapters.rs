@@ -98,7 +98,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory().await,
+                memory_bytes: get_total_memory(),
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -135,7 +135,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory().await,
+                memory_bytes: get_total_memory(),
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -174,7 +174,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory().await,
+                memory_bytes: get_total_memory(),
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -211,7 +211,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ), // May be limited by cgroups
-                memory_bytes: get_total_memory().await, // May be limited by cgroups
+                memory_bytes: get_total_memory(), // May be limited by cgroups
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -252,7 +252,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory().await,
+                memory_bytes: get_total_memory(),
                 supports_tensor_ops: gpu_passthrough,
                 supports_nn_training: gpu_passthrough,
                 supports_nn_inference: true, // CPU fallback available
@@ -305,7 +305,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory().await,
+                memory_bytes: get_total_memory(),
                 supports_tensor_ops: true, // Cloud GPUs support this
                 supports_nn_training: true,
                 supports_nn_inference: true,

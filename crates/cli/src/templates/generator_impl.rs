@@ -5,7 +5,7 @@ use super::{BiomeTemplate, TemplateGenerator};
 use crate::{BiomeManifest, BiomeMetadata};
 use crate::{CliContextExt, Result};
 use std::path::PathBuf;
-use tokio::fs;
+use std::fs;
 use tracing::info;
 
 impl TemplateGenerator {
@@ -32,7 +32,7 @@ impl TemplateGenerator {
 
         // Ensure output directory exists
         if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent).await?;
+            fs::create_dir_all(parent)?;
         }
 
         // Generate YAML content
@@ -40,7 +40,6 @@ impl TemplateGenerator {
 
         // Write to file
         fs::write(&output_path, yaml_content)
-            .await
             .context(format!(
                 "Failed to write biome.yaml to {}",
                 output_path.display()
