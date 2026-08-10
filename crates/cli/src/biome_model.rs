@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biome manifest schema and runtime status types shared by the CLI.
+//!
+//! The canonical manifest schema lives in [`toadstool_core::manifest::BiomeManifest`].
+//! This module's `BiomeManifest` is the CLI's internal representation, with
+//! [`From<toadstool_core::manifest::BiomeManifest>`] bridging the two.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -258,7 +262,7 @@ pub struct BiomeStorage {
 }
 
 /// Resource limits for a single service
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ServiceResources {
     /// CPU cores limit
     pub cpu_limit: Option<f64>,
@@ -411,4 +415,234 @@ pub struct ServiceInfo {
     pub ports: Vec<u16>,
     /// Health status (healthy, unhealthy, unknown)
     pub health: String,
+}
+
+// ---------------------------------------------------------------------------
+// Conversion from canonical manifest (toadstool_core::manifest::BiomeManifest)
+// ---------------------------------------------------------------------------
+
+impl From<toadstool_core::manifest::BiomeManifest> for BiomeManifest {
+    fn from(canonical: toadstool_core::manifest::BiomeManifest) -> Self {
+        let now = std::time::SystemTime::now();
+        Self {
+            metadata: BiomeMetadata {
+                name: canonical.metadata.name,
+                version: canonical.metadata.version,
+                description: canonical.metadata.description,
+                author: canonical.metadata.author,
+                created: now,
+                updated: now,
+                tags: canonical.metadata.tags,
+            },
+            primals: canonical
+                .primals
+                .into_iter()
+                .map(|(name, pc)| {
+                    let config = pc
+                        .config
+                        .into_iter()
+                        .map(|(k, v)| {
+                            let yaml_val = json_to_yaml(&v);
+                            (k, yaml_val)
+                        })
+                        .collect();
+                    (
+                        name,
+                        PrimalConfig {
+                            version: pc.version.unwrap_or_default(),
+                            source: pc.source.map(convert_source).unwrap_or(WorkloadSource::Local {
+                                path: PathBuf::from("."),
+                            }),
+                            enabled: pc.enabled,
+                            config,
+                            dependencies: pc.dependencies,
+                            health_check: pc.health_check.map(convert_health_check),
+                        },
+                    )
+                })
+                .collect(),
+            services: canonical
+                .services
+                .into_iter()
+                .map(|(name, sc)| {
+                    (
+                        name,
+                        ServiceConfig {
+                            version: sc.version.unwrap_or_default(),
+                            source: sc.source.map(convert_source).unwrap_or(WorkloadSource::Local {
+                                path: PathBuf::from("."),
+                            }),
+                            replicas: Some(sc.replicas),
+                            resources: sc.resources.map(|r| ServiceResources {
+                                cpu_limit: r.cpu_limit,
+                                memory_limit: r.memory_limit,
+                                storage_limit: r.storage_limit,
+                            }).unwrap_or_default(),
+                            environment: sc.environment,
+                            ports: sc
+                                .ports
+                                .into_iter()
+                                .map(|p| ServicePort {
+                                    container_port: p.container_port,
+                                    host_port: p.host_port,
+                                    protocol: p.protocol,
+                                })
+                                .collect(),
+                            volumes: sc
+                                .volumes
+                                .into_iter()
+                                .map(|v| ServiceVolume {
+                                    source: v.source,
+                                    target: v.target,
+                                    read_only: v.read_only,
+                                })
+                                .collect(),
+                            dependencies: sc.dependencies,
+                            health_check: sc.health_check.map(convert_health_check),
+                        },
+                    )
+                })
+                .collect(),
+            resources: canonical.resources.map(|r| BiomeResources {
+                cpu_limit: r.cpu_limit,
+                memory_limit: r.memory_limit,
+                storage_limit: r.storage_limit,
+                gpu_limit: r.gpu_limit,
+                network_bandwidth: None,
+            }).unwrap_or(BiomeResources {
+                cpu_limit: None, memory_limit: None, storage_limit: None,
+                gpu_limit: None, network_bandwidth: None,
+            }),
+            security: canonical.security.map(|s| BiomeSecurity {
+                isolation_level: s.isolation_level,
+                trust_level: s.trust_level,
+                security_required: s.crypto_required,
+                crypto_policies: s.crypto_policies,
+                allowed_networks: s.allowed_networks,
+                forbidden_syscalls: vec![],
+            }).unwrap_or(BiomeSecurity {
+                isolation_level: "process".into(), trust_level: "medium".into(),
+                security_required: false, crypto_policies: vec![],
+                allowed_networks: vec![], forbidden_syscalls: vec![],
+            }),
+            networking: canonical.networking.map(|n| BiomeNetworking {
+                mode: n.mode,
+                dns_servers: n.dns_servers,
+                port_mappings: n
+                    .port_mappings
+                    .into_iter()
+                    .map(|p| PortMapping {
+                        host_port: p.host_port.unwrap_or(p.container_port),
+                        container_port: p.container_port,
+                        protocol: p.protocol,
+                    })
+                    .collect(),
+                network_policies: vec![],
+            }).unwrap_or(BiomeNetworking {
+                mode: "bridge".into(), dns_servers: vec![],
+                port_mappings: vec![], network_policies: vec![],
+            }),
+            storage: canonical.storage.map(|s| BiomeStorage {
+                storage_integration: s.integration,
+                datasets: vec![],
+                volumes: s
+                    .volumes
+                    .into_iter()
+                    .map(|v| VolumeConfig {
+                        name: v.source.clone(),
+                        driver: "local".into(),
+                        options: HashMap::new(),
+                    })
+                    .collect(),
+                backup_policy: s.backup_policy,
+            }).unwrap_or(BiomeStorage {
+                storage_integration: None, datasets: vec![],
+                volumes: vec![], backup_policy: None,
+            }),
+        }
+    }
+}
+
+fn convert_source(src: toadstool_core::manifest::ManifestWorkloadSource) -> WorkloadSource {
+    use toadstool_core::manifest::ManifestWorkloadSource;
+    match src {
+        ManifestWorkloadSource::Container {
+            image,
+            tag,
+            registry,
+            digest,
+        } => WorkloadSource::Container {
+            registry: registry.unwrap_or_else(|| "docker.io".into()),
+            image,
+            tag,
+            digest,
+        },
+        ManifestWorkloadSource::Wasm {
+            source,
+            checksum,
+            wasi_config: _,
+        } => WorkloadSource::Wasm {
+            source,
+            checksum: checksum.unwrap_or_default(),
+            wasi_config: None,
+        },
+        ManifestWorkloadSource::Git {
+            repository,
+            branch,
+            commit,
+            path,
+        } => WorkloadSource::Git {
+            repository,
+            branch,
+            commit,
+            path,
+        },
+        ManifestWorkloadSource::Native { path, args: _ } => WorkloadSource::Local {
+            path: PathBuf::from(path),
+        },
+        ManifestWorkloadSource::Local { path } => WorkloadSource::Local {
+            path: PathBuf::from(path),
+        },
+    }
+}
+
+fn convert_health_check(
+    hc: toadstool_core::manifest::ManifestHealthCheck,
+) -> HealthCheck {
+    HealthCheck {
+        command: hc.command,
+        interval: hc.interval_secs,
+        timeout: hc.timeout_secs,
+        retries: hc.retries,
+        start_period: 0,
+    }
+}
+
+fn json_to_yaml(v: &serde_json::Value) -> serde_yaml_ng::Value {
+    match v {
+        serde_json::Value::Null => serde_yaml_ng::Value::Null,
+        serde_json::Value::Bool(b) => serde_yaml_ng::Value::Bool(*b),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(i))
+            } else if let Some(f) = n.as_f64() {
+                serde_yaml_ng::Value::Number(
+                    serde_yaml_ng::Number::from(f),
+                )
+            } else {
+                serde_yaml_ng::Value::Null
+            }
+        }
+        serde_json::Value::String(s) => serde_yaml_ng::Value::String(s.clone()),
+        serde_json::Value::Array(arr) => {
+            serde_yaml_ng::Value::Sequence(arr.iter().map(json_to_yaml).collect())
+        }
+        serde_json::Value::Object(obj) => {
+            let map = obj
+                .iter()
+                .map(|(k, v)| (serde_yaml_ng::Value::String(k.clone()), json_to_yaml(v)))
+                .collect();
+            serde_yaml_ng::Value::Mapping(map)
+        }
+    }
 }

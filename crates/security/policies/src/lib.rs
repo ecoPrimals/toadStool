@@ -28,6 +28,7 @@ mod composition;
 pub mod error;
 pub mod evaluator;
 pub mod executor;
+#[cfg(feature = "runtime")]
 pub mod manager;
 pub mod types;
 
@@ -41,7 +42,7 @@ pub use types::{
     UserInfo, ViolationAction,
 };
 
-// Re-export manager types and traits
+#[cfg(feature = "runtime")]
 pub use manager::{FilePolicyManager, PolicyManager};
 
 // Re-export evaluator and executor

@@ -13,7 +13,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::debug;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -80,7 +80,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
             return Ok(available_runtimes[0].clone());
         }
 
-        let stats = self.runtime_stats.read().await;
+        let stats = self.runtime_stats.read().unwrap_or_else(|e| e.into_inner());
         let selected = select_runtime_by_strategy(
             &stats,
             &self.selection_strategy,
@@ -104,12 +104,12 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         }
 
         {
-            let mut stats = self.runtime_stats.write().await;
+            let mut stats = self.runtime_stats.write().unwrap_or_else(|e| e.into_inner());
             update_runtime_stats(&mut stats, &metrics);
         }
 
         {
-            let mut history = self.metrics_history.write().await;
+            let mut history = self.metrics_history.write().unwrap_or_else(|e| e.into_inner());
             history.push_back(metrics);
             cleanup_old_metrics(&mut history, self.config.history_retention_hours);
             drop(history);
@@ -119,7 +119,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
     }
 
     async fn get_runtime_stats(&self, runtime_type: &RuntimeType) -> ToadStoolResult<RuntimeStats> {
-        let stats = self.runtime_stats.read().await;
+        let stats = self.runtime_stats.read().unwrap_or_else(|e| e.into_inner());
         stats.get(runtime_type).cloned().ok_or_else(|| {
             ToadStoolError::runtime(format!(
                 "No statistics available for runtime: {runtime_type:?}"
@@ -134,7 +134,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         const MIN_EXECUTION_TIME: Duration = Duration::from_secs(1);
         const DEFAULT_PREDICTION_EXECUTION_SECS: u64 = 10;
 
-        let models = self.prediction_models.read().await;
+        let models = self.prediction_models.read().unwrap_or_else(|e| e.into_inner());
         if let Some((_, model)) = models.iter().max_by_key(|(_, m)| m.sample_count())
             && model.sample_count() > 0
         {
@@ -142,7 +142,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         }
         drop(models);
 
-        let stats = self.runtime_stats.read().await;
+        let stats = self.runtime_stats.read().unwrap_or_else(|e| e.into_inner());
         if let Some((_, runtime_stats)) = stats.iter().next() {
             return Ok(ResourcePrediction {
                 timestamp: SystemTime::now(),
@@ -166,15 +166,15 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
     }
 
     async fn get_recommendations(&self) -> ToadStoolResult<Vec<OptimizationRecommendation>> {
-        let stats = self.runtime_stats.read().await;
+        let stats = self.runtime_stats.read().unwrap_or_else(|e| e.into_inner());
         Ok(generate_recommendations(&self.config, &stats))
     }
 
     async fn update_model(&self) -> ToadStoolResult<()> {
-        let history = self.metrics_history.read().await;
-        let mut stats = self.runtime_stats.write().await;
-        let mut baselines = self.baseline_measurements.write().await;
-        let mut models = self.prediction_models.write().await;
+        let history = self.metrics_history.read().unwrap_or_else(|e| e.into_inner());
+        let mut stats = self.runtime_stats.write().unwrap_or_else(|e| e.into_inner());
+        let mut baselines = self.baseline_measurements.write().unwrap_or_else(|e| e.into_inner());
+        let mut models = self.prediction_models.write().unwrap_or_else(|e| e.into_inner());
 
         update_model_from_history(
             &history,

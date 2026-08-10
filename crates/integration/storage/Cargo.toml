@@ -10,18 +10,16 @@ keywords = ["storage", "integration", "nestgate", "primal"]
 categories = ["api-bindings"]
 
 [dependencies]
-# HTTP client
-
-# Async runtime
-tokio = { workspace = true }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Configuration
-toadstool-config = { path = "../../core/config" }
-toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config", default-features = false }
+toadstool-common = { path = "../../core/common", default-features = false }
 
 # Error handling
 thiserror = { workspace = true }
@@ -30,13 +28,17 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # UUID support
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 # Binary data encoding for artifact transfer
 base64 = { workspace = true }
 
 # Cryptographic hashing (for checksums)
 sha2 = { workspace = true }
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool-config/runtime", "toadstool-common/runtime", "uuid/v4"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }

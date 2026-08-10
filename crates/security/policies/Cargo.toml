@@ -13,9 +13,9 @@ categories = ["authentication"]
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool", default-features = false }
-toadstool-common = { path = "../../core/common" }
-# Async runtime
-tokio = { workspace = true }
+toadstool-common = { path = "../../core/common", default-features = false }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
 
 # Serialization and configuration
 serde = { workspace = true }
@@ -25,7 +25,7 @@ toml = { workspace = true }
 
 # Security and cryptography
 sha2 = { workspace = true }
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 # Collections and utilities
 regex = { workspace = true }
@@ -36,11 +36,7 @@ tracing = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-# lazy_static removed: evolved to std::sync::LazyLock (Rust 1.80+)
 
-# EVOLVED: nix removed (Feb 14, 2026) - prefer rustix
-# EVOLVED: caps removed (Mar 9, 2026) - unused, libc dep eliminated
-# EVOLVED: procfs removed (Mar 20, 2026) — unused; toadstool-sysmon provides /proc parsing
 [target.'cfg(target_os = "linux")'.dependencies]
 
 [target.'cfg(windows)'.dependencies]
@@ -50,6 +46,10 @@ windows = { version = "0.52", features = [
     "Win32_System_Threading",
     "Win32_System_ProcessStatus"
 ] }
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool/runtime", "toadstool-common/runtime", "uuid/v4"]
 
 [dev-dependencies]
 toadstool-testing = { path = "../../testing" }

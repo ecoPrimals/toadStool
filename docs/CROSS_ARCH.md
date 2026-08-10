@@ -1,7 +1,7 @@
 # toadStool Cross-Architecture Support
 
-**Status**: 16/16 native targets + 26/48 crates on WASM (Tier 3 — 54% compute kernel)
-**Sprint**: S373 — Deep debt: large file decomposition, hardcoding removal
+**Status**: 16/16 native targets + 31/48 crates on WASM (Tier 3 — 65% compute kernel)
+**Sprint**: S375 — WASM push (5 easy wins: 26→31), composition manifest
 **Philosophy**: If it can run a bin, we can run primals on it.
 
 ## Node Atomic Fleet — Actual Hardware
@@ -15,8 +15,8 @@
 | Milk-V Jupiter 2 (RISC-V vector) | `riscv64gc-unknown-linux-gnu` | Full workspace |
 | Steam Deck (SteamOS) | `x86_64-unknown-linux-gnu` | Full workspace |
 | Raspberry Pi | `aarch64-unknown-linux-gnu` | Full workspace |
-| WebGPU/Browser | `wasm32-unknown-unknown` | 26 crates (compute kernel) |
-| Cloud/WASI edge | `wasm32-wasip1` | 26 crates (compute kernel) |
+| WebGPU/Browser | `wasm32-unknown-unknown` | 31 crates (compute kernel) |
+| Cloud/WASI edge | `wasm32-wasip1` | 31 crates (compute kernel) |
 
 ## Supported Architectures
 
@@ -46,7 +46,7 @@
 | `s390x-unknown-linux-gnu` | Linux | IBM Z | Mainframe compute |
 | `loongarch64-unknown-linux-gnu` | Linux | LoongArch | Loongson sovereign |
 
-### Tier 3 — Compute Kernel (WASM — 26 crates pass)
+### Tier 3 — Compute Kernel (WASM — 31 crates pass)
 
 | Target | Runtime | Crates |
 |--------|---------|--------|
@@ -80,6 +80,11 @@
 - `akida-setup` — NPU setup utilities
 - `akida-reservoir-research` — reservoir computing algorithms
 - `neurobench-runner` — neuromorphic benchmark framework
+- `toadstool-management-performance` — performance optimization types (S375)
+- `toadstool-integration-storage` — storage integration types (S375)
+- `toadstool-management-analytics` — analytics engine types (S375)
+- `toadstool-runtime-specialty` — specialty hw types/config (S375)
+- `toadstool-security-policies` — policy evaluation types (S375)
 
 **Key: `runtime` feature pattern**
 
@@ -88,9 +93,10 @@ Crates that only need types/traits/constants use `default-features = false` on t
 dependencies to avoid pulling in tokio/mio/socket2 which cannot compile on WASM.
 On native builds, Cargo's feature unification ensures full functionality.
 
-**Native-only crates** (22 — require OS networking/processes/IPC):
+**Native-only crates** (17 — require OS networking/processes/IPC):
 - Server, client, CLI, distributed — TCP/Unix sockets, daemon lifecycle
 - Container, display, edge, native — OS process/kernel management
+- Auto-config, monitoring, protocols — hardware detection, transport
 - Testing, examples, integration-tests — test infrastructure
 
 ## Architecture Decisions

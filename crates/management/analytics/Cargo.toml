@@ -12,26 +12,25 @@ categories = ["development-tools::profiling"]
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool", default-features = false }
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 
-# Async runtime
-tokio = { workspace = true }
+# Async runtime (optional — gated behind `runtime` for WASM compat)
+tokio = { workspace = true, optional = true }
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 
-# Machine learning and analytics
-statrs = "0.18"
-
-# Database for storing metrics - REMOVED: Brings in ring via rustls (violates pure Rust)
-# PURE RUST: Database persistence disabled by default (in-memory only)
-# Future: Use pure Rust alternatives (sled, redb, etc.) when persistence needed
-# sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"], optional = true }
+# Machine learning and analytics (behind runtime — pulls rand/getrandom, not WASM-safe)
+statrs = { version = "0.18", optional = true }
 
 # Utilities
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
+
+[features]
+default = ["runtime"]
+runtime = ["dep:tokio", "dep:statrs", "toadstool/runtime", "toadstool-common/runtime", "uuid/v4"]
 
 [lints]
 workspace = true

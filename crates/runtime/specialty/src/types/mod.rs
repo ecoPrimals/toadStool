@@ -11,6 +11,7 @@
 
 pub mod configs;
 pub mod cross_compilation;
+#[cfg(feature = "runtime")]
 pub mod dispatch;
 pub mod emulation;
 pub mod jobs;
@@ -24,6 +25,7 @@ pub mod traits;
 // requirements::OptimizationLevel).
 pub use configs::*;
 pub use cross_compilation::*;
+#[cfg(feature = "runtime")]
 pub use dispatch::*;
 pub use emulation::*;
 pub use jobs::*;

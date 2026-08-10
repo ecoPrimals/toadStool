@@ -286,7 +286,7 @@ async fn benchmark_primal_discovery(
     for i in 0..config.iterations {
         let capability = &capabilities[i % capabilities.len()];
 
-        let providers = platform.find_primals_by_capability(capability).await;
+        let providers = platform.find_primals_by_capability(capability);
         if !providers.is_empty() {
             successful += 1;
             total_providers += providers.len();

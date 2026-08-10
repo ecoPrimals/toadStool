@@ -11,10 +11,10 @@ keywords = ["specialty", "mainframe", "embedded", "industrial", "universal-compu
 
 [dependencies]
 # Core dependencies
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 
@@ -25,12 +25,11 @@ modbus = { version = "1.0", optional = true }
 
 # ToadStool core
 toadstool = { path = "../../core/toadstool", default-features = false }
-toadstool-common = { path = "../../core/common" }
+toadstool-common = { path = "../../core/common", default-features = false }
 
 [features]
-default = []
-# Optional: trait impls for embedded programmer/emulator types (`ProgrammerInterface`, `EmbeddedEmulator`).
-# Disable for minimal builds that do not register placeholder adapters (see `embedded::adapters`).
+default = ["runtime"]
+runtime = ["dep:tokio", "toadstool/runtime", "toadstool-common/runtime", "uuid/v4"]
 embedded-placeholder-impls = []
 modbus-transport = ["modbus"]
 

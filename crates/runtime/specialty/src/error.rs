@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+#[cfg(feature = "runtime")]
 use crate::embedded::errors::{EmbeddedEmulatorError, EmbeddedProgrammerError};
 use toadstool::{SystemError, ToadStoolError};
 
@@ -46,15 +47,13 @@ pub enum SpecialtyRuntimeError {
     #[error("Other error: {0}")]
     Other(String),
 
-    /// Embedded programmer transport / device not available — see [`EmbeddedProgrammerError`].
-    ///
-    /// See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
+    /// Embedded programmer transport / device not available.
+    #[cfg(feature = "runtime")]
     #[error(transparent)]
     EmbeddedProgrammer(#[from] EmbeddedProgrammerError),
 
-    /// Embedded emulator core / debug transport not available — see [`EmbeddedEmulatorError`].
-    ///
-    /// See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
+    /// Embedded emulator core / debug transport not available.
+    #[cfg(feature = "runtime")]
     #[error(transparent)]
     EmbeddedEmulator(#[from] EmbeddedEmulatorError),
 }
@@ -62,9 +61,11 @@ pub enum SpecialtyRuntimeError {
 impl From<SpecialtyRuntimeError> for ToadStoolError {
     fn from(err: SpecialtyRuntimeError) -> Self {
         match err {
+            #[cfg(feature = "runtime")]
             SpecialtyRuntimeError::EmbeddedProgrammer(e) => {
                 ToadStoolError::not_supported(e.to_string())
             }
+            #[cfg(feature = "runtime")]
             SpecialtyRuntimeError::EmbeddedEmulator(e) => SystemError::NotSupported {
                 feature: "embedded_emulator".into(),
                 reason: e.to_string(),

@@ -42,12 +42,16 @@
 //! ```
 
 // Module declarations
+#[cfg(feature = "runtime")]
 mod artifacts;
+#[cfg(feature = "runtime")]
 pub mod client;
 pub mod config;
 pub mod pipeline;
+#[cfg(feature = "runtime")]
 mod pipelines;
 pub mod types;
+#[cfg(feature = "runtime")]
 mod utils;
 
 // Re-export core types and functionality
@@ -64,7 +68,7 @@ pub use pipeline::{
     ScheduleType, StepExecutionStatus, StepStatus, StepType,
 };
 
-// Capability-based storage client (vendor-agnostic!)
+#[cfg(feature = "runtime")]
 pub use client::StorageClient;
 
 // Tests module

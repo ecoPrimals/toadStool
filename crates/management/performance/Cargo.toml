@@ -12,26 +12,21 @@ categories = ["development-tools::profiling"]
 
 [dependencies]
 # Core ToadStool dependencies
-toadstool = { path = "../../core/toadstool" }
-toadstool-common = { path = "../../core/common" }
-
-# Async runtime
-tokio = { workspace = true }
+toadstool = { path = "../../core/toadstool", default-features = false }
+toadstool-common = { path = "../../core/common", default-features = false }
 
 # Serialization and configuration
 serde = { workspace = true }
 
-# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
-
 # Collections and utilities
-uuid = { workspace = true }
+uuid = { version = "1.7", default-features = false, features = ["serde"] }
 
 # Logging and tracing
 tracing = { workspace = true }
 
-# EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
-# EVOLVED: procfs removed (Mar 20, 2026) — unused; toadstool-sysmon provides /proc parsing
-[target.'cfg(target_os = "linux")'.dependencies]
+[features]
+default = ["runtime"]
+runtime = ["toadstool/runtime", "toadstool-common/runtime", "uuid/v4"]
 
 [dev-dependencies]
 tempfile = { workspace = true }

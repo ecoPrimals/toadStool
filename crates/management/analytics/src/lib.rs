@@ -26,6 +26,7 @@
 
 mod config;
 mod engine;
+#[cfg(feature = "runtime")]
 mod implementation;
 mod types;
 mod utils;
@@ -33,6 +34,7 @@ mod utils;
 // Re-export public API
 pub use config::{AlertThresholds, AnalyticsConfig, ExternalIntegrations, WebhookConfig};
 pub use engine::AnalyticsEngine;
+#[cfg(feature = "runtime")]
 pub use implementation::IntelligentAnalyticsEngine;
 pub use types::{
     Alert, AlertCondition, AlertSeverity, AlertStatus, AnalyticsDataPoint, Dashboard,

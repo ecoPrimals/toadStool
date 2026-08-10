@@ -1,0 +1,198 @@
+# NUCLEUS Composition Manifest — strandGate (example)
+#
+# This is the canonical biome.yaml schema for toadStool.
+# Schema: toadstool_core::manifest::BiomeManifest (v1)
+#
+# NUCLEUS is a graph of sub-graphs. Each atomic composition (Tower, Nest, Node)
+# is a sub-graph with internal dependency ordering. biomeOS graph executor
+# starts compositions, routes through them, and orchestrates workflows.
+#
+# A primal can appear in multiple compositions across different manifests.
+# biome.yaml = composition manifest (BYOB per gate).
+
+api_version: v1
+kind: Biome
+
+metadata:
+  name: strandgate
+  version: "157e"
+  description: "strandGate NUCLEUS — Silicon Fold + GPU estate + science compute"
+  team: ecoPrimals
+  environment: production
+  tags:
+    - gpu
+    - silicon-fold
+    - science
+  labels:
+    gate: strandGate
+    role: compute
+  annotations:
+    ecoPrimals.io/wave: "157e"
+
+# ─── Primals ────────────────────────────────────────────────────────────────
+primals:
+  toadstool:
+    version: "0.2.0"
+    capabilities:
+      - compute.dispatch
+      - silicon.discover
+      - workload.execute
+      - runtime.manage
+    source:
+      type: Native
+      path: /usr/local/bin/toadstool
+    dependencies: []
+    gossip_events:
+      - hardware.gpu.added
+      - hardware.gpu.removed
+      - hardware.gpu.error
+      - silicon.capabilities.updated
+      - workload.completed
+      - workload.failed
+
+  coralreef:
+    version: "0.2.0"
+    capabilities:
+      - shader.compile
+      - shader.compile.wgsl
+      - shader.compile.capabilities
+    source:
+      type: Native
+      path: /usr/local/bin/coralreef
+    dependencies:
+      - toadstool
+    gossip_events:
+      - shader.compiled
+      - shader.error
+
+  barracuda:
+    version: "0.2.0"
+    capabilities:
+      - tensor.compute
+      - tensor.dispatch
+    source:
+      type: Native
+      path: /usr/local/bin/barracuda
+    dependencies:
+      - toadstool
+      - coralreef
+    gossip_events:
+      - tensor.job.completed
+      - tensor.device.error
+
+  biomeos:
+    capabilities:
+      - nucleus.start
+      - nucleus.stop
+      - capability.call
+      - graph.execute
+    source:
+      type: Native
+      path: /usr/local/bin/biomeos
+
+  songbird:
+    capabilities:
+      - mesh.relay
+      - federation.transport
+    source:
+      type: Native
+      path: /usr/local/bin/songbird
+    gossip_events:
+      - peer.connected
+      - peer.disconnected
+
+  swarmvine:
+    capabilities:
+      - gossip.publish
+      - gossip.subscribe
+      - gossip.forward
+    source:
+      type: Native
+      path: /usr/local/bin/swarmvine
+    gossip_events:
+      - gossip.mesh.changed
+
+  beardog:
+    capabilities:
+      - crypto.sign
+      - crypto.verify
+      - ribocipher.encode
+      - ribocipher.decode
+    source:
+      type: Native
+      path: /usr/local/bin/beardog
+
+# ─── Compositions ───────────────────────────────────────────────────────────
+compositions:
+  - name: tower-atomic
+    kind: Tower
+    members:
+      - biomeos
+      - songbird
+      - swarmvine
+      - beardog
+    dependencies:
+      songbird: [biomeos]
+      swarmvine: [biomeos, songbird]
+      beardog: [biomeos]
+    auto_start: true
+    priority: 0
+    readiness:
+      require_healthy:
+        - biomeos
+        - songbird
+      timeout_secs: 120
+
+  - name: node-atomic
+    kind: Node
+    members:
+      - toadstool
+      - coralreef
+      - barracuda
+    dependencies:
+      coralreef: [toadstool]
+      barracuda: [toadstool, coralreef]
+    auto_start: true
+    priority: 10
+    readiness:
+      require_healthy:
+        - toadstool
+      timeout_secs: 60
+
+# ─── Resources ──────────────────────────────────────────────────────────────
+resources:
+  cpu_limit: 16.0
+  memory_limit: "32Gi"
+  gpu_limit: 2
+
+# ─── Security ──────────────────────────────────────────────────────────────
+security:
+  isolation_level: process
+  trust_level: high
+  crypto_required: true
+  crypto_policies:
+    - sovereign-default
+  allowed_networks:
+    - "10.0.0.0/8"
+    - "192.168.0.0/16"
+
+# ─── Networking ─────────────────────────────────────────────────────────────
+networking:
+  mode: host
+  dns_servers: []
+  port_mappings:
+    - container_port: 9800
+      protocol: tcp
+    - container_port: 7700
+      protocol: tcp
+
+# ─── Federation ─────────────────────────────────────────────────────────────
+federation:
+  enabled: true
+  peers:
+    - sporeGate
+    - blueGate
+    - westGate
+    - southGate
+    - ironGate
+  replication: eventual

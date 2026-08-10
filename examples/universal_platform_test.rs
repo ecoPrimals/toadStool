@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
-    let providers = platform.find_primals_by_capability(&capability).await;
+    let providers = platform.find_primals_by_capability(&capability);
     println!(
         "🔍 Found {} providers with native execution capability",
         providers.len()

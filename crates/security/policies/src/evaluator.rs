@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use regex::Regex;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::workload::WorkloadSpec;
@@ -227,7 +227,7 @@ impl ConditionEvaluator {
             }
 
             PolicyCondition::Custom { expression, .. } => {
-                let compiled = self.regex_cache.read().await;
+                let compiled = self.regex_cache.read().unwrap_or_else(|e| e.into_inner());
                 if let Some(re) = compiled.get(expression) {
                     Ok(re.is_match(&format!("{context:?}")))
                 } else {

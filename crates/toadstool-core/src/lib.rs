@@ -30,6 +30,8 @@ pub mod security;
 pub mod encryption;
 /// Execution types — requests, responses, status, runtime config.
 pub mod execution;
+/// Canonical NUCLEUS composition manifest — `biome.yaml` schema.
+pub mod manifest;
 
 #[cfg(test)]
 mod workload_tests {
@@ -52,4 +54,8 @@ pub use npu_dispatch::{
 pub use silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,
     RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen,
+};
+pub use manifest::{
+    BiomeManifest, BiomeMetadata, CompositionGraph, CompositionKind, ManifestPrimalConfig,
+    ManifestServiceConfig,
 };

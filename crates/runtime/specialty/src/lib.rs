@@ -38,22 +38,28 @@ pub mod config;
 /// Cross-compilation toolchain and target support.
 pub mod cross_compilation;
 /// Embedded systems adapters and toolchains.
+#[cfg(feature = "runtime")]
 pub mod embedded;
 /// Emulation support for legacy architectures.
 pub mod emulation;
 /// Core specialty runtime engine.
+#[cfg(feature = "runtime")]
 pub mod engine;
 /// Error types for specialty runtime operations.
 pub mod error;
 /// Industrial control system adapters.
+#[cfg(feature = "runtime")]
 pub mod industrial;
 /// Mainframe system adapters (IBM, VAX, AS/400).
+#[cfg(feature = "runtime")]
 pub mod mainframe;
 /// Modbus RTU/TCP transport (`modbus-transport` feature).
 pub mod modbus_transport;
 /// Real-time operating system support.
+#[cfg(feature = "runtime")]
 pub mod realtime;
 /// Bridge between specialty runtime and core platform.
+#[cfg(feature = "runtime")]
 pub mod runtime_bridge;
 /// Type definitions for specialty systems.
 pub mod types;
@@ -79,5 +85,6 @@ pub use types::requirements::OptimizationLevel;
 
 // Re-export main public API
 pub use config::SpecialtyRuntimeConfig;
+#[cfg(feature = "runtime")]
 pub use engine::SpecialtyRuntimeEngine;
 pub use error::SpecialtyRuntimeError;
