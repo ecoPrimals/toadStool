@@ -31,7 +31,13 @@ dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvi
 # Stub for `security_provider` mock gates (`MockSecurityProvider`); cloud `test_mocks` uses `#[cfg(test)]` only
 test-mocks = []
 # Deprecated `coordination` module (~6k LOC); production uses `coordination_integration`
-legacy-coordination = ["runtime"]
+legacy-coordination = ["runtime", "legacy-scheduler"]
+# Vestigial cloud orchestration (~7.8k LOC); biomeOS owns orchestration
+legacy-cloud = ["runtime"]
+# Vestigial security provider + crypto lock (~12k LOC); production uses crypto_integration
+legacy-security = ["runtime"]
+# Vestigial distributed scheduler (~1k LOC); production uses core UniversalScheduler
+legacy-scheduler = ["runtime"]
 
 [dependencies]
 # Core ToadStool dependencies
@@ -69,7 +75,7 @@ toadstool-sysmon = { workspace = true, optional = true }
 
 [[test]]
 name = "cloud_orchestrator_coverage_tests"
-required-features = ["testing"]
+required-features = ["testing", "legacy-cloud"]
 
 [[test]]
 name = "coordination_rpc_coverage_tests"
@@ -85,11 +91,11 @@ required-features = ["legacy-coordination"]
 
 [[test]]
 name = "beardog_client_coverage_tests"
-required-features = ["runtime"]
+required-features = ["legacy-security"]
 
 [[test]]
 name = "access_control_coverage_tests"
-required-features = ["runtime"]
+required-features = ["legacy-security"]
 
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }

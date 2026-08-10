@@ -80,6 +80,8 @@ wasm-runtime = []
 mdns = ["dep:mdns-sd"]
 # Proptest generators for workload/resource types (`crate::proptest_strategies`).
 proptest-strategies = ["dep:proptest"]
+# Vestigial hardening modules (async_ops, caching, circuit_breaker, intrusion); zero production callers
+hardening = ["runtime"]
 
 [[test]]
 name = "biomeos_auth_coverage_tests"

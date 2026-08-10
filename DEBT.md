@@ -1,12 +1,22 @@
 # Active Technical Debt Register
 
-**Date**: August 10, 2026 — S377
+**Date**: August 10, 2026 — S378
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S378 (strandGate Tokio Vestigial Segmentation — Aug 10, 2026)**: ~35k LOC of
+vestigial code feature-gated behind non-default features (`legacy-cloud`,
+`legacy-security`, `legacy-scheduler`, `legacy-protocol-client`,
+`legacy-security-client`, `hardening`). These modules reimplemented functionality
+now owned by Tower Atomic primals (songBird, bearDog, cellMembrane) and biomeOS.
+Default-build tokio surface reduced from ~118 to ~85 production files (~28%).
+`tokio::time::Duration`/`Instant` migrated to `std::time` (10 files).
+`tokio::sync::RwLock`/`Mutex` migrated to `std::sync` (8 files). Code preserved
+as fossil record, not deleted.
 
 **S377 (strandGate NUCLEUS Manifest Convergence — Aug 10, 2026)**: BiomeManifest
 struct convergence: 5→2. Three divergent `BiomeManifest` definitions

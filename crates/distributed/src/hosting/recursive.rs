@@ -7,9 +7,39 @@ use toadstool_common::constants::network::HTTP_PROTOCOL;
 use std::sync::RwLock;
 
 use crate::types::{
-    InstanceStatus, ProcessHandle, ResourceAllocation, ResourceLimits, ToadStoolHostingConfig,
+    InstanceStatus, ProcessHandle, ResourceAllocation, ResourceAllocationStrategy, ResourceLimits,
+    ToadStoolHostingConfig,
 };
-use crate::universal::RecursiveHostingConfig;
+
+/// Recursive hosting configuration
+#[derive(Debug, Clone)]
+pub struct RecursiveHostingConfig {
+    /// Enable recursive hosting
+    pub enabled: bool,
+    /// Current depth level
+    pub current_depth: u32,
+    /// Maximum depth allowed
+    pub max_depth: u32,
+    /// Parent `ToadStool` if hosted
+    pub parent_toadstool: Option<String>,
+    /// Child `ToadStools` being hosted
+    pub child_toadstools: Vec<String>,
+    /// Resource allocation for children
+    pub child_resource_allocation: ResourceAllocationStrategy,
+}
+
+impl Default for RecursiveHostingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            current_depth: 0,
+            max_depth: crate::common::defaults::MAX_HOSTING_DEPTH,
+            parent_toadstool: None,
+            child_toadstools: Vec::new(),
+            child_resource_allocation: ResourceAllocationStrategy::Fair,
+        }
+    }
+}
 
 /// Recursive hosting manager for hosting child `ToadStool` instances
 pub struct RecursiveHostingManager {

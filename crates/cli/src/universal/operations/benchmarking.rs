@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::fs;
 use std::process::Command;
-use tokio::time::Instant;
+use std::time::Instant;
 
 use crate::universal::types::{BenchmarkTest, BenchmarkType, SystemInfo};
 

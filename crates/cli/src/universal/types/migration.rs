@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tokio::time::Duration;
+use std::time::Duration;
 
 /// Plan for migrating a workload between platforms
 #[derive(Debug, Clone, Serialize, Deserialize)]

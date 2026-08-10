@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio::time::Duration;
+use std::time::Duration;
 
 use super::SystemInfo;
 

@@ -17,22 +17,41 @@
 pub mod config;
 pub mod types;
 
-// Runtime transport and client modules (require tokio)
-#[cfg(feature = "runtime")]
+// Vestigial runtime modules (non-default legacy features)
+#[cfg(all(feature = "runtime", feature = "legacy-protocol-client"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Use biomeOS capability routing for protocol client services"
+)]
+/// Protocol client and health monitor (DEPRECATED: biomeOS owns capability routing).
 pub mod client;
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "legacy-security-client"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Use distributed/crypto_integration for vendor-agnostic security services"
+)]
+/// Security client integration (DEPRECATED: production uses distributed/crypto_integration).
 pub mod security_client;
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "legacy-protocol-client"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Use biomeOS capability routing for protocol transport services"
+)]
+/// Transport manager (DEPRECATED: only used by legacy ProtocolClient).
 pub mod transport;
 
 #[cfg(feature = "tarpc-transport")]
 pub mod tarpc_service;
 
-// Re-export Security / PKI security types at crate root
-#[cfg(feature = "runtime")]
+// Re-export Security / PKI security types at crate root (legacy feature)
+#[cfg(all(feature = "runtime", feature = "legacy-security-client"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Use distributed/crypto_integration for vendor-agnostic security services"
+)]
 pub use security_client::*;
 
-#[cfg(all(test, feature = "runtime"))]
+#[cfg(all(test, feature = "legacy-security-client"))]
 mod tests {
     use super::*;
     use std::collections::HashMap;

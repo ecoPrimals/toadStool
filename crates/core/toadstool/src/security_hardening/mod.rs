@@ -19,7 +19,7 @@
 pub mod audit;
 pub mod config;
 pub mod input_validator;
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub mod intrusion;
 pub mod rate_limiter;
 
@@ -30,7 +30,7 @@ pub use config::{
     ValidationRules,
 };
 pub use input_validator::InputValidator;
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub use intrusion::{ActivityType, IntrusionDetectionSystem};
 pub use rate_limiter::RateLimiter;
 
@@ -54,7 +54,7 @@ pub struct SecurityHardeningManager {
     /// Audit logger
     audit_logger: Arc<SecurityAuditLogger>,
     /// Intrusion detection
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "hardening")]
     intrusion_detection: Arc<IntrusionDetectionSystem>,
 }
 
@@ -65,7 +65,7 @@ impl SecurityHardeningManager {
         let rate_limiter = Arc::new(RateLimiter::new(config.rate_limiting.clone()));
         let input_validator = Arc::new(InputValidator::new(config.validation_rules.clone()));
         let audit_logger = Arc::new(SecurityAuditLogger::new(config.audit_config.clone()));
-        #[cfg(feature = "runtime")]
+        #[cfg(feature = "hardening")]
         let intrusion_detection = Arc::new(IntrusionDetectionSystem::new(
             config.intrusion_detection.clone(),
         ));
@@ -75,7 +75,7 @@ impl SecurityHardeningManager {
             rate_limiter,
             input_validator,
             audit_logger,
-            #[cfg(feature = "runtime")]
+            #[cfg(feature = "hardening")]
             intrusion_detection,
         }
     }
@@ -91,7 +91,7 @@ impl SecurityHardeningManager {
         context: &SecurityContext,
     ) -> ToadStoolResult<()> {
         // Check if client is banned
-        #[cfg(feature = "runtime")]
+        #[cfg(feature = "hardening")]
         if self.config.enable_intrusion_detection
             && self.intrusion_detection.is_banned(client_id).await
         {
@@ -135,7 +135,7 @@ impl SecurityHardeningManager {
         context.validate()?;
 
         // Record successful activity
-        #[cfg(feature = "runtime")]
+        #[cfg(feature = "hardening")]
         if self.config.enable_intrusion_detection {
             self.intrusion_detection
                 .record_activity(client_id, ActivityType::Request)
@@ -177,7 +177,7 @@ impl SecurityHardeningManager {
 
     /// Record security failure
     pub async fn record_security_failure(&self, client_id: &str, failure_type: SecurityEventType) {
-        #[cfg(feature = "runtime")]
+        #[cfg(feature = "hardening")]
         if self.config.enable_intrusion_detection {
             self.intrusion_detection
                 .record_activity(client_id, ActivityType::FailedAttempt)

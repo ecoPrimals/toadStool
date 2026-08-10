@@ -14,8 +14,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use tracing::info;
 use uuid::Uuid;
 
@@ -128,7 +127,7 @@ impl LegacyAdapter for VxWorksAdapter {
                 status: JobStatus::Queued,
             };
 
-            self.active_jobs.write().await.insert(job.job_id, rt_job);
+            self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job.job_id, rt_job);
             Ok(job.job_id)
         }
     }
@@ -138,7 +137,7 @@ impl LegacyAdapter for VxWorksAdapter {
         job_id: Uuid,
     ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
         async move {
-            let jobs = self.active_jobs.read().await;
+            let jobs = self.active_jobs.read().unwrap_or_else(|e| e.into_inner());
             jobs.get(&job_id).map_or_else(
                 || {
                     Err(ToadStoolError::runtime(format!(
@@ -153,7 +152,7 @@ impl LegacyAdapter for VxWorksAdapter {
 
     fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
-            let mut jobs = self.active_jobs.write().await;
+            let mut jobs = self.active_jobs.write().unwrap_or_else(|e| e.into_inner());
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }
@@ -263,7 +262,7 @@ impl LegacyAdapter for QNXAdapter {
                 status: JobStatus::Queued,
             };
 
-            self.active_jobs.write().await.insert(job.job_id, rt_job);
+            self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job.job_id, rt_job);
             Ok(job.job_id)
         }
     }
@@ -273,7 +272,7 @@ impl LegacyAdapter for QNXAdapter {
         job_id: Uuid,
     ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
         async move {
-            let jobs = self.active_jobs.read().await;
+            let jobs = self.active_jobs.read().unwrap_or_else(|e| e.into_inner());
             jobs.get(&job_id).map_or_else(
                 || {
                     Err(ToadStoolError::runtime(format!(
@@ -288,7 +287,7 @@ impl LegacyAdapter for QNXAdapter {
 
     fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
-            let mut jobs = self.active_jobs.write().await;
+            let mut jobs = self.active_jobs.write().unwrap_or_else(|e| e.into_inner());
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }

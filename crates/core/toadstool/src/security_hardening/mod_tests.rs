@@ -247,21 +247,26 @@ async fn test_audit_logger_log_event() {
 // IntrusionDetectionSystem tests
 // ============================================================================
 
-#[tokio::test]
-async fn test_ids_new() {
-    let config = IntrusionDetectionConfig::default();
-    let _ids = IntrusionDetectionSystem::new(config);
-}
+#[cfg(feature = "hardening")]
+mod intrusion_detection_tests {
+    use super::*;
 
-#[tokio::test]
-async fn test_ids_record_activity() {
-    let config = IntrusionDetectionConfig::default();
-    let ids = IntrusionDetectionSystem::new(config);
+    #[tokio::test]
+    async fn test_ids_new() {
+        let config = IntrusionDetectionConfig::default();
+        let _ids = IntrusionDetectionSystem::new(config);
+    }
 
-    ids.record_activity("client-1", ActivityType::Request).await;
+    #[tokio::test]
+    async fn test_ids_record_activity() {
+        let config = IntrusionDetectionConfig::default();
+        let ids = IntrusionDetectionSystem::new(config);
 
-    // Client should not be banned after single request
-    assert!(!ids.is_banned("client-1").await);
+        ids.record_activity("client-1", ActivityType::Request).await;
+
+        // Client should not be banned after single request
+        assert!(!ids.is_banned("client-1").await);
+    }
 }
 
 // ============================================================================

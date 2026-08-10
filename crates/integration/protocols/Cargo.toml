@@ -25,6 +25,10 @@ runtime = [
 tarpc-transport = ["dep:tarpc", "dep:bytes"]
 # MessagePack + length-delimited framing (`tarpc::serde_transport`) for Rust-to-Rust peers
 binary-transport = ["tarpc-transport", "dep:tokio-serde", "dep:tokio-util", "dep:futures"]
+# Vestigial protocol client (~2.5k LOC); biomeOS owns capability routing
+legacy-protocol-client = ["runtime"]
+# Vestigial security client (~2k LOC); production uses distributed/crypto_integration
+legacy-security-client = ["runtime"]
 
 [dependencies]
 # Core ToadStool types
@@ -56,6 +60,46 @@ tracing = { workspace = true }
 
 # UUID support
 uuid = { version = "1.7", default-features = false, features = ["serde"] }
+
+[[test]]
+name = "protocol_client_tests"
+required-features = ["legacy-protocol-client"]
+
+[[test]]
+name = "transport_expansion_tests"
+required-features = ["legacy-protocol-client"]
+
+[[test]]
+name = "transport_tests"
+required-features = ["legacy-protocol-client"]
+
+[[test]]
+name = "transport_coverage_tests"
+required-features = ["legacy-protocol-client"]
+
+[[test]]
+name = "beardog_integration_tests"
+required-features = ["legacy-security-client"]
+
+[[test]]
+name = "beardog_async_integration_tests"
+required-features = ["legacy-security-client"]
+
+[[test]]
+name = "beardog_integration_coverage_tests"
+required-features = ["legacy-security-client"]
+
+[[test]]
+name = "beardog_types_comprehensive_tests"
+required-features = ["legacy-security-client"]
+
+[[test]]
+name = "security_client_coverage_tests"
+required-features = ["legacy-security-client"]
+
+[[test]]
+name = "protocol_types_comprehensive_tests"
+required-features = ["legacy-security-client"]
 
 [dev-dependencies]
 temp-env = { workspace = true }

@@ -189,8 +189,8 @@ impl super::AiMcpInterface {
                 "available_services": ecosystem.discovered_services.keys().collect::<Vec<_>>()
             },
             "toadstool_status": "Ready for AI workloads",
-            "request_count": *self.request_counter.read().await,
-            "active_sessions": self.active_sessions.read().await.len()
+            "request_count": *self.request_counter.read().unwrap_or_else(|e| e.into_inner()),
+            "active_sessions": self.active_sessions.read().unwrap_or_else(|e| e.into_inner()).len()
         });
 
         Ok(McpResponse {
@@ -233,7 +233,7 @@ impl super::AiMcpInterface {
 
         self.active_sessions
             .write()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .insert(session_id.clone(), session.clone());
 
         Ok(McpResponse {
@@ -267,7 +267,7 @@ impl super::AiMcpInterface {
         preferences: AiPreferences,
     ) -> ToadStoolResult<McpResponse> {
         if let Some(session_id) = session_id {
-            let mut sessions = self.active_sessions.write().await;
+            let mut sessions = self.active_sessions.write().unwrap_or_else(|e| e.into_inner());
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.preferences = preferences.clone();
                 session.last_activity = SystemTime::now();

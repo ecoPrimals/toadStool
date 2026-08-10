@@ -318,7 +318,7 @@ impl Default for VMSFileSystem {
     fn default() -> Self {
         Self {
             file_specs: HashMap::new(),
-            directory_cache: Arc::new(RwLock::new(HashMap::new())),
+            directory_cache: Arc::new(std::sync::RwLock::new(HashMap::new())),
         }
     }
 }

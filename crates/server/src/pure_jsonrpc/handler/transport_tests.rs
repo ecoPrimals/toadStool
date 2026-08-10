@@ -6,7 +6,7 @@ use toadstool_core::TransportDirection;
 use toadstool_display::{HardwareTransportDispatch, TestLoopbackTransport};
 
 async fn register_rx_tx_pair(handler: &TransportHandler) {
-    let mut router = handler.transport_router.lock().await;
+    let mut router = handler.transport_router.lock().unwrap_or_else(|e| e.into_inner());
     let rx = TestLoopbackTransport::with_default_bandwidth("rx", TransportDirection::Rx)
         .with_initial_recv_data(b"chunk");
     router.register(HardwareTransportDispatch::TestLoopback(rx));
@@ -18,7 +18,7 @@ async fn register_rx_tx_pair(handler: &TransportHandler) {
 #[tokio::test]
 async fn new_creates_handler_with_empty_router() {
     let h = TransportHandler::new();
-    let router = h.transport_router.lock().await;
+    let router = h.transport_router.lock().unwrap_or_else(|e| e.into_inner());
     assert!(router.list().is_empty());
 }
 
@@ -113,7 +113,7 @@ async fn transport_stream_unregistered_rx_id() {
 async fn transport_stream_unregistered_tx_id() {
     let h = TransportHandler::new();
     {
-        let mut router = h.transport_router.lock().await;
+        let mut router = h.transport_router.lock().unwrap_or_else(|e| e.into_inner());
         router.register(HardwareTransportDispatch::TestLoopback(
             TestLoopbackTransport::with_default_bandwidth("rx-only", TransportDirection::Rx),
         ));

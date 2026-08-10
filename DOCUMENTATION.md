@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: Aug 10, 2026 — S377
+**Last Updated**: Aug 10, 2026 — S378
 
 ---
 
@@ -31,7 +31,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 ---
 
-## Current State (S377 — Aug 2026)
+## Current State (S378 — Aug 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
@@ -39,6 +39,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **16/16 cross-arch native targets** (S369) — x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
 - **38/48 crates WASM** (S376) — compute kernel on `wasm32-unknown-unknown` + `wasm32-wasip1`. Tokio optional via `runtime` feature gate. `tokio::fs`/`tokio::process` fully eliminated from production code.
 - **NUCLEUS manifest convergence** (S377) — 5→2 `BiomeManifest` structs. All subsystems (CLI, daemon, biomeOS, integration-primals) consume the single canonical type from `toadstool-core`.
+- **Tokio vestigial segmentation** (S378) — ~35k LOC feature-gated behind non-default features (`legacy-cloud`, `legacy-security`, `legacy-scheduler`, `legacy-protocol-client`, `legacy-security-client`, `hardening`). Default-build tokio surface reduced 118→~85 production files. `tokio::time`/`tokio::sync` → `std` in 18 files.
 - **126 JSON-RPC methods** (18 capability groups) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. Self-audit verified (S372).
 - **138 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment); SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **G68 platform containment complete** (S365) — zero rustix outside hw-safe.
@@ -47,7 +48,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 - **Zero dead deps** — S351: 48 eliminated. ecoBin v3.0 — zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — NV VFIO e2e on Titan V.
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S376).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S378).
 
 ---
 

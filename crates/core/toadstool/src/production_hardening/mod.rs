@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Production hardening — circuit breakers, memory pressure, resource leak detection.
 
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 mod circuit_breaker;
 mod memory_pressure;
 #[cfg(feature = "runtime")]
@@ -14,12 +14,12 @@ use std::time::Duration;
 #[cfg(feature = "runtime")]
 use crate::ToadStoolResult;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "hardening"))]
 use std::sync::RwLock;
 #[cfg(feature = "runtime")]
 use uuid::Uuid;
 
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub use circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState,
 };
@@ -40,7 +40,7 @@ pub struct ProductionHardeningConfig {
     /// Enable memory pressure monitoring.
     pub enable_memory_pressure: bool,
     /// Default circuit breaker settings.
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "hardening")]
     pub default_circuit_config: CircuitBreakerConfig,
     /// Memory pressure thresholds and callbacks.
     pub memory_pressure_config: MemoryPressureConfig,
@@ -56,7 +56,7 @@ impl Default for ProductionHardeningConfig {
             enable_circuit_breakers: true,
             enable_leak_detection: true,
             enable_memory_pressure: true,
-            #[cfg(feature = "runtime")]
+            #[cfg(feature = "hardening")]
             default_circuit_config: CircuitBreakerConfig::default(),
             memory_pressure_config: MemoryPressureConfig::default(),
             leak_detection_threshold: Duration::from_secs(300),
@@ -73,6 +73,7 @@ impl Default for ProductionHardeningConfig {
 #[cfg(feature = "runtime")]
 pub struct ProductionHardeningManager {
     config: ProductionHardeningConfig,
+    #[cfg(feature = "hardening")]
     circuit_breakers: Arc<RwLock<std::collections::HashMap<String, Arc<CircuitBreaker>>>>,
     leak_detector: Arc<ResourceLeakDetector>,
     memory_handler: Arc<MemoryPressureHandler>,
@@ -92,6 +93,7 @@ impl ProductionHardeningManager {
         ));
         Self {
             config,
+            #[cfg(feature = "hardening")]
             circuit_breakers: Arc::new(RwLock::new(std::collections::HashMap::new())),
             leak_detector,
             memory_handler,
@@ -122,6 +124,7 @@ impl ProductionHardeningManager {
 
     /// Retrieve an existing circuit breaker, or auto-create one using the
     /// default config. Callers always receive a ready-to-use breaker.
+    #[cfg(feature = "hardening")]
     pub async fn get_circuit_breaker(&self, service: &str) -> Arc<CircuitBreaker> {
         {
             let breakers = self.circuit_breakers.read().unwrap_or_else(|e| e.into_inner());
@@ -140,6 +143,7 @@ impl ProductionHardeningManager {
     }
 
     /// Look up an existing circuit breaker without creating one.
+    #[cfg(feature = "hardening")]
     pub async fn find_circuit_breaker(&self, service: &str) -> Option<Arc<CircuitBreaker>> {
         self.circuit_breakers.read().unwrap_or_else(|e| e.into_inner()).get(service).cloned()
     }
@@ -199,6 +203,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "hardening")]
     async fn test_production_hardening_manager_get_circuit_breaker() {
         let config = ProductionHardeningConfig::default();
         let manager = ProductionHardeningManager::new(config);
@@ -207,6 +212,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "hardening")]
     async fn test_production_hardening_manager_find_circuit_breaker() {
         let config = ProductionHardeningConfig::default();
         let manager = ProductionHardeningManager::new(config);

@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use toadstool_common::ToadStoolError;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-use tokio::time::Duration;
+use std::time::Duration;
 
 use crate::ecosystem::capabilities::{CapabilityId, CapabilityResolver, ServiceProvider};
 

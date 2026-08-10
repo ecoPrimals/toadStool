@@ -5,8 +5,7 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::interned_strings::capabilities;
@@ -113,18 +112,17 @@ impl DistributedSecurityProvider {
 
     /// Get or create client connection
     async fn get_client(&self) -> ToadStoolResult<Arc<CryptoServiceClient>> {
-        let client_lock = self.client.read().await;
-
-        if let Some(client) = &*client_lock {
-            return Ok(Arc::clone(client));
+        {
+            let client_lock = self.client.read().unwrap_or_else(|e| e.into_inner());
+            if let Some(client) = client_lock.as_ref() {
+                return Ok(Arc::clone(client));
+            }
         }
-
-        drop(client_lock);
 
         let client = Self::connect_client(&self.config).await?;
 
         {
-            let mut client_lock = self.client.write().await;
+            let mut client_lock = self.client.write().unwrap_or_else(|e| e.into_inner());
             *client_lock = Some(Arc::clone(&client));
         }
 
@@ -326,12 +324,13 @@ impl SecurityProvider for DistributedSecurityProvider {
 
     fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
         async {
-            let client_opt = self.client.read().await;
-            let client = match client_opt.as_ref() {
-                Some(c) => Arc::clone(c),
-                None => return Ok(ProviderHealth::Unhealthy),
+            let client = {
+                let client_opt = self.client.read().unwrap_or_else(|e| e.into_inner());
+                match client_opt.as_ref() {
+                    Some(c) => Arc::clone(c),
+                    None => return Ok(ProviderHealth::Unhealthy),
+                }
             };
-            drop(client_opt);
 
             match client.health_check().await {
                 Ok(true) => Ok(ProviderHealth::Healthy),

@@ -131,13 +131,13 @@ pub use super::types::UniversalSubstrateCapabilities;
 mod tests {
     use super::*;
 
+    #[cfg(feature = "legacy-scheduler")]
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_full_detection() {
         let caps = UniversalSubstrateCapabilities::detect_all()
             .await
             .expect("Universal substrate detection should succeed");
 
-        // Should detect at least the current system
         assert!(!caps.is_empty());
         assert!(caps.total_platforms() > 0);
     }

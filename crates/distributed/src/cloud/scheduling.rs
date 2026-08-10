@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
 use toadstool::error::ToadStoolResult;
-use tokio::sync::Mutex;
+use std::sync::Mutex;
 
 use crate::{UniversalJob, UniversalJobType};
 
@@ -239,7 +239,7 @@ impl HybridCloudScheduler {
         job: &UniversalJob,
     ) -> ToadStoolResult<HashMap<String, f64>> {
         let estimates = compute_heuristic_performance_scores(job);
-        let mut tracker = self.performance_tracker.lock().await;
+        let mut tracker = self.performance_tracker.lock().unwrap_or_else(|e| e.into_inner());
         for (provider, value) in &estimates {
             let key = format!("{provider}:score");
             tracker.record_metric(
@@ -324,7 +324,7 @@ impl HybridCloudScheduler {
 
         match &self.strategy {
             HybridSchedulingStrategy::CostOptimized => {
-                let mut cost_tracker = self.cost_tracker.lock().await;
+                let mut cost_tracker = self.cost_tracker.lock().unwrap_or_else(|e| e.into_inner());
                 let mut adjusted_costs: Vec<f64> = Vec::with_capacity(candidates.len());
                 for p in &candidates {
                     let base = cost_tracker.estimate_cost(p, core_hours);
@@ -350,7 +350,7 @@ impl HybridCloudScheduler {
                     .collect())
             }
             HybridSchedulingStrategy::PerformanceOptimized => {
-                let perf_tracker = self.performance_tracker.lock().await;
+                let perf_tracker = self.performance_tracker.lock().unwrap_or_else(|e| e.into_inner());
                 let scores: HashMap<String, f64> = candidates
                     .iter()
                     .map(|p| {
@@ -374,7 +374,7 @@ impl HybridCloudScheduler {
                 performance_weight,
                 compliance_weight,
             } => {
-                let cost_tracker = self.cost_tracker.lock().await;
+                let cost_tracker = self.cost_tracker.lock().unwrap_or_else(|e| e.into_inner());
                 let cost_norm = |c: f64| -> f64 { if c <= 0.0 { 1.0 } else { 1.0 / (1.0 + c) } };
                 let scored: Vec<(String, f64)> = candidates
                     .into_iter()

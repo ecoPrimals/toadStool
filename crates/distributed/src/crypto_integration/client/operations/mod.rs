@@ -3,6 +3,7 @@
 
 mod encryption_ops;
 mod key_ops;
+#[cfg(feature = "legacy-security")]
 mod permission_ops;
 
 use std::path::Path;

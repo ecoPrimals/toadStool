@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio::time::Duration;
+use std::time::Duration;
 use uuid::Uuid;
 
 /// Monitoring session for a specific biome or system

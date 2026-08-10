@@ -22,18 +22,18 @@
 //! rather than arbitrary line count limits.
 
 // Module declarations
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub mod async_ops;
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub mod caching;
 pub mod memory;
 pub mod monitoring;
 pub mod types;
 
 // Re-exports for public API
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub use async_ops::AsyncBatcher;
-#[cfg(feature = "runtime")]
+#[cfg(feature = "hardening")]
 pub use caching::IntelligentCache;
 pub use memory::{MemoryPool, PooledObject};
 pub use monitoring::OptimizedResourceMonitor;
@@ -41,7 +41,7 @@ pub use types::*;
 
 #[cfg(feature = "runtime")]
 use std::collections::HashMap;
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "hardening"))]
 use std::hash::Hash;
 #[cfg(feature = "runtime")]
 use std::sync::Arc;
@@ -66,6 +66,7 @@ pub struct PerformanceHardeningManager {
     /// Memory pools (type-erased for storage)
     memory_pools: Arc<RwLock<HashMap<String, Arc<dyn std::any::Any + Send + Sync>>>>,
     /// Intelligent caches (type-erased for storage)
+    #[cfg(feature = "hardening")]
     caches: Arc<RwLock<HashMap<String, Arc<dyn std::any::Any + Send + Sync>>>>,
 }
 
@@ -82,6 +83,7 @@ impl PerformanceHardeningManager {
             config,
             resource_monitor,
             memory_pools: Arc::new(RwLock::new(HashMap::new())),
+            #[cfg(feature = "hardening")]
             caches: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -176,6 +178,7 @@ impl PerformanceHardeningManager {
     /// # Errors
     ///
     /// Returns error if caching is disabled in configuration.
+    #[cfg(feature = "hardening")]
     pub async fn create_cache<K, V>(
         &self,
         name: &str,

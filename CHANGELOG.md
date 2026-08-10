@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 10, 2026 (Sessions 43-377+)
+## [Unreleased] - Aug 10, 2026 (Sessions 43-378+)
+
+### Session S378 (Aug 10, 2026) — Tokio Vestigial Segmentation: ~35k LOC Feature-Gated
+
+- **Vestigial `distributed/` modules gated** — `cloud/` (~7.8k LOC) behind `legacy-cloud`, `security/` + `security_provider/` + `crypto_lock/` (~12k LOC) behind `legacy-security`, `universal/scheduler` + adapter + platform (~1k LOC) behind `legacy-scheduler`. All with `#[deprecated]` annotations. Pattern follows existing `legacy-coordination`.
+- **Vestigial `integration/protocols/` modules gated** — `client/` + root `transport` (~2.5k LOC) behind `legacy-protocol-client`, `security_client/` (~2k LOC) behind `legacy-security-client`. Zero production callers; biomeOS capability routing and `crypto_integration` are the canonical paths.
+- **Vestigial hardening modules gated** — `performance_hardening/async_ops` + `caching`, `production_hardening/circuit_breaker`, `security_hardening/intrusion` behind non-default `hardening` feature in core `toadstool` crate. Zero production callers confirmed.
+- **`tokio::time::Duration` → `std::time::Duration`** — 8 CLI files migrated (same type re-exported by tokio).
+- **`tokio::time::Instant` → `std::time::Instant`** — 2 files (benchmarking, intrusion detection).
+- **`tokio::sync::RwLock` → `std::sync::RwLock`** — 6 files (runtime-specialty realtime/industrial/mainframe, auto_config interface, distributed security_impl/client). Guards not held across `.await` confirmed safe.
+- **`tokio::sync::Mutex` → `std::sync::Mutex`** — 2 files (server transport, distributed scheduling). Sync-only scoped locks.
+- **Default-build tokio surface reduced** — ~118 → ~85 production files (~28% reduction). ~35k LOC preserved as fossil record behind non-default features.
+- **All tests pass** — workspace `cargo check` 0 errors/0 warnings, lib tests all pass.
 
 ### Session S377 (Aug 10, 2026) — NUCLEUS Manifest Convergence: 5→2 BiomeManifest Structs
 

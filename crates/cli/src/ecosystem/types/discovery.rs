@@ -2,7 +2,7 @@
 //! Discovery scan results.
 
 use serde::{Deserialize, Serialize};
-use tokio::time::Duration;
+use std::time::Duration;
 
 use super::endpoint::ServiceEndpoint;
 

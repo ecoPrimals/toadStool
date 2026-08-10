@@ -6,13 +6,12 @@ use toadstool::ToadStoolResult;
 use toadstool_common::constants::timeouts;
 use toadstool_common::interned_strings::socket_env;
 
-use crate::hosting::RecursiveHostingManager;
+use crate::hosting::{RecursiveHostingConfig, RecursiveHostingManager};
 use crate::metrics::UniversalMetricsCollector;
 use crate::network::NetworkDistributor;
 use crate::os_layer::manager::OSLayerManager;
 use crate::types::{
-    CompatibilityMode, ExecutionTarget, LoadBalancingStrategy, ResourceAllocationStrategy,
-    ResourceLimits, UniversalJob, UniversalJobQueue,
+    CompatibilityMode, ExecutionTarget, LoadBalancingStrategy, ResourceLimits, UniversalJob, UniversalJobQueue,
 };
 
 /// Universal scheduler for cross-platform job distribution
@@ -68,23 +67,6 @@ pub struct CoordinationSchedulerConfig {
     pub endpoint: String,
     /// Authentication token
     pub auth_token: Option<String>,
-}
-
-/// Recursive hosting configuration
-#[derive(Debug, Clone)]
-pub struct RecursiveHostingConfig {
-    /// Enable recursive hosting
-    pub enabled: bool,
-    /// Current depth level
-    pub current_depth: u32,
-    /// Maximum depth allowed
-    pub max_depth: u32,
-    /// Parent `ToadStool` if hosted
-    pub parent_toadstool: Option<String>,
-    /// Child `ToadStools` being hosted
-    pub child_toadstools: Vec<String>,
-    /// Resource allocation for children
-    pub child_resource_allocation: ResourceAllocationStrategy,
 }
 
 /// OS-layer configuration
@@ -301,19 +283,6 @@ impl Default for CoordinationSchedulerConfig {
     }
 }
 
-impl Default for RecursiveHostingConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            current_depth: 0,
-            max_depth: crate::common::defaults::MAX_HOSTING_DEPTH,
-            parent_toadstool: None,
-            child_toadstools: Vec::new(),
-            child_resource_allocation: ResourceAllocationStrategy::Fair,
-        }
-    }
-}
-
 impl Default for NetworkLoadBalancing {
     fn default() -> Self {
         Self {
@@ -351,12 +320,13 @@ mod tests {
     use toadstool_config::defaults::network;
     use toadstool_config::ports::capability_fallback;
 
+    use crate::hosting::RecursiveHostingConfig;
     use crate::types::{LoadBalancingStrategy, ResourceAllocationStrategy, ResourceLimits};
 
     use super::{
         CoordinationSchedulerConfig, FaultToleranceConfig, NetworkEffectsConfig,
-        NetworkLoadBalancing, OSLayerConfig, RecursiveHostingConfig, ResourceSharingConfig,
-        SchedulingAlgorithm, UniversalSchedulerConfig,
+        NetworkLoadBalancing, OSLayerConfig, ResourceSharingConfig, SchedulingAlgorithm,
+        UniversalSchedulerConfig,
     };
 
     #[test]

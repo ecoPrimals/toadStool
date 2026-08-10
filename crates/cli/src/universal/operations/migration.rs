@@ -13,7 +13,7 @@
 
 use crate::Result;
 use std::future::Future;
-use tokio::time::Duration;
+use std::time::Duration;
 use tracing::info;
 
 use crate::universal::types::{

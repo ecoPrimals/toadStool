@@ -113,77 +113,87 @@ async fn test_memory_pool_get_release() {
 
 // ===== IntelligentCache Tests =====
 
-#[tokio::test]
-async fn test_cache_creation() {
-    let config = CachingConfig::default();
-    let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
+#[cfg(feature = "hardening")]
+mod intelligent_cache_tests {
+    use super::*;
 
-    let stats = cache.get_stats().await;
-    assert_eq!(stats.hits, 0);
-    assert_eq!(stats.misses, 0);
-}
+    #[tokio::test]
+    async fn test_cache_creation() {
+        let config = CachingConfig::default();
+        let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
 
-#[tokio::test]
-async fn test_cache_put_get() {
-    let config = CachingConfig::default();
-    let cache = IntelligentCache::new(config);
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 0);
+    }
 
-    let _ = cache.put("key1".to_string(), 42).await;
+    #[tokio::test]
+    async fn test_cache_put_get() {
+        let config = CachingConfig::default();
+        let cache = IntelligentCache::new(config);
 
-    let value = cache.get(&"key1".to_string()).await;
-    assert_eq!(value, Some(42));
+        let _ = cache.put("key1".to_string(), 42).await;
 
-    let stats = cache.get_stats().await;
-    assert_eq!(stats.hits, 1);
-    assert_eq!(stats.misses, 0);
-}
+        let value = cache.get(&"key1".to_string()).await;
+        assert_eq!(value, Some(42));
 
-#[tokio::test]
-async fn test_cache_expiration() {
-    let config = CachingConfig {
-        default_ttl: Duration::from_mins(5), // Normal TTL
-        ..Default::default()
-    };
-    let cache = IntelligentCache::new(config);
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 0);
+    }
 
-    // Put with very short custom TTL that will expire immediately
-    let _ = cache
-        .put_with_ttl("key1".to_string(), 42, Duration::from_nanos(1))
-        .await;
+    #[tokio::test]
+    async fn test_cache_expiration() {
+        let config = CachingConfig {
+            default_ttl: Duration::from_mins(5), // Normal TTL
+            ..Default::default()
+        };
+        let cache = IntelligentCache::new(config);
 
-    // Get will check expiration - nanosecond has definitely passed
-    // No sleep needed - expiration is checked on every get()
-    assert_eq!(cache.get(&"key1".to_string()).await, None);
+        // Put with very short custom TTL that will expire immediately
+        let _ = cache
+            .put_with_ttl("key1".to_string(), 42, Duration::from_nanos(1))
+            .await;
 
-    // Verify it was counted as a miss
-    let stats = cache.get_stats().await;
-    assert_eq!(stats.misses, 1);
+        // Get will check expiration - nanosecond has definitely passed
+        // No sleep needed - expiration is checked on every get()
+        assert_eq!(cache.get(&"key1".to_string()).await, None);
+
+        // Verify it was counted as a miss
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.misses, 1);
+    }
 }
 
 // ===== AsyncBatcher Tests =====
 
-#[tokio::test]
-async fn test_batcher_creation() {
-    let config = AsyncOptimizationConfig::default();
-    let _batcher: AsyncBatcher<i32, i32> = AsyncBatcher::new(config, |items: Vec<i32>| {
-        Box::pin(async move { items.into_iter().map(|x| x * 2).collect() })
-    });
-}
+#[cfg(feature = "hardening")]
+mod async_batcher_tests {
+    use super::*;
 
-#[tokio::test]
-async fn test_batcher_submit() {
-    let config = AsyncOptimizationConfig {
-        batch_size: 1, // Process immediately
-        batch_timeout: Duration::from_millis(100),
-        ..Default::default()
-    };
+    #[tokio::test]
+    async fn test_batcher_creation() {
+        let config = AsyncOptimizationConfig::default();
+        let _batcher: AsyncBatcher<i32, i32> = AsyncBatcher::new(config, |items: Vec<i32>| {
+            Box::pin(async move { items.into_iter().map(|x| x * 2).collect() })
+        });
+    }
 
-    let batcher = AsyncBatcher::new(config, |items: Vec<i32>| {
-        Box::pin(async move { items.into_iter().map(|x| x * 2).collect() })
-    });
+    #[tokio::test]
+    async fn test_batcher_submit() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 1, // Process immediately
+            batch_timeout: Duration::from_millis(100),
+            ..Default::default()
+        };
 
-    let result = batcher.submit(5).await.unwrap();
-    assert_eq!(result, 10); // 5 * 2
+        let batcher = AsyncBatcher::new(config, |items: Vec<i32>| {
+            Box::pin(async move { items.into_iter().map(|x| x * 2).collect() })
+        });
+
+        let result = batcher.submit(5).await.unwrap();
+        assert_eq!(result, 10); // 5 * 2
+    }
 }
 
 // ===== PerformanceHardeningManager Tests =====
@@ -221,6 +231,7 @@ async fn test_manager_memory_pool() {
 }
 
 #[tokio::test]
+#[cfg(feature = "hardening")]
 async fn test_manager_cache() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);
@@ -246,9 +257,12 @@ async fn test_manager_disabled_features() {
     let pool_result = manager.create_memory_pool("test", || 0).await;
     assert!(pool_result.is_err());
 
-    let cache_result: ToadStoolResult<Arc<IntelligentCache<String, i32>>> =
-        manager.create_cache("test").await;
-    assert!(cache_result.is_err());
+    #[cfg(feature = "hardening")]
+    {
+        let cache_result: ToadStoolResult<Arc<IntelligentCache<String, i32>>> =
+            manager.create_cache("test").await;
+        assert!(cache_result.is_err());
+    }
 }
 
 // ===== Configuration Tests =====

@@ -2,7 +2,7 @@
 //! Metrics storage and time series data
 
 use std::collections::HashMap;
-use tokio::time::Duration;
+use std::time::Duration;
 
 use crate::monitoring::types::{DataPoint, MetricBatch, MetricStats, MetricValue, TimeSeries};
 

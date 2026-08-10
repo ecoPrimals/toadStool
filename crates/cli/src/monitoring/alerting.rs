@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Alert rules and evaluation logic
 
-use tokio::time::Duration;
+use std::time::Duration;
 use uuid::Uuid;
 
 use crate::monitoring::types::{

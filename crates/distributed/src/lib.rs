@@ -79,8 +79,9 @@ pub mod network;
 #[cfg(feature = "runtime")]
 /// OS-layer abstraction for cross-platform execution.
 pub mod os_layer;
-#[cfg(feature = "runtime")]
-/// Cloud integration - universal cloud orchestration.
+#[cfg(all(feature = "runtime", feature = "legacy-cloud"))]
+#[deprecated(since = "2.0.0", note = "biomeOS owns orchestration; cloud/ is vestigial scaffold with zero production callers")]
+/// Cloud integration - universal cloud orchestration (DEPRECATED: biomeOS owns orchestration).
 pub mod cloud;
 #[cfg(feature = "runtime")]
 /// Coordination integration - vendor-agnostic service coordination.
@@ -92,21 +93,19 @@ pub mod coordination_integration;
 )]
 /// Coordination integration - universal signal coordination (DEPRECATED: use coordination_integration).
 pub mod coordination;
-#[cfg(feature = "runtime")]
-/// Crypto lock system - primal-agnostic cryptographic access control.
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+/// Crypto lock system (depends on security_provider; vestigial — zero production callers).
 pub mod crypto_lock;
-#[cfg(feature = "runtime")]
-/// Security provider abstraction - ANY primal can implement.
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+#[deprecated(since = "2.0.0", note = "Production uses crypto_integration; security_provider is vestigial")]
+/// Security provider abstraction (DEPRECATED: use crypto_integration).
 pub mod security_provider;
 #[cfg(feature = "runtime")]
 /// Crypto integration - vendor-agnostic cryptographic services.
 pub mod crypto_integration;
-#[cfg(feature = "runtime")]
-#[deprecated(
-    since = "2.0.0",
-    note = "Use crypto_integration for vendor-agnostic crypto services"
-)]
-/// Security integration - capability-based encryption services (DEPRECATED: use crypto_integration).
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+#[deprecated(since = "2.0.0", note = "Use crypto_integration for vendor-agnostic crypto services")]
+/// Security integration (DEPRECATED: use crypto_integration).
 pub mod security;
 #[cfg(feature = "runtime")]
 /// Substrate detection for universal compute platforms.
@@ -169,18 +168,19 @@ pub use network::{
 #[cfg(feature = "runtime")]
 pub use hosting::{
     ChildResourceAllocator, ChildToadStoolInstance, CommunicationChannel, HostingResourceConfig,
-    HostingResourceManager, InterInstanceCommunication, RecursiveHostingManager,
+    HostingResourceManager, InterInstanceCommunication, RecursiveHostingConfig,
+    RecursiveHostingManager,
 };
 #[cfg(feature = "runtime")]
 pub use os_layer::{OSLayerConfig, OSLayerManager};
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
 pub use universal::{
-    AdapterConfig, RecursiveHostingConfig, UniversalAdapter, UniversalScheduler,
-    UniversalSchedulerConfig,
+    AdapterConfig, UniversalAdapter, UniversalScheduler, UniversalSchedulerConfig,
 };
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "legacy-cloud"))]
+#[allow(deprecated, reason = "re-exporting legacy-gated items")]
 pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
 pub use crypto_lock::{
     AccessPolicies, CryptoValidator, DelegationValidator, PermissionHolder,
     PermissionRevocationList, SecurityPermissionValidator, SecurityProviderPermission,
@@ -191,7 +191,8 @@ pub use primal_capabilities::{
     Capability, CapabilityProvider, CapabilityRegistry, CoordinationAdapter, PrimalAdapter,
     WorkloadExecutor, WorkloadRequest, WorkloadResponse,
 };
-#[cfg(feature = "runtime")]
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+#[allow(deprecated, reason = "re-exporting legacy-gated items")]
 pub use security_provider::ExternalTarget;
 #[cfg(feature = "runtime")]
 pub use substrate_detection::{PlatformType, SubstrateCapabilities, SubstrateDetector};
@@ -212,12 +213,5 @@ mod tests {
     async fn test_universal_job_queue() {
         let queue = UniversalJobQueue::new();
         assert_eq!(queue.total_jobs(), 0);
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_universal_scheduler_creation() {
-        let config = UniversalSchedulerConfig::default();
-        let scheduler = UniversalScheduler::new(config).await;
-        assert!(scheduler.is_ok());
     }
 }
