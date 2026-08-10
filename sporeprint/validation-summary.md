@@ -11,7 +11,7 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 ## Status
 
 - **Version**: 0.2.0 (Session S379, Aug 10, 2026)
-- **S379**: Last-mile wiring + archaic excision — WASM conversion wired, runtime hint inference, `display.rs` + `discovery.rs` excised (~735 LOC), `component-model` feature removed, `tokio::fs` tail eliminated, `toadstool-core` test fixes.
+- **S379**: G72 Dependency Pandemic Tier 1 + last-mile wiring — tokio `["full"]` trimmed, `signal` scoped to CLI+server (workspace 7→6 features), `tokio::fs` fully eliminated (28 files), 7 dead deps removed, 6 deps promoted to workspace (bytemuck aligned 1→1.14), WASM conversion wired, runtime hint inference, ~1,750 LOC excised.
 - **S378**: Tokio vestigial segmentation — ~35k LOC feature-gated behind 9 non-default features. Default-build tokio surface 118→65 production files (45% reduction). GPU/WASM `tokio::sync` → `std::sync`. Server background monitors gated. CLI monitoring gated. runtime/edge excluded. `tokio::time` → `std::time` in 10 files.
 - **S377**: NUCLEUS manifest convergence — 5→2 `BiomeManifest` structs. All subsystems re-export canonical `toadstool-core` type.
 - **S376**: Tokio blast radius reduction — `tokio::fs`→`std::fs` (37 files), `tokio::process`→`std::process` (15 files), RwLock 99→20 files, 7 crates feature-gated (31→38/48 WASM), workspace tokio features 9→6.
