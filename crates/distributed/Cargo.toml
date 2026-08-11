@@ -65,7 +65,7 @@ aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
 
 # Utilities
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
+uuid = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 # dashmap removed: evolved to std::sync::RwLock<HashMap> (no usage in source)

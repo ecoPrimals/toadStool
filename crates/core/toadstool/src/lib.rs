@@ -207,7 +207,8 @@ pub const UNIVERSAL_CAPABILITIES: &[&str] = &[
 /// - Tracing subscriber initialization fails
 /// - System resources cannot be accessed
 pub fn init() -> ToadStoolResult<()> {
-    // Initialize tracing for universal compute
+    // Initialize tracing for universal compute (optional — omit for WASM/types-only builds)
+    #[cfg(feature = "logging")]
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .try_init()
@@ -283,6 +284,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "logging")]
     #[test]
     fn test_init_succeeds_or_tracing_already_initialized() {
         // init() sets up tracing; may fail if another test already initialized it

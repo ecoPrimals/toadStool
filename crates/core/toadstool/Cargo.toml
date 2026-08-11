@@ -29,11 +29,11 @@ serde_json = { workspace = true }
 bytes = { workspace = true }
 
 # Unique identifiers — v4 (random generation) gated behind runtime for WASM compat
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
+uuid = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true, optional = true }
 
 # Error handling
 thiserror = { workspace = true }
@@ -72,6 +72,8 @@ mdns = ["dep:mdns-sd"]
 proptest-strategies = ["dep:proptest"]
 # Vestigial hardening modules (async_ops, caching, circuit_breaker, intrusion); zero production callers
 hardening = ["runtime"]
+# tracing-subscriber fmt/env-filter init (`init()`); omit for lightweight WASM/types-only builds
+logging = ["dep:tracing-subscriber"]
 
 [[test]]
 name = "biomeos_auth_coverage_tests"

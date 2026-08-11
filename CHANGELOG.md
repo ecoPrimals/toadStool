@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Aug 10, 2026 (Sessions 43-379+)
 
+### Session S380 (Aug 11, 2026) — G72 Tier 2 Quick Wins: uuid Promotion + tracing-subscriber Gate
+
+- **`uuid` promoted to workspace** — 15 crates migrated from inline `version = "1.7"` to `{ workspace = true }`. Workspace pin: `v4` + `serde`. Zero version fragmentation remaining.
+- **`tracing-subscriber` feature-gated** — `crates/core/toadstool` now has `logging = ["dep:tracing-subscriber"]` (non-default). Reduces compile weight for WASM type builds. CLI uses its own subscriber — no breakage.
+- **`tokio-serde` aligned** — server now uses `{ workspace = true, features = ["json"] }` instead of inline version pin.
+- **Blocked Tier 2 items documented** — wgpu 22→28 needs MSRV 1.92 (current: 1.85). Gossip injection (0/17 events) needs swarmVine socket discovery fix.
+- **All tests pass** — 8,446 lib tests, 0 failures.
+
 ### Session S379 (Aug 10, 2026) — G72 Dependency Pandemic Tier 1 + Last-Mile Wiring
 
 - **G72 Dependency Pandemic Tier 1** — toadStool as exemplar. 664 Cargo.toml ecosystem-wide, 3-tier excision plan. Stadial shift: dependencies accumulated during Aug 2025 stadial shed as compositions close gaps.

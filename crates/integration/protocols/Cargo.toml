@@ -59,7 +59,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # UUID support
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
+uuid = { workspace = true }
 
 [[test]]
 name = "protocol_client_tests"

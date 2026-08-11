@@ -35,7 +35,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # UUID support
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
+uuid = { workspace = true }
 
 # tarpc client (optional - for primal-to-primal RPC)
 tarpc = { workspace = true, optional = true }

@@ -16,7 +16,7 @@ categories = ["science", "network-programming"]
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
+uuid = { workspace = true }
 tracing = { workspace = true }
 
 # HTTP client for service communication

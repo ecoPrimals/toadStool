@@ -19,7 +19,7 @@ toadstool-common = { path = "../../core/common", default-features = false }
 serde = { workspace = true }
 
 # Collections and utilities
-uuid = { version = "1.7", default-features = false, features = ["serde"] }
+uuid = { workspace = true }
 
 # Logging and tracing
 tracing = { workspace = true }
