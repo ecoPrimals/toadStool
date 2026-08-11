@@ -73,7 +73,7 @@ operations through hw-safe's safe wrappers.
 ## Architecture Impact
 
 The porting contract for new architectures is now enforceable:
-- **darwinGate** (G12): implement hw-safe backends using `IOKit`/`Mach`
+- **graftGate** (G12): implement hw-safe backends using `IOKit`/`Mach`
 - **riscGate** (G42): implement hw-safe backends using Linux on RISC-V
 - **No consumer crate needs modification** — they use trait objects and hw-safe wrappers
 

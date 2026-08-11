@@ -135,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **G68 platform abstraction COMPLETE** — All `rustix::` code imports now live exclusively in `toadstool-hw-safe`. Zero platform-specific syscall leakage to consumer crates.
 - **20+ new hw-safe APIs** — LinuxPrivilegeProbeBackend, LinuxFilesystemIsolation, LinuxDeviceIo (read/write/pread/pwrite/poll), vfio_bar_map/unmap, mmap_device/munmap_device, lock/unlock_memory, pipe_cloexec, fork/exit_group/kill_process/waitpid, recv_with_fds/sendmsg_with_fds, mknod_char, open_path, fs_stats, clock_monotonic_ns, seek_end, ioctl_infra re-exports.
 - **30+ files migrated** across 9 crates (sandbox, akida-driver, cylinder, nvpmu, display, sysmon, monitoring, server, cli).
-- **Architecture impact** — New platforms (darwinGate, riscGate) implement hw-safe backends only; no consumer crate modifications needed.
+- **Architecture impact** — New platforms (graftGate, riscGate) implement hw-safe backends only; no consumer crate modifications needed.
 
 ### Session S364 (Aug 7, 2026) — G68 L3 Full Trait Surface (6 New Abstractions)
 
