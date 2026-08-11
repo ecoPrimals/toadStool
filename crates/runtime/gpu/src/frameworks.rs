@@ -48,12 +48,15 @@ impl WebGpuFramework {
     async fn initialize_webgpu(&self) -> ToadStoolResult<WebGPUAdapter> {
         #[cfg(feature = "webgpu")]
         {
-            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-                backends: wgpu::Backends::all(),
-                dx12_shader_compiler: wgpu::Dx12Compiler::default(),
-                flags: wgpu::InstanceFlags::default(),
-                gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
-            });
+            let instance = std::panic::catch_unwind(|| {
+                wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                    backends: wgpu::Backends::all(),
+                    ..Default::default()
+                })
+            })
+            .map_err(|_| {
+                ToadStoolError::runtime("No wgpu backend available for this platform")
+            })?;
 
             let adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
@@ -62,7 +65,7 @@ impl WebGpuFramework {
                     compatible_surface: None,
                 })
                 .await
-                .ok_or_else(|| ToadStoolError::runtime("No WebGPU adapter available"))?;
+                .map_err(|e| ToadStoolError::runtime(format!("No WebGPU adapter available: {e}")))?;
 
             Ok(WebGPUAdapter { instance, adapter })
         }
@@ -175,18 +178,16 @@ impl ParallelComputeFramework for WebGpuFramework {
                 Ok(webgpu_adapter) => {
                     let (_device, _queue) = webgpu_adapter
                         .adapter
-                        .request_device(
-                            &wgpu::DeviceDescriptor {
-                                label: Some(&format!(
-                                    "ToadStool WebGPU Session {}",
-                                    device_id.uuid
-                                )),
-                                required_features: wgpu::Features::empty(),
-                                required_limits: wgpu::Limits::default(),
-                                memory_hints: wgpu::MemoryHints::default(),
-                            },
-                            None,
-                        )
+                        .request_device(&wgpu::DeviceDescriptor {
+                            label: Some(&format!(
+                                "ToadStool WebGPU Session {}",
+                                device_id.uuid
+                            )),
+                            required_features: wgpu::Features::empty(),
+                            required_limits: wgpu::Limits::default(),
+                            memory_hints: wgpu::MemoryHints::default(),
+                            ..Default::default()
+                        })
                         .await
                         .map_err(|e| {
                             ToadStoolError::runtime(format!("Failed to create WebGPU device: {e}"))

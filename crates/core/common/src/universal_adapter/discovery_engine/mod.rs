@@ -15,7 +15,9 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
-use crate::constants::network::{HTTP_PROTOCOL, UNIX_SOCKET_URL_PREFIX};
+#[cfg(feature = "mdns")]
+use crate::constants::network::HTTP_PROTOCOL;
+use crate::constants::network::UNIX_SOCKET_URL_PREFIX;
 use crate::interned_strings::runtime_types;
 use crate::interned_strings::socket_env;
 use crate::platform_paths::{PathEnv, PlatformPaths};
@@ -62,6 +64,7 @@ impl DiscoveryEngine {
     ///
     /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn with_defaults() -> ToadStoolResult<Self> {
+        #[cfg_attr(not(feature = "mdns"), allow(unused_mut))]
         let mut sources: Vec<DiscoverySourceDispatch> = vec![
             DiscoverySourceDispatch::Environment(EnvironmentSource::new()),
             DiscoverySourceDispatch::LocalRegistry(LocalRegistrySource::new()),

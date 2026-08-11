@@ -209,7 +209,7 @@ mod tests {
 
         // Add cached config
         {
-            let mut cache_guard = cache.write().expect("lock poisoned");
+            let mut cache_guard = cache.write().unwrap_or_else(|e| e.into_inner());
             cache_guard.update_measurement(OpType::MatMul, 10_000, 256, 1000.0);
         }
 
@@ -227,7 +227,7 @@ mod tests {
 
         // Add cached config
         {
-            let mut cache_guard = cache.write().expect("lock poisoned");
+            let mut cache_guard = cache.write().unwrap_or_else(|e| e.into_inner());
             cache_guard.update_measurement(OpType::MatMul, 10_000, 256, 1000.0);
         }
 

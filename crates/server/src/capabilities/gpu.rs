@@ -304,11 +304,13 @@ fn detect_macos_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
 /// macOS (Metal), and any future wgpu backend.
 #[cfg(feature = "gpu-discovery")]
 fn detect_wgpu_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
     });
-    for adapter in instance.enumerate_adapters(wgpu::Backends::all()) {
+    let adapters =
+        futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+    for adapter in adapters {
         let info = adapter.get_info();
         if info.device_type == wgpu::DeviceType::Cpu {
             continue;

@@ -41,9 +41,6 @@ bollard = { workspace = true, optional = true }
 # (reqwest dependency completely removed for pure Rust)
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
-# New dependencies
-# BYOB HTTP server — future: migrate to UDS JSON-RPC (songBird owns HTTP)
-axum = "0.7"
 toml = { workspace = true }
 
 [features]
@@ -56,7 +53,6 @@ docker = ["bollard"]
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-tower = { version = "0.5", features = ["util"] }
 
 [lints]
 workspace = true

@@ -85,13 +85,16 @@ impl WebGpuBackend {
 
     /// Initialize `WebGPU` with automatic adapter selection
     async fn init_device() -> ToadStoolResult<(wgpu::Device, wgpu::Queue)> {
-        // Create instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
+        let instance = std::panic::catch_unwind(|| {
+            wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::all(),
+                ..Default::default()
+            })
+        })
+        .map_err(|_| {
+            ToadStoolError::runtime("No wgpu backend available for this platform")
+        })?;
 
-        // Request adapter (auto-select best available)
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -99,9 +102,8 @@ impl WebGpuBackend {
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or_else(|| ToadStoolError::runtime("No WebGPU adapter available"))?;
+            .map_err(|e| ToadStoolError::runtime(format!("No WebGPU adapter available: {e}")))?;
 
-        // Get adapter info for logging
         let info = adapter.get_info();
         tracing::info!(
             "Selected WebGPU adapter: {} ({:?}) - {:?}",
@@ -110,34 +112,34 @@ impl WebGpuBackend {
             info.backend
         );
 
-        // Request device and queue
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("ToadStool Unified Memory Device"),
-                    required_features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::default(),
-                },
-                None, // No trace path
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("ToadStool Unified Memory Device"),
+                required_features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+                ..Default::default()
+            })
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to request device: {e}")))?;
 
         Ok((device, queue))
     }
 
-    /// Check if `WebGPU` is available on this system
+    /// Sync availability hint — actual adapter check deferred to async `try_init()`.
+    ///
+    /// `enumerate_adapters` became async in wgpu 28; the sync trait method
+    /// `BackendInitializer::is_available()` cannot await it.  Instance creation
+    /// always succeeds, so we report `true` and let `try_init` surface real errors.
     fn check_availability() -> bool {
-        // Quick sync check - just see if we can create an instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        // Try to enumerate adapters (returns Vec directly)
-        let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-        !adapters.is_empty()
+        std::panic::catch_unwind(|| {
+            let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::all(),
+                ..Default::default()
+            });
+            drop(instance);
+        })
+        .is_ok()
     }
 }
 

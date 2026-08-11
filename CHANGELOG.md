@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Aug 10, 2026 (Sessions 43-379+)
 
-### Session S380 (Aug 11, 2026) — G72 Tier 2 Quick Wins: uuid Promotion + tracing-subscriber Gate
+### Session S380 (Aug 11, 2026) — G72 Tier 2: wgpu 28 + axum Excision + Darwin Fix + Deep Debt
 
-- **`uuid` promoted to workspace** — 15 crates migrated from inline `version = "1.7"` to `{ workspace = true }`. Workspace pin: `v4` + `serde`. Zero version fragmentation remaining.
-- **`tracing-subscriber` feature-gated** — `crates/core/toadstool` now has `logging = ["dep:tracing-subscriber"]` (non-default). Reduces compile weight for WASM type builds. CLI uses its own subscriber — no breakage.
-- **`tokio-serde` aligned** — server now uses `{ workspace = true, features = ["json"] }` instead of inline version pin.
-- **Blocked Tier 2 items documented** — wgpu 22→28 needs MSRV 1.92 (current: 1.85). Gossip injection (0/17 events) needs swarmVine socket discovery fix.
-- **All tests pass** — 8,446 lib tests, 0 failures.
+- **wgpu 22 → 28** — MSRV bumped 1.85→1.92. All GPU API migrations across 10+ source files: borrowed `InstanceDescriptor`, async `enumerate_adapters`, `request_adapter` returns `Result`, single-arg `request_device`, `ShaderSource::SpirV` replaces unsafe API, `PollType::wait_indefinitely()`, `AdapterInfo` subgroup fields, `immediate_size` pipeline layout, `Option` entry points. toadStool leads the ecosystem on wgpu 28.
+- **axum fully excised** — `runtime/container` BYOB server rewritten from axum/HTTP to UDS JSON-RPC. `ByobApi<E>` transport-neutral dispatcher with 7 RPC methods. `cargo tree -i axum` returns "did not match any packages". HTTP is songBird's domain.
+- **Darwin/graftGate fix** — `#[cfg(unix)]` → `#[cfg(target_os = "linux")]` for silicon_registry/silicon_discovery/ipc_watch (6 sites). Fixes aarch64-apple-darwin compilation.
+- **mdns feature-gating fix** — `discover_via_mdns()` call sites gated behind `#[cfg(feature = "mdns")]`. Discovery engine warnings resolved.
+- **Lock-poisoning alignment** — 10 `.expect("lock poisoned")` → `.unwrap_or_else(|e| e.into_inner())` in `security/monitoring` + `runtime/adaptive`. Aligns with server pattern.
+- **`uuid` promoted to workspace** — 15 crates migrated from inline `version = "1.7"` to `{ workspace = true }`. Zero version fragmentation.
+- **`tracing-subscriber` feature-gated** — `logging = ["dep:tracing-subscriber"]` (non-default). CLI uses its own subscriber.
+- **`tokio-serde` aligned** — server now uses `{ workspace = true, features = ["json"] }`.
+- **All tests pass** — `cargo check --workspace` clean. `cargo test --workspace --lib` all pass.
 
 ### Session S379 (Aug 10, 2026) — G72 Dependency Pandemic Tier 1 + Last-Mile Wiring
 

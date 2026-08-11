@@ -219,12 +219,13 @@ impl DispatchHandler {
 /// Discover GPU adapters via wgpu for cross-platform dispatch capabilities.
 #[cfg(feature = "gpu-discovery")]
 fn discover_wgpu_adapters() -> Vec<serde_json::Value> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
     });
-    instance
-        .enumerate_adapters(wgpu::Backends::all())
+    let adapters =
+        futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+    adapters
         .iter()
         .filter(|a| a.get_info().device_type != wgpu::DeviceType::Cpu)
         .enumerate()

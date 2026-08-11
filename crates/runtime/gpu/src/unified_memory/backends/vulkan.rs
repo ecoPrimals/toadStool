@@ -100,13 +100,16 @@ impl VulkanBackend {
     /// This uses wgpu with the Vulkan backend, providing Vulkan-level
     /// performance with pure Rust safety.
     pub async fn try_init_with_wgpu() -> ToadStoolResult<Self> {
-        // Create wgpu instance with Vulkan backend only
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
-            ..Default::default()
-        });
+        let instance = std::panic::catch_unwind(|| {
+            wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::VULKAN,
+                ..Default::default()
+            })
+        })
+        .map_err(|_| {
+            ToadStoolError::runtime("No Vulkan backend available for this platform")
+        })?;
 
-        // Request adapter (Vulkan only)
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -114,7 +117,7 @@ impl VulkanBackend {
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or_else(|| ToadStoolError::runtime("No Vulkan adapter available"))?;
+            .map_err(|e| ToadStoolError::runtime(format!("No Vulkan adapter available: {e}")))?;
 
         // Verify we got a Vulkan adapter
         let info = adapter.get_info();
@@ -131,20 +134,17 @@ impl VulkanBackend {
             info.device_type
         );
 
-        // Request device
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("ToadStool Vulkan Backend"),
-                    required_features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("ToadStool Vulkan Backend"),
+                required_features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+                ..Default::default()
+            })
             .await
             .map_err(|e| {
-                ToadStoolError::runtime(format!("Vulkan device creation failed: {}", e))
+                ToadStoolError::runtime(format!("Vulkan device creation failed: {e}"))
             })?;
 
         let limits = device.limits();
@@ -167,16 +167,19 @@ impl VulkanBackend {
         })
     }
 
-    /// Check if Vulkan is available (via wgpu or direct)
+    /// Sync availability hint — actual Vulkan adapter check deferred to async `try_init()`.
+    ///
+    /// `enumerate_adapters` became async in wgpu 28; the sync trait method
+    /// `BackendInitializer::is_available()` cannot await it.
     fn check_availability() -> bool {
-        // Check via wgpu first (pure Rust)
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
-            ..Default::default()
-        });
-
-        let adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN);
-        !adapters.is_empty()
+        std::panic::catch_unwind(|| {
+            let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::VULKAN,
+                ..Default::default()
+            });
+            drop(instance);
+        })
+        .is_ok()
     }
 
     /// Create backend with existing Vulkan device (advanced usage)

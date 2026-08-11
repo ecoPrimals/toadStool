@@ -60,7 +60,7 @@ use workload::WorkloadHandler;
 #[cfg(target_os = "linux")]
 use crate::glowplug_client::{self, SharedGlowPlugClient};
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub(crate) use crate::background::silicon_discovery::SharedSiliconRegistry;
 
 /// Pure Rust JSON-RPC Handler
@@ -99,7 +99,7 @@ pub struct JsonRpcHandler {
     /// Cached at init — avoids re-reading env vars on every request.
     pub(super) local_gate_id: Option<Arc<str>>,
     /// Shared silicon registry — populated by background `shader.compile.capabilities` query.
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub(crate) silicon_registry: SharedSiliconRegistry,
 }
 
@@ -140,9 +140,9 @@ impl JsonRpcHandler {
         // Spawn ipc.watch background poller — watches the communication provider for shader
         // capability registrations and invalidates the visualization client
         // cache so dispatch can discover the shader compiler at any time (GAP-HS-119).
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         let silicon_registry;
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         {
             let watch_client = Arc::clone(&coral_client);
             tokio::spawn(async move {
@@ -226,7 +226,7 @@ impl JsonRpcHandler {
             glowplug: glowplug_client::create_glowplug_client(),
             bound_socket_path,
             local_gate_id: Some(local_gate_id),
-            #[cfg(unix)]
+            #[cfg(target_os = "linux")]
             silicon_registry,
         }
     }

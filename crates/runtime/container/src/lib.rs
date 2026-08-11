@@ -20,7 +20,7 @@ pub mod types;
 mod byob_routes;
 mod docker;
 mod engine;
-pub use byob_routes::ByobApi;
+pub use byob_routes::{ByobApi, JsonRpcRequest, JsonRpcResponse, JsonRpcError};
 pub mod byob_server;
 
 use std::collections::HashMap;

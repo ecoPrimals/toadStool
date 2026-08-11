@@ -27,9 +27,9 @@ mod catalyst_watchdog_tests;
 mod cleanup;
 #[cfg(feature = "background-monitors")]
 mod health;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub(crate) mod ipc_watch;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub(crate) mod silicon_discovery;
 #[cfg(target_os = "linux")]
 pub(crate) mod kernel_sentinel;

@@ -21,9 +21,13 @@ mod wgpu_backend_tests {
             vendor: 0x10de,
             device: 0x2684,
             device_type: wgpu::DeviceType::DiscreteGpu,
+            device_pci_bus_id: String::new(),
             driver: driver.to_owned(),
             driver_info: "test".to_owned(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 32,
+            subgroup_max_size: 32,
+            transient_saves_memory: false,
         };
         HardwareFingerprint::from_adapter_info(
             &info,
@@ -347,9 +351,13 @@ mod wgpu_backend_tests {
             vendor: 0,
             device: 0,
             device_type: wgpu::DeviceType::Cpu,
+            device_pci_bus_id: String::new(),
             driver: String::new(),
             driver_info: String::new(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 0,
+            subgroup_max_size: 0,
+            transient_saves_memory: false,
         };
         let fp = HardwareFingerprint::from_adapter_info(&info, GpuDeviceType::Cpu, false, false, 1);
         assert!(
@@ -467,9 +475,13 @@ mod wgpu_backend_tests {
             vendor: 0x10de,
             device: 0x2684,
             device_type: wgpu::DeviceType::DiscreteGpu,
+            device_pci_bus_id: String::new(),
             driver: "nvidia".to_owned(),
             driver_info: "560.35.03".to_owned(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 32,
+            subgroup_max_size: 32,
+            transient_saves_memory: false,
         };
         let caps = probe_silicon_capabilities(&info, GpuDeviceType::Discrete);
 
@@ -496,9 +508,13 @@ mod wgpu_backend_tests {
             vendor: 0x10de,
             device: 0x1d81,
             device_type: wgpu::DeviceType::DiscreteGpu,
+            device_pci_bus_id: String::new(),
             driver: "nvk".to_owned(),
             driver_info: "mesa".to_owned(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 32,
+            subgroup_max_size: 32,
+            transient_saves_memory: false,
         };
         let caps = probe_silicon_capabilities(&info, GpuDeviceType::Discrete);
 
@@ -518,9 +534,13 @@ mod wgpu_backend_tests {
             vendor: 0x8086,
             device: 0x4680,
             device_type: wgpu::DeviceType::IntegratedGpu,
+            device_pci_bus_id: String::new(),
             driver: "anv".to_owned(),
             driver_info: "mesa".to_owned(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 8,
+            subgroup_max_size: 32,
+            transient_saves_memory: false,
         };
         let caps = probe_silicon_capabilities(&info, GpuDeviceType::Integrated);
 
@@ -543,9 +563,13 @@ mod wgpu_backend_tests {
             vendor: 0x1002,
             device: 0x744c,
             device_type: wgpu::DeviceType::DiscreteGpu,
+            device_pci_bus_id: String::new(),
             driver: "radv".to_owned(),
             driver_info: "mesa".to_owned(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 32,
+            subgroup_max_size: 64,
+            transient_saves_memory: false,
         };
         let caps = probe_silicon_capabilities(&info, GpuDeviceType::Discrete);
 
@@ -566,9 +590,13 @@ mod wgpu_backend_tests {
             vendor: 0,
             device: 0,
             device_type: wgpu::DeviceType::Cpu,
+            device_pci_bus_id: String::new(),
             driver: "llvmpipe".to_owned(),
             driver_info: String::new(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 8,
+            subgroup_max_size: 8,
+            transient_saves_memory: false,
         };
         let caps = probe_silicon_capabilities(&info, GpuDeviceType::Cpu);
 

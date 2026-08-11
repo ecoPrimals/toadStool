@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Safe SPIR-V shader module creation.
 //!
-//! Wraps `wgpu::Device::create_shader_module_spirv` (which is `unsafe`)
-//! behind a validated, safe API.
+//! Wraps wgpu's `ShaderSource::SpirV` behind a validated, safe API.
+//! As of wgpu 28, SPIR-V passthrough uses naga validation and no longer
+//! requires the unsafe `create_shader_module_spirv` method.
 
 /// Create a wgpu shader module from validated SPIR-V bytes.
 ///
-/// Validates the SPIR-V magic number before calling the unsafe wgpu API.
+/// Validates the SPIR-V magic number before passing to wgpu's naga-validated
+/// SPIR-V pipeline.
 ///
 /// # Errors
 ///
 /// Returns `Err` if the binary is not valid SPIR-V (wrong magic or too short).
-#[expect(
-    unsafe_code,
-    reason = "SPIR-V shader module creation requires unsafe wgpu API"
-)]
 pub fn create_spirv_shader_module(
     device: &wgpu::Device,
     label: &str,
@@ -39,15 +37,10 @@ pub fn create_spirv_shader_module(
         .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect();
 
-    // SAFETY: SPIR-V magic validated above; the binary is from a trusted
-    // shader compiler (coralReef or equivalent). wgpu performs additional
-    // validation internally.
-    let module = unsafe {
-        device.create_shader_module_spirv(&wgpu::ShaderModuleDescriptorSpirV {
-            label: Some(label),
-            source: std::borrow::Cow::Borrowed(&spirv_words),
-        })
-    };
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some(label),
+        source: wgpu::ShaderSource::SpirV(std::borrow::Cow::Borrowed(&spirv_words)),
+    });
 
     Ok(module)
 }

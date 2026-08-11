@@ -42,15 +42,13 @@ pub fn query_gpu_devices() -> Vec<serde_json::Value> {
 /// Enumerate GPU adapters via wgpu (cross-platform: Vulkan, DX12, Metal).
 #[cfg(feature = "gpu-discovery")]
 fn discover_via_wgpu(devices: &mut Vec<serde_json::Value>) {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
     });
-    for (idx, adapter) in instance
-        .enumerate_adapters(wgpu::Backends::all())
-        .iter()
-        .enumerate()
-    {
+    let adapters =
+        futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+    for (idx, adapter) in adapters.iter().enumerate() {
         let info = adapter.get_info();
         if info.device_type == wgpu::DeviceType::Cpu {
             continue;

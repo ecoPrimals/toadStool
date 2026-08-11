@@ -16,6 +16,7 @@ use crate::primal_identity::{
 };
 
 use super::discovery_config::discover_from_config;
+#[cfg(feature = "mdns")]
 use super::discovery_mdns::discover_via_mdns;
 use super::discovery_registry::discover_from_registry;
 use super::fallback::services_from_eco_primals_runtime_sockets;
@@ -115,7 +116,10 @@ impl ServiceDiscovery {
         let services = match &self.method {
             DiscoveryMethod::Auto => self.discover_auto().await,
             DiscoveryMethod::Environment => self.discover_from_env(),
+            #[cfg(feature = "mdns")]
             DiscoveryMethod::Mdns => discover_via_mdns().await,
+            #[cfg(not(feature = "mdns"))]
+            DiscoveryMethod::Mdns => Ok(Vec::new()),
             DiscoveryMethod::ConfigFile { path } => discover_from_config(path),
             DiscoveryMethod::Registry { endpoint } => discover_from_registry(endpoint).await,
             DiscoveryMethod::Multi(methods) => self.discover_multi(methods).await,
@@ -159,7 +163,10 @@ impl ServiceDiscovery {
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
         match method {
             DiscoveryMethod::Environment => self.discover_from_env(),
+            #[cfg(feature = "mdns")]
             DiscoveryMethod::Mdns => discover_via_mdns().await,
+            #[cfg(not(feature = "mdns"))]
+            DiscoveryMethod::Mdns => Ok(Vec::new()),
             DiscoveryMethod::ConfigFile { path } => discover_from_config(path),
             DiscoveryMethod::Registry { endpoint } => discover_from_registry(endpoint).await,
             _ => Ok(Vec::new()),

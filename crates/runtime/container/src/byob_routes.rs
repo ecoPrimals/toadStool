@@ -1,17 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! # BYOB HTTP routes for container runtime
+//! # BYOB JSON-RPC dispatch for container runtime
 //!
-//! HTTP API endpoints for handling BYOB deployment requests from Songbird.
-//! Extracted from toadstool-api (S96) to avoid REST/axum/utoipa dependency chain.
-//! The API crate has been fossilized; this is the canonical BYOB route implementation.
+//! Pure Rust JSON-RPC handlers for BYOB deployment operations.
+//! Replaces the former axum/HTTP layer — toadStool uses JSON-RPC over
+//! Unix sockets per wateringHole standard; HTTP belongs to songBird.
 
-use axum::{
-    Router,
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-    routing::{get, post},
-};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};
@@ -19,140 +12,116 @@ use uuid::Uuid;
 
 use toadstool::{
     ToadStoolError,
-    byob::{ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor, ResourceUsage},
+    byob::{ByobDeploymentRequest, ByobExecutor},
 };
+use toadstool_common::constants::jsonrpc::error_codes;
 
-/// HTTP API for BYOB operations (router factory)
-pub struct ByobApi<E: ByobExecutor + Send + Sync + 'static> {
-    executor: Arc<E>,
+/// JSON-RPC 2.0 request (ecosystem-standard newline-delimited protocol).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcRequest {
+    /// Protocol version (always "2.0").
+    pub jsonrpc: String,
+    /// Method name (e.g. `byob.deploy`).
+    pub method: String,
+    /// Method parameters.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<serde_json::Value>,
+    /// Request ID for correlation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
 }
 
-impl<E: ByobExecutor + Send + Sync + 'static> ByobApi<E> {
-    /// Create a new BYOB API
-    pub fn new(executor: Arc<E>) -> Self {
-        Self { executor }
-    }
-
-    /// Create router for BYOB API with state already applied.
-    ///
-    /// After `with_state`, Axum treats the router as having no remaining state parameter (`Router<()>`),
-    /// so it can be passed to `into_make_service` or `axum::serve` like the merge pattern in
-    /// `byob_server`.
-    pub fn router(self) -> Router {
-        Self::routes().with_state(self.executor)
-    }
-
-    /// Build BYOB route definitions without applying state.
-    /// The caller is responsible for providing `Arc<E>` via `with_state`.
-    pub fn routes() -> Router<Arc<E>> {
-        Router::new()
-            .route("/byob/deploy", post(deploy_biome::<E>))
-            .route("/byob/deployments", get(list_deployments::<E>))
-            .route(
-                "/byob/deployments/:deployment_id",
-                get(get_deployment_status::<E>),
-            )
-            .route(
-                "/byob/deployments/:deployment_id/stop",
-                post(stop_deployment::<E>),
-            )
-            .route(
-                "/byob/deployments/:deployment_id/usage",
-                get(get_resource_usage::<E>),
-            )
-            .route("/byob/health", get(health_check))
-    }
+/// JSON-RPC 2.0 response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcResponse {
+    /// Protocol version.
+    pub jsonrpc: String,
+    /// Result on success.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    /// Error on failure.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
+    /// Correlated request ID.
+    pub id: serde_json::Value,
 }
 
-/// Deploy a team biome
-async fn deploy_biome<E: ByobExecutor + Send + Sync + 'static>(
-    State(executor): State<Arc<E>>,
-    Json(request): Json<ByobDeploymentRequest>,
-) -> Result<Json<ByobDeploymentResponse>, ByobApiError> {
-    info!(
-        "Received BYOB deployment request for team {}",
-        request.team_id
-    );
-
-    match executor.deploy_biome(request).await {
-        Ok(response) => {
-            info!(
-                "BYOB deployment {} completed successfully",
-                response.deployment_id
-            );
-            Ok(Json(response))
+impl JsonRpcResponse {
+    /// Create a success response.
+    #[must_use]
+    pub fn success(id: serde_json::Value, result: serde_json::Value) -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            result: Some(result),
+            error: None,
+            id,
         }
-        Err(e) => {
-            error!("BYOB deployment failed: {:?}", e);
-            Err(ByobApiError::from(e))
+    }
+
+    /// Create an error response.
+    #[must_use]
+    pub fn error(id: serde_json::Value, error: JsonRpcError) -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            result: None,
+            error: Some(error),
+            id,
         }
     }
 }
 
-/// List all active deployments
-async fn list_deployments<E: ByobExecutor + Send + Sync + 'static>(
-    State(executor): State<Arc<E>>,
-) -> Result<Json<Vec<ByobDeploymentResponse>>, ByobApiError> {
-    match executor.list_deployments().await {
-        Ok(deployments) => Ok(Json(deployments)),
-        Err(e) => {
-            error!("Failed to list deployments: {:?}", e);
-            Err(ByobApiError::from(e))
-        }
-    }
+/// JSON-RPC 2.0 error object.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcError {
+    /// Numeric error code per JSON-RPC 2.0 spec.
+    pub code: i32,
+    /// Human-readable error message.
+    pub message: String,
+    /// Optional structured error data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
 }
 
-/// Get deployment status
-async fn get_deployment_status<E: ByobExecutor + Send + Sync + 'static>(
-    State(executor): State<Arc<E>>,
-    Path(deployment_id): Path<Uuid>,
-) -> Result<Json<ByobDeploymentResponse>, ByobApiError> {
-    match executor.get_deployment_status(deployment_id).await {
-        Ok(response) => Ok(Json(response)),
-        Err(e) => {
-            error!("Failed to get deployment status: {:?}", e);
-            Err(ByobApiError::from(e))
+impl JsonRpcError {
+    /// Parse error (`-32700`).
+    #[must_use]
+    pub fn parse_error() -> Self {
+        Self {
+            code: error_codes::PARSE_ERROR,
+            message: "Parse error".to_string(),
+            data: None,
         }
     }
-}
 
-/// Stop a deployment
-async fn stop_deployment<E: ByobExecutor + Send + Sync + 'static>(
-    State(executor): State<Arc<E>>,
-    Path(deployment_id): Path<Uuid>,
-) -> Result<Json<StopDeploymentResponse>, ByobApiError> {
-    match executor.stop_deployment(deployment_id).await {
-        Ok(()) => Ok(Json(StopDeploymentResponse {
-            deployment_id,
-            message: "Deployment stopped successfully".to_string(),
-        })),
-        Err(e) => {
-            error!("Failed to stop deployment: {:?}", e);
-            Err(ByobApiError::from(e))
+    /// Method not found (`-32601`).
+    #[must_use]
+    pub fn method_not_found(method: &str) -> Self {
+        Self {
+            code: error_codes::METHOD_NOT_FOUND,
+            message: format!("Method not found: {method}"),
+            data: None,
         }
     }
-}
 
-/// Get resource usage for a deployment
-async fn get_resource_usage<E: ByobExecutor + Send + Sync + 'static>(
-    State(executor): State<Arc<E>>,
-    Path(deployment_id): Path<Uuid>,
-) -> Result<Json<ResourceUsage>, ByobApiError> {
-    match executor.get_resource_usage(deployment_id).await {
-        Ok(usage) => Ok(Json(usage)),
-        Err(e) => {
-            error!("Failed to get resource usage: {:?}", e);
-            Err(ByobApiError::from(e))
+    /// Invalid params (`-32602`).
+    #[must_use]
+    pub fn invalid_params(msg: &str) -> Self {
+        Self {
+            code: error_codes::INVALID_PARAMS,
+            message: format!("Invalid params: {msg}"),
+            data: None,
         }
     }
-}
 
-/// Health check endpoint
-async fn health_check() -> Result<Json<HealthResponse>, ByobApiError> {
-    Ok(Json(HealthResponse {
-        status: "healthy".to_string(),
-        message: "Toadstool BYOB API is operational".to_string(),
-    }))
+    /// Internal error (`-32603`).
+    #[must_use]
+    pub fn internal_error(msg: &str) -> Self {
+        Self {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Internal error: {msg}"),
+            data: None,
+        }
+    }
 }
 
 /// Stop deployment response
@@ -169,63 +138,226 @@ pub struct HealthResponse {
     pub message: String,
 }
 
-/// API error type for BYOB routes
-#[derive(Debug)]
-pub struct ByobApiError {
-    pub status: StatusCode,
-    pub message: String,
+/// BYOB JSON-RPC API dispatcher
+pub struct ByobApi<E: ByobExecutor + Send + Sync + 'static> {
+    executor: Arc<E>,
 }
 
-impl ByobApiError {
-    #[expect(dead_code, reason = "preserved for API compatibility")]
-    #[must_use]
-    pub fn new(status: StatusCode, message: &str) -> Self {
-        Self {
-            status,
-            message: message.to_string(),
+impl<E: ByobExecutor + Send + Sync + 'static> ByobApi<E> {
+    /// Create a new BYOB API dispatcher.
+    pub fn new(executor: Arc<E>) -> Self {
+        Self { executor }
+    }
+
+    /// Dispatch a JSON-RPC request to the appropriate handler.
+    pub async fn dispatch(&self, request_str: &str) -> JsonRpcResponse {
+        let request: JsonRpcRequest = match serde_json::from_str(request_str.trim()) {
+            Ok(req) => req,
+            Err(_) => {
+                return JsonRpcResponse::error(
+                    serde_json::json!(null),
+                    JsonRpcError::parse_error(),
+                );
+            }
+        };
+
+        let id = request.id.clone().unwrap_or(serde_json::json!(null));
+
+        match request.method.as_str() {
+            "byob.deploy" => self.deploy_biome(id, request.params).await,
+            "byob.list_deployments" => self.list_deployments(id).await,
+            "byob.get_deployment" => self.get_deployment(id, request.params).await,
+            "byob.stop_deployment" => self.stop_deployment(id, request.params).await,
+            "byob.get_resource_usage" => self.get_resource_usage(id, request.params).await,
+            "byob.health" => self.health_check(id),
+            "byob.info" => self.info(id),
+            _ => JsonRpcResponse::error(id, JsonRpcError::method_not_found(&request.method)),
         }
+    }
+
+    async fn deploy_biome(
+        &self,
+        id: serde_json::Value,
+        params: Option<serde_json::Value>,
+    ) -> JsonRpcResponse {
+        let request: ByobDeploymentRequest = match params
+            .as_ref()
+            .and_then(|p| serde_json::from_value(p.clone()).ok())
+        {
+            Some(req) => req,
+            None => {
+                return JsonRpcResponse::error(
+                    id,
+                    JsonRpcError::invalid_params("missing or invalid deployment request"),
+                );
+            }
+        };
+
+        info!("Received BYOB deployment request for team {}", request.team_id);
+
+        match self.executor.deploy_biome(request).await {
+            Ok(response) => {
+                info!("BYOB deployment {} completed", response.deployment_id);
+                JsonRpcResponse::success(id, serde_json::to_value(response).unwrap_or_default())
+            }
+            Err(e) => {
+                error!("BYOB deployment failed: {:?}", e);
+                JsonRpcResponse::error(id, toadstool_error_to_jsonrpc(&e))
+            }
+        }
+    }
+
+    async fn list_deployments(&self, id: serde_json::Value) -> JsonRpcResponse {
+        match self.executor.list_deployments().await {
+            Ok(deployments) => {
+                JsonRpcResponse::success(id, serde_json::to_value(deployments).unwrap_or_default())
+            }
+            Err(e) => {
+                error!("Failed to list deployments: {:?}", e);
+                JsonRpcResponse::error(id, toadstool_error_to_jsonrpc(&e))
+            }
+        }
+    }
+
+    async fn get_deployment(
+        &self,
+        id: serde_json::Value,
+        params: Option<serde_json::Value>,
+    ) -> JsonRpcResponse {
+        let deployment_id = match extract_deployment_id(&params) {
+            Some(did) => did,
+            None => {
+                return JsonRpcResponse::error(
+                    id,
+                    JsonRpcError::invalid_params("missing or invalid deployment_id"),
+                );
+            }
+        };
+
+        match self.executor.get_deployment_status(deployment_id).await {
+            Ok(response) => {
+                JsonRpcResponse::success(id, serde_json::to_value(response).unwrap_or_default())
+            }
+            Err(e) => {
+                error!("Failed to get deployment status: {:?}", e);
+                JsonRpcResponse::error(id, toadstool_error_to_jsonrpc(&e))
+            }
+        }
+    }
+
+    async fn stop_deployment(
+        &self,
+        id: serde_json::Value,
+        params: Option<serde_json::Value>,
+    ) -> JsonRpcResponse {
+        let deployment_id = match extract_deployment_id(&params) {
+            Some(did) => did,
+            None => {
+                return JsonRpcResponse::error(
+                    id,
+                    JsonRpcError::invalid_params("missing or invalid deployment_id"),
+                );
+            }
+        };
+
+        match self.executor.stop_deployment(deployment_id).await {
+            Ok(()) => {
+                let response = StopDeploymentResponse {
+                    deployment_id,
+                    message: "Deployment stopped successfully".to_string(),
+                };
+                JsonRpcResponse::success(id, serde_json::to_value(response).unwrap_or_default())
+            }
+            Err(e) => {
+                error!("Failed to stop deployment: {:?}", e);
+                JsonRpcResponse::error(id, toadstool_error_to_jsonrpc(&e))
+            }
+        }
+    }
+
+    async fn get_resource_usage(
+        &self,
+        id: serde_json::Value,
+        params: Option<serde_json::Value>,
+    ) -> JsonRpcResponse {
+        let deployment_id = match extract_deployment_id(&params) {
+            Some(did) => did,
+            None => {
+                return JsonRpcResponse::error(
+                    id,
+                    JsonRpcError::invalid_params("missing or invalid deployment_id"),
+                );
+            }
+        };
+
+        match self.executor.get_resource_usage(deployment_id).await {
+            Ok(usage) => {
+                JsonRpcResponse::success(id, serde_json::to_value(usage).unwrap_or_default())
+            }
+            Err(e) => {
+                error!("Failed to get resource usage: {:?}", e);
+                JsonRpcResponse::error(id, toadstool_error_to_jsonrpc(&e))
+            }
+        }
+    }
+
+    fn health_check(&self, id: serde_json::Value) -> JsonRpcResponse {
+        let response = HealthResponse {
+            status: "healthy".to_string(),
+            message: "Toadstool BYOB API is operational".to_string(),
+        };
+        JsonRpcResponse::success(id, serde_json::to_value(response).unwrap_or_default())
+    }
+
+    fn info(&self, id: serde_json::Value) -> JsonRpcResponse {
+        JsonRpcResponse::success(
+            id,
+            serde_json::json!({
+                "service": "toadstool-byob-server",
+                "version": env!("CARGO_PKG_VERSION"),
+                "transport": "json-rpc-2.0",
+            }),
+        )
     }
 }
 
-impl From<ToadStoolError> for ByobApiError {
-    fn from(err: ToadStoolError) -> Self {
-        use toadstool::error::{ConfigError, ResourceError, SystemError};
-
-        match err {
-            ToadStoolError::Resource(ResourceError::NotFound { .. })
-            | ToadStoolError::NotFound(_) => Self {
-                status: StatusCode::NOT_FOUND,
-                message: err.to_string(),
-            },
-            ToadStoolError::Configuration(ConfigError::ValidationError { .. }) => Self {
-                status: StatusCode::BAD_REQUEST,
-                message: err.to_string(),
-            },
-            ToadStoolError::Resource(
-                ResourceError::AllocationFailure { .. }
-                | ResourceError::LimitExceeded { .. }
-                | ResourceError::Insufficient { .. },
-            ) => Self {
-                status: StatusCode::INSUFFICIENT_STORAGE,
-                message: err.to_string(),
-            },
-            ToadStoolError::System(SystemError::NotSupported { .. }) => Self {
-                status: StatusCode::NOT_IMPLEMENTED,
-                message: err.to_string(),
-            },
-            _ => Self {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
-                message: err.to_string(),
-            },
-        }
-    }
+fn extract_deployment_id(params: &Option<serde_json::Value>) -> Option<Uuid> {
+    params
+        .as_ref()?
+        .get("deployment_id")?
+        .as_str()
+        .and_then(|s| s.parse().ok())
 }
 
-impl axum::response::IntoResponse for ByobApiError {
-    fn into_response(self) -> axum::response::Response {
-        let body = Json(serde_json::json!({
-            "error": self.message
-        }));
-        (self.status, body).into_response()
+fn toadstool_error_to_jsonrpc(err: &ToadStoolError) -> JsonRpcError {
+    use toadstool::error::{ConfigError, ResourceError, SystemError};
+
+    match err {
+        ToadStoolError::Resource(ResourceError::NotFound { .. })
+        | ToadStoolError::NotFound(_) => JsonRpcError {
+            code: error_codes::WORKLOAD_NOT_FOUND,
+            message: err.to_string(),
+            data: None,
+        },
+        ToadStoolError::Configuration(ConfigError::ValidationError { .. }) => JsonRpcError {
+            code: error_codes::INVALID_PARAMS,
+            message: err.to_string(),
+            data: None,
+        },
+        ToadStoolError::Resource(
+            ResourceError::AllocationFailure { .. }
+            | ResourceError::LimitExceeded { .. }
+            | ResourceError::Insufficient { .. },
+        ) => JsonRpcError {
+            code: error_codes::RESOURCE_EXHAUSTED,
+            message: err.to_string(),
+            data: None,
+        },
+        ToadStoolError::System(SystemError::NotSupported { .. }) => JsonRpcError {
+            code: error_codes::CAPABILITY_NOT_AVAILABLE,
+            message: err.to_string(),
+            data: None,
+        },
+        _ => JsonRpcError::internal_error(&err.to_string()),
     }
 }

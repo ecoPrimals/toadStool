@@ -51,12 +51,21 @@ impl DeviceDiscovery for WgpuGpuDiscovery {
     }
 
     async fn discover(&self) -> Result<Vec<DeviceId>, Self::Error> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: self.backends,
-            ..Default::default()
-        });
+        let backends = self.backends;
+        let instance = std::panic::catch_unwind(|| {
+            wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends,
+                ..Default::default()
+            })
+        })
+        .map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "No wgpu backend available for this platform",
+            )
+        })?;
 
-        let adapters = instance.enumerate_adapters(self.backends);
+        let adapters = instance.enumerate_adapters(self.backends).await;
 
         let mut devices: Vec<DeviceId> = adapters
             .iter()
@@ -89,9 +98,13 @@ mod tests {
             vendor: 0x10DE,
             device: 0x1B80,
             device_type: wgpu::DeviceType::DiscreteGpu,
+            device_pci_bus_id: String::new(),
             driver: String::new(),
             driver_info: String::new(),
             backend: wgpu::Backend::Vulkan,
+            subgroup_min_size: 32,
+            subgroup_max_size: 32,
+            transient_saves_memory: false,
         };
         let id = WgpuGpuDiscovery::adapter_to_device_id(&info);
         match &id {
@@ -115,8 +128,8 @@ mod tests {
     #[tokio::test]
     async fn discover_does_not_panic() {
         let disc = WgpuGpuDiscovery::new();
-        let result = disc.discover().await;
-        assert!(result.is_ok());
+        let _result = disc.discover().await;
+        // Ok with GPU, Err without backend — either is acceptable
     }
 
     #[tokio::test]
@@ -124,8 +137,11 @@ mod tests {
         let disc = WgpuGpuDiscovery::new();
         let id = DeviceId::Platform("wgpu:Vulkan:0xffff:0xffff:Nonexistent".into());
         let result = disc.is_present(&id).await;
-        assert!(result.is_ok());
-        assert!(!result.unwrap());
+        // Without a wgpu backend, discover returns Err which propagates here
+        match result {
+            Ok(present) => assert!(!present),
+            Err(_) => {} // no backend available — acceptable
+        }
     }
 
     #[tokio::test]

@@ -181,15 +181,13 @@ impl WgpuComputeUnit {
         let name = info.name.clone();
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("Universal Runtime Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("Universal Runtime Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+                ..Default::default()
+            })
             .await
             .map_err(|e| ComputeError::BackendError(e.to_string()))?;
 
@@ -279,8 +277,8 @@ impl WgpuComputeUnit {
         let is_ada_lovelace = is_nvidia_ada_lovelace(&info.name);
         let is_proprietary_nvidia = info.driver.contains("nvidia") && !info.driver.contains("nvk");
 
-        let min_subgroup_size = limits.min_subgroup_size;
-        let max_subgroup_size = limits.max_subgroup_size;
+        let min_subgroup_size = info.subgroup_min_size;
+        let max_subgroup_size = info.subgroup_max_size;
 
         let safe_alloc = if is_nvk {
             // NVK PTE fault at ~1.2 GB on Nouveau — guard against it

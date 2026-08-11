@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Toadstool BYOB Server
 //!
-//! HTTP server for handling BYOB deployment requests from the coordination service.
-//! Provides compute execution capabilities for team biome deployments.
+//! JSON-RPC server for handling BYOB deployment requests from the coordination service.
+//! Uses Unix domain sockets (primary) with TCP fallback — isomorphic IPC per wateringHole standard.
+//!
+//! ## Evolution
+//!
+//! Formerly used axum/HTTP; excised in S380 G72 Tier 2 — HTTP belongs to songBird.
+//! Now pure JSON-RPC 2.0, newline-delimited, over Unix or TCP sockets.
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::{Router, extract::State, routing::get};
 use serde::{Deserialize, Serialize};
-use tokio::net::TcpListener;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tracing::info;
 
 use toadstool::{
     ToadStoolError, ToadStoolResult,
-    byob::{ByobExecutorConfig, ByobExecutorDispatch, create_byob_executor},
+    byob::{ByobExecutorConfig, create_byob_executor},
 };
 
 use crate::byob_routes::ByobApi;
@@ -26,13 +32,13 @@ use crate::ContainerRuntimeEngine;
 /// Configuration for the BYOB server
 #[derive(Debug, Clone, Default)]
 pub struct ByobServerConfig {
-    /// Server bind address (overrides config file if set)
+    /// Server bind address (TCP fallback — overrides config file if set)
     pub bind_address: Option<String>,
 
-    /// Server port (overrides config file if set)
+    /// Server port (TCP fallback — overrides config file if set)
     pub port: Option<u16>,
 
-    /// Path to TOML config file (optional; if set, loads `bind_address`, port, `byob_config` from file)
+    /// Path to TOML config file (optional; loads `bind_address`, port, `byob_config`)
     pub config_path: Option<String>,
 }
 
@@ -55,7 +61,7 @@ fn default_port() -> u16 {
     daemon_port()
 }
 
-/// Run the BYOB server. Binds to the configured address and serves until shutdown.
+/// Run the BYOB server. Binds UDS (primary) or TCP (fallback) and serves until shutdown.
 ///
 /// # Errors
 ///
@@ -63,38 +69,29 @@ fn default_port() -> u16 {
 pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     let runtime_engine = create_runtime_engine().await?;
     let byob_executor = create_byob_executor(runtime_engine);
-
-    let app = Router::new()
-        .route("/", get(root_handler))
-        .route("/health", get(health_handler))
-        .merge(ByobApi::<ByobExecutorDispatch<ContainerRuntimeEngine>>::routes())
-        .with_state(byob_executor);
+    let api = Arc::new(ByobApi::new(byob_executor));
 
     // Transport injection: check TRANSPORT_ENDPOINT first (sourDough standard)
     if let Some(te) =
         toadstool_common::TransportEndpoint::from_env().map_err(ToadStoolError::configuration)?
     {
         match te {
+            toadstool_common::TransportEndpoint::Uds { ref path } => {
+                info!("Starting BYOB server on Unix socket {} (transport-injected)", path.display());
+                return serve_unix(api, path.clone()).await;
+            }
             toadstool_common::TransportEndpoint::Tcp { ref host, port } => {
                 let addr: SocketAddr = format!("{host}:{port}").parse().map_err(|e| {
                     ToadStoolError::configuration(format!(
                         "Invalid TRANSPORT_ENDPOINT address: {e}"
                     ))
                 })?;
-                info!(
-                    "Starting Toadstool BYOB Server on {} (transport-injected)",
-                    addr
-                );
-                let listener = TcpListener::bind(addr).await.map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to bind BYOB server: {e}"))
-                })?;
-                return axum::serve(listener, app.into_make_service())
-                    .await
-                    .map_err(|e| ToadStoolError::runtime(format!("BYOB server error: {e}")));
+                info!("Starting BYOB server on TCP {} (transport-injected)", addr);
+                return serve_tcp(api, addr).await;
             }
             other => {
                 info!(
-                    "TRANSPORT_ENDPOINT={other} not applicable for HTTP BYOB server, falling back to config"
+                    "TRANSPORT_ENDPOINT={other} not directly applicable, falling back to config"
                 );
             }
         }
@@ -111,22 +108,129 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     let addr: SocketAddr = format!("{bind_address}:{port}")
         .parse()
         .map_err(|e| ToadStoolError::configuration(format!("Invalid bind address: {e}")))?;
-    info!(
-        "Starting Toadstool BYOB Server on {} (self-bind fallback)",
-        addr
-    );
+    info!("Starting BYOB server on TCP {} (self-bind fallback)", addr);
 
+    serve_tcp(api, addr).await
+}
+
+/// Serve BYOB API over a Unix domain socket.
+async fn serve_unix<E: toadstool::byob::ByobExecutor + Send + Sync + 'static>(
+    api: Arc<ByobApi<E>>,
+    path: PathBuf,
+) -> ToadStoolResult<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            ToadStoolError::runtime(format!("Failed to create socket directory: {e}"))
+        })?;
+    }
+    let _ = std::fs::remove_file(&path);
+
+    let listener = UnixListener::bind(&path)
+        .map_err(|e| ToadStoolError::runtime(format!("Failed to bind Unix socket: {e}")))?;
+    info!("BYOB JSON-RPC server listening: {}", path.display());
+
+    loop {
+        match listener.accept().await {
+            Ok((stream, _addr)) => {
+                let handler = Arc::clone(&api);
+                tokio::spawn(async move {
+                    if let Err(e) = handle_unix_connection(handler, stream).await {
+                        tracing::error!("Unix connection error: {e}");
+                    }
+                });
+            }
+            Err(e) => tracing::error!("Unix accept error: {e}"),
+        }
+    }
+}
+
+/// Serve BYOB API over TCP.
+async fn serve_tcp<E: toadstool::byob::ByobExecutor + Send + Sync + 'static>(
+    api: Arc<ByobApi<E>>,
+    addr: SocketAddr,
+) -> ToadStoolResult<()> {
     let listener = TcpListener::bind(addr)
         .await
-        .map_err(|e| ToadStoolError::runtime(format!("Failed to bind BYOB server: {e}")))?;
-    axum::serve(listener, app.into_make_service())
-        .await
-        .map_err(|e| ToadStoolError::runtime(format!("BYOB server error: {e}")))?;
+        .map_err(|e| ToadStoolError::runtime(format!("Failed to bind TCP: {e}")))?;
+    info!("BYOB JSON-RPC server listening on TCP: {addr}");
 
+    loop {
+        match listener.accept().await {
+            Ok((stream, _peer)) => {
+                let handler = Arc::clone(&api);
+                tokio::spawn(async move {
+                    if let Err(e) = handle_tcp_connection(handler, stream).await {
+                        tracing::error!("TCP connection error: {e}");
+                    }
+                });
+            }
+            Err(e) => tracing::error!("TCP accept error: {e}"),
+        }
+    }
+}
+
+async fn handle_unix_connection<E: toadstool::byob::ByobExecutor + Send + Sync + 'static>(
+    api: Arc<ByobApi<E>>,
+    stream: UnixStream,
+) -> ToadStoolResult<()> {
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+
+    loop {
+        line.clear();
+        match reader.read_line(&mut line).await {
+            Ok(0) => break,
+            Ok(_) => {
+                let response = api.dispatch(&line).await;
+                let response_json = serde_json::to_string(&response)
+                    .map_err(|e| ToadStoolError::runtime(format!("Serialization error: {e}")))?;
+                writer
+                    .write_all(response_json.as_bytes())
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("Write error: {e}")))?;
+                writer
+                    .write_all(b"\n")
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("Write error: {e}")))?;
+            }
+            Err(e) => return Err(ToadStoolError::runtime(format!("Read error: {e}"))),
+        }
+    }
     Ok(())
 }
 
-/// Loaded config from file or defaults (`bind_address`, port for server binding)
+async fn handle_tcp_connection<E: toadstool::byob::ByobExecutor + Send + Sync + 'static>(
+    api: Arc<ByobApi<E>>,
+    stream: TcpStream,
+) -> ToadStoolResult<()> {
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+
+    loop {
+        line.clear();
+        match reader.read_line(&mut line).await {
+            Ok(0) => break,
+            Ok(_) => {
+                let response = api.dispatch(&line).await;
+                let response_json = serde_json::to_string(&response)
+                    .map_err(|e| ToadStoolError::runtime(format!("Serialization error: {e}")))?;
+                writer
+                    .write_all(response_json.as_bytes())
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("Write error: {e}")))?;
+                writer
+                    .write_all(b"\n")
+                    .await
+                    .map_err(|e| ToadStoolError::runtime(format!("Write error: {e}")))?;
+            }
+            Err(e) => return Err(ToadStoolError::runtime(format!("Read error: {e}"))),
+        }
+    }
+    Ok(())
+}
+
 struct LoadedConfig {
     bind_address: String,
     port: u16,
@@ -158,27 +262,8 @@ fn load_config_inner(config_path: Option<&str>) -> ToadStoolResult<LoadedConfig>
 )]
 async fn create_runtime_engine() -> ToadStoolResult<Arc<ContainerRuntimeEngine>> {
     info!("Initializing container runtime engine");
-
     let engine = ContainerRuntimeEngine::new()?;
-
     Ok(Arc::new(engine))
-}
-
-async fn root_handler(
-    State(_executor): State<Arc<ByobExecutorDispatch<ContainerRuntimeEngine>>>,
-) -> &'static str {
-    "🍄 Toadstool BYOB Server - Ready for team biome deployments!"
-}
-
-async fn health_handler(
-    State(_executor): State<Arc<ByobExecutorDispatch<ContainerRuntimeEngine>>>,
-) -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({
-        "status": "healthy",
-        "service": "toadstool-byob-server",
-        "version": env!("CARGO_PKG_VERSION"),
-        "message": "Ready to execute team biomes"
-    }))
 }
 
 #[cfg(test)]

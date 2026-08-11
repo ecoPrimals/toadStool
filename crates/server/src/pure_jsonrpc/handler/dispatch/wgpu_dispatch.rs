@@ -50,12 +50,12 @@ fn get_or_init_wgpu() -> Option<&'static WgpuDispatchContext> {
 
 #[cfg(feature = "gpu-discovery")]
 async fn init_wgpu() -> Option<WgpuDispatchContext> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
         ..Default::default()
     });
 
-    let adapters: Vec<_> = instance.enumerate_adapters(wgpu::Backends::VULKAN);
+    let adapters: Vec<_> = instance.enumerate_adapters(wgpu::Backends::VULKAN).await;
     let adapter = adapters
         .into_iter()
         .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu)?;
@@ -63,7 +63,8 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
     let info = adapter.get_info();
     let adapter_name = info.name.clone();
     let supported_features = adapter.features();
-    let spirv_passthrough = supported_features.contains(wgpu::Features::SPIRV_SHADER_PASSTHROUGH);
+    let spirv_passthrough =
+        supported_features.contains(wgpu::Features::EXPERIMENTAL_PASSTHROUGH_SHADERS);
     tracing::info!(
         adapter = %adapter_name,
         vendor = format_args!("0x{:x}", info.vendor),
@@ -74,23 +75,20 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
 
     let mut required_features = wgpu::Features::empty();
     if spirv_passthrough {
-        required_features |= wgpu::Features::SPIRV_SHADER_PASSTHROUGH;
+        required_features |= wgpu::Features::EXPERIMENTAL_PASSTHROUGH_SHADERS;
     } else {
         tracing::warn!(
             adapter = %adapter_name,
-            "SPIRV_SHADER_PASSTHROUGH not supported — wgpu dispatch will use naga/WGSL path"
+            "EXPERIMENTAL_PASSTHROUGH_SHADERS not supported — wgpu dispatch will use naga/WGSL path"
         );
     }
 
     let (device, queue) = adapter
-        .request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("toadstool-wgpu-dispatch"),
-                required_features,
-                ..Default::default()
-            },
-            None,
-        )
+        .request_device(&wgpu::DeviceDescriptor {
+            label: Some("toadstool-wgpu-dispatch"),
+            required_features,
+            ..Default::default()
+        })
         .await
         .ok()?;
 
@@ -102,13 +100,13 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
         lost_flag.store(true, std::sync::atomic::Ordering::SeqCst);
     });
 
-    device.on_uncaptured_error(Box::new(|error| {
+    device.on_uncaptured_error(std::sync::Arc::new(|error| {
         tracing::error!(error = %error, "wgpu uncaptured device error");
     }));
 
     // Poll once to flush any pending device-lost signals from driver errors
     // that were silently swallowed by request_device.
-    let _ = device.poll(wgpu::Maintain::Wait);
+    let _ = device.poll(wgpu::PollType::wait_indefinitely());
     // Small yield to let the device-lost callback fire.
     tokio::time::sleep(DEVICE_LOST_SETTLE).await;
 
@@ -245,7 +243,7 @@ fn run_wgpu_dispatch(
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("toadstool_wgpu_pl"),
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
     let pipeline = ctx
@@ -254,13 +252,13 @@ fn run_wgpu_dispatch(
             label: Some("toadstool_wgpu_pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "main",
+            entry_point: Some("main"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
 
     // Check device lost after pipeline creation (driver errors surface here).
-    let _ = ctx.device.poll(wgpu::Maintain::Wait);
+    let _ = ctx.device.poll(wgpu::PollType::wait_indefinitely());
     if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
         return Err("wgpu device lost during pipeline creation".into());
     }
@@ -360,7 +358,7 @@ fn run_wgpu_dispatch(
     }
 
     ctx.queue.submit(Some(encoder.finish()));
-    ctx.device.poll(wgpu::Maintain::Wait);
+    let _ = ctx.device.poll(wgpu::PollType::wait_indefinitely());
 
     if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
         return Err("wgpu device lost during dispatch".into());
@@ -374,7 +372,7 @@ fn run_wgpu_dispatch(
             slice.map_async(wgpu::MapMode::Read, move |result| {
                 let _ = tx.send(result);
             });
-            ctx.device.poll(wgpu::Maintain::Wait);
+            let _ = ctx.device.poll(wgpu::PollType::wait_indefinitely());
 
             match rx.recv() {
                 Ok(Ok(())) => {

@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: August 10, 2026 — S379
+**Date**: August 11, 2026 — S380
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S380 (eastGate G72 Tier 2 — Aug 11, 2026)**: wgpu 22→28 (MSRV 1.85→1.92),
+axum fully excised from dependency tree (BYOB → UDS JSON-RPC), darwin/graftGate
+cfg fix (unix→linux for silicon_registry), mdns feature-gating fix, lock-poisoning
+alignment (security/monitoring + runtime/adaptive → server pattern). Deep debt
+audit clean: no tokio::fs, no extern crate, edition 2024 unified, zero non-comment
+axum references, all `#[allow(dead_code)]` are platform-conditional.
 
 **S379 (strandGate G72 Dependency Pandemic Tier 1 — Aug 10, 2026)**: G72 exemplar sprint.
 tokio `["full"]` trimmed from examples. tokio `signal` scoped to CLI+server only (workspace

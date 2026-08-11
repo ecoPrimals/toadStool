@@ -62,7 +62,7 @@ exclude = ["fuzz", "crates/runtime/edge"]
 [workspace.package]
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.92.0"
 authors = ["ToadStool Development Team"]
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/ecoPrimals/toadstool"
@@ -84,7 +84,7 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # NOTE: Default features include 'renderdoc' (C dependency for GPU debugging)
 # EVOLVED: Disable renderdoc, use Pure Rust profiling via tracing crate instead!
 # This achieves ABSOLUTE 100.00% Pure Rust! 🎉
-wgpu = { version = "22", default-features = false, features = [
+wgpu = { version = "28", default-features = false, features = [
     "wgsl",                # WGSL shader language support
     "vulkan-portability",  # Vulkan support (Linux GPU compute path)
     # "dx12",              # Windows-only — not needed for Linux daemon
@@ -97,7 +97,7 @@ wgpu = { version = "22", default-features = false, features = [
 etcetera = "0.8"
 
 
-# Zero-copy binary payload transport (already a transitive dep via tokio/hyper/axum)
+# Zero-copy binary payload transport (transitive dep via tokio/hyper)
 # Use bytes::Bytes instead of Vec<u8> for data that is cloned across threads/tasks.
 # bytes::Bytes is Arc<[u8]>: clone() bumps a refcount, not a memcpy.
 bytes = { version = "1.11.1", features = ["serde"] }
@@ -139,7 +139,7 @@ tarpc = { version = "0.37", features = [
 # jsonrpsee removed (pulls ring C dependency). Pure Rust JSON-RPC via pure_jsonrpc.
 # See: crates/server/src/pure_jsonrpc/ (canonical JSON-RPC handler)
 
-# EVOLVED: axum/tower/tower-http removed — HTTP is songBird's domain.
+# EVOLVED: axum/tower/tower-http excised S380 — HTTP is songBird's domain.
 # toadStool uses pure_jsonrpc over Unix sockets per wateringHole standard.
 url = "2.5"
 
@@ -286,7 +286,7 @@ unsafe_code = "deny"
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
-duration_suboptimal_units = "allow" # from_mins/from_hours require Rust 1.91+ (MSRV 1.85)
+duration_suboptimal_units = "allow" # from_mins/from_hours available (MSRV 1.92)
 
 # Cargo lints - selectively enabled (not using full cargo group
 # to avoid multiple_crate_versions blocking on transitive conflicts)

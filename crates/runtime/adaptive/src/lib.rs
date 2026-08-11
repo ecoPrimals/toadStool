@@ -120,7 +120,7 @@ impl AdaptiveExecutor {
 
         // Check if we need to profile
         let needs_profiling = {
-            let cache_read = cache.read().expect("lock poisoned");
+            let cache_read = cache.read().unwrap_or_else(|e| e.into_inner());
             cache_read.is_empty()
         };
 
@@ -168,14 +168,14 @@ impl AdaptiveExecutor {
                 profiler.profile_operation(op_type, &size_classes, &workgroup_candidates)?;
 
             // Update cache with results
-            let mut cache_write = cache.write().expect("lock poisoned");
+            let mut cache_write = cache.write().unwrap_or_else(|e| e.into_inner());
             cache_write.add_profile(profile);
         }
 
         // Save cache to disk
         #[cfg(feature = "runtime")]
         {
-            let cache_read = cache.read().expect("lock poisoned");
+            let cache_read = cache.read().unwrap_or_else(|e| e.into_inner());
             cache_read.save()?;
         }
 

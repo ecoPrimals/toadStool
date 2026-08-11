@@ -78,10 +78,17 @@ impl GpuFingerprint {
     /// Returns error if GPU discovery fails or the `gpu-discovery` feature is disabled.
     #[cfg(feature = "gpu-discovery")]
     pub async fn discover() -> Result<Self, AdaptiveError> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
+        let instance = std::panic::catch_unwind(|| {
+            wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::all(),
+                ..Default::default()
+            })
+        })
+        .map_err(|_| {
+            AdaptiveError::Other(
+                "No wgpu backend available for this platform".to_string(),
+            )
+        })?;
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -90,7 +97,7 @@ impl GpuFingerprint {
                 compatible_surface: None,
             })
             .await
-            .ok_or_else(|| AdaptiveError::Other("Failed to find GPU adapter".to_string()))?;
+            .map_err(|e| AdaptiveError::Other(format!("Failed to find GPU adapter: {e}")))?;
 
         let info = adapter.get_info();
 

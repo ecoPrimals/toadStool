@@ -22,7 +22,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 toadstool-sysmon = { workspace = true }
 rayon = "1.8"
-wgpu = { workspace = true, optional = true, features = ["wgsl"] }
+wgpu = { workspace = true, optional = true, features = ["wgsl", "spirv"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-hw-safe = { path = "../../core/hw-safe" }

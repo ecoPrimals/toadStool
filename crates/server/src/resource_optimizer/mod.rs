@@ -136,11 +136,13 @@ impl ResourceOptimizer {
         reason = "async signature required by trait/interface"
     )] // Sync wgpu enumerate; async for API consistency with fallback
     async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-        let adapters: Vec<_> = instance.enumerate_adapters(wgpu::Backends::all());
+        let adapters: Vec<_> = instance
+            .enumerate_adapters(wgpu::Backends::all())
+            .await;
         if adapters.is_empty() {
             return (0, 0, 0, Vec::new());
         }

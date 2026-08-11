@@ -80,19 +80,19 @@ impl CapabilityDiscovery {
     async fn discover_wgpu(settings: &ComputeDiscoverySettings) -> Vec<ComputeUnitDispatch> {
         use crate::backends::WgpuComputeUnit;
 
-        let adapters = match std::panic::catch_unwind(|| {
-            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = match std::panic::catch_unwind(|| {
+            wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::all(),
                 ..Default::default()
-            });
-            instance.enumerate_adapters(wgpu::Backends::all())
+            })
         }) {
-            Ok(a) => a,
+            Ok(i) => i,
             Err(_) => {
-                tracing::warn!("wgpu adapter enumeration panicked — falling back to CPU only");
+                tracing::warn!("No wgpu backend available for this platform");
                 return Vec::new();
             }
         };
+        let adapters = instance.enumerate_adapters(wgpu::Backends::all()).await;
 
         let mut units: Vec<ComputeUnitDispatch> = Vec::new();
         let mut infos: Vec<(usize, String, bool)> = Vec::new();

@@ -137,12 +137,12 @@ async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
     std::thread::spawn(move || {
         let result = std::panic::catch_unwind(|| {
             let backends = select_backends();
-            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends,
                 ..Default::default()
             });
 
-            let adapters = instance.enumerate_adapters(backends);
+            let adapters = futures::executor::block_on(instance.enumerate_adapters(backends));
             let mut gpu_infos = Vec::new();
 
             for adapter in adapters {

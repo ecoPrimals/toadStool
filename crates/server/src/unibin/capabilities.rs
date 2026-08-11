@@ -88,7 +88,9 @@ async fn discover_all_capabilities() -> Vec<Arc<str>> {
 
     #[cfg(feature = "gpu-discovery")]
     {
-        let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
+        let adapters = wgpu::Instance::default()
+            .enumerate_adapters(wgpu::Backends::all())
+            .await;
         if adapters.is_empty() {
             tracing::info!("No GPUs detected (CPU-only mode)");
         } else {
