@@ -5,7 +5,7 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 10, 2026 (Sessions 43-379+)
+## [Unreleased] - Aug 11, 2026 (Sessions 43-380+)
 
 ### Session S380 (Aug 11, 2026) — G72 Tier 2: wgpu 28 + axum Excision + Darwin Fix + Deep Debt
 
@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`uuid` promoted to workspace** — 15 crates migrated from inline `version = "1.7"` to `{ workspace = true }`. Zero version fragmentation.
 - **`tracing-subscriber` feature-gated** — `logging = ["dep:tracing-subscriber"]` (non-default). CLI uses its own subscriber.
 - **`tokio-serde` aligned** — server now uses `{ workspace = true, features = ["json"] }`.
-- **All tests pass** — `cargo check --workspace` clean. `cargo test --workspace --lib` all pass.
+- **Fail-safe tests** — akida-driver `test_device_open` now handles NPU-on-PCI-but-no-driver gracefully (AKD1000 at `0000:e2:00.0` detected, reports diagnostic instead of asserting). Server socket path fallback tests accept permission errors on root-owned `/tmp/biomeos/`.
+- **wgpu 28 `catch_unwind`** — all `Instance::new` call sites protected against panic when no GPU backend compiled. GPU discovery, availability checks, and capability probing all fail safe.
+- **All tests pass** — `cargo check --workspace` clean. `cargo test --workspace --lib` **8,446 passed, 0 failed**.
 
 ### Session S379 (Aug 10, 2026) — G72 Dependency Pandemic Tier 1 + Last-Mile Wiring
 

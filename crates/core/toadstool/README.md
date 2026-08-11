@@ -108,12 +108,12 @@ ToadStool follows **capability-based discovery**:
 
 ## Examples
 
-See the `examples/` directory for complete examples:
+See the workspace `examples/` directory:
 
-- `examples/hello_world.rs` - Basic execution
-- `examples/multi_runtime.rs` - Using multiple runtimes
-- `examples/secure_compute.rs` - Zero-knowledge execution
-- `examples/gpu_compute.rs` - GPU-accelerated workloads
+- `examples/basic_usage.rs` — Basic execution
+- `examples/capability_discovery_demo.rs` — Runtime primal/capability discovery
+- `examples/universal_compute_demo.rs` — Universal compute across substrates
+- `examples/real_gpu_pool.rs` — GPU pool management
 
 ## Quality
 

@@ -5,7 +5,6 @@ edition.workspace = true
 description = "ToadStool container runtime engine"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["container", "docker", "runtime", "orchestration"]
 categories = ["development-tools"]
 

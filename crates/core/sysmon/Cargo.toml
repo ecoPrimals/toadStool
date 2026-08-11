@@ -8,7 +8,6 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Pure Rust system monitoring via /proc — replaces sysinfo (C dependency)"
-readme = "README.md"
 keywords = ["sysmon", "monitoring", "proc", "pure-rust", "linux"]
 categories = ["os", "hardware-support"]
 

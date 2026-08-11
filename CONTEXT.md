@@ -19,7 +19,7 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 ## Key Facts
 
 - **License**: AGPL-3.0-or-later
-- **Language**: Rust (edition 2024, MSRV 1.85)
+- **Language**: Rust (edition 2024, MSRV 1.92)
 - **IPC**: JSON-RPC 2.0 (primary) + tarpc (optional hot-path), newline-delimited over Unix sockets / TCP
 - **Binary**: `toadstool` (UniBin standard — single binary, subcommands)
 - **ecoBin grade**: v3.0 (zero application-level C dependencies)

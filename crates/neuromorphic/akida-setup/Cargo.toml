@@ -6,7 +6,6 @@ authors = ["ToadStool Contributors"]
 description = "Setup and configuration utility for Akida neuromorphic hardware"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["akida", "neuromorphic", "setup", "hardware"]
 categories = ["hardware-support", "development-tools"]
 

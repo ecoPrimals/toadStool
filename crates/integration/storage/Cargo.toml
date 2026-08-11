@@ -5,7 +5,6 @@ edition.workspace = true
 description = "ToadStool NestGate storage and data pipeline integration"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["storage", "integration", "nestgate", "primal"]
 categories = ["api-bindings"]
 

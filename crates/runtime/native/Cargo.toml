@@ -6,7 +6,6 @@ authors.workspace = true
 license.workspace = true
 description = "Native executable runtime engine for ToadStool with security and monitoring"
 repository.workspace = true
-readme = "README.md"
 keywords = ["runtime", "native", "execution", "sandboxing"]
 categories = ["os", "development-tools"]
 

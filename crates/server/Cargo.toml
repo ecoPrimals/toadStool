@@ -5,7 +5,6 @@ edition.workspace = true
 description = "ToadStool universal compute server library"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["server", "compute", "distributed", "orchestration"]
 categories = ["network-programming"]
 

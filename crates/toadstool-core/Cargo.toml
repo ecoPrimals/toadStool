@@ -6,7 +6,6 @@ authors = ["ToadStool Contributors"]
 description = "Core hardware infrastructure layer for ToadStool compute primals"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["hardware", "infrastructure", "compute", "npu"]
 categories = ["hardware-support", "development-tools"]
 

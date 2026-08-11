@@ -8,7 +8,6 @@ edition.workspace = true
 description = "ToadStool universal compute client library (tarpc evolved to Unix sockets)"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["client", "compute", "distributed", "rpc"]
 categories = ["api-bindings", "network-programming"]
 

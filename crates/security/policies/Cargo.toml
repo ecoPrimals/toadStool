@@ -6,7 +6,6 @@ description = "Advanced security policy management for ToadStool"
 authors = ["ToadStool Project"]
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["security", "policy", "access-control", "rbac"]
 categories = ["authentication"]
 

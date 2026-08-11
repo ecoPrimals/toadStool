@@ -5,7 +5,6 @@ edition.workspace = true
 description = "ToadStool WebAssembly runtime engine with wasmi and WASI support"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["wasm", "webassembly", "wasmi", "wasi"]
 categories = ["wasm", "development-tools"]
 

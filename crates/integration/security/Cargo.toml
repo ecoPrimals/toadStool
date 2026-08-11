@@ -2,7 +2,6 @@
 name = "toadstool-integration-security"
 version.workspace = true
 edition.workspace = true
-readme = "README.md"
 keywords = ["entropy", "rng", "beardog", "capability-discovery", "deep-debt"]
 categories = ["cryptography", "algorithms"]
 authors = ["ToadStool Team"]

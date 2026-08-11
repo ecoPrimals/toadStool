@@ -6,7 +6,6 @@ description = "Primal integration framework for biomeOS orchestration"
 authors = ["ToadStool Team <team@toadstool.io>"]
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 homepage = "https://toadstool.io"
 keywords = ["biomeOS", "primals", "orchestration", "integration"]
 categories = ["science", "network-programming"]

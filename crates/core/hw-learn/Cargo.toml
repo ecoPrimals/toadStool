@@ -5,7 +5,6 @@ edition.workspace = true
 description = "Vendor-neutral GPU hardware learning — observe, distill, apply compute init patterns across AMD/Intel/NVIDIA"
 license.workspace = true
 repository = "https://github.com/ecoPrimals/toadstool"
-readme = "README.md"
 keywords = ["gpu", "hardware-learning", "compute-init", "vendor-neutral"]
 categories = ["hardware-support", "science"]
 

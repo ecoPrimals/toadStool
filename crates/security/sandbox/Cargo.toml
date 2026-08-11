@@ -6,7 +6,6 @@ description = "Cross-platform security sandboxing for ToadStool"
 authors = ["ToadStool Project"]
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["security", "sandbox", "isolation", "containerization"]
 categories = ["os"]
 

@@ -6,7 +6,6 @@ authors = ["ToadStool Contributors"]
 description = "Cross-substrate validation benchmark: CPU vs GPU vs Neuromorphic"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["benchmark", "validation", "neuromorphic", "gpu"]
 categories = ["science", "hardware-support"]
 

@@ -123,7 +123,7 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 - **NPU dispatch** — Akida AKD1000/1500 (kernel, VFIO, userspace)
 - **39 crates** `#![forbid(unsafe_code)]`, **5 crates** with narrow `#[allow(unsafe_code, reason)]` — **160 unsafe blocks** (all hw containment, all SAFETY-documented)
 - **ecoBin v3.0 certified** — pure Rust, zero C application deps
-- **Rust 2024 edition**, MSRV 1.85
+- **Rust 2024 edition**, MSRV 1.92
 - **48 workspace crates**, **39 external deps**, zero production panics/unwraps, zero dead deps
 
 ### Architecture

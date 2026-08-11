@@ -6,7 +6,6 @@ authors = ["ToadStool Team <team@toadstool.bio>"]
 description = "Pure Rust NeuroBench harness for Akida benchmarking"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["neuromorphic", "benchmark", "akida", "spiking", "neurobench"]
 categories = ["science", "hardware-support"]
 

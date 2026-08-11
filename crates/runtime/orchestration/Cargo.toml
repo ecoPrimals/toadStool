@@ -6,7 +6,6 @@ authors = ["ToadStool Contributors"]
 description = "Intelligent workload orchestration across compute substrates"
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
 keywords = ["orchestration", "runtime", "workload", "scheduling"]
 categories = ["development-tools", "hardware-support"]
 
