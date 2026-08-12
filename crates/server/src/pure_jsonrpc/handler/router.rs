@@ -181,6 +181,12 @@ impl JsonRpcHandler {
             "compute.route.multi_unit" => {
                 return self.silicon.route_multi_unit(params).await;
             }
+            "compute.silicon_ledger.report" => {
+                return self.silicon.silicon_ledger_report(params).await;
+            }
+            "compute.silicon_ledger.query" => {
+                return self.silicon.silicon_ledger_query(params).await;
+            }
 
             #[cfg(target_os = "linux")]
             "compute.silicon.registry" => {
@@ -281,6 +287,8 @@ impl JsonRpcHandler {
             "performance_surface_query" => self.silicon.query(params).await,
             "performance_surface_list" => self.silicon.list().await,
             "route_multi_unit" => self.silicon.route_multi_unit(params).await,
+            "silicon_ledger_report" => self.silicon.silicon_ledger_report(params).await,
+            "silicon_ledger_query" => self.silicon.silicon_ledger_query(params).await,
             "auth_check" => super::auth::auth_check(&self.gate, params),
             "auth_mode" => super::auth::auth_mode(&self.gate),
             "auth_peer_info" => super::auth::auth_peer_info(ctx),

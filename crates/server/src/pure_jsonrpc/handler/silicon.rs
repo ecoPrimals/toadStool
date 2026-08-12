@@ -10,17 +10,18 @@ use std::sync::RwLock;
 
 use toadstool_core::silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,
-    SiliconUnit,
+    SiliconEnergyLedger, SiliconUnit,
 };
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 
-/// Handler for `compute.performance_surface.*` JSON-RPC methods.
+/// Handler for `compute.performance_surface.*` and `compute.silicon_ledger.*` JSON-RPC methods.
 ///
 /// Uses `std::sync::RwLock` for synchronous lock acquisition and
 /// cannot block the runtime under contention.
 pub struct SiliconHandler {
     measurements: RwLock<Vec<PerformanceMeasurement>>,
+    energy_ledger: RwLock<Option<SiliconEnergyLedger>>,
 }
 
 impl SiliconHandler {
@@ -28,6 +29,7 @@ impl SiliconHandler {
     pub fn new() -> Self {
         Self {
             measurements: RwLock::new(Vec::new()),
+            energy_ledger: RwLock::new(None),
         }
     }
 
@@ -158,8 +160,14 @@ impl SiliconHandler {
     /// `compute.route.multi_unit` — build a routing plan for a compound workload.
     ///
     /// Each operation in the workload specifies a tolerance. The routing engine
-    /// consults the performance surface to find the highest-throughput unit
-    /// that meets tolerance, with shader-core fallback for every decision.
+    /// consults both the performance surface and the silicon energy ledger:
+    /// 1. Find highest-throughput unit meeting tolerance (performance surface)
+    /// 2. If idle units are powered but unused (energy ledger), schedule
+    ///    secondary workloads on them even when less efficient — the silicon
+    ///    is already consuming power, so "free" throughput is available.
+    ///
+    /// This is where "use a less efficient secondary system because the silicon
+    /// is idle and we have other workload" lives.
     pub async fn route_multi_unit(
         &self,
         params: Option<&serde_json::Value>,
@@ -180,10 +188,26 @@ impl SiliconHandler {
             .and_then(|v| v.as_str())
             .unwrap_or("default");
 
+        let energy_aware = params
+            .get("energy_aware")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+
         let store = self.measurements.read().unwrap_or_else(|e| e.into_inner());
+        let ledger = self.energy_ledger.read().unwrap_or_else(|e| e.into_inner());
+
+        let idle_units: Vec<SiliconUnit> = if energy_aware {
+            ledger
+                .as_ref()
+                .map(|l| l.idle_units.clone())
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
 
         let mut routed_ops = Vec::with_capacity(workload.len());
         let mut total_throughput = 0.0_f64;
+        let mut units_in_use: Vec<SiliconUnit> = Vec::new();
 
         for item in workload {
             let op = item
@@ -196,7 +220,41 @@ impl SiliconHandler {
                 .and_then(serde_json::Value::as_f64)
                 .ok_or_else(|| JsonRpcError::invalid_params("workload item missing 'tolerance'"))?;
 
-            let routed = route_single_op(&store, op, tolerance);
+            let prefer_idle = item
+                .get("prefer_idle_unit")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            let mut routed = route_single_op(&store, op, tolerance);
+
+            if prefer_idle && !idle_units.is_empty() {
+                if let Some(idle_candidate) = idle_units
+                    .iter()
+                    .find(|u| !units_in_use.contains(u) && **u != routed.silicon_unit)
+                {
+                    let idle_measurement = store.iter().find(|m| {
+                        m.silicon_unit == *idle_candidate
+                            && m.operation == op
+                            && m.tolerance_achieved <= tolerance
+                    });
+                    if let Some(m) = idle_measurement {
+                        routed = RoutedOperation {
+                            operation: op.to_string(),
+                            silicon_unit: *idle_candidate,
+                            precision_mode: m.precision_mode.clone(),
+                            estimated_throughput_gflops: m.throughput_gflops,
+                            reason: format!(
+                                "idle-silicon opportunistic: {} is powered but unused, \
+                                 scheduling at {:.0} GFLOPS (vs {:.0} on primary)",
+                                idle_candidate, m.throughput_gflops, routed.estimated_throughput_gflops
+                            ),
+                            fallback: Some(Box::new(routed)),
+                        };
+                    }
+                }
+            }
+
+            units_in_use.push(routed.silicon_unit);
             total_throughput += routed.estimated_throughput_gflops;
             routed_ops.push(routed);
         }
@@ -209,6 +267,54 @@ impl SiliconHandler {
 
         serde_json::to_value(&plan)
             .map_err(|e| JsonRpcError::internal_error(format!("serialize: {e}")))
+    }
+
+    /// `compute.silicon_ledger.report` — record a silicon energy ledger snapshot.
+    ///
+    /// Springs or telemetry agents push per-trajectory or per-window ledger data.
+    /// toadStool stores the latest snapshot for routing decisions.
+    pub async fn silicon_ledger_report(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let params = params.ok_or_else(|| JsonRpcError::invalid_params("missing params"))?;
+
+        let ledger: SiliconEnergyLedger = serde::Deserialize::deserialize(params)
+            .map_err(|e| JsonRpcError::invalid_params(format!("invalid ledger: {e}")))?;
+
+        let gpu_id = ledger.gpu_id.clone();
+        let idle_count = ledger.idle_units.len();
+        let efficiency = ledger.utilization_efficiency();
+
+        let mut store = self.energy_ledger.write().unwrap_or_else(|e| e.into_inner());
+        *store = Some(ledger);
+
+        Ok(serde_json::json!({
+            "status": "recorded",
+            "gpu_id": gpu_id,
+            "idle_units": idle_count,
+            "utilization_efficiency": efficiency
+        }))
+    }
+
+    /// `compute.silicon_ledger.query` — retrieve the current energy ledger.
+    ///
+    /// Returns the latest per-unit time/energy/idle breakdown, enabling
+    /// callers to make energy-aware scheduling decisions.
+    pub async fn silicon_ledger_query(
+        &self,
+        _params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let store = self.energy_ledger.read().unwrap_or_else(|e| e.into_inner());
+
+        match store.as_ref() {
+            Some(ledger) => serde_json::to_value(ledger)
+                .map_err(|e| JsonRpcError::internal_error(format!("serialize: {e}"))),
+            None => Ok(serde_json::json!({
+                "status": "no_data",
+                "message": "no silicon energy ledger has been reported yet"
+            })),
+        }
     }
 }
 

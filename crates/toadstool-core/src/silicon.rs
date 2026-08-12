@@ -326,6 +326,98 @@ pub struct MultiUnitRoutingPlan {
     pub gpu_target: String,
 }
 
+// ── Silicon Energy Ledger (WHERE owns visibility) ─────────────────────────────
+
+/// Per-unit utilization snapshot from `gpu.query_telemetry` extended response.
+///
+/// Board-level telemetry (power, temp, utilization%) is already served.
+/// This extends it with per-`SiliconUnit` breakdown where hardware supports it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiliconUnitUtilization {
+    /// Which silicon unit.
+    pub unit: SiliconUnit,
+    /// Busy percentage (0.0–100.0) for this unit.
+    /// Derived from hardware counters (CUPTI, amdgpu_top, hwmon pipe counters).
+    pub busy_percent: f64,
+    /// Estimated power draw in watts for this unit (0.0 if unavailable).
+    pub power_watts: f64,
+    /// Milliseconds since this unit last had work dispatched to it.
+    pub idle_since_ms: u64,
+}
+
+/// Time-windowed energy and utilization accounting for a single silicon unit.
+///
+/// Tracked per-trajectory, per-second, and per-minute by toadStool.
+/// Exposed via `gpu.query_telemetry` and `compute.silicon_ledger.query`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiliconUnitEnergyEntry {
+    /// Which silicon unit.
+    pub unit: SiliconUnit,
+    /// Total time this unit was active (dispatching work) in the window (ms).
+    pub active_ms: f64,
+    /// Total time this unit was idle (powered but no work) in the window (ms).
+    pub idle_ms: f64,
+    /// Energy consumed while active (joules = power_watts × active_seconds).
+    pub active_energy_joules: f64,
+    /// Energy consumed while idle (joules — leakage/static power × idle_seconds).
+    pub idle_energy_joules: f64,
+    /// Opportunity cost: potential GFLOPS that could have been scheduled
+    /// on this idle unit from queued secondary workloads.
+    pub opportunity_cost_gflops: f64,
+}
+
+/// Complete silicon energy ledger for a GPU over a time window.
+///
+/// Captures per-unit time, energy, and idle accounting. This is the
+/// data structure toadStool builds from hardware counters and exposes
+/// to all springs via `compute.silicon_ledger.query` (NeuralAPI Stage 2).
+///
+/// The ledger informs `compute.route.multi_unit` when idle units can
+/// accept secondary workloads — the "schedule a less efficient system
+/// because the silicon is already powered and idle" decision.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiliconEnergyLedger {
+    /// GPU identifier (adapter name or PCI slot).
+    pub gpu_id: String,
+    /// Time window this ledger covers (milliseconds).
+    pub window_ms: f64,
+    /// Per-unit energy and utilization entries.
+    pub entries: Vec<SiliconUnitEnergyEntry>,
+    /// Total board power during this window (watts, average).
+    pub total_power_watts: f64,
+    /// Total board energy during this window (joules).
+    pub total_energy_joules: f64,
+    /// Units that are powered but idle — candidates for opportunistic scheduling.
+    pub idle_units: Vec<SiliconUnit>,
+}
+
+impl SiliconEnergyLedger {
+    /// Units with opportunity cost > 0 (could accept secondary workloads).
+    #[must_use]
+    pub fn units_with_opportunity(&self) -> Vec<&SiliconUnitEnergyEntry> {
+        self.entries
+            .iter()
+            .filter(|e| e.opportunity_cost_gflops > 0.0)
+            .collect()
+    }
+
+    /// Total idle energy wasted (sum of idle_energy_joules across all units).
+    #[must_use]
+    pub fn total_idle_energy_joules(&self) -> f64 {
+        self.entries.iter().map(|e| e.idle_energy_joules).sum()
+    }
+
+    /// Silicon utilization efficiency: active_energy / total_energy.
+    #[must_use]
+    pub fn utilization_efficiency(&self) -> f64 {
+        if self.total_energy_joules <= 0.0 {
+            return 0.0;
+        }
+        let active: f64 = self.entries.iter().map(|e| e.active_energy_joules).sum();
+        active / self.total_energy_joules
+    }
+}
+
 #[cfg(test)]
 #[path = "silicon_tests.rs"]
 mod tests;

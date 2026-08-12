@@ -48,7 +48,8 @@ pub use npu_dispatch::{
 };
 pub use silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,
-    RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen,
+    RtCoreGen, SiliconCapabilities, SiliconEnergyLedger, SiliconUnit, SiliconUnitEnergyEntry,
+    SiliconUnitUtilization, TensorCoreGen,
 };
 pub use manifest::{
     BiomeManifest, BiomeMetadata, CompositionGraph, CompositionKind, ManifestPrimalConfig,
