@@ -2,7 +2,7 @@
 # Wave 78 ecosystem standard | AGPL-3.0-or-later
 # Generated from DIRECT_JSONRPC_METHODS + capabilities.list Wire Standard L3
 # Version: v0.2.1 | Session: S372 (self-audit)
-# Audit: 126 methods across 18 capabilities — verified against DIRECT_JSONRPC_METHODS + ANNOUNCED_METHODS
+# Audit: 128 methods across 18 capabilities — verified against DIRECT_JSONRPC_METHODS + ANNOUNCED_METHODS
 
 [meta]
 primal = "toadstool"

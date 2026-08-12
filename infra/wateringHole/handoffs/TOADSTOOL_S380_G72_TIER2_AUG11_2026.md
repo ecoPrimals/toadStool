@@ -51,6 +51,14 @@
 | **parking_lot evaluation** | P3 | Not currently a workspace dep; server+GPU coordinator would benefit |
 | **Deprecated module cleanup** | P3 | `distributed` legacy features, `protocols` legacy clients have removal timeline |
 
+### Silicon Ledger + Idle-Aware Routing (Node-Atomic AAR)
+- **`SiliconUnitUtilization`** — per-unit utilization struct in `toadstool-core/silicon.rs`. Tracks shader cores, tensor cores, RT cores, TMUs, ROPs individually.
+- **`SiliconEnergyLedger`** — energy accounting for powered-but-idle compute, making underutilized silicon visible to springs via NeuralAPI.
+- **`gpu.query_telemetry`** — extended with `silicon_units` array containing per-unit utilization data.
+- **2 new JSON-RPC methods**: `compute.silicon_ledger.report` / `.query` (total: 128 direct methods).
+- **`route_multi_unit`** — idle-aware routing consults the silicon ledger to schedule secondary workloads on underutilized units.
+- **Types re-exported** from `toadstool-core` lib.
+
 ### Fail-Safe Test Fixes
 - **akida-driver `test_device_open`** — AKD1000 NPU at `0000:e2:00.0` detected via sysfs but kernel module not loaded. Test now reports diagnostic ("NPU detected on PCI bus but cannot open: Is a directory") instead of asserting. Handles NPU-present-but-no-driver case.
 - **Server socket path fallback tests** — `/tmp/biomeos/` root-owned, `set_access` fails for non-root. Tests now accept `Err` gracefully.

@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
 description = "Sovereign compute hardware primal — 8,446 lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 160 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, wgpu 28 (leads ecosystem), axum excised, fail-safe hardware tests, MSRV 1.92"
-date = 2026-08-11
+date = 2026-08-12
 
 [taxonomies]
 primals = ["toadstool"]
@@ -10,8 +10,8 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S380, Aug 11, 2026)
-- **S380**: G72 Tier 2 — wgpu 22→28 (MSRV 1.85→1.92), axum fully excised (BYOB → UDS JSON-RPC), darwin/graftGate cfg fix, mdns feature-gate fix, lock-poisoning alignment, fail-safe wgpu/NPU/socket tests, deep debt audit clean. 8,446 tests, 0 failures.
+- **Version**: 0.2.0 (Session S380, Aug 12, 2026)
+- **S380**: G72 Tier 2 — wgpu 22→28 (MSRV 1.85→1.92), **P1 fix: vulkan-portability→vulkan** (musl depot crash), axum fully excised (BYOB → UDS JSON-RPC), silicon ledger + idle-aware routing (128 JSON-RPC methods), darwin/graftGate cfg fix, mdns feature-gate fix, lock-poisoning alignment, fail-safe wgpu/NPU/socket tests, deep debt audit clean. 8,446 tests, 0 failures.
 - **S379**: G72 Dependency Pandemic Tier 1 + last-mile wiring — tokio `["full"]` trimmed, `signal` scoped to CLI+server (workspace 7→6 features), `tokio::fs` fully eliminated (28 files), 7 dead deps removed, 6 deps promoted to workspace (bytemuck aligned 1→1.14), WASM conversion wired, runtime hint inference, ~1,750 LOC excised.
 - **S378**: Tokio vestigial segmentation — ~35k LOC feature-gated behind 9 non-default features. Default-build tokio surface 118→65 production files (45% reduction). GPU/WASM `tokio::sync` → `std::sync`. Server background monitors gated. CLI monitoring gated. runtime/edge excluded. `tokio::time` → `std::time` in 10 files.
 - **S377**: NUCLEUS manifest convergence — 5→2 `BiomeManifest` structs. All subsystems re-export canonical `toadstool-core` type.
@@ -23,7 +23,7 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 - **S369**: 16/16 native cross-arch targets — first primal fleet-ready.
 - **S365**: G68 complete — zero rustix outside hw-safe.
 - **Lib tests**: 8,446 (0 failures, unlimited parallelism)
-- **JSON-RPC methods**: 126 (direct) + semantic registry aliases
+- **JSON-RPC methods**: 128 (direct) + semantic registry aliases
 - **Workspace crates**: 48
 - **Cross-arch**: 16/16 native targets, 38/48 WASM crates
 - **Clippy**: 0 warnings (`-D warnings`)

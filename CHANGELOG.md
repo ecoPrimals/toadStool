@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`tokio-serde` aligned** — server now uses `{ workspace = true, features = ["json"] }`.
 - **Fail-safe tests** — akida-driver `test_device_open` now handles NPU-on-PCI-but-no-driver gracefully (AKD1000 at `0000:e2:00.0` detected, reports diagnostic instead of asserting). Server socket path fallback tests accept permission errors on root-owned `/tmp/biomeos/`.
 - **wgpu 28 `catch_unwind`** — all `Instance::new` call sites protected against panic when no GPU backend compiled. GPU discovery, availability checks, and capability probing all fail safe.
+- **Silicon ledger + idle-aware routing** — `SiliconUnitUtilization` and `SiliconEnergyLedger` types in `toadstool-core/silicon`. `gpu.query_telemetry` extended with per-unit silicon utilization. 2 new JSON-RPC methods: `compute.silicon_ledger.report` / `.query`. `route_multi_unit` consults ledger for scheduling secondary workloads on underutilized silicon units. Node-Atomic AAR.
 - **All tests pass** — `cargo check --workspace` clean. `cargo test --workspace --lib` **8,446 passed, 0 failed**.
 
 ### Session S379 (Aug 10, 2026) — G72 Dependency Pandemic Tier 1 + Last-Mile Wiring
