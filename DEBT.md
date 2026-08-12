@@ -8,7 +8,9 @@ with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
 
-**S380 (eastGate G72 Tier 2 — Aug 11, 2026)**: wgpu 22→28 (MSRV 1.85→1.92),
+**S380 (eastGate G72 Tier 2 — Aug 11–12, 2026)**: wgpu 22→28 (MSRV 1.85→1.92),
+**P1 fix: `vulkan-portability`→`vulkan`** (wgpu 28 feature semantic change; musl
+depot crash on southGate canary — `catch_unwind` useless with `panic = "abort"`),
 axum fully excised from dependency tree (BYOB → UDS JSON-RPC), darwin/graftGate
 cfg fix (unix→linux for silicon_registry), mdns feature-gating fix, lock-poisoning
 alignment (security/monitoring + runtime/adaptive → server pattern). Deep debt

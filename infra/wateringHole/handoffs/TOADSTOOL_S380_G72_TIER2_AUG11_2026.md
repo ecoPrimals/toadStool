@@ -1,8 +1,8 @@
 # ToadStool S380 — G72 Dependency Pandemic Tier 2: wgpu 28 + axum Excision + Deep Debt
 
-**Date**: Aug 11, 2026
+**Date**: Aug 11–12, 2026
 **Sprint**: S380
-**Wave**: 157i POST-PANDEMIC CASCADE
+**Wave**: 157i/157k POST-PANDEMIC CASCADE + CANARY P1 FIX
 
 ## Completed
 
@@ -13,7 +13,8 @@
 
 ### wgpu 22 → 28 (MSRV 1.85 → 1.92)
 - **Declared MSRV bumped** — `rust-version = "1.92.0"` in workspace `Cargo.toml`.
-- **wgpu workspace dep updated** — `22` → `28`, features: `wgsl`, `vulkan-portability`.
+- **wgpu workspace dep updated** — `22` → `28`, features: `wgsl`, `vulkan`.
+- **P1 FIX (Wave 157k, Aug 12)**: southGate canary found musl depot binary crash — `wgpu-28.0.0/src/api/instance.rs:64:13: No wgpu backend feature`. Root cause: wgpu 22 `vulkan-portability` implied `vulkan`; wgpu 28 separated them — `vulkan-portability` is macOS/MoltenVK-only. `catch_unwind` safety net was useless because release profile uses `panic = "abort"`. Fixed: workspace feature changed from `vulkan-portability` to `vulkan`. Verified on glibc (8,446/0), x86_64-musl (`cargo check` clean), aarch64-apple-darwin (`cargo check` clean).
 - **GPU crate** (`runtime/gpu`) — `spirv` feature added for SPIR-V shader loading. `Instance::new` borrowed. `enumerate_adapters` awaited. `request_adapter` returns `Result`. `request_device` single-argument. `ShaderSource::SpirV` replaces removed unsafe API.
 - **Universal crate** (`runtime/universal`) — `Limits` subgroup fields moved to `AdapterInfo`. Device descriptor updated. All 7 test `AdapterInfo` literals updated with new fields (`device_pci_bus_id`, `subgroup_min_size`, `subgroup_max_size`, `transient_saves_memory`).
 - **Adaptive crate** (`runtime/adaptive`) — `Instance::new` panic caught with `catch_unwind` for no-backend-available environments. Lock-poisoning `.expect()` → `.unwrap_or_else(|e| e.into_inner())`.

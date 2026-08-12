@@ -86,9 +86,11 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # This achieves ABSOLUTE 100.00% Pure Rust! 🎉
 wgpu = { version = "28", default-features = false, features = [
     "wgsl",                # WGSL shader language support
-    "vulkan-portability",  # Vulkan support (Linux GPU compute path)
+    "vulkan",              # Vulkan backend on Linux/Windows/Android (GPU compute path)
+    # NOTE: wgpu 22 `vulkan-portability` implied `vulkan`. wgpu 28 does NOT —
+    # `vulkan-portability` is now macOS/iOS-only (MoltenVK). Use `vulkan` for Linux.
     # "dx12",              # Windows-only — not needed for Linux daemon
-    # "metal",             # macOS-only — not needed for Linux daemon
+    # "metal",             # macOS-only — graftGate uses Metal natively
     # "webgpu",            # browser WASM — not needed for native daemon
     # "renderdoc",         # C dependency — use tracing instead
 ]}

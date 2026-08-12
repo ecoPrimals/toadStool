@@ -5,10 +5,11 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 11, 2026 (Sessions 43-380+)
+## [Unreleased] - Aug 12, 2026 (Sessions 43-380+)
 
-### Session S380 (Aug 11, 2026) — G72 Tier 2: wgpu 28 + axum Excision + Darwin Fix + Deep Debt
+### Session S380 (Aug 11–12, 2026) — G72 Tier 2: wgpu 28 + axum Excision + Darwin Fix + Deep Debt
 
+- **P1 FIX: wgpu 28 `vulkan-portability` → `vulkan`** — southGate canary found: musl depot binary crashed with "No wgpu backend feature" panic. Root cause: wgpu 22 `vulkan-portability` implied `vulkan`; wgpu 28 does NOT — it's macOS/MoltenVK-only. Fixed workspace feature to `vulkan`. Verified on glibc, x86_64-musl, and aarch64-apple-darwin. Note: `catch_unwind` safety nets are dead code in release (`panic = "abort"`); the feature fix is the real protection.
 - **wgpu 22 → 28** — MSRV bumped 1.85→1.92. All GPU API migrations across 10+ source files: borrowed `InstanceDescriptor`, async `enumerate_adapters`, `request_adapter` returns `Result`, single-arg `request_device`, `ShaderSource::SpirV` replaces unsafe API, `PollType::wait_indefinitely()`, `AdapterInfo` subgroup fields, `immediate_size` pipeline layout, `Option` entry points. toadStool leads the ecosystem on wgpu 28.
 - **axum fully excised** — `runtime/container` BYOB server rewritten from axum/HTTP to UDS JSON-RPC. `ByobApi<E>` transport-neutral dispatcher with 7 RPC methods. `cargo tree -i axum` returns "did not match any packages". HTTP is songBird's domain.
 - **Darwin/graftGate fix** — `#[cfg(unix)]` → `#[cfg(target_os = "linux")]` for silicon_registry/silicon_discovery/ipc_watch (6 sites). Fixes aarch64-apple-darwin compilation.
