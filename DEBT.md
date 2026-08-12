@@ -11,6 +11,9 @@ where applicable.
 **S380 (eastGate G72 Tier 2 — Aug 11–12, 2026)**: wgpu 22→28 (MSRV 1.85→1.92),
 **P1 fix: `vulkan-portability`→`vulkan`** (wgpu 28 feature semantic change; musl
 depot crash on southGate canary — `catch_unwind` useless with `panic = "abort"`),
+**P1 refined: musl GPU ban → runtime Vulkan loader probe** (blanket
+`#[cfg(target_env = "musl")]` replaced with `vulkan_loader_available()` runtime
+dlopen check; allows dynamic musl + GPU; removes dead `catch_unwind`),
 axum fully excised from dependency tree (BYOB → UDS JSON-RPC), darwin/graftGate
 cfg fix (unix→linux for silicon_registry), mdns feature-gating fix, lock-poisoning
 alignment (security/monitoring + runtime/adaptive → server pattern). Deep debt

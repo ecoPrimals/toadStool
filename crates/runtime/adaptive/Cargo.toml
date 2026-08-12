@@ -20,6 +20,7 @@ thiserror = { workspace = true }
 
 # GPU runtime (optional — only needed for live GPU fingerprinting)
 wgpu = { workspace = true, optional = true }
+toadstool-runtime-gpu = { path = "../../runtime/gpu", default-features = false, features = ["webgpu"], optional = true }
 
 # ToadStool core
 toadstool-common = { path = "../../core/common", default-features = false }
@@ -35,7 +36,7 @@ proptest = { workspace = true }
 [features]
 default = ["gpu-discovery", "runtime"]
 runtime = ["dep:tokio", "dep:etcetera", "toadstool-common/runtime"]
-gpu-discovery = ["dep:wgpu"]
+gpu-discovery = ["dep:wgpu", "dep:toadstool-runtime-gpu"]
 
 [lints]
 workspace = true

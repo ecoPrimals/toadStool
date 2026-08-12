@@ -24,6 +24,7 @@ toadstool-core = { path = "../../toadstool-core" }
 
 # GPU backends (all optional, capability-based discovery)
 wgpu = { workspace = true, optional = true }
+toadstool-runtime-gpu = { path = "../../runtime/gpu", default-features = false, features = ["webgpu"], optional = true }
 bytemuck = { workspace = true }
 
 # For CPU parallelism and discovery
@@ -37,7 +38,7 @@ toadstool-sysmon = { path = "../../core/sysmon", optional = true }
 default = ["cpu", "runtime"]
 cpu = ["dep:rayon"]
 runtime = ["dep:tokio", "toadstool-common/runtime", "wgpu-backend"]
-wgpu-backend = ["dep:wgpu"]
+wgpu-backend = ["dep:wgpu", "dep:toadstool-runtime-gpu"]
 hardware-learning = ["hw-learn", "toadstool-sysmon"]
 all = ["cpu", "wgpu-backend", "hardware-learning", "runtime"]
 

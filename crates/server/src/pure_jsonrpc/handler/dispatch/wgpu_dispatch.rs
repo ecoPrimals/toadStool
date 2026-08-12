@@ -8,10 +8,10 @@
 //! The wgpu path accepts WGSL source and dispatches it through the standard
 //! Vulkan compute pipeline with buffer readback.
 //!
-//! NOTE: This crate is compiled with `panic = "abort"`, so `catch_unwind` is
-//! useless. Every wgpu error that could panic (device lost, invalid pipeline)
-//! must be detected and handled *before* calling panicking APIs like
-//! `pipeline.get_bind_group_layout()`.
+//! NOTE: This crate is compiled with `panic = "abort"`. Every wgpu error that
+//! could panic (device lost, invalid pipeline) must be detected and handled
+//! *before* calling panicking APIs like `pipeline.get_bind_group_layout()`.
+//! Vulkan loader availability is checked upfront via `vulkan_loader_available()`.
 
 #[cfg(feature = "gpu-discovery")]
 use base64::Engine;
@@ -49,13 +49,12 @@ fn get_or_init_wgpu() -> Option<&'static WgpuDispatchContext> {
 }
 
 #[cfg(feature = "gpu-discovery")]
-#[cfg_attr(target_env = "musl", allow(unreachable_code, unused_variables))]
 async fn init_wgpu() -> Option<WgpuDispatchContext> {
-    #[cfg(target_env = "musl")]
-    {
-        tracing::info!("wgpu dispatch unavailable on musl (Vulkan dlopen incompatible with static linking)");
+    if !toadstool_runtime_gpu::vulkan_loader_available() {
+        tracing::info!("wgpu dispatch unavailable (Vulkan loader not found)");
         return None;
     }
+
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
         ..Default::default()

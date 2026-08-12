@@ -45,25 +45,19 @@ impl WebGpuFramework {
     /// Initialize `WebGPU` instance and adapter
     ///
     /// Note: Only used when `webgpu` feature is enabled
-    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     async fn initialize_webgpu(&self) -> ToadStoolResult<WebGPUAdapter> {
-        #[cfg(target_env = "musl")]
-        {
-            return Err(ToadStoolError::runtime(
-                "GPU discovery skipped on musl (Vulkan dlopen incompatible with static linking)",
-            ));
-        }
         #[cfg(feature = "webgpu")]
         {
-            let instance = std::panic::catch_unwind(|| {
-                wgpu::Instance::new(&wgpu::InstanceDescriptor {
-                    backends: wgpu::Backends::all(),
-                    ..Default::default()
-                })
-            })
-            .map_err(|_| {
-                ToadStoolError::runtime("No wgpu backend available for this platform")
-            })?;
+            if !crate::vulkan_loader_available() {
+                return Err(ToadStoolError::runtime(
+                    "GPU unavailable (Vulkan loader not found)",
+                ));
+            }
+
+            let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::all(),
+                ..Default::default()
+            });
 
             let adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {

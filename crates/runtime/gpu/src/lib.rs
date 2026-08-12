@@ -69,6 +69,42 @@ pub mod backends;
 #[cfg(feature = "webgpu")]
 pub mod shader_spirv;
 
+/// Runtime probe: can wgpu's primary backend be loaded on this platform?
+///
+/// On Linux, wgpu uses Vulkan (loaded via `dlopen`). Static musl binaries
+/// have a `dlopen` stub that always fails, so the probe checks for
+/// `libvulkan.so.1` first, then `libvulkan.so`. On macOS (Metal) and
+/// Windows (DX12), the primary backend does not rely on `dlopen`, so
+/// this always returns `true`.
+///
+/// Replaces `catch_unwind` (dead code with `panic = "abort"`) and
+/// `#[cfg(target_env = "musl")]` (too aggressive — blocks dynamic musl + GPU).
+///
+/// Result is cached via `OnceLock` — safe to call from hot paths.
+#[cfg(feature = "webgpu")]
+#[allow(unsafe_code, reason = "libloading::Library::new requires unsafe for dlopen")]
+pub fn vulkan_loader_available() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        static RESULT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *RESULT.get_or_init(|| {
+            for name in &["libvulkan.so.1", "libvulkan.so"] {
+                if unsafe { libloading::Library::new(name) }.is_ok() {
+                    return true;
+                }
+            }
+            tracing::debug!(
+                "Vulkan loader unavailable (tried libvulkan.so.1, libvulkan.so)"
+            );
+            false
+        })
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
+}
+
 // Re-export main types and traits for convenience
 pub use compiler::KernelStringOptimizer;
 pub use compute_dispatch::{ComputeContextDispatch, UniversalComputeResourceDispatch};

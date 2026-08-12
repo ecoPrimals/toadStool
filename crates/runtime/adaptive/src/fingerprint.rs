@@ -77,26 +77,17 @@ impl GpuFingerprint {
     ///
     /// Returns error if GPU discovery fails or the `gpu-discovery` feature is disabled.
     #[cfg(feature = "gpu-discovery")]
-    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     pub async fn discover() -> Result<Self, AdaptiveError> {
-        #[cfg(target_env = "musl")]
-        {
+        if !toadstool_runtime_gpu::vulkan_loader_available() {
             return Err(AdaptiveError::Other(
-                "GPU discovery skipped on musl (Vulkan dlopen incompatible with static linking)"
-                    .to_string(),
+                "GPU discovery skipped (Vulkan loader unavailable)".to_string(),
             ));
         }
-        let instance = std::panic::catch_unwind(|| {
-            wgpu::Instance::new(&wgpu::InstanceDescriptor {
-                backends: wgpu::Backends::all(),
-                ..Default::default()
-            })
-        })
-        .map_err(|_| {
-            AdaptiveError::Other(
-                "No wgpu backend available for this platform".to_string(),
-            )
-        })?;
+
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {

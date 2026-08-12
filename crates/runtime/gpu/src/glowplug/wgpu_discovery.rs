@@ -50,25 +50,15 @@ impl DeviceDiscovery for WgpuGpuDiscovery {
         "gpu"
     }
 
-    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     async fn discover(&self) -> Result<Vec<DeviceId>, Self::Error> {
-        #[cfg(target_env = "musl")]
-        {
+        if !crate::vulkan_loader_available() {
             return Ok(Vec::new());
         }
-        let backends = self.backends;
-        let instance = std::panic::catch_unwind(|| {
-            wgpu::Instance::new(&wgpu::InstanceDescriptor {
-                backends,
-                ..Default::default()
-            })
-        })
-        .map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "No wgpu backend available for this platform",
-            )
-        })?;
+
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: self.backends,
+            ..Default::default()
+        });
 
         let adapters = instance.enumerate_adapters(self.backends).await;
 
