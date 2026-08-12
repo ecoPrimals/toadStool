@@ -100,6 +100,12 @@ impl VulkanBackend {
     /// This uses wgpu with the Vulkan backend, providing Vulkan-level
     /// performance with pure Rust safety.
     pub async fn try_init_with_wgpu() -> ToadStoolResult<Self> {
+        #[cfg(target_env = "musl")]
+        {
+            return Err(ToadStoolError::runtime(
+                "Vulkan unavailable on musl (dlopen incompatible with static linking)",
+            ));
+        }
         let instance = std::panic::catch_unwind(|| {
             wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::VULKAN,
@@ -172,6 +178,10 @@ impl VulkanBackend {
     /// `enumerate_adapters` became async in wgpu 28; the sync trait method
     /// `BackendInitializer::is_available()` cannot await it.
     fn check_availability() -> bool {
+        #[cfg(target_env = "musl")]
+        {
+            return false;
+        }
         std::panic::catch_unwind(|| {
             let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::VULKAN,

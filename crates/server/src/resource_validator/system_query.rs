@@ -129,7 +129,13 @@ fn select_backends() -> wgpu::Backends {
 /// wrapped in `catch_unwind`. This protects the caller from panics in the
 /// Vulkan/Mesa ICD loader. A 5-second timeout prevents hangs on broken drivers.
 #[cfg(feature = "gpu-discovery")]
+#[cfg_attr(target_env = "musl", allow(unreachable_code))]
 async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
+    #[cfg(target_env = "musl")]
+    {
+        tracing::info!("wgpu GPU discovery skipped on musl (Vulkan dlopen incompatible with static linking)");
+        return Ok(Vec::new());
+    }
     const GPU_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
     let (tx, rx) = tokio::sync::oneshot::channel();

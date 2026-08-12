@@ -49,7 +49,13 @@ fn get_or_init_wgpu() -> Option<&'static WgpuDispatchContext> {
 }
 
 #[cfg(feature = "gpu-discovery")]
+#[cfg_attr(target_env = "musl", allow(unreachable_code, unused_variables))]
 async fn init_wgpu() -> Option<WgpuDispatchContext> {
+    #[cfg(target_env = "musl")]
+    {
+        tracing::info!("wgpu dispatch unavailable on musl (Vulkan dlopen incompatible with static linking)");
+        return None;
+    }
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
         ..Default::default()

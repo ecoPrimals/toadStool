@@ -45,7 +45,14 @@ impl WebGpuFramework {
     /// Initialize `WebGPU` instance and adapter
     ///
     /// Note: Only used when `webgpu` feature is enabled
+    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     async fn initialize_webgpu(&self) -> ToadStoolResult<WebGPUAdapter> {
+        #[cfg(target_env = "musl")]
+        {
+            return Err(ToadStoolError::runtime(
+                "GPU discovery skipped on musl (Vulkan dlopen incompatible with static linking)",
+            ));
+        }
         #[cfg(feature = "webgpu")]
         {
             let instance = std::panic::catch_unwind(|| {

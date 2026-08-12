@@ -50,7 +50,12 @@ impl DeviceDiscovery for WgpuGpuDiscovery {
         "gpu"
     }
 
+    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     async fn discover(&self) -> Result<Vec<DeviceId>, Self::Error> {
+        #[cfg(target_env = "musl")]
+        {
+            return Ok(Vec::new());
+        }
         let backends = self.backends;
         let instance = std::panic::catch_unwind(|| {
             wgpu::Instance::new(&wgpu::InstanceDescriptor {

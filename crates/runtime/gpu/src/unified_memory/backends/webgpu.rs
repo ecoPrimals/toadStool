@@ -84,7 +84,14 @@ impl WebGpuBackend {
     }
 
     /// Initialize `WebGPU` with automatic adapter selection
+    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     async fn init_device() -> ToadStoolResult<(wgpu::Device, wgpu::Queue)> {
+        #[cfg(target_env = "musl")]
+        {
+            return Err(ToadStoolError::runtime(
+                "GPU unavailable on musl (Vulkan dlopen incompatible with static linking)",
+            ));
+        }
         let instance = std::panic::catch_unwind(|| {
             wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::all(),
@@ -131,7 +138,12 @@ impl WebGpuBackend {
     /// `enumerate_adapters` became async in wgpu 28; the sync trait method
     /// `BackendInitializer::is_available()` cannot await it.  Instance creation
     /// always succeeds, so we report `true` and let `try_init` surface real errors.
+    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     fn check_availability() -> bool {
+        #[cfg(target_env = "musl")]
+        {
+            return false;
+        }
         std::panic::catch_unwind(|| {
             let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::all(),

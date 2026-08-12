@@ -77,7 +77,13 @@ impl CapabilityDiscovery {
     /// [`ComputeDiscoverySettings::gpu_adapter_selector`]: comma-separated
     /// index (`"0"`), name substring (`"3090,titan"`), or `"auto"`.
     #[cfg(feature = "wgpu-backend")]
+    #[cfg_attr(target_env = "musl", allow(unreachable_code, unused_variables))]
     async fn discover_wgpu(settings: &ComputeDiscoverySettings) -> Vec<ComputeUnitDispatch> {
+        #[cfg(target_env = "musl")]
+        {
+            tracing::info!("wgpu GPU discovery skipped on musl (Vulkan dlopen incompatible with static linking)");
+            return Vec::new();
+        }
         use crate::backends::WgpuComputeUnit;
 
         let instance = match std::panic::catch_unwind(|| {

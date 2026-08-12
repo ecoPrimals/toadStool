@@ -77,7 +77,15 @@ impl GpuFingerprint {
     ///
     /// Returns error if GPU discovery fails or the `gpu-discovery` feature is disabled.
     #[cfg(feature = "gpu-discovery")]
+    #[cfg_attr(target_env = "musl", allow(unreachable_code))]
     pub async fn discover() -> Result<Self, AdaptiveError> {
+        #[cfg(target_env = "musl")]
+        {
+            return Err(AdaptiveError::Other(
+                "GPU discovery skipped on musl (Vulkan dlopen incompatible with static linking)"
+                    .to_string(),
+            ));
+        }
         let instance = std::panic::catch_unwind(|| {
             wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::all(),
