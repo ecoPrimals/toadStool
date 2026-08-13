@@ -28,8 +28,8 @@ fn test_service_status() {
 #[test]
 fn test_message_creation() {
     let msg = EcosystemMessage::new(
-        "service-1".to_string(),
-        "service-2".to_string(),
+        "service-1",
+        "service-2",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({}),
     );
@@ -135,7 +135,7 @@ fn test_service_status_non_failed_no_error_message() {
 
 #[test]
 fn test_heartbeat_message() {
-    let msg = EcosystemMessage::heartbeat("sender".to_string(), "receiver".to_string());
+    let msg = EcosystemMessage::heartbeat("sender", "receiver");
     assert_eq!(msg.message_type, EcosystemMessageType::Heartbeat);
     assert_eq!(msg.payload, serde_json::json!({}));
     assert_eq!(msg.from, "sender");
@@ -145,9 +145,9 @@ fn test_heartbeat_message() {
 #[test]
 fn test_error_message() {
     let msg = EcosystemMessage::error(
-        "sender".to_string(),
-        "receiver".to_string(),
-        "oops".to_string(),
+        "sender",
+        "receiver",
+        "oops",
     );
     assert_eq!(msg.message_type, EcosystemMessageType::Error);
     assert_eq!(msg.payload["error"], "oops");
@@ -259,7 +259,7 @@ fn test_ecosystem_config_serialization() {
 
 #[test]
 fn test_ecosystem_message_serialization() {
-    let msg = EcosystemMessage::heartbeat("service-a".to_string(), "service-b".to_string());
+    let msg = EcosystemMessage::heartbeat("service-a", "service-b");
 
     let serialized = serde_json::to_string(&msg).expect("serialize message");
     let deserialized: EcosystemMessage =

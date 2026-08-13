@@ -135,7 +135,7 @@ impl JsonRpcHandler {
             _ => method_gate::MethodGate::permissive(),
         };
 
-        let coral_client = crate::visualization_client::create_visualization_client();
+        let shader_service = crate::visualization_client::create_visualization_client();
 
         // Spawn ipc.watch background poller — watches the communication provider for shader
         // capability registrations and invalidates the visualization client
@@ -144,13 +144,13 @@ impl JsonRpcHandler {
         let silicon_registry;
         #[cfg(target_os = "linux")]
         {
-            let watch_client = Arc::clone(&coral_client);
+            let watch_client = Arc::clone(&shader_service);
             tokio::spawn(async move {
                 crate::background::ipc_watch::run(watch_client).await;
             });
 
             silicon_registry = crate::background::silicon_discovery::create_silicon_registry();
-            let discovery_client = Arc::clone(&coral_client);
+            let discovery_client = Arc::clone(&shader_service);
             let discovery_registry = Arc::clone(&silicon_registry);
             tokio::spawn(async move {
                 crate::background::silicon_discovery::run(discovery_client, discovery_registry)
@@ -158,7 +158,7 @@ impl JsonRpcHandler {
             });
         }
 
-        let mut dispatch = DispatchHandler::new(coral_client, Self::try_connect_crypto_client());
+        let mut dispatch = DispatchHandler::new(shader_service, Self::try_connect_crypto_client());
         #[cfg(target_os = "linux")]
         {
             tracing::info!("Phase D: local cylinder device factory registered");

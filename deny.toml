@@ -108,8 +108,8 @@ deny = [
 
     # ── Architectural bans ────────────────────────────────────────────────────
     # async-trait — fully evolved to manual Pin<Box<dyn Future>> and native AFIT (S203r).
-    # Transitive via axum/config/wiggle — wrappers until upstream drops it.
-    { name = "async-trait", wrappers = ["axum", "axum-core", "config", "wiggle"] },
+    # Transitive via config/wiggle only — axum excised S380.
+    { name = "async-trait", wrappers = ["config", "wiggle"] },
     # tungstenite WebSocket — removed in R-011; must not return.
     { name = "tungstenite" },
     { name = "tokio-tungstenite" },

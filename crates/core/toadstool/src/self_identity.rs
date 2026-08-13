@@ -241,10 +241,11 @@ impl SelfIdentity {
     /// Set our network identity
     pub fn with_network(
         mut self,
-        hostname: String,
+        hostname: impl Into<String>,
         port: Option<u16>,
         protocols: Vec<String>,
     ) -> Self {
+        let hostname = hostname.into();
         self.network = Some(NetworkIdentity {
             endpoint: port.map_or_else(|| hostname.clone(), |p| format!("{hostname}:{p}")),
             hostname,
@@ -400,7 +401,7 @@ mod tests {
     #[test]
     fn test_with_network() {
         let identity = SelfIdentity::new().with_network(
-            "localhost".to_string(),
+            "localhost",
             Some(8084),
             vec!["http".to_string()],
         );
@@ -418,7 +419,7 @@ mod tests {
     #[test]
     fn test_advertisement() {
         let identity = SelfIdentity::new().with_network(
-            "localhost".to_string(),
+            "localhost",
             Some(8084),
             vec!["http".to_string()],
         );

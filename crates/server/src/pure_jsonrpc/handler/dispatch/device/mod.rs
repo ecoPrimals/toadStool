@@ -112,7 +112,7 @@ impl DispatchHandler {
     ///
     /// Returns `Some(result)` if local dispatch was attempted (success or failure).
     /// Returns `None` if no local device factory is configured or the device
-    /// cannot be opened locally — caller should fall through to coral_client.
+    /// cannot be opened locally — caller should fall through to shader service.
     pub(super) async fn try_local_dispatch(
         &self,
         bdf: &str,

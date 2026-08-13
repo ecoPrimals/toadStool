@@ -1,8 +1,22 @@
 # ToadStool -- Next Steps
 
-**Updated**: Aug 12, 2026 — S380 (G72 Tier 2: wgpu 28, P1 vulkan feature fix, axum excision, silicon ledger, darwin fix, fail-safe tests, deep debt). **8,446 lib tests, 0 failures.**
-**Status**: Production-grade | Rust edition **2024** (MSRV **1.92**) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (lib-only **8,446**, 0 failures) | **128 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **39 crates `forbid`** | unsafe contained in hw-safe/cylinder/nvpmu/runtime-gpu | **rustix 1.x workspace-wide — hw-safe only** | **100% env centralized** | **19+ deny.toml bans** (Pure Rust Crypto standard) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Zero production files >800L (S373)** | **Zero clippy warnings** | **Zero doc warnings** | **46 crates `version.workspace = true`** | **Security fail-closed** — sandbox/PKI require explicit config (S346) | **C2 dual-socket naming** (S354) | **Zero hardcoded primal name violations** (S355) | **G68 platform containment complete** (S365) | **16/16 cross-arch** (S369) — first primal fleet-ready | **38/48 crates WASM** (S376) — compute kernel on wasm32-unknown-unknown + wasm32-wasip1 | **Vertebrate self-audit** (S372) — 126 methods verified, types extracted to toadstool-core | **Tokio blast radius** (S376) — `tokio::fs`/`process` eliminated, workspace features 9→6, RwLock 99→20 files | **Tokio vestigial segmentation** (S378) — ~35k LOC gated behind non-default features, default tokio 118→65 files | **NUCLEUS manifest convergence** (S377) — 5→2 `BiomeManifest` structs, canonical in `toadstool-core` | **wgpu 28** (S380) — leads ecosystem, P1 vulkan feature fix | **axum excised** (S380) — HTTP is songBird's domain | **darwin/graftGate fix** (S380) — silicon_registry cfg narrowed to linux | **silicon ledger** (S380) — per-unit utilization telemetry + idle-aware routing
-**Latest**: S380 — G72 Tier 2 (wgpu 22→28, P1 vulkan feature fix, MSRV 1.85→1.92, axum excised, silicon ledger + idle-aware routing, darwin cfg fix, mdns feature-gate fix, lock-poisoning alignment). S379 — G72 Dep Pandemic Tier 1 (tokio trimmed, 7 dead deps, 6 workspace promotions, ~1,750 LOC excised). S378 — Tokio vestigial segmentation (118→65). S377 — NUCLEUS manifest convergence (5→2). S376 — Tokio blast radius (38/48 WASM). S375 — WASM push 26→31. S374 — Tokio deep debt. S373 — Deep debt. S372 — Vertebrate Evolution. S369 — Full cross-arch: 16 native targets.
+**Updated Aug 13 — S381** (deep debt + overstep cleanup; S380: wgpu 28, axum excision, silicon ledger). **8,446 lib tests, 0 failures.**
+**Status**: Production-grade | Rust edition **2024** (MSRV **1.92**) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (lib-only **8,446**, 0 failures) | **131 JSON-RPC methods** (direct) | Wire Standard L3 (partial) | **Zero `libc`** (ecoBin v3.0 — rustix for all hardware I/O) | **Zero production panics/expects/unwraps** | **Zero production TODO/FIXME/HACK** | IPC-first | workspace `unsafe_code = "deny"`, **39 crates `forbid`** | unsafe contained in hw-safe/cylinder/nvpmu/runtime-gpu | **rustix 1.x workspace-wide — hw-safe only** | **100% env centralized** | **19+ deny.toml bans** (Pure Rust Crypto standard) | **capability-based primal references** | **`async-trait` banned in `deny.toml`** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V** | **Zero production files >800L (S373–S381)** | **Zero clippy warnings** | **Zero doc warnings** | **46 crates `version.workspace = true`** | **Security fail-closed** — sandbox/PKI require explicit config (S346) | **C2 dual-socket naming** (S354) | **Zero hardcoded primal name violations** (S355) | **G68 platform containment complete** (S365) | **16/16 cross-arch** (S369) — first primal fleet-ready | **38/48 crates WASM** (S376) — compute kernel on wasm32-unknown-unknown + wasm32-wasip1 | **Vertebrate self-audit** (S372) — 128 methods verified, types extracted to toadstool-core | **Tokio blast radius** (S376) — `tokio::fs`/`process` eliminated, workspace features 9→6, RwLock 99→20 files | **Tokio vestigial segmentation** (S378) — ~35k LOC gated behind non-default features, default tokio 118→65 files | **NUCLEUS manifest convergence** (S377) — 5→2 `BiomeManifest` structs, canonical in `toadstool-core` | **wgpu 28** (S380) — leads ecosystem, P1 vulkan feature fix | **axum excised** (S380) — HTTP is songBird's domain | **darwin/graftGate fix** (S380) — silicon_registry cfg narrowed to linux | **silicon ledger** (S380) — per-unit utilization telemetry + idle-aware routing | **Deep debt clean** (S381) — platform_backends split, akida DRY, overstep cleanup, legacy test renames, BDF env vars
+**Latest**: S381 — Deep debt + overstep cleanup (platform_backends refactor, akida capabilities DRY, coral_client→shader_service, legacy test renames, runtime/edge DEPRECATED.md, script BDF env vars, string param modernization). S380 — G72 Tier 2 (wgpu 22→28, P1 vulkan feature fix, MSRV 1.85→1.92, axum excised, silicon ledger + idle-aware routing, darwin cfg fix, mdns feature-gate fix, lock-poisoning alignment). S379 — G72 Dep Pandemic Tier 1 (tokio trimmed, 7 dead deps, 6 workspace promotions, ~1,750 LOC excised). S378 — Tokio vestigial segmentation (118→65). S377 — NUCLEUS manifest convergence (5→2). S376 — Tokio blast radius (38/48 WASM). S375 — WASM push 26→31. S374 — Tokio deep debt. S373 — Deep debt. S372 — Vertebrate Evolution. S369 — Full cross-arch: 16 native targets.
+
+---
+
+### Aug 13, 2026 — S381 Deep Debt + Overstep Cleanup
+
+| Item | Status |
+|------|--------|
+| String param modernization (`impl AsRef<str>` / `impl Into<String>`) — `EcosystemMessage`, `SelfIdentity::with_network`, `ToadStoolIdentity::add_metadata`, `ServiceEndpoint::with_capabilities` | **DONE** |
+| `platform_backends.rs` refactor — 805L monolith → 7 focused modules (`memory`, `event`, `device_io`, `system`, `isolation`, `ipc`, `kmod`) | **DONE** |
+| `akida-driver/capabilities.rs` DRY — hwmon walk → `read_hwmon_sensor<T>`, `query()` delegates to `from_sysfs()` | **DONE** |
+| `coral_client` → `shader_service` overstep cleanup (8 dispatch handler files) | **DONE** |
+| Legacy test renames — `nestgate_*` → `storage_*`, `beardog_*` → `protocol_*` (`git mv`, history preserved) | **DONE** |
+| `runtime/edge` orphan documentation — `DEPRECATED.md` added (workspace excluded S378) | **DONE** |
+| Script BDF hardcoding → env vars — `${AMD_BDF:-...}`, `${NVIDIA_BDF:-...}`, `${AKIDA_BDF:-...}`, `AKIDA_MODULE_PATH` | **DONE** |
 
 ---
 
@@ -33,7 +47,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P2: Test Coverage → 90% (D-COV) — Active Sprint (S294–S336+)
 
-**~85%+ estimated line coverage** (lib-only). **8,447+ lib tests** (0 failures). Target 90%.
+**~85%+ estimated line coverage** (lib-only). **8,446 lib tests** (0 failures). Target 90%.
 
 **S294–S298 coverage sprint** added **+174 new tests** targeting non-VFIO gaps:
 - S294: CallerContext extraction, handler glue (workload, resources, queries, state, compute), RuntimeEngineDispatch (+57)
@@ -243,7 +257,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 | Item | Status |
 |------|--------|
-| Coverage push 85%→90% | **Active sprint** — S294–S336 expanded to 8,447+ lib; remaining gap in VFIO/DRM/GPU hardware paths |
+| Coverage push 85%→90% | **Active sprint** — S294–S336 expanded to 8,446 lib; remaining gap in VFIO/DRM/GPU hardware paths |
 | Phase D mixed command streams | Planned — blocked on toadStool PBDMA runlist config ([COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md)) |
 | VFIO PBDMA dispatch | **PIPELINE WIRED, RUNLIST BLOCKED** (S258–S263; Jun 1 RCA) — channel, DMA, GPFIFO + QMD submission work on Titan V; **GP_GET never advances** because `PFIFO_RUNLIST_BASE=0` (runlist never configured). Not e2e dispatch. RCA: [HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md](infra/wateringHole/handoffs/archive/HOTSPRING_TIER2_PBDMA_ROOT_CAUSE_JUN01_2026.md). Frontier spec: [COMPUTE_DISPATCH_ENGINE.md](specs/COMPUTE_DISPATCH_ENGINE.md). |
 | PCIe bridge keepalive | **VALIDATED + EVOLVED** (S264→S266) — Phase 1 (S264): `pin_bridge_hierarchy()` + `SwapGuard` burst CfgRd during swaps. Phase 2 (S266): Root cause fix — PLX D3cold caused by **inactivity** (not swaps). `PlxKeepalive` (ember): continuous CfgRd every 5s on device + all upstream bridges. `PlxGuardian` (glowplug): fleet-level auto-detect via `scan_and_protect()`. 98 ember tests, 95 glowplug tests. |
@@ -332,6 +346,13 @@ after Phase D.
 - [x] **pollster eliminated** -- removed from barracuda, toadstool, universal (→ tokio_block_on)
 - [x] **serde_yaml → serde_yaml_ng** -- across workspace
 - [x] **async-trait → DEPRECATED** -- fully removed and banned in `deny.toml` (S203t); all annotations evolved to manual `Pin<Box<dyn Future>>` or native AFIT, and subsequently to enum dispatch + RPITIT (S203s)
+- [x] **platform_backends.rs module split (S381)** -- 805L → 7 focused modules (`memory`, `event`, `device_io`, `system`, `isolation`, `ipc`, `kmod`); public API unchanged via re-exports
+- [x] **akida-driver/capabilities.rs DRY (S381)** -- hwmon walk → `read_hwmon_sensor<T>`, `query()` delegates to `from_sysfs()`
+- [x] **coral_client → shader_service (S381)** -- inter-primal overstep cleanup across 8 dispatch handler files
+- [x] **Legacy test renames (S381)** -- `nestgate_*` → `storage_*`, `beardog_*` → `protocol_*` (`git mv`, history preserved)
+- [x] **runtime/edge orphan documentation (S381)** -- `DEPRECATED.md` added (workspace excluded S378)
+- [x] **Script BDF env vars (S381)** -- `${AMD_BDF:-...}`, `${NVIDIA_BDF:-...}`, `${AKIDA_BDF:-...}`, `AKIDA_MODULE_PATH`
+- [x] **String param modernization (S381)** -- `impl AsRef<str>` / `impl Into<String>` on `EcosystemMessage`, `SelfIdentity`, `ToadStoolIdentity`, `ServiceEndpoint`
 - [x] **Capability-based naming** -- CLI/JSON-RPC/error messages use capability language, type aliases added
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
@@ -342,7 +363,7 @@ after Phase D.
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 8,447+ lib tests; ~85%+ line; S294–S336 expanding coverage; remaining gap in hardware-dependent paths (VFIO, DRM, V4L2, akida); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 8,446 lib tests; ~85%+ line; S294–S336 expanding coverage; remaining gap in hardware-dependent paths (VFIO, DRM, V4L2, akida); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -378,4 +399,4 @@ after Phase D.
 
 ## Completed Sessions (Archived)
 
-Session history for S43–S377 lives in [CHANGELOG.md](CHANGELOG.md). Fossil record for S87–S240 archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
+Session history for S43–S381 lives in [CHANGELOG.md](CHANGELOG.md). Fossil record for S87–S240 archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.

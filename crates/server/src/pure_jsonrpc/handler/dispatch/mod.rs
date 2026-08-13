@@ -14,6 +14,8 @@ mod dag;
 mod device;
 mod fan_out;
 mod forward;
+mod halo_dispatch;
+mod multi_gpu_dispatch;
 mod pipeline;
 mod queries;
 mod routing;
@@ -63,7 +65,7 @@ pub(super) type LocalDeviceFactory =
 /// encrypted via `crypto.encrypt` using the `compute` purpose key before dispatch,
 /// and results are decrypted via `crypto.decrypt` on return.
 pub struct DispatchHandler {
-    coral_client: SharedVisualizationClient,
+    shader_service: SharedVisualizationClient,
     crypto_client: Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>>,
     /// Cached compute purpose key (lazily fetched on first encrypted dispatch).
     /// Arc-wrapped to avoid cloning key material on every cache hit.
@@ -75,7 +77,7 @@ pub struct DispatchHandler {
     #[cfg(target_os = "linux")]
     device_pool: Arc<RwLock<HashMap<String, HeldResource<VfioResourceHandle>>>>,
     /// Local compute device factory — produces ComputeDevice from BDF when
-    /// cylinder can dispatch locally (Phase D). None = fall through to coral_client.
+    /// cylinder can dispatch locally (Phase D). None = fall through to shader service.
     #[cfg(target_os = "linux")]
     local_device_factory: Option<LocalDeviceFactory>,
     /// Persistent cache of opened VFIO compute devices keyed by BDF.

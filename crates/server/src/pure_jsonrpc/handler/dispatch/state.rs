@@ -12,11 +12,11 @@ const DEFAULT_ESTIMATED_DURATION: std::time::Duration = std::time::Duration::fro
 
 impl DispatchHandler {
     pub fn new(
-        coral_client: SharedVisualizationClient,
+        shader_service: SharedVisualizationClient,
         crypto_client: Option<Arc<toadstool_distributed::crypto_integration::CryptoServiceClient>>,
     ) -> Self {
         Self {
-            coral_client,
+            shader_service,
             crypto_client,
             cached_purpose_key: Arc::new(std::sync::RwLock::new(None)),
             jobs: Arc::new(std::sync::RwLock::new(HashMap::new())),

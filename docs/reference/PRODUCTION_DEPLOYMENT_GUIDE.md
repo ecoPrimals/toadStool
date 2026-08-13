@@ -247,11 +247,14 @@ Full env reference: `.env.example` and `crates/core/common/src/interned_strings/
 
 ### Recommended Unit File
 
+Capability-based Tower Atomic unit names (`security.service`, `coordination.service`).
+Legacy deployments may still use primal-named aliases (`beardog.service`, `songbird.service`).
+
 ```ini
 [Unit]
 Description=ToadStool Sovereign Compute
-After=network.target beardog.service songbird.service
-Wants=beardog.service songbird.service
+After=network.target security.service coordination.service
+Wants=security.service coordination.service
 
 [Service]
 Type=notify
@@ -398,7 +401,7 @@ Separate long-running mode for container-based team biome workloads.
 toadstool byob-server --port 9090
 ```
 
-BYOB uses HTTP (axum), not the primary JSON-RPC IPC path. It provides
+BYOB uses UDS JSON-RPC, not the primary compute socket path. It provides
 deploy/list/stop/resource endpoints for team biome management. This is a
 distinct deployment from `toadstool server`.
 

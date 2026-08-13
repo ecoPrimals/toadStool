@@ -39,10 +39,14 @@ pub struct SetupConfig {
 impl Default for SetupConfig {
     fn default() -> Self {
         Self {
-            module_path: Some(format!(
-                "{}/Development/ecoPrimals/akida_dw_edma/akida-pcie.ko",
-                std::env::var(socket_env::HOME).unwrap_or_default()
-            )),
+            module_path: Some(
+                std::env::var("AKIDA_MODULE_PATH").unwrap_or_else(|_| {
+                    format!(
+                        "{}/Development/ecoPrimals/akida_dw_edma/akida-pcie.ko",
+                        std::env::var(socket_env::HOME).unwrap_or_default()
+                    )
+                }),
+            ),
             persistent_permissions: true,
             skip_verification: false,
         }

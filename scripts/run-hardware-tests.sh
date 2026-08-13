@@ -20,9 +20,9 @@ NC='\033[0m'
 SUITE="${1:-all}"
 
 # strandgate hardware map
-AMD_SLOT="0000:25:00.0"
-NVIDIA_SLOT="0000:41:00.0"
-AKIDA_SLOT="0000:e2:00.0"
+AMD_SLOT="${AMD_BDF:-0000:25:00.0}"
+NVIDIA_SLOT="${NVIDIA_BDF:-0000:41:00.0}"
+AKIDA_SLOT="${AKIDA_BDF:-0000:e2:00.0}"
 
 detect_hardware() {
     echo -e "${CYAN}Hardware Detection${NC}"

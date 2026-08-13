@@ -10,8 +10,8 @@ use crate::ecosystem::{
 #[test]
 fn test_ecosystem_message_new_constructor() {
     let msg = EcosystemMessage::new(
-        "from-svc".to_string(),
-        "to-svc".to_string(),
+        "from-svc",
+        "to-svc",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({"extra": true}),
     );
@@ -28,16 +28,16 @@ fn test_ecosystem_message_new_constructor() {
 
 #[test]
 fn test_ecosystem_message_heartbeat_factory() {
-    let msg = EcosystemMessage::heartbeat("sender".to_string(), "receiver".to_string());
+    let msg = EcosystemMessage::heartbeat("sender", "receiver");
     assert_eq!(msg.message_type, EcosystemMessageType::Heartbeat);
 }
 
 #[test]
 fn test_ecosystem_message_error_factory() {
     let msg = EcosystemMessage::error(
-        "a".to_string(),
-        "b".to_string(),
-        "something failed".to_string(),
+        "a",
+        "b",
+        "something failed",
     );
     assert_eq!(msg.message_type, EcosystemMessageType::Error);
     assert_eq!(msg.payload["error"], "something failed");
@@ -46,8 +46,8 @@ fn test_ecosystem_message_error_factory() {
 #[test]
 fn test_ecosystem_message_serialization_roundtrip() {
     let msg = EcosystemMessage::new(
-        "a".to_string(),
-        "b".to_string(),
+        "a",
+        "b",
         EcosystemMessageType::StatusUpdate,
         serde_json::json!({"k": "v"}),
     );
@@ -105,8 +105,8 @@ fn test_ecosystem_message_type_all_variants_serde() {
 #[test]
 fn test_ecosystem_message_capability_announcement() {
     let msg = EcosystemMessage::new(
-        "svc-a".to_string(),
-        "svc-b".to_string(),
+        "svc-a",
+        "svc-b",
         EcosystemMessageType::CapabilityAnnouncement,
         serde_json::json!({"caps": ["compute"]}),
     );
@@ -119,8 +119,8 @@ fn test_ecosystem_message_capability_announcement() {
 #[test]
 fn test_ecosystem_message_resource_request() {
     let msg = EcosystemMessage::new(
-        "requester".to_string(),
-        "provider".to_string(),
+        "requester",
+        "provider",
         EcosystemMessageType::ResourceRequest,
         serde_json::json!({"cpu": 4}),
     );
@@ -146,8 +146,8 @@ fn test_ecosystem_message_serialization_all_types() {
     ];
     for mt in types {
         let msg = EcosystemMessage::new(
-            "a".to_string(),
-            "b".to_string(),
+            "a",
+            "b",
             mt.clone(),
             serde_json::json!({}),
         );
@@ -172,8 +172,8 @@ fn test_service_status_connecting() {
 #[test]
 fn test_ecosystem_message_with_complex_payload() {
     let msg = EcosystemMessage::new(
-        "from".to_string(),
-        "to".to_string(),
+        "from",
+        "to",
         EcosystemMessageType::WorkloadRequest,
         serde_json::json!({
             "job_id": "j1",
@@ -244,8 +244,8 @@ fn test_ecosystem_message_type_resource_request_requires_response() {
 async fn test_fallback_response_preserves_original_id() {
     let manager = CommunicationManager::new();
     let original = EcosystemMessage::new(
-        "sender".to_string(),
-        "receiver".to_string(),
+        "sender",
+        "receiver",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({}),
     );
@@ -277,8 +277,8 @@ fn test_discovery_method_config_mdns_serde() {
 #[test]
 fn test_ecosystem_message_new_sets_id_and_timestamp() {
     let msg = EcosystemMessage::new(
-        "a".to_string(),
-        "b".to_string(),
+        "a",
+        "b",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({}),
     );
@@ -304,8 +304,8 @@ fn test_fallback_response_contains_reason_and_mode() {
 
     let manager = CommunicationManager::new();
     let original = EcosystemMessage::new(
-        "src".to_string(),
-        "dst".to_string(),
+        "src",
+        "dst",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({}),
     );
@@ -345,8 +345,8 @@ fn test_service_status_connected_serialization() {
 #[test]
 fn test_ecosystem_message_status_update_type() {
     let msg = EcosystemMessage::new(
-        "a".to_string(),
-        "b".to_string(),
+        "a",
+        "b",
         EcosystemMessageType::StatusUpdate,
         serde_json::json!({"state": "ready"}),
     );

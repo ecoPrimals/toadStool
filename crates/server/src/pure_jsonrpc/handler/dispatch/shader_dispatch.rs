@@ -129,7 +129,7 @@ impl DispatchHandler {
 
         let needs_shader_service = matches!(&*dispatch_mode, "vfio" | "drm");
 
-        // Phase D: try local dispatch via cylinder before coral_client IPC.
+        // Phase D: try local dispatch via cylinder before shader service IPC.
         #[cfg(target_os = "linux")]
         if needs_shader_service {
             self.acquire_device_handle(&bdf).await;
@@ -183,7 +183,7 @@ impl DispatchHandler {
                         }));
                     }
                     Err(e) => {
-                        tracing::warn!(bdf, error = %e, "shader local dispatch failed — falling through to coral_client");
+                        tracing::warn!(bdf, error = %e, "shader local dispatch failed — falling through to shader service");
                     }
                 }
             }
@@ -192,12 +192,40 @@ impl DispatchHandler {
         // Phase E: try wgpu dispatch for DRM-bound GPUs (Vulkan compute path).
         if needs_shader_service {
             let wgsl_source = p.get("wgsl_source").and_then(serde_json::Value::as_str);
-            if let Some(wgpu_result) = super::wgpu_dispatch::try_wgpu_dispatch(
+
+            // Adapter selection: honor explicit adapter_index or adapter_name params.
+            #[cfg(feature = "gpu-discovery")]
+            let adapter_selector = if let Some(idx) = p
+                .get("adapter_index")
+                .and_then(serde_json::Value::as_u64)
+            {
+                super::wgpu_dispatch::AdapterSelector::Index(idx as usize)
+            } else if let Some(name) = p
+                .get("adapter_name")
+                .and_then(serde_json::Value::as_str)
+            {
+                super::wgpu_dispatch::AdapterSelector::Name(name.to_string())
+            } else {
+                super::wgpu_dispatch::AdapterSelector::Default
+            };
+
+            #[cfg(feature = "gpu-discovery")]
+            let wgpu_result = super::wgpu_dispatch::try_wgpu_dispatch_on_adapter(
+                &adapter_selector,
                 &binary_bytes,
                 wgsl_source,
                 workgroup_size,
                 &buffer_descs,
-            ) {
+            );
+            #[cfg(not(feature = "gpu-discovery"))]
+            let wgpu_result = super::wgpu_dispatch::try_wgpu_dispatch(
+                &binary_bytes,
+                wgsl_source,
+                workgroup_size,
+                &buffer_descs,
+            );
+
+            if let Some(wgpu_result) = wgpu_result {
                 match wgpu_result {
                     Ok(wgpu_output) => {
                         let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
@@ -239,13 +267,13 @@ impl DispatchHandler {
                         }));
                     }
                     Err(e) => {
-                        tracing::warn!(error = %e, "wgpu dispatch failed — falling through to coral_client");
+                        tracing::warn!(error = %e, "wgpu dispatch failed — falling through to shader service");
                     }
                 }
             }
         }
 
-        if needs_shader_service && !self.coral_client.is_available().await {
+        if needs_shader_service && !self.shader_service.is_available().await {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
             super::telemetry::emit_dispatch_completion_telemetry(
                 &super::telemetry::DispatchTelemetryEmit {
@@ -284,7 +312,7 @@ impl DispatchHandler {
             }));
         }
 
-        if self.coral_client.is_available().await {
+        if self.shader_service.is_available().await {
             let mut dispatch_params = serde_json::json!({
                 "binary": binary_bytes,
                 "bdf": bdf,
@@ -299,7 +327,7 @@ impl DispatchHandler {
                 dispatch_params["arch"] = serde_json::Value::String(arch.clone());
             }
 
-            let client = &self.coral_client;
+            let client = &self.shader_service;
             if let Some(inner) = client.client_ref().await
                 && let Some(compiler) = inner.get()
             {

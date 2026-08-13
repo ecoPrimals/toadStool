@@ -24,32 +24,185 @@ struct WgpuDispatchContext {
     device: wgpu::Device,
     queue: wgpu::Queue,
     adapter_name: String,
+    #[expect(dead_code, reason = "included in dispatch response metadata")]
+    adapter_index: usize,
     spirv_passthrough: bool,
     device_lost: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
+/// Selector for choosing which adapter to dispatch on.
 #[cfg(feature = "gpu-discovery")]
-static WGPU_CTX: std::sync::OnceLock<Option<WgpuDispatchContext>> = std::sync::OnceLock::new();
+#[derive(Debug, Clone)]
+pub(super) enum AdapterSelector {
+    /// First discrete GPU (default, backward-compatible).
+    Default,
+    /// Adapter by enumeration index.
+    Index(usize),
+    /// Adapter by name substring match.
+    Name(String),
+}
 
+/// Pool of lazily-initialized wgpu adapter contexts for multi-GPU dispatch.
 #[cfg(feature = "gpu-discovery")]
-fn get_or_init_wgpu() -> Option<&'static WgpuDispatchContext> {
-    WGPU_CTX
-        .get_or_init(|| {
-            // wgpu init is async; spawn a dedicated thread with its own runtime
-            // to avoid "Cannot start a runtime from within a runtime" when called
-            // from a tokio worker thread during dispatch.
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Runtime::new().ok()?;
-                rt.block_on(init_wgpu())
-            })
-            .join()
-            .ok()?
-        })
-        .as_ref()
+struct WgpuAdapterPool {
+    contexts: std::sync::Mutex<Vec<Option<std::sync::Arc<WgpuDispatchContext>>>>,
+    init_done: std::sync::atomic::AtomicBool,
 }
 
 #[cfg(feature = "gpu-discovery")]
-async fn init_wgpu() -> Option<WgpuDispatchContext> {
+impl WgpuAdapterPool {
+    const fn new() -> Self {
+        Self {
+            contexts: std::sync::Mutex::new(Vec::new()),
+            init_done: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+
+    fn ensure_enumerated(&self) {
+        if self.init_done.load(std::sync::atomic::Ordering::Acquire) {
+            return;
+        }
+
+        let mut contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        if self.init_done.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
+
+        let adapter_count = std::thread::spawn(|| {
+            let rt = tokio::runtime::Runtime::new().ok()?;
+            rt.block_on(async {
+                if !toadstool_runtime_gpu::vulkan_loader_available() {
+                    return Some(0);
+                }
+                let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                    backends: wgpu::Backends::VULKAN,
+                    ..Default::default()
+                });
+                let adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN).await;
+                Some(adapters.len())
+            })
+        })
+        .join()
+        .ok()
+        .flatten()
+        .unwrap_or(0);
+
+        contexts.resize_with(adapter_count, || None);
+        self.init_done.store(true, std::sync::atomic::Ordering::Release);
+        tracing::info!(adapter_count, "wgpu adapter pool: enumerated adapters");
+    }
+
+    fn get_or_init(&self, selector: &AdapterSelector) -> Option<std::sync::Arc<WgpuDispatchContext>> {
+        self.ensure_enumerated();
+
+        let pool_size = {
+            let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+            contexts.len()
+        };
+
+        if pool_size == 0 {
+            return None;
+        }
+
+        let idx = match selector {
+            AdapterSelector::Default => {
+                // Return first already-initialized, or init index 0
+                let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+                contexts
+                    .iter()
+                    .position(|c| c.is_some())
+                    .unwrap_or(0)
+            }
+            AdapterSelector::Index(i) => {
+                if *i >= pool_size {
+                    return None;
+                }
+                *i
+            }
+            AdapterSelector::Name(name) => {
+                let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+                if let Some(pos) = contexts.iter().position(|c| {
+                    c.as_ref()
+                        .is_some_and(|ctx| ctx.adapter_name.contains(name.as_str()))
+                }) {
+                    pos
+                } else {
+                    drop(contexts);
+                    self.init_adapter_by_name(name)?
+                }
+            }
+        };
+
+        self.init_adapter(idx)
+    }
+
+    fn init_adapter(&self, idx: usize) -> Option<std::sync::Arc<WgpuDispatchContext>> {
+        {
+            let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+            if idx >= contexts.len() {
+                return None;
+            }
+            if let Some(ref arc) = contexts[idx] {
+                return Some(std::sync::Arc::clone(arc));
+            }
+        }
+
+        let ctx = std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().ok()?;
+            rt.block_on(init_wgpu_at_index(idx))
+        })
+        .join()
+        .ok()??;
+
+        let arc = std::sync::Arc::new(ctx);
+        let mut contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        if idx >= contexts.len() {
+            return None;
+        }
+        contexts[idx] = Some(std::sync::Arc::clone(&arc));
+        Some(arc)
+    }
+
+    fn init_adapter_by_name(&self, name: &str) -> Option<usize> {
+        let pool_size = {
+            let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+            contexts.len()
+        };
+
+        for i in 0..pool_size {
+            if let Some(ctx) = self.init_adapter(i) {
+                if ctx.adapter_name.contains(name) {
+                    return Some(i);
+                }
+            }
+        }
+        None
+    }
+
+    /// Number of adapters discovered (0 if not yet enumerated).
+    fn adapter_count(&self) -> usize {
+        self.ensure_enumerated();
+        let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        contexts.len()
+    }
+
+    /// List adapter info for all initialized adapters.
+    fn list_adapters(&self) -> Vec<(usize, String)> {
+        self.ensure_enumerated();
+        let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        contexts
+            .iter()
+            .enumerate()
+            .filter_map(|(i, c)| c.as_ref().map(|ctx| (i, ctx.adapter_name.clone())))
+            .collect()
+    }
+}
+
+#[cfg(feature = "gpu-discovery")]
+static WGPU_POOL: WgpuAdapterPool = WgpuAdapterPool::new();
+
+#[cfg(feature = "gpu-discovery")]
+async fn init_wgpu_at_index(target_idx: usize) -> Option<WgpuDispatchContext> {
     if !toadstool_runtime_gpu::vulkan_loader_available() {
         tracing::info!("wgpu dispatch unavailable (Vulkan loader not found)");
         return None;
@@ -61,9 +214,18 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
     });
 
     let adapters: Vec<_> = instance.enumerate_adapters(wgpu::Backends::VULKAN).await;
-    let adapter = adapters
-        .into_iter()
-        .find(|a| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu)?;
+
+    // For AdapterSelector::Default (target_idx == 0 from the old path), prefer
+    // the first discrete GPU. For explicit indices, use the indexed adapter.
+    let adapter = if target_idx == 0 {
+        adapters
+            .into_iter()
+            .enumerate()
+            .find(|(_, a)| a.get_info().device_type == wgpu::DeviceType::DiscreteGpu)
+            .map(|(_, a)| a)?
+    } else {
+        adapters.into_iter().nth(target_idx)?
+    };
 
     let info = adapter.get_info();
     let adapter_name = info.name.clone();
@@ -72,6 +234,7 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
         supported_features.contains(wgpu::Features::EXPERIMENTAL_PASSTHROUGH_SHADERS);
     tracing::info!(
         adapter = %adapter_name,
+        index = target_idx,
         vendor = format_args!("0x{:x}", info.vendor),
         device = format_args!("0x{:x}", info.device),
         spirv_passthrough,
@@ -109,22 +272,20 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
         tracing::error!(error = %error, "wgpu uncaptured device error");
     }));
 
-    // Poll once to flush any pending device-lost signals from driver errors
-    // that were silently swallowed by request_device.
     let _ = device.poll(wgpu::PollType::wait_indefinitely());
-    // Small yield to let the device-lost callback fire.
     tokio::time::sleep(DEVICE_LOST_SETTLE).await;
 
     if device_lost.load(std::sync::atomic::Ordering::SeqCst) {
         tracing::error!(
             adapter = %adapter_name,
-            "wgpu device was lost immediately after creation — disabling wgpu dispatch"
+            "wgpu device was lost immediately after creation — disabling this adapter"
         );
         return None;
     }
 
     tracing::info!(
         adapter = %adapter_name,
+        index = target_idx,
         spirv_passthrough,
         "wgpu dispatch: device initialized"
     );
@@ -133,6 +294,7 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
         device,
         queue,
         adapter_name,
+        adapter_index: target_idx,
         spirv_passthrough,
         device_lost,
     })
@@ -141,27 +303,16 @@ async fn init_wgpu() -> Option<WgpuDispatchContext> {
 /// Attempt wgpu compute dispatch with the given SPIR-V binary and buffers.
 ///
 /// Returns `Some(Ok(json))` on success, `Some(Err(msg))` on dispatch failure,
-/// or `None` if wgpu is not available.
+/// or `None` if wgpu is not available. Uses the default adapter (first discrete GPU).
 #[cfg(feature = "gpu-discovery")]
+#[expect(dead_code, reason = "convenience wrapper; non-featured path uses this directly")]
 pub(super) fn try_wgpu_dispatch(
     binary: &[u8],
     wgsl_source: Option<&str>,
     workgroup_size: [u32; 3],
     buffer_descs: &serde_json::Value,
 ) -> Option<Result<serde_json::Value, String>> {
-    let ctx = get_or_init_wgpu()?;
-
-    if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
-        return Some(Err("wgpu device is lost — cannot dispatch".into()));
-    }
-
-    Some(run_wgpu_dispatch(
-        ctx,
-        binary,
-        wgsl_source,
-        workgroup_size,
-        buffer_descs,
-    ))
+    try_wgpu_dispatch_on_adapter(&AdapterSelector::Default, binary, wgsl_source, workgroup_size, buffer_descs)
 }
 
 #[cfg(not(feature = "gpu-discovery"))]
@@ -172,6 +323,45 @@ pub(super) fn try_wgpu_dispatch(
     _buffer_descs: &serde_json::Value,
 ) -> Option<Result<serde_json::Value, String>> {
     None
+}
+
+/// Dispatch on a specific adapter selected by index or name.
+#[cfg(feature = "gpu-discovery")]
+pub(super) fn try_wgpu_dispatch_on_adapter(
+    selector: &AdapterSelector,
+    binary: &[u8],
+    wgsl_source: Option<&str>,
+    workgroup_size: [u32; 3],
+    buffer_descs: &serde_json::Value,
+) -> Option<Result<serde_json::Value, String>> {
+    let ctx = WGPU_POOL.get_or_init(selector)?;
+
+    if ctx.device_lost.load(std::sync::atomic::Ordering::SeqCst) {
+        return Some(Err(format!(
+            "wgpu device lost on adapter {} — cannot dispatch",
+            ctx.adapter_name
+        )));
+    }
+
+    Some(run_wgpu_dispatch(
+        &ctx,
+        binary,
+        wgsl_source,
+        workgroup_size,
+        buffer_descs,
+    ))
+}
+
+/// Number of available wgpu adapters.
+#[cfg(feature = "gpu-discovery")]
+pub(super) fn wgpu_adapter_count() -> usize {
+    WGPU_POOL.adapter_count()
+}
+
+/// List initialized adapters (index, name).
+#[cfg(feature = "gpu-discovery")]
+pub(super) fn wgpu_list_adapters() -> Vec<(usize, String)> {
+    WGPU_POOL.list_adapters()
 }
 
 #[cfg(feature = "gpu-discovery")]

@@ -34,7 +34,7 @@ pub enum JobState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum JobType {
-    /// Model inference (Ollama, GGUF, safetensors)
+    /// Model inference (GGUF, safetensors, local inference backends)
     Inference {
         /// Model name.
         model: String,

@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 12, 2026 (Sessions 43-380+)
+## [Unreleased] - Aug 13, 2026 (Sessions 43-381+)
+
+### Session S381 (Aug 13, 2026) — Deep Debt + Overstep Cleanup + Evolution
+
+- **Smart refactor: `platform_backends.rs`** — 805-line monolith split into 7 focused modules (`memory.rs`, `event.rs`, `device_io.rs`, `system.rs`, `isolation.rs`, `ipc.rs`, `kmod.rs`) in a directory module. Public API unchanged via re-exports. Unsafe containment zones preserved.
+- **Smart refactor: `akida-driver/capabilities.rs`** — 813→760 lines. Duplicated hwmon directory walk pattern extracted to generic `read_hwmon_sensor<T>()`. Duplicate `query()`/`from_sysfs()` merged (identical bodies).
+- **Inter-primal overstep cleanup** — `coral_client` → `shader_service` across 8 dispatch handler files. Eliminates hardcoded coralReef identity knowledge; naming now reflects capability, not primal identity.
+- **Legacy test file renames** — `nestgate_pipeline_tests.rs` → `storage_pipeline_tests.rs`, `nestgate_types_tests.rs` → `storage_types_tests.rs`, `beardog_async_integration_tests.rs` → `protocol_async_integration_tests.rs`. History preserved via `git mv`.
+- **Hardcoded paths evolved** — Script BDFs (`0000:25:00.0`, `0000:41:00.0`, `0000:e2:00.0`) → env vars (`${AMD_BDF:-...}`, `${NVIDIA_BDF:-...}`, `${AKIDA_BDF:-...}`). Akida module path → `AKIDA_MODULE_PATH` env lookup with default fallback.
+- **String param modernization** — `EcosystemMessage::{new,heartbeat,error}`, `SelfIdentity::with_network`, `ToadStoolIdentity::add_metadata`, `ServiceEndpoint::with_capabilities` → `impl Into<String>` / `impl IntoIterator`. Unnecessary `.to_string()` removed at call sites.
+- **Orphan documentation** — `crates/runtime/edge/DEPRECATED.md` added documenting orphaned status, workspace exclusion, and future sprint decision.
+- **Deprecated env audit** — Legacy primal env constants (`LEGACY_BEARDOG_*`, `LEGACY_SONGBIRD_*`, etc.) correctly used as migration fallback chains with runtime warnings. No premature removal.
+- **Zero errors, zero warnings** — `cargo check --workspace` clean.
 
 ### Session S380 (Aug 11–12, 2026) — G72 Tier 2: wgpu 28 + axum Excision + Darwin Fix + Deep Debt
 

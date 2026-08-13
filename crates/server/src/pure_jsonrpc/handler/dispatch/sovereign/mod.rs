@@ -6,6 +6,7 @@ mod ce_validate;
 mod init;
 mod pmu_investigate;
 mod profile;
+mod runlist_diagnostic;
 mod warm_handoff;
 mod warm_status;
 
@@ -66,6 +67,14 @@ impl DispatchHandler {
         &self,
     ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
         warm_status::sovereign_warm_status(self).await
+    }
+
+    /// `sovereign.runlist_diagnostic` — live PFIFO state for PBDMA debugging.
+    pub(crate) async fn sovereign_runlist_diagnostic(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::pure_jsonrpc::types::JsonRpcError> {
+        runlist_diagnostic::sovereign_runlist_diagnostic(self, params).await
     }
 }
 

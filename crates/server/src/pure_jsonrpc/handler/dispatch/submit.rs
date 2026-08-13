@@ -229,11 +229,11 @@ impl DispatchHandler {
             }
         }
 
-        let needs_coral = matches!(&*dispatch_mode, "vfio" | "drm");
+        let needs_shader_service = matches!(&*dispatch_mode, "vfio" | "drm");
 
-        // Phase D: try local dispatch via cylinder before coral_client IPC.
+        // Phase D: try local dispatch via cylinder before shader service IPC.
         #[cfg(target_os = "linux")]
-        if needs_coral
+        if needs_shader_service
             && let Some(local_result) = self
                 .try_local_dispatch(
                     &bdf,
@@ -297,12 +297,12 @@ impl DispatchHandler {
                     }));
                 }
                 Err(e) => {
-                    tracing::warn!(bdf, error = %e, "local dispatch failed — falling through to coral_client");
+                    tracing::warn!(bdf, error = %e, "local dispatch failed — falling through to shader service");
                 }
             }
         }
 
-        if needs_coral && !self.coral_client.is_available().await {
+        if needs_shader_service && !self.shader_service.is_available().await {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
             super::telemetry::emit_dispatch_completion_telemetry(
                 &super::telemetry::DispatchTelemetryEmit {
@@ -341,7 +341,7 @@ impl DispatchHandler {
             }));
         }
 
-        if self.coral_client.is_available().await {
+        if self.shader_service.is_available().await {
             let mut encrypted = self.crypto_client.is_some();
             let dispatch_binary = if encrypted {
                 match self.encrypt_payload(&binary_bytes).await {
@@ -372,7 +372,7 @@ impl DispatchHandler {
                 dispatch_params["shader_info"] = si.clone();
             }
 
-            let client = &self.coral_client;
+            let client = &self.shader_service;
             if let Some(inner) = client.client_ref().await
                 && let Some(compiler) = inner.get()
             {

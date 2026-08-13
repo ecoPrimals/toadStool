@@ -1,12 +1,25 @@
 # Active Technical Debt Register
 
-**Date**: August 12, 2026 — S380
+**Date**: August 13, 2026 — S381
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S381 (strandGate Deep Debt + Overstep Cleanup — Aug 13, 2026)**:
+`hw-safe/platform_backends.rs` (805L) smart-refactored into 7 focused modules
+(memory, event, device_io, system, isolation, ipc, kmod). `akida-driver/capabilities.rs`
+(813→760L) DRY'd: duplicated hwmon walk → `read_hwmon_sensor<T>` generic, `query()`
+delegates to `from_sysfs()`. Inter-primal overstep: `coral_client` → `shader_service`
+across 8 dispatch handler files. Legacy test renames: `nestgate_*` → `storage_*`,
+`beardog_*` → `protocol_*` (git mv, history preserved). Hardcoded paths evolved:
+script BDFs → `${AMD_BDF:-...}` env vars, akida module path → `AKIDA_MODULE_PATH` env.
+String param modernization: `EcosystemMessage`, `SelfIdentity::with_network`,
+`ToadStoolIdentity::add_metadata`, `ServiceEndpoint::with_capabilities` → `impl Into<String>` /
+`impl IntoIterator`. Orphaned `runtime/edge` documented with `DEPRECATED.md`.
+Deprecated legacy env constants audited — correctly used as migration fallback chains.
 
 **S380 (eastGate G72 Tier 2 — Aug 11–12, 2026)**: wgpu 22→28 (MSRV 1.85→1.92),
 **P1 fix: `vulkan-portability`→`vulkan`** (wgpu 28 feature semantic change; musl

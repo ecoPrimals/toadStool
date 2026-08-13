@@ -1,8 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! CE runlist and PBDMA discovery from engine topology tables.
+//! Engine topology discovery from PTOP DEVICE_INFO tables.
 
 use crate::nv::generation::GenerationProfile;
 use crate::vfio::device::MappedBar;
+
+/// PTOP engine type identifiers (from nouveau gv100_top.c).
+const ENGINE_TYPE_GR: u32 = 0;
+const ENGINE_TYPE_CE: u32 = 1;
+
+/// Discover the GR (Graphics/Compute) engine runlist ID from PTOP DEVICE_INFO.
+///
+/// Returns `Some(runlist_id)` if a GR engine entry is found in the topology
+/// table, `None` if no GR engine is present (should not happen on any discrete
+/// NVIDIA GPU with compute capability).
+pub fn discover_gr_runlist(bar0: &MappedBar, profile: &GenerationProfile) -> Option<u32> {
+    discover_engine_runlist(bar0, profile, ENGINE_TYPE_GR)
+}
 
 /// Discover the CE (Copy Engine) runlist ID from the engine topology table.
 ///
@@ -14,6 +27,48 @@ use crate::vfio::device::MappedBar;
 /// - kind=2 (ENUM): runlist at bits [17:14] (GV100+ V2 layout)
 /// - bit 31: CHAIN (end of this engine's record)
 pub fn discover_ce_runlist(bar0: &MappedBar, profile: &GenerationProfile) -> Option<u32> {
+    discover_engine_runlist(bar0, profile, ENGINE_TYPE_CE)
+}
+
+/// Validate that a channel's runlist matches the GR engine's actual runlist
+/// from PTOP hardware topology.
+///
+/// Returns the correct GR runlist if validation succeeds, or logs a mismatch
+/// warning and returns the hardware-authoritative runlist ID.
+/// Returns `None` only if PTOP doesn't contain a GR engine entry.
+pub fn validate_gr_runlist(
+    bar0: &MappedBar,
+    profile: &GenerationProfile,
+    channel_runlist: u32,
+    bdf: &str,
+) -> Option<u32> {
+    let hw_runlist = discover_gr_runlist(bar0, profile)?;
+
+    if hw_runlist != channel_runlist {
+        tracing::warn!(
+            bdf = %bdf,
+            channel_runlist,
+            hw_gr_runlist = hw_runlist,
+            "PTOP validation MISMATCH: channel targets wrong runlist — \
+             GR engine is on runlist {hw_runlist}, channel uses {channel_runlist}"
+        );
+    } else {
+        tracing::info!(
+            bdf = %bdf,
+            runlist = hw_runlist,
+            "PTOP validation OK: channel runlist matches GR engine"
+        );
+    }
+
+    Some(hw_runlist)
+}
+
+/// Generic engine runlist discovery from PTOP DEVICE_INFO_V2.
+fn discover_engine_runlist(
+    bar0: &MappedBar,
+    profile: &GenerationProfile,
+    target_engine: u32,
+) -> Option<u32> {
     let ptop_base = profile.ptop_device_info_base as usize;
     let mut cur_type: u32 = 0xFFFF;
     let mut cur_runlist: u32 = 0xFFFF;
@@ -29,7 +84,7 @@ pub fn discover_ce_runlist(bar0: &MappedBar, profile: &GenerationProfile) -> Opt
             _ => {}
         }
         if data & (1 << 31) != 0 {
-            if cur_type == 1 && cur_runlist != 0xFFFF {
+            if cur_type == target_engine && cur_runlist != 0xFFFF {
                 return Some(cur_runlist);
             }
             cur_type = 0xFFFF;

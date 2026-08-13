@@ -104,8 +104,8 @@ impl ToadStoolIdentity {
     }
 
     /// Add metadata
-    pub fn add_metadata(&mut self, key: String, value: String) {
-        self.metadata.insert(key, value);
+    pub fn add_metadata(&mut self, key: impl Into<String>, value: impl Into<String>) {
+        self.metadata.insert(key.into(), value.into());
     }
 }
 

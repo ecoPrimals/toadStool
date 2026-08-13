@@ -335,7 +335,7 @@ mod tests {
         };
 
         let identity = SelfIdentity::new().with_network(
-            "test-host".to_string(),
+            "test-host",
             Some(8084),
             vec!["http".to_string()],
         );

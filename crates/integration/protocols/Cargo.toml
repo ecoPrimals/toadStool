@@ -81,7 +81,7 @@ name = "beardog_integration_tests"
 required-features = ["legacy-security-client"]
 
 [[test]]
-name = "beardog_async_integration_tests"
+name = "protocol_async_integration_tests"
 required-features = ["legacy-security-client"]
 
 [[test]]

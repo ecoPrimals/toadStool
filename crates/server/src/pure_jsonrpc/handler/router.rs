@@ -143,6 +143,12 @@ impl JsonRpcHandler {
             "compute.dispatch.pipeline.status" => {
                 return self.dispatch.pipeline_status(params).await;
             }
+            "compute.dispatch.multi_gpu" => {
+                return self.dispatch.compute_dispatch_multi_gpu(params).await;
+            }
+            "compute.dispatch.halo_exchange" => {
+                return self.dispatch.compute_dispatch_halo_exchange(params).await;
+            }
             "dispatch.telemetry.schema" => {
                 return Ok(super::dispatch::telemetry::telemetry_schema());
             }
@@ -365,6 +371,7 @@ impl JsonRpcHandler {
                 | "pmu.investigate"
                 | "sovereign.warm_handoff"
                 | "sovereign.catalyst_boot"
+                | "sovereign.runlist_diagnostic"
                 | "sovereign.classify_tier"
                 | "sovereign.experiment"
                 | "sovereign.devinit"
@@ -458,6 +465,9 @@ impl JsonRpcHandler {
             }
             "sovereign.warm_handoff" => self.dispatch.sovereign_warm_handoff(params).await,
             "sovereign.catalyst_boot" => self.dispatch.sovereign_catalyst_boot(params).await,
+            "sovereign.runlist_diagnostic" => {
+                self.dispatch.sovereign_runlist_diagnostic(params).await
+            }
             "sovereign.classify_tier" => sovereign::sovereign_classify_tier(params),
             "sovereign.experiment" => sovereign::sovereign_experiment(params),
             "sovereign.devinit" => sovereign::sovereign_devinit(params),

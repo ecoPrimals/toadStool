@@ -24,8 +24,8 @@ fn test_fallback_response() {
 
     let _manager = CommunicationManager::new();
     let _original = crate::ecosystem::EcosystemMessage::new(
-        "sender".to_string(),
-        "receiver".to_string(),
+        "sender",
+        "receiver",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({}),
     );
@@ -232,8 +232,8 @@ async fn test_send_message_degraded_mode_returns_fallback() {
     };
 
     let msg = crate::ecosystem::EcosystemMessage::new(
-        "sender".to_string(),
-        "receiver".to_string(),
+        "sender",
+        "receiver",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({"ping": true}),
     );

@@ -1,6 +1,6 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 8,446 lib tests, 126 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 160 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, wgpu 28 (leads ecosystem), axum excised, fail-safe hardware tests, MSRV 1.92"
+description = "Sovereign compute hardware primal — 8,446 lib tests, 131 JSON-RPC methods, 48 crates, VFIO GPU init pipeline, v0.2.0, zero libc, 160 unsafe blocks (all SAFETY-documented, containment crates only), 100% env centralized, security fail-closed, zero dead deps, zero doc/clippy warnings, 16/16 cross-arch, 38/48 WASM, C2 dual-socket, G68 platform containment, wgpu 28 (leads ecosystem), axum excised, fail-safe hardware tests, MSRV 1.92"
 date = 2026-08-12
 
 [taxonomies]
@@ -23,7 +23,7 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 - **S369**: 16/16 native cross-arch targets — first primal fleet-ready.
 - **S365**: G68 complete — zero rustix outside hw-safe.
 - **Lib tests**: 8,446 (0 failures, unlimited parallelism)
-- **JSON-RPC methods**: 128 (direct) + semantic registry aliases
+- **JSON-RPC methods**: 131 (direct) + semantic registry aliases
 - **Workspace crates**: 48
 - **Cross-arch**: 16/16 native targets, 38/48 WASM crates
 - **Clippy**: 0 warnings (`-D warnings`)

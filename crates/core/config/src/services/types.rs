@@ -157,8 +157,12 @@ impl ServiceEndpoint {
 
     /// Add capabilities
     #[must_use]
-    pub fn with_capabilities(mut self, capabilities: Vec<String>) -> Self {
-        self.capabilities.extend(capabilities);
+    pub fn with_capabilities(
+        mut self,
+        capabilities: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.capabilities
+            .extend(capabilities.into_iter().map(Into::into));
         self
     }
 

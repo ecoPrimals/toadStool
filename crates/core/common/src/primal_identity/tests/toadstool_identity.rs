@@ -57,7 +57,7 @@ fn test_toadstool_identity_add_capability() {
 #[test]
 fn test_toadstool_identity_add_metadata() {
     let mut identity = ToadStoolIdentity::new();
-    identity.add_metadata("custom_key".to_string(), "custom_value".to_string());
+    identity.add_metadata("custom_key", "custom_value");
 
     let metadata = identity.metadata();
     assert_eq!(

@@ -193,7 +193,7 @@ fn test_ai_requirement() {
 #[test]
 fn test_network_with_port() {
     let identity = SelfIdentity::new().with_network(
-        "example.com".to_string(),
+        "example.com",
         Some(9090),
         vec!["http".to_string(), "grpc".to_string()],
     );
@@ -210,7 +210,7 @@ fn test_network_with_port() {
 #[test]
 fn test_network_without_port() {
     let identity =
-        SelfIdentity::new().with_network("example.com".to_string(), None, vec!["unix".to_string()]);
+        SelfIdentity::new().with_network("example.com", None, vec!["unix".to_string()]);
 
     assert!(identity.network.is_some());
     let network = identity.network.unwrap();
@@ -222,7 +222,7 @@ fn test_network_without_port() {
 /// Test network with empty protocols
 #[test]
 fn test_network_empty_protocols() {
-    let identity = SelfIdentity::new().with_network("localhost".to_string(), Some(8080), vec![]);
+    let identity = SelfIdentity::new().with_network("localhost", Some(8080), vec![]);
 
     assert!(identity.network.is_some());
     let network = identity.network.unwrap();
@@ -245,7 +245,7 @@ fn test_advertisement_no_network() {
 #[test]
 fn test_advertisement_with_network() {
     let identity = SelfIdentity::new().with_network(
-        "server.local".to_string(),
+        "server.local",
         Some(7777),
         vec!["http".to_string(), "websocket".to_string()],
     );
@@ -406,7 +406,7 @@ fn test_matches_requirement_empty_features() {
 #[test]
 fn test_discovered_service_from_advertisement() {
     let identity = SelfIdentity::new().with_network(
-        "peer.local".to_string(),
+        "peer.local",
         Some(5555),
         vec!["grpc".to_string()],
     );
@@ -497,7 +497,7 @@ fn test_default_implementation() {
 #[test]
 fn test_self_identity_serialization() {
     let identity = SelfIdentity::new().with_network(
-        "test.local".to_string(),
+        "test.local",
         Some(3000),
         vec!["http".to_string()],
     );

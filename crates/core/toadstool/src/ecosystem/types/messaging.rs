@@ -26,15 +26,15 @@ pub struct EcosystemMessage {
 impl EcosystemMessage {
     /// Create a new message
     pub fn new(
-        from: String,
-        to: String,
+        from: impl Into<String>,
+        to: impl Into<String>,
         message_type: EcosystemMessageType,
         payload: serde_json::Value,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
-            from,
-            to,
+            from: from.into(),
+            to: to.into(),
             message_type,
             payload,
             timestamp: SystemTime::now(),
@@ -42,7 +42,7 @@ impl EcosystemMessage {
     }
 
     /// Create a heartbeat message
-    pub fn heartbeat(from: String, to: String) -> Self {
+    pub fn heartbeat(from: impl Into<String>, to: impl Into<String>) -> Self {
         Self::new(
             from,
             to,
@@ -52,12 +52,12 @@ impl EcosystemMessage {
     }
 
     /// Create an error message
-    pub fn error(from: String, to: String, error: String) -> Self {
+    pub fn error(from: impl Into<String>, to: impl Into<String>, error: impl Into<String>) -> Self {
         Self::new(
             from,
             to,
             EcosystemMessageType::Error,
-            serde_json::json!({ "error": error }),
+            serde_json::json!({ "error": error.into() }),
         )
     }
 }

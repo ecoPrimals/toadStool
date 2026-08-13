@@ -32,7 +32,7 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let identity = SelfIdentity::new()
-//!     .with_network("toadstool-01".to_string(), Some(8084), vec!["http".to_string()]);
+//!     .with_network("toadstool-01", Some(8084), vec!["http".to_string()]);
 //!
 //! let mdns = MdnsDiscoveryService::new()?;
 //! mdns.advertise(&identity)?;

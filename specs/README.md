@@ -117,7 +117,7 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 
 ### Key Numbers (S379)
 
-- **8,446 lib-only** tests (0 failures), **128 JSON-RPC methods**, **16/16 native cross-arch**, **38/48 WASM crates**
+- **8,446 lib-only** tests (0 failures), **131 JSON-RPC methods**, **16/16 native cross-arch**, **38/48 WASM crates**
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
 - **VFIO interface** — BAR0, DMA, power management (nvpmu), sovereign init pipeline
 - **NPU dispatch** — Akida AKD1000/1500 (kernel, VFIO, userspace)

@@ -68,7 +68,7 @@ impl DispatchHandler {
         &self,
         _params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let coral_available = self.coral_client.is_available().await;
+        let shader_service_available = self.shader_service.is_available().await;
         let gpus = toadstool_sysmon::discover_gpus();
 
         let vfio_gpus: Vec<_> = gpus
@@ -177,7 +177,7 @@ impl DispatchHandler {
             "status": "completed",
             "output": {
                 "sovereign_pipeline": true,
-                "shader_compiler_available": coral_available,
+                "shader_compiler_available": shader_service_available,
                 "dispatch_modes": dispatch_modes,
                 "methods": [
                     "compute.dispatch.submit",

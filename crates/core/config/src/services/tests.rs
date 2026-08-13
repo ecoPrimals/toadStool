@@ -240,7 +240,7 @@ mod service_registry_tests {
     #[test]
     fn test_service_endpoint_with_capabilities() {
         let ep = ServiceEndpoint::new("svc", ServiceType::Compute, "http://localhost:9000")
-            .with_capabilities(vec!["wasm".into(), "container".into()]);
+            .with_capabilities(["wasm", "container"]);
         assert_eq!(ep.capabilities, vec!["wasm", "container"]);
     }
 

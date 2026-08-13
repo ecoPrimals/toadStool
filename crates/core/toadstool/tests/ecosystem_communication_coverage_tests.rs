@@ -171,8 +171,8 @@ async fn send_message_disabled_returns_fallback() {
         status: ServiceStatus::Connected,
     };
     let msg = EcosystemMessage::new(
-        "sender".to_string(),
-        "receiver".to_string(),
+        "sender",
+        "receiver",
         EcosystemMessageType::Heartbeat,
         serde_json::json!({}),
     );
@@ -208,13 +208,13 @@ async fn check_health_disabled_succeeds() {
 
 #[test]
 fn ecosystem_message_heartbeat_factory() {
-    let msg = EcosystemMessage::heartbeat("a".to_string(), "b".to_string());
+    let msg = EcosystemMessage::heartbeat("a", "b");
     assert_eq!(msg.message_type, EcosystemMessageType::Heartbeat);
 }
 
 #[test]
 fn ecosystem_message_error_factory() {
-    let msg = EcosystemMessage::error("a".to_string(), "b".to_string(), "err".to_string());
+    let msg = EcosystemMessage::error("a", "b", "err");
     assert_eq!(msg.message_type, EcosystemMessageType::Error);
 }
 

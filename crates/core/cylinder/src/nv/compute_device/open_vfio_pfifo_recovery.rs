@@ -2,6 +2,7 @@
 //! PFIFO recovery after PGRAPH ungating when scheduler/runlist PRI domains fault.
 
 use crate::nv::registers::pmc;
+use crate::vfio::channel::pfifo::pri_ring_enumerate;
 use crate::vfio::device::{DmaBackend, MappedBar};
 
 use super::super::generation::GenerationProfile;
@@ -96,32 +97,7 @@ pub(super) fn recover_broken_pfifo(
     std::thread::sleep(std::time::Duration::from_millis(50));
 
     // Step 3: PRI ring master — enumerate + ACK all satellites.
-    for round in 0..5u32 {
-        let _ = bar0.write_u32(0x12_0004, 0x04);
-        std::thread::sleep(std::time::Duration::from_millis(20));
-        let rm_stat = bar0.read_u32(0x12_0058).unwrap_or(0);
-        if rm_stat != 0 && rm_stat & 0xBAD0_0000 != 0xBAD0_0000 {
-            let _ = bar0.write_u32(0x12_004C, 0x02);
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        let rm_after = bar0.read_u32(0x12_0058).unwrap_or(0);
-        tracing::info!(
-            bdf = %bdf,
-            round,
-            rm_before = format_args!("{rm_stat:#010x}"),
-            rm_after = format_args!("{rm_after:#010x}"),
-            "PRI ring enumerate + ACK (recovery)"
-        );
-        if rm_after == 0 {
-            break;
-        }
-        if rm_after & 0xBAD0_0000 == 0xBAD0_0000 && round >= 2 {
-            break;
-        }
-    }
-    let _ = bar0.write_u32(0x12_2058, 0xFFFF_FFFF);
-    let _ = bar0.write_u32(0x12_8058, 0xFFFF_FFFF);
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    pri_ring_enumerate(bar0, bdf, 5);
 
     // Step 3: Verify scheduler is accessible after reset.
     let sched_en_after = bar0.read_u32(pfifo::SCHED_EN).unwrap_or(0);

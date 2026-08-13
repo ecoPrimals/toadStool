@@ -292,44 +292,20 @@ impl ChipVersion {
 }
 
 impl Capabilities {
-    /// Query capabilities from a device via sysfs and device file
+    /// Query capabilities from a device via sysfs and device file.
     ///
-    /// This discovers capabilities at runtime—no hardcoded values.
+    /// This discovers capabilities at runtime — no hardcoded values.
+    /// Delegates to [`from_sysfs`](Self::from_sysfs) after logging the device index.
     ///
     /// # Errors
     ///
     /// Returns error if sysfs files cannot be read or parsed.
     pub fn query(device_index: usize, pcie_address: &str) -> Result<Self> {
         tracing::debug!("Querying capabilities for device {device_index} at {pcie_address}");
-
-        let chip_version = Self::read_chip_version(pcie_address)?;
-        let pcie = PcieConfig::from_sysfs(pcie_address)?;
-        let npu_count = Self::query_npu_count(pcie_address, chip_version);
-        let memory_mb = chip_version.typical_memory_mb();
-        let power_mw = Self::query_power_consumption(pcie_address);
-        let temperature_c = Self::query_temperature(pcie_address);
-        let mesh = MeshTopology::from_sysfs(pcie_address);
-        let clock_mode = Self::query_clock_mode(pcie_address);
-        let batch = BatchCapabilities::from_sysfs(pcie_address);
-        let weight_mutation = Self::query_weight_mutation(pcie_address);
-
-        Ok(Self {
-            chip_version,
-            npu_count,
-            memory_mb,
-            pcie,
-            power_mw,
-            temperature_c,
-            mesh,
-            clock_mode,
-            batch,
-            weight_mutation,
-        })
+        Self::from_sysfs(pcie_address)
     }
 
     /// Query NPU count from device
-    ///
-    /// **Deep Debt**: Complete implementation with fallback!
     ///
     /// Attempts to query actual NPU count from device registers.
     /// Falls back to typical values if query not supported.
@@ -354,81 +330,52 @@ impl Capabilities {
         typical
     }
 
-    /// Query power consumption from hwmon
+    /// Read a hwmon sensor file for this PCI device.
     ///
-    /// **Deep Debt**: Complete implementation with Linux hwmon!
-    ///
-    /// Queries power consumption from Linux hardware monitoring subsystem.
-    /// Returns None if not available (not an error).
-    fn query_power_consumption(pcie_address: &str) -> Option<u32> {
-        // Try to find hwmon instance for this device
+    /// Walks `/sys/bus/pci/devices/{addr}/hwmon/hwmonN/` directories looking
+    /// for `sensor_file` (e.g. `power1_input`, `temp1_input`). Returns the
+    /// first successfully-parsed value, or `None`.
+    fn read_hwmon_sensor<T: std::str::FromStr>(
+        pcie_address: &str,
+        sensor_file: &str,
+    ) -> Option<T> {
         let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
+        let hwmon_dir = std::fs::read_dir(&hwmon_path).ok()?;
 
-        let Ok(hwmon_dir) = std::fs::read_dir(&hwmon_path) else {
-            return None;
-        };
-
-        // Find first hwmon device (usually hwmon0, hwmon1, etc.)
         for entry in hwmon_dir.flatten() {
-            let hwmon_name = entry.file_name();
-            let power_input_path = format!(
-                "/sys/bus/pci/devices/{pcie_address}/hwmon/{}/power1_input",
-                hwmon_name.to_string_lossy()
+            let sensor_path = format!(
+                "{}/{}/{}",
+                hwmon_path,
+                entry.file_name().to_string_lossy(),
+                sensor_file,
             );
-
-            // power1_input is in microwatts, convert to milliwatts
-            if let Ok(power_str) = std::fs::read_to_string(&power_input_path)
-                && let Ok(power_uw) = power_str.trim().parse::<u32>()
+            if let Ok(raw) = std::fs::read_to_string(&sensor_path)
+                && let Ok(val) = raw.trim().parse::<T>()
             {
-                let power_mw = power_uw / 1000;
-                tracing::info!("Queried power consumption: {} mW", power_mw);
-                return Some(power_mw);
+                return Some(val);
             }
         }
-
-        tracing::debug!("Power monitoring not available for device");
         None
     }
 
-    /// Query temperature from hwmon
-    ///
-    /// **Deep Debt**: Complete implementation with Linux hwmon!
-    ///
-    /// Queries die temperature from Linux hardware monitoring subsystem.
-    /// Returns None if not available (not an error).
+    /// Query power consumption from hwmon (`power1_input`, microwatts → milliwatts).
+    fn query_power_consumption(pcie_address: &str) -> Option<u32> {
+        let power_uw: u32 = Self::read_hwmon_sensor(pcie_address, "power1_input")?;
+        let power_mw = power_uw / 1000;
+        tracing::info!("Queried power consumption: {power_mw} mW");
+        Some(power_mw)
+    }
+
+    /// Query die temperature from hwmon (`temp1_input`, millidegrees → °C).
     fn query_temperature(pcie_address: &str) -> Option<f32> {
-        // Try to find hwmon instance for this device
-        let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
-
-        let Ok(hwmon_dir) = std::fs::read_dir(&hwmon_path) else {
-            return None;
-        };
-
-        // Find first hwmon device
-        for entry in hwmon_dir.flatten() {
-            let hwmon_name = entry.file_name();
-            let temp_input_path = format!(
-                "/sys/bus/pci/devices/{pcie_address}/hwmon/{}/temp1_input",
-                hwmon_name.to_string_lossy()
-            );
-
-            // temp1_input is in millidegrees Celsius, convert to degrees
-            if let Ok(temp_str) = std::fs::read_to_string(&temp_input_path)
-                && let Ok(temp_millic) = temp_str.trim().parse::<i32>()
-            {
-                // Precision loss acceptable: temperature is inherently imprecise
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "Millidegrees to f32 °C for display"
-                )]
-                let temp_c = temp_millic as f32 / 1000.0;
-                tracing::info!("Queried temperature: {:.1}°C", temp_c);
-                return Some(temp_c);
-            }
-        }
-
-        tracing::debug!("Temperature monitoring not available for device");
-        None
+        let temp_millic: i32 = Self::read_hwmon_sensor(pcie_address, "temp1_input")?;
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "Millidegrees to f32 °C for display"
+        )]
+        let temp_c = temp_millic as f32 / 1000.0;
+        tracing::info!("Queried temperature: {temp_c:.1}°C");
+        Some(temp_c)
     }
 
     /// Query capabilities from sysfs only (no device file)

@@ -93,6 +93,14 @@ pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> Driver
         tracing::info!("PMC PFIFO reset skipped (warm handoff)");
     }
 
+    // PRI ring satellite enumerate — after PFIFO PMC reset, per-runlist PRI
+    // domains may be in a faulted state. Enumerate forces the ring master to
+    // re-register all satellites, bringing RUNLIST_BASE registers online.
+    // Without this, submit_runlist() writes are silently absorbed (readback=0).
+    if cfg.pmc_pfifo_reset {
+        super::pri_enumerate::pri_ring_enumerate(bar0, "init", 5);
+    }
+
     // Initialize PFIFO — verify the enable write takes effect.
     // On warm handoff, skip the 0→1 toggle: writing PFIFO_ENABLE=0
     // disrupts the running scheduler on GV100 (where the register

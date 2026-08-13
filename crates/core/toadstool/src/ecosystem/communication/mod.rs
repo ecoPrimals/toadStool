@@ -208,7 +208,7 @@ impl CommunicationManager {
             .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found: {service_id}")))?;
 
         let heartbeat_msg =
-            EcosystemMessage::heartbeat(PRIMAL_NAME.to_string(), channel.service_name.clone());
+            EcosystemMessage::heartbeat(PRIMAL_NAME, channel.service_name.clone());
 
         self.send_message(channel, heartbeat_msg).await?;
 

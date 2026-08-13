@@ -375,7 +375,7 @@ mod tests {
     async fn test_send_ecosystem_message_no_channel() {
         let coordinator = EcosystemCoordinator::new().await.unwrap();
         let msg =
-            EcosystemMessage::heartbeat("sender".to_string(), "unknown-service-id".to_string());
+            EcosystemMessage::heartbeat("sender", "unknown-service-id");
         let result = coordinator
             .send_ecosystem_message("unknown-service-id", msg)
             .await;
