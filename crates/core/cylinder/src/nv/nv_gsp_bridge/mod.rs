@@ -84,28 +84,74 @@ impl NvGspBridge {
     }
 
     /// Check whether the required GR firmware files exist.
+    /// Accepts both `.bin` and `.bin.zst` (kernel firmware compression).
     #[must_use]
     pub fn has_gr_firmware(&self) -> bool {
         let gr = self.firmware_base.join("gr");
-        gr.join("fecs_inst.bin").exists() && gr.join("fecs_data.bin").exists()
+        let has = |name: &str| gr.join(name).exists() || gr.join(format!("{name}.zst")).exists();
+        has("fecs_inst.bin") && has("fecs_data.bin")
     }
 
     pub(super) fn load_gr_blob(&self, name: &str) -> DriverResult<Vec<u8>> {
-        let path = self.firmware_base.join("gr").join(name);
-        std::fs::read(&path).map_err(|e| {
-            DriverError::Unsupported(
-                format!("firmware read failed: {}: {e}", path.display()).into(),
-            )
-        })
+        Self::load_blob(&self.firmware_base.join("gr"), name)
     }
 
     pub(super) fn load_acr_blob(&self, name: &str) -> DriverResult<Vec<u8>> {
-        let path = self.firmware_base.join("acr").join(name);
-        std::fs::read(&path).map_err(|e| {
-            DriverError::Unsupported(
-                format!("ACR firmware read failed: {}: {e}", path.display()).into(),
+        Self::load_blob(&self.firmware_base.join("acr"), name)
+    }
+
+    /// Load a firmware blob, transparently decompressing `.zst` if the
+    /// uncompressed file doesn't exist. Linux kernel 6.2+ ships firmware
+    /// as zstd-compressed by default.
+    fn load_blob(dir: &std::path::Path, name: &str) -> DriverResult<Vec<u8>> {
+        let plain = dir.join(name);
+        if plain.exists() {
+            return std::fs::read(&plain).map_err(|e| {
+                DriverError::Unsupported(
+                    format!("firmware read failed: {}: {e}", plain.display()).into(),
+                )
+            });
+        }
+
+        let zst = dir.join(format!("{name}.zst"));
+        if zst.exists() {
+            let compressed = std::fs::read(&zst).map_err(|e| {
+                DriverError::Unsupported(
+                    format!("firmware read failed: {}: {e}", zst.display()).into(),
+                )
+            })?;
+            let mut decoder =
+                ruzstd::decoding::StreamingDecoder::new(compressed.as_slice()).map_err(|e| {
+                    DriverError::Unsupported(
+                        format!("zstd init failed for {}: {e}", zst.display()).into(),
+                    )
+                })?;
+            let mut decompressed = Vec::new();
+            std::io::Read::read_to_end(&mut decoder, &mut decompressed).map_err(|e| {
+                DriverError::Unsupported(
+                    format!("zstd decompress failed for {}: {e}", zst.display()).into(),
+                )
+            })?;
+            tracing::debug!(
+                file = %zst.display(),
+                compressed = compressed.len(),
+                decompressed = decompressed.len(),
+                "firmware blob decompressed from .zst"
+            );
+            return Ok(decompressed);
+        }
+
+        // Follow symlinks for cross-chip shared firmware (e.g. gpccs_bl → gp107)
+        let zst_link = dir.join(format!("{name}.zst"));
+        Err(DriverError::Unsupported(
+            format!(
+                "firmware not found: {} (tried {} and {})",
+                name,
+                plain.display(),
+                zst_link.display()
             )
-        })
+            .into(),
+        ))
     }
 }
 

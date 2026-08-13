@@ -47,9 +47,14 @@ impl NvVfioComputeDevice {
             Ok(b) => Bar0Source::Sysfs(b),
             Err(e) => {
                 tracing::debug!(bdf = %self.bdf, error = %e, "sysfs BAR0 failed — trying VFIO API");
-                match crate::vfio::VfioDevice::open(&self.bdf)
-                    .and_then(|dev| dev.map_bar(0).map(|bar| (bar, dev)))
-                {
+                match crate::vfio::VfioDevice::open(&self.bdf).and_then(|dev| {
+                    // Wake device from D3hot before mapping BAR0 — reads
+                    // return 0xFFFFFFFF if the GPU is sleeping.
+                    if let Err(e) = dev.enable_bus_master() {
+                        tracing::debug!(bdf = %self.bdf, error = %e, "bus master enable failed (non-fatal)");
+                    }
+                    dev.map_bar(0).map(|bar| (bar, dev))
+                }) {
                     Ok((bar, dev)) => {
                         tracing::info!(bdf = %self.bdf, "warm probe via VFIO BAR0 mmap");
                         Bar0Source::Vfio(bar, dev)
@@ -92,6 +97,23 @@ impl NvVfioComputeDevice {
         let fecs_cpuctl_raw = bar0.read((nv_falcon::FECS_BASE + nv_falcon::CPUCTL) as usize);
         let fecs_mb0 = bar0.read((nv_falcon::FECS_BASE + nv_falcon::MAILBOX0) as usize);
         let fecs_pc = bar0.read((nv_falcon::FECS_BASE + nv_falcon::PC) as usize);
+
+        // PRI fault detection: 0xBADFxxxx values are PRI ring fault
+        // responses, not real register contents. If FECS registers return
+        // these, the PRI path is faulted (GPC not ungated / PGRAPH off).
+        let pri_faulted = (fecs_cpuctl_alias & 0xFFFF_0000 == 0xBADF_0000)
+            || (fecs_cpuctl_raw & 0xFFFF_0000 == 0xBADF_0000)
+            || (fecs_mb0 & 0xFFFF_0000 == 0xBADF_0000);
+
+        if pri_faulted {
+            tracing::info!(
+                bdf = %self.bdf,
+                fecs_cpuctl_alias = format!("{fecs_cpuctl_alias:#010x}"),
+                fecs_mb0 = format!("{fecs_mb0:#010x}"),
+                "FECS PRI faulted (0xBADFxxxx) — not warm, PRI path to PGRAPH is down"
+            );
+            return false;
+        }
 
         let halted = fecs_cpuctl_alias & falcon::CPUCTL_HALTED != 0;
         let in_hreset = fecs_cpuctl_alias & falcon::CPUCTL_HRESET != 0;

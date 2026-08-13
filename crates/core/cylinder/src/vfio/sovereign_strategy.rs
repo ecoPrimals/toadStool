@@ -217,6 +217,18 @@ pub trait SovereignStrategy: Send + Sync {
             .read_u32(falcon::FECS_BASE + falcon::MAILBOX0)
             .unwrap_or(0);
 
+        // PRI fault: 0xBADFxxxx means the PRI ring path to FECS is down
+        // (PGRAPH gated, GPC not powered). Not real register contents.
+        let is_pri_fault = |v: u32| v & 0xFFFF_0000 == 0xBADF_0000;
+        if is_pri_fault(cpuctl) || is_pri_fault(mailbox0) {
+            tracing::info!(
+                cpuctl = format!("{cpuctl:#010x}"),
+                mailbox0 = format!("{mailbox0:#010x}"),
+                "detect_falcon_warm_state: PRI faulted (0xBADFxxxx) — returning Cold"
+            );
+            return FalconWarmState::Cold;
+        }
+
         let halted = cpuctl & falcon::CPUCTL_HALTED != 0;
         let in_hreset = cpuctl & falcon::CPUCTL_HRESET != 0;
         let is_0x12 = cpuctl == (falcon::CPUCTL_STARTCPU | falcon::CPUCTL_HRESET);
