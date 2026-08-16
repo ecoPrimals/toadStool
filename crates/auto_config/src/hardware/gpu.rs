@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU detection and vendor support
 
-use std::path::Path;
-
 use serde::{Deserialize, Serialize};
-use toadstool_common::constants::platform_paths::devfs;
+use toadstool_common::pci::vendors;
+use toadstool_common::pci_discovery::{PciDevice, PciFilter, discover_pci_devices};
 use tracing::debug;
 
 use crate::ToadStoolResult;
 
 use super::HardwareDetector;
+use super::pci_names;
 
 /// GPU information and capabilities.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,176 +28,158 @@ pub struct GpuInfo {
     pub supports_cuda: bool,
 }
 
-/// Detect GPU capabilities
+/// Detect every GPU on the PCI bus.
+///
+/// # Evolved from vendor tools (Aug 16, 2026)
+///
+/// This used to run `nvidia-smi` and `rocm-smi` and parse their output, then
+/// guess at anything they did not report. That was wrong in four ways, all of
+/// which were live on biomeGate:
+///
+/// - **It missed most of the hardware.** `nvidia-smi` reports only devices
+///   bound to the proprietary driver. Of four installed NVIDIA GPUs it saw
+///   one, silently omitting an unbound Titan V and both `vfio-pci` Tesla K80
+///   dies — precisely the sovereign configuration this project targets.
+/// - **It invented an Intel GPU.** The Intel path asserted a 2 GB integrated
+///   device whenever `/dev/dri` existed, which it does on any machine with
+///   any DRM driver. This host has no Intel graphics and was reporting one.
+/// - **It read capability off marketing strings.** Compute capability came
+///   from substring-matching names like `"RTX 40"` and `"4090"`, so every GPU
+///   here — Titan V, K80, RTX 5060 — fell through to `"Unknown"`.
+/// - **It needed the tools installed** to detect hardware that the kernel had
+///   already fully enumerated in sysfs.
+///
+/// Everything now comes from sysfs, which the kernel maintains for every
+/// device regardless of bound driver, or none. Devices are selected by PCI
+/// class, so an accelerator from an unrecognised vendor still enumerates.
 pub async fn detect_gpus(_detector: &HardwareDetector) -> ToadStoolResult<Vec<GpuInfo>> {
-    let mut gpus = Vec::new();
-
-    // Try to detect NVIDIA GPUs using nvidia-smi
-    if let Ok(nvidia_gpus) = detect_nvidia_gpus() {
-        gpus.extend(nvidia_gpus);
-    }
-
-    // Try to detect AMD GPUs
-    if let Ok(amd_gpus) = detect_amd_gpus() {
-        gpus.extend(amd_gpus);
-    }
-
-    // Try to detect Intel GPUs
-    gpus.extend(detect_intel_gpus());
-
-    debug!("Detected {} GPU(s)", gpus.len());
+    let gpus = detect_gpus_from_sysfs();
+    debug!("Detected {} GPU(s) from sysfs", gpus.len());
     Ok(gpus)
 }
 
-/// Parse nvidia-smi CSV output (--format=csv,noheader,nounits).
-/// Columns: name, memory.total (MB), `driver_version`
-pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
-    let mut gpus = Vec::new();
-
-    for line in output.lines() {
-        let parts: Vec<&str> = line.split(',').map(str::trim).collect();
-        if parts.len() >= 3 {
-            let name = parts[0].to_string();
-            let mem_mb = parts[1].parse::<f64>().unwrap_or(0.0);
-            let memory_gb = mem_mb / 1024.0;
-
-            gpus.push(GpuInfo {
-                name: name.clone(),
-                vendor: "NVIDIA".to_string(),
-                memory_gb,
-                driver_version: "unknown".to_string(),
-                compute_capability: get_nvidia_compute_capability(&name),
-                supports_cuda: true,
-            });
-        }
-    }
-
-    gpus
+/// PCI base class 0x03 (display) or 0x12 (processing accelerator).
+///
+/// 0x12 matters: datacentre parts with no display engine live there, and are
+/// missed entirely by the `grep VGA` idiom.
+fn is_gpu_class(class_code: u32) -> bool {
+    matches!((class_code >> 16) as u8, 0x03 | 0x12)
 }
 
-/// Detect NVIDIA GPUs
-fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
-    let gpus = if let Ok(output) = std::process::Command::new("nvidia-smi")
-        .arg("--query-gpu=name,memory.total,driver_version")
-        .arg("--format=csv,noheader,nounits")
-        .output()
-    {
-        parse_nvidia_smi_csv(&String::from_utf8_lossy(&output.stdout))
-    } else {
-        Vec::new()
-    };
-
-    Ok(gpus)
+/// Enumerate accelerators from sysfs and describe each one.
+fn detect_gpus_from_sysfs() -> Vec<GpuInfo> {
+    let filter = PciFilter::default().with_class(is_gpu_class);
+    discover_pci_devices(&filter)
+        .iter()
+        .map(gpu_info_from_pci)
+        .collect()
 }
 
-/// Detect AMD GPUs
-fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
-    let mut gpus = Vec::new();
-
-    if let Ok(output) = std::process::Command::new("rocm-smi")
-        .arg("--showproductname")
-        .output()
-        && output.status.success()
-    {
-        let output_str = String::from_utf8_lossy(&output.stdout);
-        let name = output_str
-            .lines()
-            .find(|l| l.contains("GPU") || l.contains("AMD") || l.contains("Radeon"))
-            .map(|l| l.trim().to_string())
-            .unwrap_or_else(|| "AMD GPU (unknown model)".to_string());
-
-        let memory_gb = detect_amd_memory_gb();
-
-        gpus.push(GpuInfo {
-            name,
-            vendor: "AMD".to_string(),
-            memory_gb,
-            driver_version: detect_amd_driver_version(),
-            compute_capability: "RDNA".to_string(),
-            supports_cuda: false,
-        });
-    }
-
-    Ok(gpus)
-}
-
-fn detect_amd_memory_gb() -> f64 {
-    if let Ok(output) = std::process::Command::new("rocm-smi")
-        .arg("--showmeminfo")
-        .arg("vram")
-        .output()
-        && output.status.success()
-    {
-        let s = String::from_utf8_lossy(&output.stdout);
-        for line in s.lines() {
-            if let Some(mb_str) = line.split_whitespace().find(|w| w.parse::<u64>().is_ok()) {
-                if let Ok(mb) = mb_str.parse::<u64>() {
-                    if mb > 256 {
-                        return mb as f64 / 1024.0;
-                    }
-                }
-            }
-        }
-    }
-    0.0
-}
-
-fn detect_amd_driver_version() -> String {
-    let rocm_path = std::env::var("ROCM_PATH").unwrap_or_else(|_| "/opt/rocm".to_string());
-    let version_file = std::path::Path::new(&rocm_path).join(".info/version");
-    if let Ok(ver) = std::fs::read_to_string(&version_file) {
-        let ver = ver.trim();
-        if !ver.is_empty() {
-            return ver.to_string();
-        }
-    }
-    "unknown".to_string()
-}
-
-/// Detect Intel GPUs
-fn detect_intel_gpus() -> Vec<GpuInfo> {
-    let mut gpus = Vec::new();
-
-    // Intel GPU detection is more complex and platform-dependent
-    // For now, we'll do a simple check
-    if cfg!(target_os = "linux") && Path::new(devfs::DRI_DIR).exists() {
-        // Assume Intel integrated graphics
-        gpus.push(GpuInfo {
-            name: "Intel Integrated Graphics".to_string(),
-            vendor: "Intel".to_string(),
-            memory_gb: 2.0, // Shared system memory
-            driver_version: "Unknown".to_string(),
-            compute_capability: "Gen9+".to_string(),
-            supports_cuda: false,
-        });
-    }
-
-    gpus
-}
-
-/// Get NVIDIA compute capability from GPU name
-pub(crate) fn get_nvidia_compute_capability(gpu_name: &str) -> String {
-    // Simplified mapping of GPU names to compute capabilities
-    if gpu_name.contains("RTX 40") || gpu_name.contains("4090") || gpu_name.contains("4080") {
-        "8.9".to_string()
-    } else if gpu_name.contains("RTX 30") || gpu_name.contains("3090") || gpu_name.contains("3080")
-    {
-        "8.6".to_string()
-    } else if gpu_name.contains("RTX 20")
-        || gpu_name.contains("2080")
-        || gpu_name.contains("2070")
-        || gpu_name.contains("GTX 16")
-        || gpu_name.contains("1660")
-        || gpu_name.contains("1650")
-    {
-        "7.5".to_string()
-    } else if gpu_name.contains("GTX 10") || gpu_name.contains("1080") || gpu_name.contains("1070")
-    {
-        "6.1".to_string()
-    } else {
-        "Unknown".to_string()
+/// Build a [`GpuInfo`] from a discovered PCI device, measuring what sysfs
+/// exposes and declining to guess at the rest.
+fn gpu_info_from_pci(device: &PciDevice) -> GpuInfo {
+    let vendor = vendor_label(device.vendor_id);
+    GpuInfo {
+        name: device_model_name(device),
+        memory_gb: detect_vram_gb(device).unwrap_or(0.0),
+        driver_version: driver_version(device).unwrap_or_else(|| "unknown".to_string()),
+        compute_capability: "unknown".to_string(),
+        supports_cuda: device.vendor_id == vendors::NVIDIA_VENDOR_ID,
+        vendor,
     }
 }
+
+/// Best available model name, preferring the most specific source.
+///
+/// `pci.ids` is comprehensive but only as current as the installed package —
+/// the 2025 copy on this host has no entry for the RTX 5060 (`10de:2d05`) and
+/// falls back to the numeric ID. Where a kernel module publishes the model
+/// itself, that is both exact and always current, so it wins.
+fn device_model_name(device: &PciDevice) -> String {
+    kernel_reported_model(device)
+        .unwrap_or_else(|| pci_names::describe(device.vendor_id, device.device_id))
+}
+
+/// Model name as published by the bound kernel module.
+///
+/// The NVIDIA module exposes `/proc/driver/nvidia/gpus/<bdf>/information`,
+/// whose `Model:` line carries the marketing name. This is procfs written by
+/// the kernel, not a `nvidia-smi` invocation: no vendor userspace tooling need
+/// be installed, and reading it cannot fail in the ways spawning a process can.
+///
+/// Returns `None` for any device whose driver publishes nothing, which is the
+/// common case and not an error.
+fn kernel_reported_model(device: &PciDevice) -> Option<String> {
+    let path = format!("/proc/driver/nvidia/gpus/{}/information", device.bdf);
+    let info = std::fs::read_to_string(path).ok()?;
+
+    info.lines()
+        .find_map(|line| line.strip_prefix("Model:"))
+        .map(str::trim)
+        .filter(|m| !m.is_empty())
+        .map(ToString::to_string)
+}
+
+/// Vendor label, using the same names the rest of the tree matches on.
+///
+/// Unrecognised vendors get their numeric ID rather than being dropped or
+/// coerced into a known vendor — a GPU from a vendor that did not exist when
+/// this was written is still a GPU.
+fn vendor_label(vendor_id: u16) -> String {
+    match vendor_id {
+        vendors::NVIDIA_VENDOR_ID => "NVIDIA".to_string(),
+        vendors::AMD_VENDOR_ID => "AMD".to_string(),
+        vendors::INTEL_VENDOR_ID => "Intel".to_string(),
+        other => pci_names::vendor_name(other)
+            .map_or_else(|| format!("PCI vendor {other:04x}"), ToString::to_string),
+    }
+}
+
+/// Driver version from `/sys/bus/pci/devices/<bdf>/driver/module/version`.
+///
+/// This is where the kernel publishes the version of whichever module is
+/// bound, so it works for `nvidia`, `amdgpu`, `nouveau`, and `i915` alike —
+/// the same string `nvidia-smi` reports, without `nvidia-smi`. Returns `None`
+/// for an unbound device or a built-in module, both of which genuinely have
+/// no version to report.
+fn driver_version(device: &PciDevice) -> Option<String> {
+    let version = std::fs::read_to_string(device.sysfs_path.join("driver/module/version")).ok()?;
+    let version = version.trim();
+    (!version.is_empty()).then(|| version.to_string())
+}
+
+/// VRAM in GB, where the kernel actually exposes it.
+///
+/// # Why this is often `None`
+///
+/// Total VRAM is not in PCI config space, so it is only available when the
+/// bound driver publishes it. `amdgpu` does, via `mem_info_vram_total`. The
+/// proprietary NVIDIA driver does not, and an unbound or `vfio-pci` device
+/// has no driver to ask.
+///
+/// The BAR1 aperture is deliberately **not** used as a substitute, tempting as
+/// it looks. It measures how much VRAM is host-visible, not how much exists:
+/// on this machine a 12 GB K80 die presents a 16 GiB BAR while an unbound
+/// Titan V presents 256 MiB. Reporting either as capacity would be confidently
+/// wrong, which is worse than reporting nothing.
+///
+/// Reading it from the device itself is possible but needs BAR0 access, which
+/// belongs to cylinder's privileged path rather than hardware detection.
+fn detect_vram_gb(device: &PciDevice) -> Option<f64> {
+    let raw = std::fs::read_to_string(device.sysfs_path.join("mem_info_vram_total")).ok()?;
+    let bytes: u64 = raw.trim().parse().ok()?;
+    (bytes > 0).then(|| bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+}
+
+/// Memory term used when VRAM cannot be measured.
+///
+/// Mid-scale: enough that a discrete GPU with unmeasurable VRAM is not ranked
+/// beneath integrated graphics, low enough not to claim it is a large card.
+const NEUTRAL_MEMORY_SCORE: f64 = 25.0;
+
+/// VRAM assumed when ranking a device whose memory cannot be measured.
+/// Corresponds to [`NEUTRAL_MEMORY_SCORE`] on the same scale.
+const NEUTRAL_VRAM_GB: f64 = 12.0;
 
 /// Calculate GPU performance score
 #[must_use]
@@ -206,15 +188,33 @@ pub fn calculate_gpu_score(gpu_info: &[GpuInfo]) -> f64 {
         return 20.0; // Integrated graphics assumption
     }
 
+    // Rank by measured VRAM, but treat unmeasurable as the neutral midpoint so
+    // a discrete GPU with no reporting driver can still be selected as best.
+    let effective_vram = |g: &GpuInfo| {
+        if g.memory_gb > 0.0 {
+            g.memory_gb
+        } else {
+            NEUTRAL_VRAM_GB
+        }
+    };
     let Some(best_gpu) = gpu_info.iter().max_by(|a, b| {
-        a.memory_gb
-            .partial_cmp(&b.memory_gb)
+        effective_vram(a)
+            .partial_cmp(&effective_vram(b))
             .unwrap_or(std::cmp::Ordering::Equal)
     }) else {
         return 20.0; // Fallback to integrated graphics score
     };
 
-    let memory_score = (best_gpu.memory_gb / 24.0 * 50.0).min(50.0);
+    // VRAM is only reported when the kernel publishes it, so 0.0 means
+    // "not measurable here", not "no memory". Scoring it as zero would rank a
+    // Titan V below an integrated GPU purely because no driver is bound to it.
+    // Score the memory term as neutral when unknown, and let the vendor and
+    // compute terms carry the estimate.
+    let memory_score = if best_gpu.memory_gb > 0.0 {
+        (best_gpu.memory_gb / 24.0 * 50.0).min(50.0)
+    } else {
+        NEUTRAL_MEMORY_SCORE
+    };
     let vendor_score = match best_gpu.vendor.as_str() {
         "NVIDIA" => 40.0,
         "AMD" => 35.0,
@@ -248,86 +248,49 @@ mod tests {
         assert!((deserialized.memory_gb - gpu.memory_gb).abs() < f64::EPSILON);
     }
 
+    /// Class selection must catch display controllers, 3D controllers, and
+    /// the 0x12 processing-accelerator class that datacentre parts use.
     #[test]
-    fn test_get_nvidia_compute_capability_rtx40() {
-        assert_eq!(
-            get_nvidia_compute_capability("NVIDIA GeForce RTX 4090"),
-            "8.9"
-        );
-        assert_eq!(get_nvidia_compute_capability("RTX 4080"), "8.9");
-        assert_eq!(get_nvidia_compute_capability("RTX 40 Series"), "8.9");
+    fn gpu_classes_include_headless_accelerators() {
+        assert!(is_gpu_class(0x03_00_00), "VGA controller");
+        assert!(is_gpu_class(0x03_02_00), "3D controller (Tesla)");
+        assert!(is_gpu_class(0x12_00_00), "processing accelerator");
+        assert!(!is_gpu_class(0x02_00_00), "ethernet");
+        assert!(!is_gpu_class(0x06_04_00), "PCI bridge");
     }
 
+    /// An unrecognised vendor must still be reported as itself rather than
+    /// dropped or coerced into a known vendor.
     #[test]
-    fn test_get_nvidia_compute_capability_rtx30() {
-        assert_eq!(
-            get_nvidia_compute_capability("NVIDIA GeForce RTX 3090"),
-            "8.6"
-        );
-        assert_eq!(get_nvidia_compute_capability("RTX 3080"), "8.6");
+    fn unknown_vendors_are_labelled_not_discarded() {
+        assert_eq!(vendor_label(vendors::NVIDIA_VENDOR_ID), "NVIDIA");
+        assert_eq!(vendor_label(vendors::AMD_VENDOR_ID), "AMD");
+        assert_eq!(vendor_label(vendors::INTEL_VENDOR_ID), "Intel");
+
+        let exotic = vendor_label(0xBEEF);
+        assert!(!exotic.is_empty());
+        assert_ne!(exotic, "NVIDIA");
     }
 
+    /// Detection must not invent hardware. The previous implementation
+    /// asserted a 2 GB Intel iGPU whenever /dev/dri existed; every GPU
+    /// reported now corresponds to a device the kernel enumerated.
     #[test]
-    fn test_get_nvidia_compute_capability_rtx20() {
-        assert_eq!(get_nvidia_compute_capability("RTX 2080 Ti"), "7.5");
-        assert_eq!(get_nvidia_compute_capability("GTX 1660"), "7.5");
-        assert_eq!(get_nvidia_compute_capability("GTX 1650"), "7.5");
+    fn detection_reports_only_real_devices() {
+        for gpu in detect_gpus_from_sysfs() {
+            assert!(!gpu.name.is_empty(), "every device must be nameable");
+            assert!(!gpu.vendor.is_empty());
+            assert!(
+                gpu.memory_gb >= 0.0,
+                "VRAM is measured or zero, never negative"
+            );
+        }
     }
 
+    /// Must be total on hosts with no GPUs and no sysfs (CI, containers).
     #[test]
-    fn test_get_nvidia_compute_capability_gtx10() {
-        assert_eq!(get_nvidia_compute_capability("GTX 1080"), "6.1");
-        assert_eq!(get_nvidia_compute_capability("GTX 1070"), "6.1");
-    }
-
-    #[test]
-    fn test_get_nvidia_compute_capability_unknown() {
-        assert_eq!(get_nvidia_compute_capability("Unknown GPU"), "Unknown");
-        assert_eq!(get_nvidia_compute_capability("Quadro K2000"), "Unknown");
-    }
-
-    #[test]
-    fn test_parse_nvidia_smi_csv_single_gpu() {
-        let output = "NVIDIA GeForce RTX 4090, 24576, 535.54.03";
-        let gpus = parse_nvidia_smi_csv(output);
-        assert_eq!(gpus.len(), 1);
-        assert_eq!(gpus[0].name, "NVIDIA GeForce RTX 4090");
-        assert!((gpus[0].memory_gb - 24.0).abs() < 0.1);
-        assert_eq!(gpus[0].vendor, "NVIDIA");
-        assert_eq!(gpus[0].compute_capability, "8.9");
-        assert!(gpus[0].supports_cuda);
-    }
-
-    #[test]
-    fn test_parse_nvidia_smi_csv_multiple_gpus() {
-        let output = "NVIDIA GeForce RTX 3080, 10240, 535.0\nNVIDIA GeForce RTX 2080, 8192, 535.0";
-        let gpus = parse_nvidia_smi_csv(output);
-        assert_eq!(gpus.len(), 2);
-        assert_eq!(gpus[0].name, "NVIDIA GeForce RTX 3080");
-        assert!((gpus[0].memory_gb - 10.0).abs() < 0.1);
-        assert_eq!(gpus[1].name, "NVIDIA GeForce RTX 2080");
-        assert!((gpus[1].memory_gb - 8.0).abs() < 0.1);
-    }
-
-    #[test]
-    fn test_parse_nvidia_smi_csv_empty() {
-        let gpus = parse_nvidia_smi_csv("");
-        assert!(gpus.is_empty());
-    }
-
-    #[test]
-    fn test_parse_nvidia_smi_csv_invalid_memory() {
-        let output = "NVIDIA GeForce RTX 4090, invalid, 535.0";
-        let gpus = parse_nvidia_smi_csv(output);
-        assert_eq!(gpus.len(), 1);
-        assert!((gpus[0].memory_gb - 0.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_parse_nvidia_smi_csv_too_few_columns() {
-        let output = "NVIDIA GeForce RTX 4090, 24576";
-        let gpus = parse_nvidia_smi_csv(output);
-        assert!(gpus.is_empty());
+    fn detection_is_infallible() {
+        let _ = detect_gpus_from_sysfs();
     }
 
     #[test]
@@ -415,5 +378,22 @@ mod tests {
         ];
         let score = calculate_gpu_score(&gpus);
         assert!(score >= 90.0);
+    }
+}
+
+#[cfg(test)]
+mod live_detection {
+    use super::*;
+
+    /// What native detection reports on this machine. Not an assertion — CI
+    /// has no GPUs — but the comparison against the vendor tools it replaces.
+    #[test]
+    fn show_detected_gpus() {
+        for g in detect_gpus_from_sysfs() {
+            eprintln!(
+                "  {:<10} {:<38} vram={:>5.1}GB driver={:<8} cuda={}",
+                g.vendor, g.name, g.memory_gb, g.driver_version, g.supports_cuda
+            );
+        }
     }
 }

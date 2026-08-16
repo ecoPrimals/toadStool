@@ -13,6 +13,7 @@
 
 mod config_space;
 mod device_info;
+mod enumerate;
 mod parse;
 mod power_mgmt;
 mod types;
@@ -20,6 +21,10 @@ mod types;
 pub use config_space::find_pm_capability_offset;
 
 pub use device_info::PciDeviceInfo;
+pub use enumerate::{
+    Accelerator, Liveness, is_accelerator_class, probe_liveness, read_device,
+    responding_accelerators, scan_accelerators,
+};
 pub use power_mgmt::{force_pci_d0, pci_power_cycle, set_pci_power_state, snapshot_config_space};
 pub use types::{
     GpuVendor, PCI_CAP_ID_PCIE, PCI_CAP_ID_PM, PCI_STATUS_CAP_LIST, PciBar, PciCapability,

@@ -179,7 +179,13 @@ async fn test_concurrent_system_scans() {
     }
 
     // Wait for all tasks
-    let results = futures::future::join_all(tasks).await;
+    // Tasks are already running: tokio::spawn started them, so awaiting
+    // in order collects the same results join_all would, without
+    // pulling in the futures crate for it.
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        results.push(task.await);
+    }
 
     // All should complete successfully
     for result in results {
@@ -200,7 +206,13 @@ async fn test_concurrent_platform_optimizers() {
         }));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    // Tasks are already running: tokio::spawn started them, so awaiting
+    // in order collects the same results join_all would, without
+    // pulling in the futures crate for it.
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        results.push(task.await);
+    }
 
     // All should succeed
     for result in &results {

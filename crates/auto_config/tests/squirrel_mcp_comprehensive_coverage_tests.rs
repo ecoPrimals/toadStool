@@ -320,7 +320,13 @@ async fn test_concurrent_session_creation() -> ToadStoolResult<()> {
         }));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    // Tasks are already running: tokio::spawn started them, so awaiting
+    // in order collects the same results join_all would, without
+    // pulling in the futures crate for it.
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        results.push(task.await);
+    }
 
     let success_count = results
         .iter()
@@ -362,7 +368,13 @@ async fn test_concurrent_status_requests() -> ToadStoolResult<()> {
         }));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    // Tasks are already running: tokio::spawn started them, so awaiting
+    // in order collects the same results join_all would, without
+    // pulling in the futures crate for it.
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        results.push(task.await);
+    }
 
     let success_count = results
         .iter()

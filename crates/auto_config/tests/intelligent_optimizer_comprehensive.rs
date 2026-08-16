@@ -81,7 +81,13 @@ async fn test_concurrent_platform_optimizer_creation() {
         }));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    // Tasks are already running: tokio::spawn started them, so awaiting
+    // in order collects the same results join_all would, without
+    // pulling in the futures crate for it.
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        results.push(task.await);
+    }
 
     // All should succeed
     let success_count = results.iter().filter(|r| r.is_ok()).count();
@@ -105,7 +111,13 @@ async fn test_concurrent_hardware_detection() {
         }));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    // Tasks are already running: tokio::spawn started them, so awaiting
+    // in order collects the same results join_all would, without
+    // pulling in the futures crate for it.
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        results.push(task.await);
+    }
 
     // All should complete (success or graceful failure)
     for result in results {
