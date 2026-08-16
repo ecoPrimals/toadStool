@@ -126,12 +126,24 @@ fn detect_nvidia_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
                 name = parsed;
             }
 
+            // Address the GPU by PCI bus ID, not by our enumeration index.
+            //
+            // `device_id` counts devices we have found so far, across all
+            // vendors and in directory order. nvidia-smi indexes by its own
+            // ordering, over NVIDIA devices only. The two agree exactly when
+            // NVIDIA GPUs are discovered first and in the same order, and
+            // silently disagree otherwise — attributing one GPU's memory to
+            // another, or querying an index that does not exist and leaving
+            // memory at zero, which is indistinguishable from a real answer.
+            //
+            // nvidia-smi accepts a bus ID for `-i`, and we already have the
+            // exact one: it is the directory name under /proc/driver/nvidia/gpus.
             if let Ok(output) = std::process::Command::new("nvidia-smi")
                 .args([
                     "--query-gpu=memory.total",
                     "--format=csv,noheader,nounits",
                     "-i",
-                    &device_id.to_string(),
+                    &pci_id,
                 ])
                 .output()
                 && output.status.success()

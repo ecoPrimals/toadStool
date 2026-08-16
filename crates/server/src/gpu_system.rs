@@ -14,13 +14,8 @@ pub fn query_gpu_devices() -> Vec<serde_json::Value> {
     let mut devices = Vec::new();
 
     #[cfg(target_os = "linux")]
-    if let Ok(entries) = std::fs::read_dir("/proc/driver/nvidia/gpus") {
-        for (idx, entry) in entries.flatten().enumerate() {
-            let name = entry.file_name().to_string_lossy().to_string();
-            devices.push(serde_json::json!({
-                "index": idx, "id": name, "backend": "nvidia",
-            }));
-        }
+    {
+        devices.extend(discover_via_sysfs());
     }
 
     #[cfg(feature = "gpu-discovery")]
@@ -37,6 +32,39 @@ pub fn query_gpu_devices() -> Vec<serde_json::Value> {
     }
 
     devices
+}
+
+/// Enumerate accelerators from sysfs, whatever driver is bound.
+///
+/// This replaced a listing of `/proc/driver/nvidia/gpus`, which is populated
+/// only by the proprietary NVIDIA module. That found no AMD or Intel GPU at
+/// all, and among NVIDIA cards found only those bound to that one driver — on
+/// biomeGate, one of four, missing an unbound Titan V and both `vfio-pci`
+/// Tesla K80 dies. It also reported the directory name as the device `id` and
+/// nothing else, so callers got a PCI address with no model, vendor, or
+/// indication of whether the device was answering.
+///
+/// Liveness is included because it is the one thing a caller cannot recover
+/// on its own: a wedged GPU is enumerated, bound, and completely silent.
+#[cfg(target_os = "linux")]
+fn discover_via_sysfs() -> Vec<serde_json::Value> {
+    use toadstool_cylinder::vfio::pci_discovery::{Liveness, scan_accelerators};
+
+    scan_accelerators()
+        .into_iter()
+        .enumerate()
+        .map(|(idx, accel)| {
+            serde_json::json!({
+                "index": idx,
+                "id": accel.bdf(),
+                "vendor_id": format!("{:#06x}", accel.device.vendor_id),
+                "device_id": format!("{:#06x}", accel.device.device_id),
+                "class_code": format!("{:#08x}", accel.device.class_code),
+                "backend": accel.device.driver.as_deref().unwrap_or("unbound"),
+                "responding": accel.liveness == Liveness::Responding,
+            })
+        })
+        .collect()
 }
 
 /// Enumerate GPU adapters via wgpu (cross-platform: Vulkan, DX12, Metal).
@@ -305,5 +333,33 @@ mod tests {
     fn test_query_firmware_inventory_returns_valid_json() {
         let inv = query_firmware_inventory();
         assert!(inv.get("devices").is_some());
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod sysfs_discovery_tests {
+    use super::*;
+
+    /// Every device reported must carry the fields callers rely on, and the
+    /// enumeration must be total on hosts with no GPUs.
+    #[test]
+    fn discovery_reports_complete_records() {
+        for d in discover_via_sysfs() {
+            assert!(d.get("id").and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()));
+            assert!(d.get("vendor_id").is_some());
+            assert!(d.get("backend").is_some());
+            assert!(
+                d.get("responding").and_then(serde_json::Value::as_bool).is_some(),
+                "liveness must always be stated, never omitted"
+            );
+        }
+    }
+
+    /// Shows what the server reports on this machine.
+    #[test]
+    fn show_discovered() {
+        for d in discover_via_sysfs() {
+            eprintln!("  {d}");
+        }
     }
 }
