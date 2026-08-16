@@ -72,7 +72,31 @@ pub(crate) fn patch_module_with_rename(
         "patching kernel module"
     );
 
-    let mut module_bytes = std::fs::read(source_ko).map_err(PatchError::ReadFailed)?;
+    let raw_bytes = std::fs::read(source_ko).map_err(PatchError::ReadFailed)?;
+    let mut module_bytes = if source_ko.extension().and_then(|e| e.to_str()) == Some("zst") {
+        let mut decoder =
+            ruzstd::decoding::StreamingDecoder::new(raw_bytes.as_slice()).map_err(|e| {
+                PatchError::ReadFailed(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("zstd init for {}: {e}", source_ko.display()),
+                ))
+            })?;
+        let mut decompressed = Vec::new();
+        std::io::Read::read_to_end(&mut decoder, &mut decompressed).map_err(|e| {
+            PatchError::ReadFailed(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("zstd decompress for {}: {e}", source_ko.display()),
+            ))
+        })?;
+        tracing::info!(
+            compressed = raw_bytes.len(),
+            decompressed = decompressed.len(),
+            "decompressed .ko.zst module"
+        );
+        decompressed
+    } else {
+        raw_bytes
+    };
     let module_size = module_bytes.len();
 
     // Normalize relocations for kernel 6.17+ compatibility.
@@ -199,6 +223,32 @@ pub(crate) fn patch_module_with_rename(
         .collect();
     if !patch_ranges.is_empty() {
         nullify_relocations_at(&mut module_bytes, &patch_ranges);
+    }
+
+    // Strip PKCS#7 module signature appended by the kernel build system.
+    // Patching invalidates the signature, causing EKEYREJECTED (errno 129)
+    // on finit_module even when CONFIG_MODULE_SIG_FORCE is not set.
+    // The signature is appended after the ELF with a 28-byte trailer:
+    //   [sig_data...] [12-byte info struct] "~Module signature appended~\n"
+    const SIG_MAGIC: &[u8] = b"~Module signature appended~\n";
+    if module_bytes.len() > SIG_MAGIC.len() + 12 {
+        let tail_start = module_bytes.len() - SIG_MAGIC.len();
+        if &module_bytes[tail_start..] == SIG_MAGIC {
+            let info_start = tail_start - 12;
+            let sig_len = u32::from_be_bytes([
+                module_bytes[info_start + 8],
+                module_bytes[info_start + 9],
+                module_bytes[info_start + 10],
+                module_bytes[info_start + 11],
+            ]) as usize;
+            let strip_from = info_start.saturating_sub(sig_len);
+            tracing::info!(
+                sig_len,
+                stripped_bytes = module_bytes.len() - strip_from,
+                "stripping PKCS#7 module signature (patching invalidated it)"
+            );
+            module_bytes.truncate(strip_from);
+        }
     }
 
     let output_name = rename.map(|(_, new)| new).unwrap_or(&patch_set.module_name);

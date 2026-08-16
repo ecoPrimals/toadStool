@@ -143,6 +143,17 @@ pub fn open_path(path: &Path, rdwr: bool, sync: bool) -> std::io::Result<std::os
     rustix::fs::open(path, flags, rustix::fs::Mode::empty()).map_err(std::io::Error::from)
 }
 
+/// Open a file write-only (for sysfs control files that have no read fop).
+#[cfg(target_os = "linux")]
+pub fn open_path_wronly(path: &Path) -> std::io::Result<std::os::fd::OwnedFd> {
+    rustix::fs::open(
+        path,
+        rustix::fs::OFlags::WRONLY | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )
+    .map_err(std::io::Error::from)
+}
+
 /// Seek to the end of a file descriptor.
 #[cfg(target_os = "linux")]
 pub fn seek_end(fd: std::os::fd::BorrowedFd<'_>) -> std::io::Result<u64> {

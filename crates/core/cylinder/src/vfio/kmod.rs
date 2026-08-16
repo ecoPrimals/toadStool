@@ -185,6 +185,11 @@ fn parse_dkms_package_version(content: &str) -> Option<String> {
 /// (or that the module name differs from any loaded module). Use
 /// [`is_module_loaded`] to check first.
 pub fn load_module(path: &Path) -> Result<(), KmodError> {
+    load_module_with_params(path, "")
+}
+
+/// Load a kernel module with parameters, decompressing `.ko.zst`/`.ko.xz` first.
+pub fn load_module_with_params(path: &Path, params: &str) -> Result<(), KmodError> {
     use crate::vfio::guarded_sysfs;
 
     let effective_path = if needs_decompression(path) {
@@ -193,11 +198,15 @@ pub fn load_module(path: &Path) -> Result<(), KmodError> {
         path.to_path_buf()
     };
 
-    let result = guarded_sysfs::insmod_guarded(&effective_path, guarded_sysfs::INSMOD_TIMEOUT)
-        .map_err(|e| KmodError::LoadFailed {
-            path: effective_path.display().to_string(),
-            detail: e.to_string(),
-        });
+    let result = guarded_sysfs::insmod_guarded_with_params(
+        &effective_path,
+        params,
+        guarded_sysfs::INSMOD_TIMEOUT,
+    )
+    .map_err(|e| KmodError::LoadFailed {
+        path: effective_path.display().to_string(),
+        detail: e.to_string(),
+    });
 
     if needs_decompression(path) {
         let _ = std::fs::remove_file(&effective_path);
@@ -274,11 +283,21 @@ pub fn unload_module(name: &str) -> Result<(), KmodError> {
 /// Returns `true` if the module was freshly loaded, `false` if it was
 /// already present.
 pub fn ensure_module_loaded(name: &str) -> Result<bool, KmodError> {
+    ensure_module_loaded_with_params(name, "")
+}
+
+/// Ensure a module is loaded with the given parameters, loading it from its
+/// stock path if needed.
+///
+/// Returns `true` if the module was freshly loaded, `false` if it was
+/// already present. Note that parameters only take effect on a fresh load —
+/// an already-resident module keeps whatever parameters it was loaded with.
+pub fn ensure_module_loaded_with_params(name: &str, params: &str) -> Result<bool, KmodError> {
     if is_module_loaded(name) {
         return Ok(false);
     }
     let stock_path = find_stock_module(name)?;
-    load_module(&stock_path)?;
+    load_module_with_params(&stock_path, params)?;
     Ok(true)
 }
 

@@ -3,6 +3,7 @@
 use std::time::Instant;
 
 use crate::nv::registers::pmc;
+use crate::vfio::session_safety::DrmNodeWatch;
 use crate::vfio::sovereign_tiers::classify_tier;
 use toadstool_ember::pri_ring_anchor::BootServiceEvidence;
 
@@ -28,12 +29,66 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         settle_ms = ctx.config.settle.as_millis() as u64,
         "waiting for seeder hardware initialization"
     );
-    std::thread::sleep(ctx.config.settle);
+    // Poll rather than sleep straight through, so a DRM node appearing on the
+    // target aborts the rotation instead of waiting out the full settle. A
+    // card node here means a display server may claim the GPU mid-rotation;
+    // that is what killed three sessions on 2026-08-16, and the window
+    // between node creation and the server's udev hot-add was under 500ms.
+    const DRM_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
+    let settle_deadline = Instant::now() + ctx.config.settle;
+    let mut drm_breach: Option<String> = None;
+
+    while Instant::now() < settle_deadline {
+        let remaining = settle_deadline.saturating_duration_since(Instant::now());
+        std::thread::sleep(DRM_POLL_INTERVAL.min(remaining));
+
+        if let Some(node) = ctx.drm_watch.as_ref().and_then(DrmNodeWatch::breached) {
+            drm_breach = Some(node);
+            break;
+        }
+    }
+
+    if let Some(node) = drm_breach {
+        breadcrumb(&format!("settle: ABORT — DRM node {node} appeared on target"));
+        tracing::error!(
+            bdf = ctx.config.bdf.as_str(),
+            node = node.as_str(),
+            seeder = ctx.config.seeder_driver.as_str(),
+            elapsed_ms = t.elapsed().as_millis() as u64,
+            "seeder registered a DRM node on the target — aborting before a display server claims it"
+        );
+        ctx.steps.push(HandoffStep {
+            name: "seeder_settle".into(),
+            ok: false,
+            detail: Some(format!(
+                "aborted after {}ms: seeder '{}' registered DRM node '{}' on the target; \
+                 a display server may claim it mid-rotation",
+                t.elapsed().as_millis(),
+                ctx.config.seeder_driver,
+                node
+            )),
+            duration_ms: t.elapsed().as_millis() as u64,
+        });
+        ctx.needs_device_rollback = true;
+        return Some(deadline_exceeded(
+            &ctx.config.bdf,
+            std::mem::take(&mut ctx.steps),
+            ctx.patch_result.take(),
+            ctx.module_loaded,
+            &ctx.config.module_name,
+            &ctx.sibling_state,
+            ctx.overall,
+        ));
+    }
+
     breadcrumb("settle: settle complete");
     ctx.steps.push(HandoffStep {
         name: "seeder_settle".into(),
         ok: true,
-        detail: Some(format!("{}ms settle", ctx.config.settle.as_millis())),
+        detail: Some(format!(
+            "{}ms settle, no DRM node appeared on target",
+            ctx.config.settle.as_millis()
+        )),
         duration_ms: t.elapsed().as_millis() as u64,
     });
 

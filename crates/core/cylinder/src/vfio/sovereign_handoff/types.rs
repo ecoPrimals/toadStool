@@ -40,6 +40,16 @@ pub struct HandoffConfig {
     #[serde(default)]
     pub skip_preflight: bool,
 
+    /// Module parameters passed to `finit_module` when loading the seeder.
+    ///
+    /// Critical for nouveau: without `modeset=2` (headless) the driver
+    /// registers a DRM/KMS node for the seeded GPU, which makes the display
+    /// manager re-enumerate DRM devices and kill the user session. Teardown
+    /// of a live-KMS nouveau then hangs the machine. `runpm=0` stops runtime
+    /// PM from dropping the GPU to D3cold and destroying the warm state.
+    #[serde(default)]
+    pub module_params: String,
+
     /// GPU SM architecture version (e.g. 35 for Kepler, 70 for Volta, 120 for
     /// Blackwell). Drives generation-aware behavior: interrupt quench register
     /// selection, GPC topology, catalyst capture offsets, tier classification.

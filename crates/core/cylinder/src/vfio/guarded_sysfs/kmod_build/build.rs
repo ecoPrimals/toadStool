@@ -9,7 +9,7 @@ use super::load::{insmod_guarded_with_params, rmmod_guarded};
 /// Builder for out-of-tree Linux kernel modules via kbuild.
 ///
 /// Encapsulates the full lifecycle: stage source → compile via
-/// `make -C /lib/modules/{krel}/build M=$PWD` → `insmod` with
+/// `make -C /lib/modules/{krel}/build M=$(CURDIR)` → `insmod` with
 /// parameters → `rmmod` → cleanup. Each step is typed and
 /// compiler-verified; the only non-Rust artifacts are the C source
 /// literal and the generated Makefile (irreducible kernel ABI boundary).
@@ -138,17 +138,24 @@ impl KmodBuilder {
         let src_path = tmpdir.join(format!("{}.c", self.name));
         std::fs::write(&src_path, self.source)?;
 
-        // Generate Makefile — call kbuild directly, no wrapper
+        // Generate Makefile — call kbuild directly, no wrapper.
+        //
+        // The `ccflags-y` line re-adds the compiler's own intrinsic header
+        // directory. kbuild compiles with `-nostdinc`, and the Ubuntu 7.0
+        // linux-headers package omits the `-isystem $(CC -print-file-name=include)`
+        // that upstream adds, so `<stddef.h>` and friends are unresolvable
+        // without it.
         let makefile_path = tmpdir.join("Makefile");
         std::fs::write(
             &makefile_path,
             format!(
                 "obj-m := {name}.o\n\
+                 ccflags-y += -isystem $(shell $(CC) -print-file-name=include)\n\
                  KDIR := {kbuild}\n\
                  all:\n\
-                 \t$(MAKE) -C $(KDIR) M=$(PWD) modules\n\
+                 \t$(MAKE) -C $(KDIR) M=$(CURDIR) modules\n\
                  clean:\n\
-                 \t$(MAKE) -C $(KDIR) M=$(PWD) clean\n",
+                 \t$(MAKE) -C $(KDIR) M=$(CURDIR) clean\n",
                 name = self.name,
             ),
         )?;

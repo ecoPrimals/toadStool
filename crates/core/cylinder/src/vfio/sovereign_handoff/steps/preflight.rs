@@ -5,6 +5,7 @@ use std::time::Instant;
 use crate::nv::registers::pmc;
 use crate::vfio::guarded_sysfs;
 use crate::vfio::kernel_health;
+use crate::vfio::session_safety;
 
 use super::super::lock::HandoffGuard;
 use super::super::pipeline::PipelineContext;
@@ -137,7 +138,51 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                 }
             }
         }
+
+        // 0e. Host session safety.
+        //
+        // The checks above all concern the device. This one concerns the
+        // machine around it: a seeder that registers a DRM node on a host
+        // with a live display server and GPU hot-add enabled will have that
+        // node claimed mid-rotation, which takes down the session and then
+        // the handoff with it.
+        let safety = session_safety::SessionSafety::evaluate(&ctx.config.bdf);
+        if safety.is_safe() {
+            tracing::info!(
+                bdf = ctx.config.bdf.as_str(),
+                display_server = safety.display_server_running,
+                "session safety check passed"
+            );
+        } else {
+            tracing::error!(
+                bdf = ctx.config.bdf.as_str(),
+                concerns = %safety.summary(),
+                "session safety check failed — refusing rotation"
+            );
+            ctx.steps.push(HandoffStep {
+                name: "preflight".into(),
+                ok: false,
+                detail: Some(format!("session safety check failed: {}", safety.summary())),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+            return Some(halt_result(
+                &ctx.config.bdf,
+                "preflight",
+                std::mem::take(&mut ctx.steps),
+                None,
+                false,
+                false,
+                ctx.overall,
+                &[],
+                &ctx.config.module_name,
+                false,
+            ));
+        }
     }
+
+    // Arm the DRM watch here, before module_prep loads any seeder. The
+    // baseline has to predate the insmod that would register the node.
+    ctx.drm_watch = Some(session_safety::DrmNodeWatch::arm(&ctx.config.bdf));
 
     ctx.steps.push(HandoffStep {
         name: "preflight".into(),
@@ -145,7 +190,8 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         detail: Some(if ctx.config.skip_preflight {
             "preflight skipped (skip_preflight=true)".into()
         } else {
-            "module clean, IOMMU group free, no concurrent handoff, kernel healthy".into()
+            "module clean, IOMMU group free, no concurrent handoff, kernel healthy, host session safe"
+                .into()
         }),
         duration_ms: t.elapsed().as_millis() as u64,
     });

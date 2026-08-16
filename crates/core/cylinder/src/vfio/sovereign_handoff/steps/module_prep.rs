@@ -149,9 +149,11 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                                            "failed to load module dependencies (continuing)");
                     }
 
-                    if let Err(e) =
-                        guarded_sysfs::insmod_guarded(&patched_path, guarded_sysfs::INSMOD_TIMEOUT)
-                    {
+                    if let Err(e) = guarded_sysfs::insmod_guarded_with_params(
+                        &patched_path,
+                        &ctx.config.module_params,
+                        guarded_sysfs::INSMOD_TIMEOUT,
+                    ) {
                         ctx.steps.push(HandoffStep {
                             name: "module_prep".into(),
                             ok: false,
@@ -400,8 +402,9 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
 
                     if !deferred_insmod {
                         let patched_path = PathBuf::from(&pr.patched_path);
-                        if let Err(e) = guarded_sysfs::insmod_guarded(
+                        if let Err(e) = guarded_sysfs::insmod_guarded_with_params(
                             &patched_path,
+                            &ctx.config.module_params,
                             guarded_sysfs::INSMOD_TIMEOUT,
                         ) {
                             ctx.steps.push(HandoffStep {
@@ -477,7 +480,10 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
                 duration_ms: t.elapsed().as_millis() as u64,
             });
         }
-        ModuleSourceConfig::System => match kmod::ensure_module_loaded(&ctx.config.module_name) {
+        ModuleSourceConfig::System => match kmod::ensure_module_loaded_with_params(
+            &ctx.config.module_name,
+            &ctx.config.module_params,
+        ) {
             Ok(freshly_loaded) => {
                 ctx.module_loaded = freshly_loaded;
                 ctx.steps.push(HandoffStep {

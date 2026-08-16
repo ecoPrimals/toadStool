@@ -17,7 +17,7 @@ mod memory;
 mod system;
 
 pub use device_io::{
-    LinuxDeviceFile, LinuxDeviceIo, mknod_char, open_path, seek_end,
+    LinuxDeviceFile, LinuxDeviceIo, mknod_char, open_path, open_path_wronly, seek_end,
 };
 pub use event::{LinuxEvent, LinuxEventNotifier};
 pub use ipc::{

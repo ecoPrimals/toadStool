@@ -10,10 +10,9 @@ use super::types::{PatchError, PatchSet, PatchStrategy, PatchTarget};
 fn volta_patch_set_targets_correct_functions() {
     let ps = PatchSet::volta_warm_handoff();
     assert_eq!(ps.module_name, "nouveau");
-    assert_eq!(ps.targets.len(), 8);
+    assert_eq!(ps.targets.len(), 7);
 
     let names: Vec<&str> = ps.targets.iter().map(|t| t.symbol.as_str()).collect();
-    assert!(names.contains(&"gf100_gr_fini"));
     assert!(names.contains(&"nvkm_pmu_fini"));
     assert!(names.contains(&"nvkm_mc_disable"));
     assert!(names.contains(&"nvkm_mc_reset"));
@@ -23,11 +22,27 @@ fn volta_patch_set_targets_correct_functions() {
     assert!(names.contains(&"g84_therm_fini"));
 }
 
+/// `gf100_gr_fini` releases the FECS falcon on nouveau 1.4.2. NOPing it
+/// leaves the falcon acquired, so GR init fails with -16 and teardown
+/// page-faults in `nve0_bo_move_copy` — a kernel oops that kills the
+/// session and leaves nouveau an unremovable zombie.
+#[test]
+fn nouveau_patch_sets_never_nop_gr_fini() {
+    for ps in [PatchSet::volta_warm_handoff(), PatchSet::kepler_warm_handoff()] {
+        let names: Vec<&str> = ps.targets.iter().map(|t| t.symbol.as_str()).collect();
+        assert!(
+            !names.contains(&"gf100_gr_fini"),
+            "{} must not NOP gf100_gr_fini (FECS falcon release)",
+            ps.name
+        );
+    }
+}
+
 #[test]
 fn kepler_patch_set_targets_correct_functions() {
     let ps = PatchSet::kepler_warm_handoff();
     assert_eq!(ps.module_name, "nouveau");
-    assert_eq!(ps.targets.len(), 5);
+    assert_eq!(ps.targets.len(), 4);
 }
 
 #[test]
@@ -138,7 +153,7 @@ fn patch_strategy_serde_roundtrip() {
     let json = serde_json::to_string(&ps).unwrap();
     let back: PatchSet = serde_json::from_str(&json).unwrap();
     assert_eq!(back.name, "volta_warm_handoff");
-    assert_eq!(back.targets.len(), 8);
+    assert_eq!(back.targets.len(), 7);
 }
 
 #[test]

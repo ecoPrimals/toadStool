@@ -9,6 +9,15 @@ use super::types::{HandoffConfig, ModuleSourceConfig};
 /// Titan V MUST use this version regardless of what's installed.
 const NVIDIA_470_DKMS_VERSION: &str = "470.256.02";
 
+/// Headless nouveau: initialize the hardware (HBM2 training, PMU/falcon
+/// boot via nvkm) without touching the display subsystem.
+///
+/// `modeset=2` is nouveau's headless mode — `modeset=0` disables the driver
+/// entirely so it never binds, and the default (auto) registers a DRM/KMS
+/// node, which makes the display manager re-enumerate and drop the session.
+/// `runpm=0` keeps the GPU out of D3cold so the warm state survives to the swap.
+const NOUVEAU_HEADLESS_PARAMS: &str = "modeset=2 runpm=0";
+
 impl HandoffConfig {
     /// Create a config for Titan V warm handoff via patched nouveau.
     #[must_use]
@@ -26,6 +35,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(70),
+            module_params: NOUVEAU_HEADLESS_PARAMS.into(),
         }
     }
 
@@ -42,6 +52,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(35),
+            module_params: NOUVEAU_HEADLESS_PARAMS.into(),
         }
     }
 
@@ -66,6 +77,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(70),
+            module_params: String::new(),
         }
     }
 
@@ -96,6 +108,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(70),
+            module_params: String::new(),
         }
     }
 
@@ -126,6 +139,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(70),
+            module_params: String::new(),
         }
     }
 
@@ -149,6 +163,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(70),
+            module_params: String::new(),
         }
     }
 
@@ -171,6 +186,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: false,
             sm_version: Some(70),
+            module_params: String::new(),
         }
     }
 
@@ -210,6 +226,7 @@ impl HandoffConfig {
             patch_set_override: None,
             skip_preflight: true,
             sm_version: None,
+            module_params: String::new(),
         }
     }
 

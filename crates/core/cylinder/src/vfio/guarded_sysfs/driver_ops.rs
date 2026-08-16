@@ -8,8 +8,8 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use toadstool_hw_safe::{
-    ForkResult, LinuxDeviceIo, Pid, WaitResult, exit_group, fork, kill_process, open_path,
-    waitpid_nohang,
+    ForkResult, LinuxDeviceIo, Pid, WaitResult, exit_group, fork, kill_process,
+    open_path_wronly, waitpid_nohang,
 };
 
 use super::GuardedSysfsError;
@@ -46,7 +46,7 @@ fn fork_sysfs_child(path_c: &CString, value: &[u8]) -> Result<Pid, GuardedSysfsE
         }),
         Ok(ForkResult::Child) => {
             let path = Path::new(std::ffi::OsStr::from_bytes(path_c.as_bytes()));
-            let fd = match open_path(path, true, false) {
+            let fd = match open_path_wronly(path) {
                 Ok(fd) => fd,
                 Err(e) => {
                     let code = e.raw_os_error().unwrap_or(1);

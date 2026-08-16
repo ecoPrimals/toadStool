@@ -38,6 +38,12 @@ pub(crate) struct PipelineContext<'a> {
     pub probe_path: String,
     pub handoff_guard: Option<HandoffGuard>,
     pub irq_clutch_engaged: bool,
+    /// Armed in preflight, before any module is loaded.
+    ///
+    /// The baseline must predate the seeder insmod: a DRM node registers
+    /// during module load, so a watch armed at settle would capture the
+    /// hazard as its own baseline and never fire.
+    pub drm_watch: Option<crate::vfio::session_safety::DrmNodeWatch>,
     heartbeat_fn: Option<&'a (dyn Fn() + Send)>,
     signal_fn: Option<&'a (dyn Fn(PipelineSignal) + Send)>,
 }
@@ -128,6 +134,7 @@ fn execute_handoff_inner(
         probe_path: String::new(),
         handoff_guard: None,
         irq_clutch_engaged: false,
+        drm_watch: None,
         heartbeat_fn: heartbeat_ref,
         signal_fn: signal_ref,
     };

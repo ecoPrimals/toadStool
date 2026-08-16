@@ -9,6 +9,11 @@ use super::reference::reference_module_offsets;
 
 /// Minimal C source that stores `offsetof(struct module, init)` and
 /// `offsetof(struct module, exit)` in a `.note.module_offsets` ELF section.
+///
+/// The attribute must be attached to the *variable*, not wedged between the
+/// struct's closing brace and the variable name. In that position GCC 13
+/// binds it to the type and drops it with only a `-Wattributes` warning, so
+/// the section is silently never emitted and the ELF read fails downstream.
 const PROBE_SOURCE: &str = r#"
 #include <linux/module.h>
 #include <linux/init.h>
@@ -17,7 +22,10 @@ const PROBE_SOURCE: &str = r#"
 struct probe_offsets {
     unsigned long init_off;
     unsigned long exit_off;
-} __attribute__((used, section(".note.module_offsets"))) offsets = {
+};
+
+static struct probe_offsets offsets
+    __attribute__((used, section(".note.module_offsets"))) = {
     .init_off = offsetof(struct module, init),
     .exit_off = offsetof(struct module, exit),
 };
