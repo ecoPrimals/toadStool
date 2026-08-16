@@ -125,7 +125,11 @@ pub(crate) fn run(
         });
     } else {
         let t = Instant::now();
-        match pgraph_engine_reset(bar0) {
+        match pgraph_engine_reset(
+            bar0,
+            power,
+            crate::vfio::sovereign_stages::DevinitState::NotRun,
+        ) {
             Ok(detail) => {
                 ctx.stages.push(StageResult {
                     name: "pgraph_reset".into(),

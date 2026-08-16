@@ -96,7 +96,13 @@ pub(super) fn handle_catalyst_path(
             bdf = %bdf,
             "catalyst: FECS not alive — attempting PGRAPH engine reset"
         );
-        match crate::vfio::sovereign_stages::pgraph_engine_reset(bar0) {
+        match crate::vfio::sovereign_stages::pgraph_engine_reset(
+            bar0,
+            &profile.power_safety,
+            // Catalyst means a vendor driver booted the device first, so its
+            // devinit has already run and PGRAPH is safe to clock.
+            crate::vfio::sovereign_stages::DevinitState::Complete,
+        ) {
             Ok(detail) => tracing::info!(%detail, "catalyst: PGRAPH reset"),
             Err(e) => tracing::warn!(%e, "catalyst: PGRAPH reset failed"),
         }

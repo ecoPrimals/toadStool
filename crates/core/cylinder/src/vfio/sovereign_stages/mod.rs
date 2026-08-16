@@ -25,6 +25,7 @@ pub(crate) use memory::{
     run_hbm2_training,
 };
 pub(crate) use pmc::{
+    DevinitState,
     PMC_ENABLE, PmcEnableResult, bar0_probe, pgraph_engine_reset, pmc_enable, pmc_enable_full,
     pmc_enable_rollback,
 };

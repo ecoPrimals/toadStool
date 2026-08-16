@@ -46,11 +46,57 @@ pub(crate) fn run_hbm2_training(
 /// trained after PCI reset.  This function reads the VBIOS, runs the
 /// DEVINIT script interpreter (via PMU falcon or host-side fallback),
 /// and verifies PRAMIN returns valid data afterward.
+///
+/// # Why the devinit status register is consulted before PRAMIN
+///
+/// [`pramin_sentinel_test`] is not a read. It steers `BAR0_WINDOW` and then
+/// **writes** `0xCAFEBEEF` into VRAM through the PRAMIN aperture. On a card
+/// whose GDDR5 has never been trained, that is a store into memory with no
+/// configured timings, through a window register that on a cold K80 lives in
+/// a PRI-faulted PBUS ring (`0xbad0011f`).
+///
+/// This function used to run that probe *first*, to decide whether training
+/// was needed — the same circularity as resetting an unresponsive device to
+/// make it respond. You cannot probe VRAM to learn whether VRAM works.
+///
+/// Observed 2026-08-16 on a Tesla K80: the die answered through
+/// `boot_state_probe` and was all-ones by the time devinit was consulted a
+/// few instructions later. Only a reboot recovered it.
+///
+/// `DEVINIT_STATUS` is the right question and is answerable on a cold card —
+/// measured `0x00000000` on both K80 dies, `0x00000002` on a POSTed Titan V.
+/// So: ask the register, run devinit if it says POST is needed, and probe
+/// PRAMIN only once the memory it addresses has been brought up.
 pub(crate) fn gddr5_training(bar0: &MappedBar, bdf: &str) -> Result<String, SovereignStagesError> {
     use crate::vfio::channel::devinit;
+    use crate::vfio::channel::devinit::DevinitStatus;
 
-    if pramin_sentinel_test(bar0) {
-        return Ok("GDDR5 already trained (PRAMIN sentinel OK)".into());
+    let status = DevinitStatus::probe(bar0);
+
+    if !status.readable {
+        // Nothing below is answerable, and a PRAMIN write would be a store
+        // into a device that is not there.
+        return Err(SovereignStagesError::Devinit(
+            crate::error::DevinitError::StatusUnreadable {
+                devinit_reg: status.devinit_reg,
+            },
+        ));
+    }
+
+    if !status.needs_post {
+        // POST is done, so VRAM is trained and the aperture is safe to touch.
+        if pramin_sentinel_test(bar0) {
+            return Ok("GDDR5 already trained (POST complete, PRAMIN sentinel OK)".into());
+        }
+        tracing::warn!(
+            devinit_reg = format!("{:#010x}", status.devinit_reg),
+            "devinit reports POST complete but PRAMIN is dead — re-running devinit"
+        );
+    } else {
+        tracing::info!(
+            devinit_reg = format!("{:#010x}", status.devinit_reg),
+            "GDDR5 cold per devinit status — skipping PRAMIN probe until memory is up"
+        );
     }
 
     tracing::info!("GDDR5 cold detected — running DEVINIT for memory training");
@@ -64,6 +110,14 @@ pub(crate) fn gddr5_training(bar0: &MappedBar, bdf: &str) -> Result<String, Sove
             }
         }
         Ok(false) => {
+            // devinit declined. If we read "POST needed" on entry, the two
+            // readings disagree and we do not know the state of memory —
+            // so we must not write into it to find out. Probing PRAMIN here
+            // is what wedged K80 die 2 on 2026-08-16, after the entry guard
+            // above had correctly kept us away from it moments earlier.
+            if status.needs_post {
+                return Err(SovereignStagesError::Gddr5PraminDeadDevinitSkipped);
+            }
             if pramin_sentinel_test(bar0) {
                 Ok("DEVINIT reports already done — PRAMIN verified".into())
             } else {
@@ -208,6 +262,18 @@ pub(crate) fn dispatch_memory_training(
     }
 }
 
+/// # This is a destructive probe, despite the name
+///
+/// It steers `BAR0_WINDOW` and **writes** `0xCAFEBEEF` into VRAM, then reads
+/// it back. It is not safe to call on a device whose memory controller has
+/// not been brought up: on a cold Kepler that is a store into untrained
+/// GDDR5 through a window register in a PRI-faulted PBUS ring, and it wedges
+/// the die until the next reboot. Both K80 dies were lost this way on
+/// 2026-08-16.
+///
+/// Establish that memory is up — `DEVINIT_STATUS` bit 1, or a successful
+/// devinit — *before* calling this. Never call it to decide whether memory
+/// needs training; that is the question it cannot survive asking.
 pub(crate) fn pramin_sentinel_test(bar0: &MappedBar) -> bool {
     use crate::vfio::memory::{MemoryRegion, PraminRegion};
 
@@ -247,4 +313,42 @@ pub(crate) fn is_warm_gpu(pmc_enable: u32, bar0: &MappedBar) -> bool {
         return false;
     }
     pramin_sentinel_test(bar0)
+}
+
+#[cfg(test)]
+mod gddr5_ordering_tests {
+    use crate::nv::register_read::RegisterRead;
+
+    /// Mirror of the ordering rule in `gddr5_training`: may the PRAMIN
+    /// aperture be touched, given only the devinit status register?
+    fn pramin_probe_allowed(devinit_reg: u32) -> bool {
+        let read = RegisterRead::classify(devinit_reg);
+        match read.valid() {
+            None => false,             // unreadable: the device is not there
+            Some(v) => (v & 2) != 0,   // POST complete: VRAM is up
+        }
+    }
+
+    /// The K80 wedge. A cold die reads 0x0 — POST needed, memory untrained.
+    /// Writing 0xCAFEBEEF through PRAMIN here is what killed both dies.
+    #[test]
+    fn cold_kepler_must_not_probe_pramin() {
+        assert!(
+            !pramin_probe_allowed(0x0000_0000),
+            "untrained GDDR5 must not be written to in order to test it"
+        );
+    }
+
+    /// A POSTed Titan V reads 0x2 — the aperture is backed by live memory.
+    #[test]
+    fn posted_device_may_probe_pramin() {
+        assert!(pramin_probe_allowed(0x0000_0002));
+    }
+
+    /// An unresponsive device is the worst case: a store into nothing.
+    #[test]
+    fn unreadable_status_must_not_probe_pramin() {
+        assert!(!pramin_probe_allowed(0xFFFF_FFFF));
+        assert!(!pramin_probe_allowed(0xBADF_5040));
+    }
 }

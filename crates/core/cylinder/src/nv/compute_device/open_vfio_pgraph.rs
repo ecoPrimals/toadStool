@@ -87,7 +87,13 @@ pub(super) fn handle_pgraph_ungating_and_fecs_setup(
             } else {
                 tracing::warn!("GPC PRI still gated — full destructive GR reset + PIO FECS boot");
 
-                match crate::vfio::sovereign_stages::pgraph_engine_reset(bar0) {
+                match crate::vfio::sovereign_stages::pgraph_engine_reset(
+                    bar0,
+                    &profile.power_safety,
+                    // Reached only after init has run; this is fault recovery
+                    // on a powered engine, not a pre-devinit ungate.
+                    crate::vfio::sovereign_stages::DevinitState::Complete,
+                ) {
                     Ok(detail) => tracing::info!(%detail, "ungating: PGRAPH engine reset"),
                     Err(e) => tracing::warn!(%e, "ungating: PGRAPH engine reset failed"),
                 }
