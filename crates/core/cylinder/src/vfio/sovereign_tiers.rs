@@ -223,6 +223,13 @@ pub struct TierEvidence {
     /// D3hot and classified as `cold` with `pmc_popcount=32`, an impossible
     /// pairing that only makes sense as a failed read.
     pub bus_readable: bool,
+    /// Whether FECS is live, meaning shader work can actually be dispatched.
+    ///
+    /// Reported alongside the tier so the specific blocker is visible. A
+    /// Titan V that reaches warm infrastructure with `fecs_alive: false` is
+    /// held up by the FECS PRI fault, not by GPC or CE, and reading that off
+    /// the tier alone would require guessing.
+    pub fecs_alive: bool,
 }
 
 /// Whether a PMC_ENABLE value indicates the bus did not answer.
@@ -261,6 +268,7 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
             tpc_status: None,
             tpc_alive: false,
             bus_readable: false,
+            fecs_alive: false,
         };
     }
 
@@ -280,13 +288,17 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
             tpc_status: None,
             tpc_alive: false,
             bus_readable: true,
+            fecs_alive: false,
         };
     }
 
     let pramin_accessible = crate::vfio::sovereign_stages::pramin_sentinel_test(bar0);
 
-    // Check FECS liveness
-    let fecs_pc = bar0.read_u32(0x409624).ok(); // FECS_BASE + PC
+    // Check FECS liveness. This gates Tier 2: FECS is the engine that
+    // dispatches shader work, so "warm compute" without it is not a thing.
+    let fecs_read = crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(0x409624));
+    let fecs_alive = fecs_read.is_alive();
+    let fecs_pc = fecs_read.raw(); // FECS_BASE + PC
 
     // Check GPC power state — primary check via broadcast, fallback to per-unit
     let gpc_enables = bar0.read_u32(0x41A004).ok(); // GPC broadcast status
@@ -348,9 +360,16 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
         !crate::nv::pri::is_pri_fault(val) && val != 0
     });
 
-    // Tier 2 requires GPC + CE + TPC all alive for actual dispatch.
-    // If GPC/CE alive but TPC missing, we stay at Tier 1 — the TPC wall.
-    let tier = if gpc_alive && ce_alive && tpc_alive {
+    // Tier 2 means shader work can actually be dispatched, which needs the
+    // GPC fabric, a copy engine, TPC stations, *and* FECS to run it.
+    //
+    // FECS was read but not consulted until 2026-08-16, when a Titan V
+    // classified as Tier 2 "full shader dispatch" with fecs_pc=0xBADF_5040.
+    // GPC and CE had both passed only via their fallback scans while their
+    // primary registers were faulted, so three weak signals outvoted the one
+    // that decides whether dispatch is possible at all.
+    let dispatch_ready = gpc_alive && ce_alive && tpc_alive && fecs_alive;
+    let tier = if dispatch_ready {
         SovereignTier::WarmCompute
     } else if pramin_accessible {
         SovereignTier::WarmInfrastructure
@@ -380,6 +399,7 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
         tpc_status,
         tpc_alive,
         bus_readable: true,
+        fecs_alive,
     }
 }
 
@@ -414,6 +434,7 @@ pub fn classify_tier_for_profile(
             tpc_status: None,
             tpc_alive: false,
             bus_readable: false,
+            fecs_alive: false,
         };
     }
 
@@ -432,12 +453,18 @@ pub fn classify_tier_for_profile(
             tpc_status: None,
             tpc_alive: false,
             bus_readable: true,
+            fecs_alive: false,
         };
     }
 
     let pramin_accessible = crate::vfio::sovereign_stages::pramin_sentinel_test(bar0);
 
-    let fecs_pc = bar0.read_u32(profile.fecs_pc_offset as usize).ok();
+    // FECS gates Tier 2 here for the same reason as the Volta path: it is
+    // the engine that dispatches shader work.
+    let fecs_read =
+        crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(profile.fecs_pc_offset as usize));
+    let fecs_alive = fecs_read.is_alive();
+    let fecs_pc = fecs_read.raw();
     let gpc_enables = bar0.read_u32(profile.gpc_broadcast_offset as usize).ok();
     let gpc_alive = {
         let bcast_alive = gpc_enables
@@ -482,7 +509,8 @@ pub fn classify_tier_for_profile(
         !crate::nv::pri::is_pri_fault(val) && val != 0
     });
 
-    let tier = if gpc_alive && ce_alive && tpc_alive {
+    let dispatch_ready = gpc_alive && ce_alive && tpc_alive && fecs_alive;
+    let tier = if dispatch_ready {
         SovereignTier::WarmCompute
     } else if pramin_accessible {
         SovereignTier::WarmInfrastructure
@@ -511,6 +539,7 @@ pub fn classify_tier_for_profile(
         tpc_status,
         tpc_alive,
         bus_readable: true,
+        fecs_alive,
     }
 }
 
@@ -579,5 +608,81 @@ mod bus_read_tests {
         assert_eq!(v.count_ones(), 32);
         assert!(v.count_ones() >= 8, "would bypass the cold guard");
         assert!(is_bus_read_failure(v), "must be caught before that guard");
+    }
+}
+
+#[cfg(test)]
+mod dispatch_gating_tests {
+    use super::*;
+    use crate::nv::register_read::RegisterRead;
+
+    /// The tier rule, extracted so it can be asserted without hardware.
+    /// Must mirror the expression in both classifiers.
+    fn tier_for(
+        gpc_alive: bool,
+        ce_alive: bool,
+        tpc_alive: bool,
+        fecs_alive: bool,
+        pramin_accessible: bool,
+    ) -> SovereignTier {
+        if gpc_alive && ce_alive && tpc_alive && fecs_alive {
+            SovereignTier::WarmCompute
+        } else if pramin_accessible {
+            SovereignTier::WarmInfrastructure
+        } else {
+            SovereignTier::Cold
+        }
+    }
+
+    /// Exactly the Titan V state captured on 2026-08-16: GPC and CE alive
+    /// only via fallback scans, TPC alive, PRAMIN accessible, and FECS at
+    /// 0xBADF_5040. This reported "Tier 2: full shader dispatch".
+    #[test]
+    fn fecs_pri_fault_cannot_reach_warm_compute() {
+        assert!(RegisterRead::classify(0xBADF_5040).is_pri_fault());
+        assert_eq!(
+            tier_for(true, true, true, /* fecs */ false, true),
+            SovereignTier::WarmInfrastructure,
+            "dead FECS must not be classified as dispatch-capable"
+        );
+    }
+
+    /// The tier is only Tier 2 when every unit in the dispatch path is up.
+    #[test]
+    fn warm_compute_requires_the_whole_dispatch_path() {
+        assert_eq!(
+            tier_for(true, true, true, true, true),
+            SovereignTier::WarmCompute
+        );
+        for (gpc, ce, tpc, fecs) in [
+            (false, true, true, true),
+            (true, false, true, true),
+            (true, true, false, true),
+            (true, true, true, false),
+        ] {
+            assert_eq!(
+                tier_for(gpc, ce, tpc, fecs, true),
+                SovereignTier::WarmInfrastructure,
+                "missing unit must block Tier 2 (gpc={gpc} ce={ce} tpc={tpc} fecs={fecs})"
+            );
+        }
+    }
+
+    /// Without PRAMIN there is no warm infrastructure to claim either.
+    #[test]
+    fn no_pramin_falls_to_cold() {
+        assert_eq!(
+            tier_for(true, true, true, false, false),
+            SovereignTier::Cold
+        );
+    }
+
+    /// A gated FECS is not a live FECS, however non-zero it looks.
+    #[test]
+    fn fecs_liveness_uses_typed_read() {
+        assert!(!RegisterRead::classify(0xBADF_5040).is_alive());
+        assert!(!RegisterRead::classify(0xFFFF_FFFF).is_alive());
+        assert!(!RegisterRead::classify(0).is_alive());
+        assert!(RegisterRead::classify(0x0000_1234).is_alive());
     }
 }

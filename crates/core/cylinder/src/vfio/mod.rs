@@ -46,6 +46,7 @@ pub mod pci_discovery;
 pub mod pmu_investigate;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod reagent;
+pub mod power;
 pub mod session_safety;
 #[expect(missing_docs, reason = "VFIO hardware module — docs tracked as D-DOC")]
 pub mod sovereign_handoff;

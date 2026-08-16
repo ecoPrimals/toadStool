@@ -230,8 +230,9 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         let t = Instant::now();
         let pmc_check =
             crate::vfio::device::MappedBar::from_sysfs_rw(&ctx.config.bdf, 4096).map(|bar| {
-                let pmc = bar.read_u32(pmc::ENABLE as usize).unwrap_or(0);
-                let popcount = pmc.count_ones();
+                let pmc_read = crate::nv::register_read::RegisterRead::from_result(bar.read_u32(pmc::ENABLE as usize));
+                let pmc = pmc_read.raw().unwrap_or(0);
+                let popcount = pmc_read.count_ones().unwrap_or(0);
                 (pmc, popcount)
             });
         match pmc_check {

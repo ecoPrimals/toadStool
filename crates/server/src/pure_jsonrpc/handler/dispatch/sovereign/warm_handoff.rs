@@ -73,18 +73,44 @@ pub(crate) async fn sovereign_warm_handoff(
     );
 
     // Read PMC_ENABLE before releasing anchor to detect cold GPU.
+    //
+    // Wake first. A device in D3hot answers every BAR0 read with all-ones,
+    // and 0xFFFF_FFFF has a popcount of 32 — so a sleeping GPU used to be
+    // declared warm here, which suppressed SBR and, on the catalyst path,
+    // fed the PRI-fault check below with garbage that triggered a spurious
+    // bus reset.
     let gpu_warm = {
+        use toadstool_cylinder::nv::register_read::RegisterRead;
         use toadstool_cylinder::vfio::device::MappedBar;
+        use toadstool_cylinder::vfio::power;
+
+        power::wake_to_d0(bdf);
+
         if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
-            let pmc = bar.read_u32(0x200).unwrap_or(0);
-            let popcount = pmc.count_ones();
-            tracing::info!(
-                bdf,
-                pmc = format_args!("0x{pmc:08x}"),
-                popcount,
-                "pre-release PMC_ENABLE"
-            );
-            popcount >= 10
+            let read = RegisterRead::from_result(bar.read_u32(0x200));
+            match read.valid() {
+                Some(pmc) => {
+                    let popcount = pmc.count_ones();
+                    tracing::info!(
+                        bdf,
+                        pmc = format_args!("0x{pmc:08x}"),
+                        popcount,
+                        "pre-release PMC_ENABLE"
+                    );
+                    popcount >= 10
+                }
+                None => {
+                    // Unreadable is not warm. Assuming warm here would skip
+                    // the reset that a genuinely wedged GPU needs.
+                    tracing::warn!(
+                        bdf,
+                        read = read.describe(),
+                        power_state = power::power_state(bdf).as_str(),
+                        "pre-release PMC_ENABLE unreadable — treating GPU as not-warm"
+                    );
+                    false
+                }
+            }
         } else {
             true
         }
@@ -105,9 +131,19 @@ pub(crate) async fn sovereign_warm_handoff(
     if is_catalyst_strategy && gpu_warm {
         use toadstool_cylinder::vfio::device::MappedBar;
         if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
-            let pri_intr = bar.read_u32(0x0012_0058).unwrap_or(0);
-            let fecs_cpuctl = bar.read_u32(0x0040_9100).unwrap_or(0);
-            let is_pri_faulted = pri_intr != 0 || (fecs_cpuctl & 0xBADF_0000 == 0xBADF_0000);
+            use toadstool_cylinder::nv::register_read::RegisterRead;
+
+            let pri_read = RegisterRead::from_result(bar.read_u32(0x0012_0058));
+            let fecs_read = RegisterRead::from_result(bar.read_u32(0x0040_9100));
+
+            // Only a real non-zero interrupt status counts as a fault. An
+            // unreadable device reads all-ones on both registers, which the
+            // old `!= 0` test scored as degraded and answered with an SBR.
+            let is_pri_faulted =
+                pri_read.valid().is_some_and(|v| v != 0) || fecs_read.is_pri_fault();
+
+            let pri_intr = pri_read.raw().unwrap_or(0);
+            let fecs_cpuctl = fecs_read.raw().unwrap_or(0);
             if is_pri_faulted {
                 tracing::warn!(
                     bdf,

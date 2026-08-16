@@ -191,8 +191,9 @@ pub fn probe_boot_state(
     bar0: &MappedBar,
     detect_falcon: Option<FalconDetector<'_>>,
 ) -> SovereignBootState {
-    let pmc_enable = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
-    let pmc_popcount = pmc_enable.count_ones();
+    let pmc_read = crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(PMC_ENABLE));
+    let pmc_enable = pmc_read.raw().unwrap_or(0);
+    let pmc_popcount = pmc_read.count_ones().unwrap_or(0);
 
     if pmc_popcount < 8 {
         let reason = classify_cold_reason(pmc_enable);

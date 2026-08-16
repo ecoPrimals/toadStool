@@ -17,8 +17,10 @@ pub(super) fn probe_fecs_for_deferred_boot(
 ) {
     use crate::vfio::channel::registers::falcon;
 
-    let pmc_before = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
-    if pmc_before.count_ones() < 8 {
+    let pmc_before_read = crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(pmc::ENABLE as usize));
+    let pmc_before = pmc_before_read.raw().unwrap_or(0);
+    // An unreadable device counts as zero engines, not 32.
+    if pmc_before_read.count_ones().unwrap_or(0) < 8 {
         *pmc_was_cold = true;
         tracing::info!(
             bdf = %bdf,

@@ -132,8 +132,9 @@ impl TrialResult {
     pub fn probe(bar0: &MappedBar, bdf: &str, driver: &str, scan_offsets: &[usize]) -> Self {
         let snapshot = Bar0Snapshot::capture(bar0, bdf, &format!("{driver}-warm"), scan_offsets);
 
-        let pmc_enable = bar0.read_u32(0x200).unwrap_or(0);
-        let active_engines = pmc_enable.count_ones();
+        let pmc_read = crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(0x200));
+        let pmc_enable = pmc_read.raw().unwrap_or(0);
+        let active_engines = pmc_read.count_ones().unwrap_or(0);
 
         // PGRAPH status register
         let pgraph_status = bar0.read_u32(0x0040_0700).unwrap_or(0xDEAD_DEAD);

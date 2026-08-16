@@ -129,6 +129,7 @@ fn handoff_result_display_success() {
             tpc_status: None,
             tpc_alive: false,
             bus_readable: true,
+            fecs_alive: true,
         }),
         module_loaded: true,
         module_unloaded: true,

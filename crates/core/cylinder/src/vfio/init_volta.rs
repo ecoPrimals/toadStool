@@ -251,6 +251,7 @@ impl BootPipeline for VoltaInit {
         let ptimer_hi = bar.read_u32(0x0000_9410).unwrap_or(0);
         let pmc = bar.read_u32(NV_PMC_ENABLE).unwrap_or(0);
         let ptimer_alive = (ptimer_lo | ptimer_hi) != 0;
-        Ok(ptimer_alive && pmc.count_ones() >= 8)
+        // A sleeping device reads all-ones; that is not eight live engines.
+        Ok(ptimer_alive && crate::nv::register_read::RegisterRead::classify(pmc).count_ones().unwrap_or(0) >= 8)
     }
 }

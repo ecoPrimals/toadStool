@@ -82,11 +82,16 @@ impl NvVfioComputeDevice {
         }
 
         let pmc_enable = bar0.read(pmc::ENABLE as usize);
-        if pmc_enable.count_ones() < 8 {
+        // An unreadable device reads all-ones, whose popcount of 32 clears
+        // every warmth threshold below. Count zero engines for it instead.
+        let pmc_read = crate::nv::register_read::RegisterRead::classify(pmc_enable);
+        let pmc_popcount = pmc_read.count_ones().unwrap_or(0);
+        if pmc_popcount < 8 {
             tracing::debug!(
                 bdf = %self.bdf,
                 pmc_enable = format!("{pmc_enable:#010x}"),
-                popcount = pmc_enable.count_ones(),
+                popcount = pmc_popcount,
+                state = pmc_read.describe(),
                 "cold GPU: PMC_ENABLE popcount < 8"
             );
             return false;
@@ -128,12 +133,12 @@ impl NvVfioComputeDevice {
             halted,
             in_hreset,
             running,
-            pmc_popcount = pmc_enable.count_ones(),
+            pmc_popcount,
             "FECS warm-state probe (CPUCTL_ALIAS)"
         );
 
         let preserved_warm = halted && fecs_mb0 != 0;
-        let live_warm = running && pmc_enable.count_ones() >= 16;
+        let live_warm = running && pmc_popcount >= 16;
 
         // Detect post-catalyst state by FECS PC range. RM firmware PCs live in
         // the 0x18b3xxxx range; nouveau firmware idles at ~0x6000. When FECS PC
@@ -142,7 +147,11 @@ impl NvVfioComputeDevice {
         //
         // On Volta HS, CPUCTL_ALIAS may read 0x00000000 (HS security gate zeros
         // the register), so we cannot rely on the halted flag for detection.
-        let is_catalyst_pc = fecs_pc >= 0x1000_0000 && pmc_enable.count_ones() >= 16;
+        // fecs_pc must be a real read: 0xFFFF_FFFF also satisfies the RM
+        // range test, so an unreadable FECS would look like a catalyst PC.
+        let is_catalyst_pc = crate::nv::register_read::RegisterRead::classify(fecs_pc).is_valid()
+            && fecs_pc >= 0x1000_0000
+            && pmc_popcount >= 16;
 
         if preserved_warm {
             tracing::info!(
@@ -159,7 +168,7 @@ impl NvVfioComputeDevice {
         if live_warm {
             tracing::info!(
                 bdf = %self.bdf,
-                pmc_popcount = pmc_enable.count_ones(),
+                pmc_popcount,
                 fecs_pc = format!("{fecs_pc:#010x}"),
                 catalyst = is_catalyst_pc,
                 "FECS live-warm (still running, NOP'd teardown) — compute-ready"
@@ -181,7 +190,7 @@ impl NvVfioComputeDevice {
             tracing::info!(
                 bdf = %self.bdf,
                 fecs_pc = format!("{fecs_pc:#010x}"),
-                pmc_popcount = pmc_enable.count_ones(),
+                pmc_popcount,
                 "FECS catalyst-warm (RM firmware, TPC state preserved) — compute-ready"
             );
             self.fecs_ready = true;
@@ -192,7 +201,7 @@ impl NvVfioComputeDevice {
         tracing::debug!(
             bdf = %self.bdf,
             "FECS not warm (halted={halted}, mb0={fecs_mb0:#x}, pmc_pop={})",
-            pmc_enable.count_ones(),
+            pmc_popcount,
         );
         false
     }

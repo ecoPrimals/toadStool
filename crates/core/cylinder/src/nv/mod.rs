@@ -24,6 +24,7 @@ pub mod iova;
 pub mod nv_gsp_bridge;
 pub mod pmu_init;
 pub mod pri;
+pub mod register_read;
 #[expect(missing_docs, reason = "NV pushbuf — docs tracked as D-DOC")]
 pub mod pushbuf;
 

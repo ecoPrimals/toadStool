@@ -136,8 +136,9 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         // Map full 16MB BAR0 — FECS is at 0x409xxx, TPC at 0x504xxx.
         match crate::vfio::device::MappedBar::from_sysfs_rw(&ctx.config.bdf, 16 * 1024 * 1024) {
             Ok(bar0) => {
-                let pmc = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
-                let popcount = pmc.count_ones();
+                let pmc_read = crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(pmc::ENABLE as usize));
+                let pmc = pmc_read.raw().unwrap_or(0);
+                let popcount = pmc_read.count_ones().unwrap_or(0);
                 if popcount < ctx.hw.pmc_warm_threshold {
                     tracing::error!(
                         bdf = ctx.config.bdf.as_str(),
