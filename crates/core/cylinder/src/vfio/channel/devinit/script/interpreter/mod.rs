@@ -36,9 +36,47 @@ pub(crate) enum BiosGeneration {
     MaxwellPlus,
 }
 
+/// Everything outside the interpreter: the registers it drives and the clock
+/// it waits on.
+///
+/// The VBIOS interpreter exists to be *wrong* in interesting ways — a misparse
+/// makes it write plausible-looking garbage to real registers, which cost
+/// three Tesla K80 dies on 2026-08-16. Debugging that against hardware means a
+/// die per iteration and a reboot to get it back.
+///
+/// Behind this trait the same interpreter runs against a recorded bus with a
+/// real ROM dump, in microseconds, with the writes captured instead of
+/// applied. `delay_us` is here for the same reason: one Volta script asks for
+/// ten seconds of sleeps, which is fine on hardware and absurd in a test.
+pub trait ScriptBus {
+    /// Read a BAR0 register. `None` if the access could not be performed.
+    fn read_u32(&self, offset: usize) -> Option<u32>;
+
+    /// Write a BAR0 register. Failures are not reported: the interpreter has
+    /// no recovery for them beyond the PRI backpressure it already tracks.
+    fn write_u32(&self, offset: usize, value: u32);
+
+    /// Wait, as the script asked.
+    fn delay_us(&self, usec: u64);
+}
+
+impl ScriptBus for MappedBar {
+    fn read_u32(&self, offset: usize) -> Option<u32> {
+        MappedBar::read_u32(self, offset).ok()
+    }
+
+    fn write_u32(&self, offset: usize, value: u32) {
+        let _ = MappedBar::write_u32(self, offset, value);
+    }
+
+    fn delay_us(&self, usec: u64) {
+        std::thread::sleep(std::time::Duration::from_micros(usec));
+    }
+}
+
 /// State for the VBIOS init script interpreter.
 struct VbiosInterpreter<'a> {
-    bar0: &'a MappedBar,
+    bar0: &'a dyn ScriptBus,
     rom: &'a [u8],
     offset: usize,
     execute: bool,
@@ -64,13 +102,13 @@ struct VbiosInterpreter<'a> {
 }
 
 impl<'a> VbiosInterpreter<'a> {
-    fn new(bar0: &'a MappedBar, rom: &'a [u8], start: usize, bios_gen: BiosGeneration) -> Self {
+    fn new(bar0: &'a dyn ScriptBus, rom: &'a [u8], start: usize, bios_gen: BiosGeneration) -> Self {
         Self::with_writes(bar0, rom, start, bios_gen, true)
     }
 
     /// Build an interpreter that parses without touching the hardware.
     fn validating(
-        bar0: &'a MappedBar,
+        bar0: &'a dyn ScriptBus,
         rom: &'a [u8],
         start: usize,
         bios_gen: BiosGeneration,
@@ -79,7 +117,7 @@ impl<'a> VbiosInterpreter<'a> {
     }
 
     fn with_writes(
-        bar0: &'a MappedBar,
+        bar0: &'a dyn ScriptBus,
         rom: &'a [u8],
         start: usize,
         bios_gen: BiosGeneration,
@@ -222,7 +260,7 @@ const MAX_UNKNOWN_PERCENT: usize = 25;
 /// the boot script opcode stream directly, respecting control flow, conditions,
 /// and delays. Approximately 50 opcodes are handled.
 pub fn interpret_boot_scripts(
-    bar0: &MappedBar,
+    bar0: &dyn ScriptBus,
     rom: &[u8],
 ) -> Result<InterpreterStats, DevinitError> {
     let bit = BitTable::parse(rom)?;
@@ -460,5 +498,99 @@ mod desync_guard_tests {
     #[test]
     fn empty_script_is_not_a_desync() {
         assert!(!refuses(0, 0));
+    }
+}
+
+/// A [`ScriptBus`] that records instead of touching hardware.
+///
+/// Reads come from a seeded map, defaulting to zero, so conditional opcodes
+/// take a deterministic path. Writes and delays are captured rather than
+/// applied. This is what lets the interpreter be debugged against a real ROM
+/// without spending a die per iteration.
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct RecordingBus {
+    seed: std::collections::HashMap<usize, u32>,
+    writes: std::cell::RefCell<Vec<(usize, u32)>>,
+    delayed_us: std::cell::Cell<u64>,
+}
+
+#[cfg(test)]
+impl RecordingBus {
+    fn writes(&self) -> Vec<(usize, u32)> {
+        self.writes.borrow().clone()
+    }
+}
+
+#[cfg(test)]
+impl ScriptBus for RecordingBus {
+    fn read_u32(&self, offset: usize) -> Option<u32> {
+        Some(self.seed.get(&offset).copied().unwrap_or(0))
+    }
+
+    fn write_u32(&self, offset: usize, value: u32) {
+        self.writes.borrow_mut().push((offset, value));
+    }
+
+    fn delay_us(&self, usec: u64) {
+        self.delayed_us.set(self.delayed_us.get() + usec);
+    }
+}
+
+#[cfg(test)]
+mod offline_interpreter_tests {
+    use super::*;
+
+    fn fixture(name: &str) -> Option<Vec<u8>> {
+        std::fs::read(format!(
+            "{}/../../../testdata/vbios/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .ok()
+    }
+
+    /// The interpreter runs end-to-end with no GPU present.
+    ///
+    /// This is the capability the trait exists for. Before it, reproducing the
+    /// K80 misparse meant wedging a die and rebooting.
+    #[test]
+    fn interpreter_runs_against_a_real_rom_without_hardware() {
+        let Some(rom) = fixture("titanv_gv100.rom") else {
+            return;
+        };
+        let bus = RecordingBus::default();
+        let stats = interpret_boot_scripts(&bus, &rom).expect("interpreter must complete");
+
+        eprintln!(
+            "ops={} unknown={} writes_applied={} recorded={} delayed_us={}",
+            stats.ops_executed,
+            stats.unknown_opcodes.len(),
+            stats.writes_applied,
+            bus.writes().len(),
+            bus.delayed_us.get()
+        );
+
+        // The desync guard must hold: a misparsed script contributes no writes.
+        if stats.ops_executed > 0 {
+            let pct = stats.unknown_opcodes.len() * 100 / stats.ops_executed;
+            if pct > MAX_UNKNOWN_PERCENT {
+                assert!(
+                    bus.writes().is_empty(),
+                    "a {pct}% unknown parse issued {} writes — the guard failed",
+                    bus.writes().len()
+                );
+            }
+        }
+    }
+
+    /// Whatever the interpreter does, it must not sleep for real in a test.
+    /// One Volta script asks for ten seconds.
+    #[test]
+    fn delays_are_recorded_not_slept() {
+        let bus = RecordingBus::default();
+        let start = std::time::Instant::now();
+        bus.delay_us(10_000_000);
+        assert!(start.elapsed().as_millis() < 100);
+        assert_eq!(bus.delayed_us.get(), 10_000_000);
     }
 }

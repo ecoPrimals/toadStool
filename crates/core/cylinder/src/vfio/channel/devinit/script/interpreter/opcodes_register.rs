@@ -129,10 +129,25 @@ pub(super) fn dispatch_register(vm: &mut VbiosInterpreter<'_>, op: u8) -> Result
             let dst = vm.rd32(vm.offset + 10);
             let dmask = vm.rd32(vm.offset + 14);
             let dshift = vm.rd08(vm.offset + 18);
-            if src < 0x0100_0000 && dst < 0x0100_0000 {
+            // The shift amounts come straight out of the ROM as u8, so a
+            // desynced parse hands us values up to 255. Shifting a 32-bit
+            // register by 32 or more is meaningless — in debug it panics, and
+            // in release, which is what runs against hardware, it wraps
+            // silently and writes a plausible-looking wrong value to the GPU.
+            // Found by the offline harness on its first run against a real ROM.
+            let shifts_sane = sshift < 32 && dshift < 32;
+            if src < 0x0100_0000 && dst < 0x0100_0000 && shifts_sane {
                 let sval = (vm.bar0_rd32(src) & smask) >> sshift;
                 let dval = vm.bar0_rd32(dst) & dmask;
                 vm.bar0_wr32(dst, dval | (sval << dshift));
+            } else if !shifts_sane {
+                tracing::warn!(
+                    offset = format!("{:#06x}", vm.offset),
+                    sshift,
+                    dshift,
+                    "INIT_COPY_NV_REG: shift >= 32 — bad decode, skipping"
+                );
+                vm.stats.ops_skipped += 1;
             }
             vm.offset += 22;
         }

@@ -50,7 +50,7 @@ impl VbiosInterpreter<'_> {
             return;
         }
 
-        let _ = self.bar0.write_u32(r, val);
+        self.bar0.write_u32(r, val);
         self.stats.writes_applied += 1;
     }
 
@@ -68,7 +68,7 @@ impl VbiosInterpreter<'_> {
         self.stats.pri_recoveries += 1;
 
         // Ack PRIV_RING faults
-        let _ = self.bar0.write_u32(
+        self.bar0.write_u32(
             crate::vfio::channel::registers::pri::PRIV_RING_COMMAND,
             crate::vfio::channel::registers::pri::PRIV_RING_CMD_ACK,
         );
@@ -79,13 +79,13 @@ impl VbiosInterpreter<'_> {
             .read_u32(crate::vfio::channel::registers::pri::PMC_INTR)
             .unwrap_or(0);
         if pmc_intr & crate::vfio::channel::registers::pri::PMC_INTR_PRIV_RING_BIT != 0 {
-            let _ = self.bar0.write_u32(
+            self.bar0.write_u32(
                 crate::vfio::channel::registers::pri::PMC_INTR,
                 crate::vfio::channel::registers::pri::PMC_INTR_PRIV_RING_BIT,
             );
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        self.bar0.delay_us(10_000);
         self.pri_consecutive_faults = 0;
 
         // Re-probe: if BOOT0 reads clean, reset domain faults

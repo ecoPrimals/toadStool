@@ -60,9 +60,9 @@ pub(super) fn dispatch_extended(vm: &mut VbiosInterpreter<'_>, op: u8) -> Result
             let val2 = vm.rd32(vm.offset + 9);
             if vm.execute && reg < 0x0100_0000 {
                 vm.bar0_wr32(reg, val1);
-                std::thread::sleep(std::time::Duration::from_micros(10));
+                vm.bar0.delay_us(10);
                 vm.bar0_wr32(reg, val2);
-                std::thread::sleep(std::time::Duration::from_micros(10));
+                vm.bar0.delay_us(10);
             }
             vm.offset += 13;
         }

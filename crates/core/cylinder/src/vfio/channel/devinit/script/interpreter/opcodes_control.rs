@@ -136,7 +136,7 @@ pub(super) fn dispatch_control(
                         met = true;
                         break;
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    vm.bar0.delay_us(50_000);
                     vm.stats.delays_total_us += 50_000;
                 }
                 if !met {
@@ -174,9 +174,9 @@ pub(super) fn dispatch_control(
             let usec = vm.rd16(vm.offset + 1) as u64;
             if vm.execute && usec > 0 {
                 if usec <= 20_000 {
-                    std::thread::sleep(std::time::Duration::from_micros(usec));
+                    vm.bar0.delay_us(usec);
                 } else {
-                    std::thread::sleep(std::time::Duration::from_millis(usec / 1000));
+                    vm.bar0.delay_us(usec);
                 }
                 vm.stats.delays_total_us += usec;
             }
@@ -186,7 +186,7 @@ pub(super) fn dispatch_control(
             // INIT_LTIME: usec(u16) — same as TIME
             let usec = vm.rd16(vm.offset + 1) as u64;
             if vm.execute && usec > 0 {
-                std::thread::sleep(std::time::Duration::from_micros(usec));
+                vm.bar0.delay_us(usec);
                 vm.stats.delays_total_us += usec;
             }
             vm.offset += 3;
