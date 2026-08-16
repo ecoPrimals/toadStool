@@ -65,3 +65,6 @@ rust_out
 # Fossilized directories (moved to ecoPrimals/fossil/)
 results/
 ui/
+
+# VBIOS dumps are NVIDIA firmware — keep them local
+testdata/vbios/*.rom

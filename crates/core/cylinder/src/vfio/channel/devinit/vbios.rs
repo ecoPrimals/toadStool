@@ -445,3 +445,46 @@ mod tests {
         assert!(BitTable::parse(&rom).is_err());
     }
 }
+
+#[cfg(test)]
+mod vbios_fixture_tests {
+    use super::*;
+
+    /// Real VBIOS dumps are NVIDIA firmware and are deliberately not committed.
+    /// Dump one locally to enable these:
+    ///
+    /// ```text
+    /// echo 1 | sudo tee /sys/bus/pci/devices/<bdf>/rom >/dev/null
+    /// sudo cat /sys/bus/pci/devices/<bdf>/rom > testdata/vbios/titanv_gv100.rom
+    /// echo 0 | sudo tee /sys/bus/pci/devices/<bdf>/rom >/dev/null
+    /// ```
+    fn fixture(name: &str) -> Option<Vec<u8>> {
+        std::fs::read(format!(
+            "{}/../../../testdata/vbios/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .ok()
+    }
+
+    /// The BIT table parser is correct against a real ROM — this is the part
+    /// of VBIOS handling we can currently trust. Script-table resolution
+    /// downstream of it is not; see the interpreter desync guard.
+    #[test]
+    fn bit_table_parses_real_vbios() {
+        let Some(rom) = fixture("titanv_gv100.rom") else {
+            return;
+        };
+        let bit = BitTable::parse(&rom).expect("BIT table must parse");
+        for id in [b'I', b'M', b'P', b'S'] {
+            let e = bit
+                .find(id)
+                .unwrap_or_else(|| panic!("BIT '{}' missing", id as char));
+            assert!(
+                (e.data_offset as usize) < rom.len(),
+                "BIT '{}' data_offset {:#06x} outside ROM",
+                id as char,
+                e.data_offset
+            );
+        }
+    }
+}
