@@ -230,7 +230,11 @@ pub async fn execute_sovereign_command(cmd: SovereignCommand) -> Result<()> {
                 return Ok(());
             }
 
-            println!("Sovereign init: {bdf} (no vendor driver)");
+            // "No vendor driver" would be a lie on any path that seeds with
+            // nouveau: nouveau is external C, so it is vendor code by the
+            // standard this project actually holds. Say what is true of the
+            // path being run, and never imply that bring-up means dispatch.
+            println!("Sovereign init: {bdf} (VFIO direct, no seeder module)");
             if let Some(sm) = sm_version {
                 println!("  sm_version: {sm}");
             }

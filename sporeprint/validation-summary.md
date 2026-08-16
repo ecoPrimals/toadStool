@@ -63,14 +63,22 @@ ToadStool is the **WHERE** in the Compute Trio:
 
 ## Hardware Substrates
 
-| Substrate | Discovery | Init Pipeline |
-|-----------|-----------|---------------|
-| NVIDIA Kepler (K80) | sysfs + PCIe BDF | VFIO sovereign init (cold boot, PMU devinit) |
-| NVIDIA Volta (V100) | sysfs + PCIe BDF | VFIO sovereign init (warm/cold, HBM2 training) |
-| NVIDIA Ampere+ | sysfs + PCIe BDF | VFIO sovereign init (ACR falcon boot) |
-| AMD Vega 20 | sysfs + PCIe BDF | VFIO metal init pipeline |
-| CPU (x86, ARM) | /proc/cpuinfo, sysfs | Direct dispatch |
-| Akida NPU | VFIO / kernel / mmap | 160-unit neuromorphic driver |
+"Init Pipeline" describes the implemented path. "Demonstrated" states what has
+actually been observed on silicon, which is a different and smaller claim.
+
+**No sovereign VFIO shader dispatch has executed on any NVIDIA GPU.** The
+pipeline is wired end to end, but graphics-engine execution is blocked behind
+PFIFO runlist configuration and FECS context load. Verified compute on NVIDIA
+and AMD today runs through wgpu/Vulkan with a vendor driver present.
+
+| Substrate | Discovery | Init Pipeline | Demonstrated on silicon |
+|-----------|-----------|---------------|-------------------------|
+| NVIDIA Kepler (K80) | sysfs + PCIe BDF | VFIO sovereign init (cold boot, PMU devinit) | Identity, PMC, PGRAPH ungate. Halts at devinit — Kepler register map incomplete |
+| NVIDIA Volta (V100/Titan V) | sysfs + PCIe BDF | VFIO sovereign init (warm/cold, HBM2 training) | **Tier 1 warm infrastructure**, reproducible via warm handoff. FECS dead (`0xBADF5040`) — no dispatch. Cold boot blocked by HBM2 |
+| NVIDIA Ampere+ | sysfs + PCIe BDF | VFIO sovereign init (ACR falcon boot) | Not exercised on this fleet |
+| AMD Vega 20 | sysfs + PCIe BDF | VFIO metal init pipeline | Init only; compute proven via wgpu, not VFIO |
+| CPU (x86, ARM) | /proc/cpuinfo, sysfs | Direct dispatch | Working |
+| Akida NPU | VFIO / kernel / mmap | 160-unit neuromorphic driver | Driver + discovery |
 
 ## Socket Layout
 

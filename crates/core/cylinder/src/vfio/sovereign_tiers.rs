@@ -11,8 +11,14 @@
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 2: Warm Sovereign Compute                                  │
 //! │   GPC fabric + TPC stations → FECS dispatch → shader execution. │
-//! │   Status: ACHIEVED via catalyst (Exp 229 Run #9, Exp 233       │
-//! │   Run #1) — warm_compute tier confirmed post-catalyst handoff. │
+//! │   Status: NOT ACHIEVED (Aug 16 2026). No shader has executed   │
+//! │   on the sovereign path on any NVIDIA GPU, warm or cold.       │
+//! │   The prior "ACHIEVED via catalyst" claim (Exp 229 Run #9,     │
+//! │   Exp 233 Run #1) was withdrawn: those runs read PRI-faulted   │
+//! │   registers as live state, so compute_ready was a false        │
+//! │   positive. See the Aug 16 measurement-truth AAR. Catalyst     │
+//! │   also means nvidia RM performed the init, so even a real      │
+//! │   result there would not have been sovereign.                  │
 //! │   63K+ alive registers captured. FECS/GPCCS IMEM valid.        │
 //! │   NOT achieved cold (Exp 224): tpc_status=0xBADF5040 persists  │
 //! │   without catalyst RM init. TPC PRI ring requires GPCCS fw.    │

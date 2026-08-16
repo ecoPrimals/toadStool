@@ -304,7 +304,7 @@ toadStool/
 
 ### Active / Next
 - **Test coverage** -- pushing toward 90% target; 8,446 lib tests; ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
-- **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
+- **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live. **Plumbing only: no shader has executed on this path on any NVIDIA GPU.** Blocked on PFIFO runlist (`PFIFO_RUNLIST_BASE=0`, `GP_GET` never advances) and FECS context load. Titan V reaches Tier 1 warm infrastructure; verified compute today runs through wgpu/Vulkan with a vendor driver
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with coordination service** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)

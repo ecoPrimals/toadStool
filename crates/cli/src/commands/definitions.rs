@@ -633,10 +633,14 @@ pub enum SovereignCommand {
         #[arg(short, long, default_value = "text")]
         format: String,
     },
-    /// Sovereign init: bring a GPU up with no vendor driver at all.
+    /// Sovereign init: bring a GPU up over VFIO with no seeder module.
     ///
     /// Kepler (sm 35) uses direct PIO falcon upload with no ACR/WPR chain,
     /// which is why unsigned-falcon parts are the natural target here.
+    ///
+    /// Bring-up is not dispatch. No shader has executed on the sovereign
+    /// path on any NVIDIA GPU; reaching a tier says what is initialised,
+    /// not that compute ran.
     Init {
         /// PCI BDF address.
         #[arg(short, long)]
