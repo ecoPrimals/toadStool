@@ -633,6 +633,30 @@ pub enum SovereignCommand {
         #[arg(short, long, default_value = "text")]
         format: String,
     },
+    /// Sovereign init: bring a GPU up with no vendor driver at all.
+    ///
+    /// Kepler (sm 35) uses direct PIO falcon upload with no ACR/WPR chain,
+    /// which is why unsigned-falcon parts are the natural target here.
+    Init {
+        /// PCI BDF address.
+        #[arg(short, long)]
+        bdf: String,
+        /// SM version (35 = GK210/K80, 70 = GV100/Titan V).
+        #[arg(long)]
+        sm_version: Option<u32>,
+        /// Halt before a stage, for staged experiments.
+        #[arg(long)]
+        halt_before: Option<String>,
+        /// Skip memory training when the GPU probes cold.
+        #[arg(long)]
+        skip_cold_memory_training: bool,
+        /// Skip GR init even if falcon boot succeeds.
+        #[arg(long)]
+        skip_gr_init: bool,
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
     /// Show anchored sovereign devices.
     Status {
         /// Output format (text, json).

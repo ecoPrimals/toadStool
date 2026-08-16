@@ -78,7 +78,10 @@ pub(crate) fn run(
         ctx.stages.push(StageResult {
             name: "memory_training".into(),
             status: StageStatus::Skipped,
-            detail: Some("cold GPU: HBM2 training requires power-on reset".into()),
+            detail: Some(format!(
+                "cold GPU: {} training requires power-on reset",
+                crate::nv::generation::profile_for_sm(opts.sm_version.unwrap_or(70)).memory_type
+            )),
             duration_ms: 0,
         });
         return MemoryPathOutcome::Done(cold_early_exit(ctx, boot_state));

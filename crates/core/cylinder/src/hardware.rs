@@ -47,6 +47,31 @@ pub enum MemoryType {
     Gddr7,
 }
 
+impl MemoryType {
+    /// Whether cold-boot training of this memory requires a power-on reset,
+    /// making software-driven training from a cold GPU futile.
+    ///
+    /// Stacked HBM is trained by on-die sequencers during power-on, driven by
+    /// fuse-calibrated timings that no software path can reproduce once the
+    /// window has passed. That is the Tier 3 wall on GV100.
+    ///
+    /// GDDR is different: it is trained by the VBIOS devinit script, which is
+    /// ordinary register programming that can be replayed. On Kepler, devinit
+    /// *is* the power sequencer.
+    ///
+    /// The distinction matters because it was previously not made. Cold
+    /// memory training was skipped unconditionally with the message "HBM2
+    /// training requires power-on reset", which is true for the Titan V and
+    /// simply wrong for a GDDR5 Tesla K80.
+    #[must_use]
+    pub const fn requires_power_on_reset_to_train(self) -> bool {
+        match self {
+            Self::Hbm2 | Self::Hbm3 => true,
+            Self::Gddr5 | Self::Gddr6 | Self::Gddr6x | Self::Gddr7 => false,
+        }
+    }
+}
+
 impl std::fmt::Display for MemoryType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -352,5 +377,46 @@ impl DeviceTopology {
     /// Number of functions in this device.
     pub fn function_count(&self) -> usize {
         self.functions.len()
+    }
+}
+
+#[cfg(test)]
+mod memory_training_tests {
+    use super::MemoryType;
+
+    /// Stacked HBM is trained by on-die sequencers at power-on; software
+    /// cannot reproduce it afterwards. This is the Tier 3 wall on GV100.
+    #[test]
+    fn hbm_requires_power_on_reset() {
+        assert!(MemoryType::Hbm2.requires_power_on_reset_to_train());
+        assert!(MemoryType::Hbm3.requires_power_on_reset_to_train());
+    }
+
+    /// GDDR is trained by the VBIOS devinit script — replayable register
+    /// programming. A GDDR5 K80 must not inherit the HBM2 verdict.
+    #[test]
+    fn gddr_is_trainable_from_cold() {
+        for m in [
+            MemoryType::Gddr5,
+            MemoryType::Gddr6,
+            MemoryType::Gddr6x,
+            MemoryType::Gddr7,
+        ] {
+            assert!(
+                !m.requires_power_on_reset_to_train(),
+                "{m} is devinit-trainable and must not be skipped when cold"
+            );
+        }
+    }
+
+    /// The two cards on this gate, which is where the bug surfaced.
+    #[test]
+    fn titan_v_skips_but_k80_does_not() {
+        let titan_v = crate::nv::generation::profile_for_sm(70).memory_type;
+        let k80 = crate::nv::generation::profile_for_sm(35).memory_type;
+        assert_eq!(titan_v, MemoryType::Hbm2);
+        assert_eq!(k80, MemoryType::Gddr5);
+        assert!(titan_v.requires_power_on_reset_to_train());
+        assert!(!k80.requires_power_on_reset_to_train());
     }
 }

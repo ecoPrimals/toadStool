@@ -25,6 +25,22 @@ pub(crate) async fn sovereign_init_ember(
     handler.acquire_device_handle(bdf).await;
     crate::background::pcie_keepalive::activity_tracker().record();
 
+    // Wake before anything touches BAR0. vfio-pci lets an idle GPU drop to
+    // D3hot, where the device factory cannot probe it and every register
+    // reads all-ones — which downstream logic then interprets as data. A
+    // cold K80 in D3hot reported "devinit already complete" and had its
+    // memory training declined on the strength of a register that was never
+    // actually read.
+    let wake = toadstool_cylinder::vfio::power::wake_to_d0(bdf);
+    if !wake.awake {
+        tracing::warn!(
+            bdf,
+            before = wake.before.as_str(),
+            after = wake.after.as_str(),
+            "device did not reach D0 — probes below may not be trustworthy"
+        );
+    }
+
     // Try clutch from existing anchor
     let mut clutch = handler.try_engage_clutch(bdf).await;
 
@@ -110,7 +126,6 @@ pub(crate) async fn sovereign_init_ember(
     }
 
     opts.dma_backend = dma_for_opts;
-    opts.skip_cold_memory_training = true;
 
     let sm = opts.sm_version.unwrap_or_else(|| {
         let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
@@ -118,6 +133,24 @@ pub(crate) async fn sovereign_init_ember(
         let synthetic = chip_id << 20;
         toadstool_cylinder::nv::identity::boot0_to_sm(synthetic).unwrap_or(70)
     });
+
+    // Skip cold memory training only where it is genuinely futile.
+    //
+    // This used to be unconditional, on the reasoning that HBM2 is trained by
+    // on-die sequencers during power-on and cannot be driven from software
+    // afterwards. True for the Titan V, but it was applied to every GPU: a
+    // GDDR5 K80 was told "HBM2 training requires power-on reset" and halted
+    // before attempting a devinit that is ordinary register programming, and
+    // which on Kepler *is* the power sequencer.
+    let mem = toadstool_cylinder::nv::generation::profile_for_sm(sm).memory_type;
+    opts.skip_cold_memory_training = mem.requires_power_on_reset_to_train();
+    tracing::info!(
+        bdf,
+        sm,
+        memory = %mem,
+        skip_cold_memory_training = opts.skip_cold_memory_training,
+        "cold memory training policy resolved from generation profile"
+    );
     let chip = toadstool_cylinder::nv::identity::chip_name(sm);
 
     let bridge: std::sync::Arc<dyn toadstool_cylinder::nv::gsp_bridge::GspBridge> = {

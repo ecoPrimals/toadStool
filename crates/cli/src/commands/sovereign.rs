@@ -202,6 +202,72 @@ pub async fn execute_sovereign_command(cmd: SovereignCommand) -> Result<()> {
             }
         }
 
+        SovereignCommand::Init {
+            bdf,
+            sm_version,
+            halt_before,
+            skip_cold_memory_training,
+            skip_gr_init,
+            format,
+        } => {
+            let mut params = serde_json::json!({ "bdf": bdf });
+            if let Some(sm) = sm_version {
+                params["sm_version"] = serde_json::json!(sm);
+            }
+            if let Some(h) = halt_before {
+                params["halt_before"] = serde_json::json!(h);
+            }
+            if skip_cold_memory_training {
+                params["skip_cold_memory_training"] = serde_json::json!(true);
+            }
+            if skip_gr_init {
+                params["skip_gr_init"] = serde_json::json!(true);
+            }
+
+            if format != "text" {
+                let result = rpc("sovereign.init", params)?;
+                println!("{}", serde_json::to_string_pretty(&result)?);
+                return Ok(());
+            }
+
+            println!("Sovereign init: {bdf} (no vendor driver)");
+            if let Some(sm) = sm_version {
+                println!("  sm_version: {sm}");
+            }
+            println!();
+
+            let result = rpc("sovereign.init", params)?;
+
+            // Stage names vary by generation, so render whatever came back
+            // rather than assuming a fixed pipeline shape.
+            if let Some(stages) = result.get("stages").and_then(|s| s.as_array()) {
+                for st in stages {
+                    let name = st.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                    let status = st
+                        .get("status")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_else(|| {
+                            match st.get("ok").and_then(serde_json::Value::as_bool) {
+                                Some(true) => "ok",
+                                Some(false) => "FAIL",
+                                None => "?",
+                            }
+                        });
+                    let detail = st.get("detail").and_then(|v| v.as_str()).unwrap_or("");
+                    println!("  [{status:<7}] {name:<22} {detail}");
+                }
+            }
+
+            for key in ["compute_ready", "falcon_booted", "gr_initialized", "halted_at"] {
+                if let Some(v) = result.get(key) {
+                    if !v.is_null() {
+                        println!("  {key}: {v}");
+                    }
+                }
+            }
+            print_tier(&result);
+        }
+
         SovereignCommand::Status { format } => {
             let result = rpc("sovereign.warm_status", serde_json::json!({}))?;
             if format == "json" {

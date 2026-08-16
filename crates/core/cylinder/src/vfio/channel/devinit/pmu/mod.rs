@@ -31,6 +31,15 @@ pub fn execute_devinit_with_diagnostics(
     let diag = FalconDiagnostic::probe(bar0, bdf);
     diag.print_report();
 
+    // "Not needed" is only meaningful if the register was read. An asleep
+    // device answers all-ones, whose bit 1 reads as POST-complete, so this
+    // used to decline devinit precisely when the GPU most needed it.
+    if !diag.status.readable {
+        return Err(DevinitError::StatusUnreadable {
+            devinit_reg: diag.status.devinit_reg,
+        });
+    }
+
     if !diag.status.needs_post {
         return Ok(false);
     }

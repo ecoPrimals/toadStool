@@ -36,6 +36,11 @@ pub mod pmu_reg {
 #[derive(Debug, Clone)]
 pub struct DevinitStatus {
     pub needs_post: bool,
+    /// Whether `devinit_reg` was a real read rather than a bus sentinel.
+    ///
+    /// When false, nothing here is evidence: the device did not answer, and
+    /// `needs_post` is a conservative default rather than a measurement.
+    pub readable: bool,
     pub devinit_reg: u32,
     pub pmu_id: u32,
     pub pmu_hwcfg: u32,
@@ -49,10 +54,23 @@ impl DevinitStatus {
         let r = |reg| bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
 
         let devinit_reg = r(pmu_reg::DEVINIT_STATUS);
-        let needs_post = (devinit_reg & 2) == 0;
+
+        // Bit 1 means POST complete — but only if the register was actually
+        // read. A device that is not answering returns all-ones, which has
+        // bit 1 set, so an asleep GPU reports "devinit already complete" and
+        // the one operation that would bring it up gets skipped.
+        //
+        // Observed 2026-08-16 on a Tesla K80: boot0 and DEVINIT_STATUS both
+        // read 0xFFFFFFFF, and GDDR5 training was declined on that basis.
+        let read = crate::nv::register_read::RegisterRead::classify(devinit_reg);
+        let readable = read.is_valid();
+        // Unreadable is never "complete". Callers check `readable` to tell
+        // "needs POST" apart from "cannot tell".
+        let needs_post = read.valid().is_none_or(|v| (v & 2) == 0);
 
         Self {
             needs_post,
+            readable,
             devinit_reg,
             pmu_id: r(pmu_reg::FALCON_ID),
             pmu_hwcfg: r(pmu_reg::FALCON_HWCFG),
@@ -73,11 +91,17 @@ impl DevinitStatus {
         let _ = writeln!(s, "║ PMU FALCON HWCFG      = {:#010x}", self.pmu_hwcfg);
         let _ = writeln!(s, "║ PMU FALCON CTRL       = {:#010x}", self.pmu_ctrl);
         let _ = writeln!(s, "║ PMU MBOX0             = {:#010x}", self.pmu_mbox0);
-        if self.needs_post {
+        if !self.readable {
             let _ = writeln!(
                 s,
-                "║ *** GPU REQUIRES DEVINIT POST (HBM2 training not done) ***"
+                "║ *** DEVINIT STATUS UNREADABLE — device is not answering ***"
             );
+            let _ = writeln!(
+                s,
+                "║     Wake the device to D0 before drawing any conclusion."
+            );
+        } else if self.needs_post {
+            let _ = writeln!(s, "║ *** GPU REQUIRES DEVINIT POST (memory not trained) ***");
         } else {
             let _ = writeln!(
                 s,
@@ -311,5 +335,50 @@ impl FalconDiagnostic {
         }
 
         Err(DevinitError::NoVbiosSource)
+    }
+}
+
+#[cfg(test)]
+mod devinit_readability_tests {
+    use crate::nv::register_read::RegisterRead;
+
+    /// Mirror of the `needs_post` rule in `DevinitStatus::probe`.
+    fn needs_post(raw: u32) -> (bool, bool) {
+        let read = RegisterRead::classify(raw);
+        (read.valid().is_none_or(|v| (v & 2) == 0), read.is_valid())
+    }
+
+    /// The Tesla K80 on 2026-08-16: BAR0 dead, every register all-ones.
+    /// Bit 1 is set, so the old rule concluded POST was complete and
+    /// declined the GDDR5 training the card actually needed.
+    #[test]
+    fn unreadable_never_reports_post_complete() {
+        let (needs, readable) = needs_post(0xFFFF_FFFF);
+        assert!(!readable, "all-ones is not a real read");
+        assert!(needs, "an unanswering device must not be called POST-complete");
+    }
+
+    /// The Titan V on the same day: a genuine 0x2, POST really is done.
+    #[test]
+    fn real_post_complete_is_respected() {
+        let (needs, readable) = needs_post(0x0000_0002);
+        assert!(readable);
+        assert!(!needs, "bit 1 set on a real read means POST complete");
+    }
+
+    /// A real register with bit 1 clear needs POST.
+    #[test]
+    fn real_post_needed_is_respected() {
+        let (needs, readable) = needs_post(0x0000_0000);
+        assert!(readable);
+        assert!(needs);
+    }
+
+    /// A PRI fault is not a status either.
+    #[test]
+    fn pri_fault_is_not_a_status() {
+        let (needs, readable) = needs_post(0xBADF_5040);
+        assert!(!readable);
+        assert!(needs);
     }
 }

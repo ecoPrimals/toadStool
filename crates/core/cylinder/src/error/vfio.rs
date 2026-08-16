@@ -79,6 +79,18 @@ impl PciDiscoveryError {
 /// Errors from VBIOS parsing, PROM/sysfs ROM reads, and host-side devinit.
 #[derive(Debug, thiserror::Error)]
 pub enum DevinitError {
+    /// Devinit status register could not be read (device not answering).
+    ///
+    /// All-ones has bit 1 set, which reads as "POST complete", so this must
+    /// be an error rather than a quiet skip.
+    #[error(
+        "devinit status unreadable (reg={devinit_reg:#010x}) — device is not answering;          wake it to D0 before running devinit"
+    )]
+    StatusUnreadable {
+        /// Raw value read from the devinit status register.
+        devinit_reg: u32,
+    },
+
     /// BIT table signature not found in ROM.
     #[error("BIT signature (\\xFF\\xB8BIT) not found in VBIOS")]
     BitSignatureNotFound,
