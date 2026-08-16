@@ -277,19 +277,30 @@ impl<'a> PriBusMonitor<'a> {
     pub fn attempt_recovery(&mut self) -> bool {
         self.stats.bus_recoveries += 1;
 
-        // Read PRIV_RING interrupt status
-        let intr_status = self.bar0.read_u32(pri::PRIV_RING_INTR_STATUS).unwrap_or(0);
+        // A sentinel is non-zero, and all-ones has every bit set, so neither
+        // `!= 0` nor a bit test distinguishes "faults pending" from "this
+        // register is not answering". Acknowledging into a ring that cannot
+        // answer is a write into a dead fabric.
+        let intr_status = self
+            .bar0
+            .read_u32(pri::PRIV_RING_INTR_STATUS)
+            .unwrap_or(0xFFFF_FFFF);
 
-        // Acknowledge all pending PRIV_RING faults
-        if intr_status != 0 {
+        if crate::nv::pri::is_pri_fault(intr_status) {
+            tracing::warn!(
+                intr_status = format!("{intr_status:#010x}"),
+                "PRIV_RING status is a fault pattern — skipping ack"
+            );
+        } else if intr_status != 0 {
             let _ = self
                 .bar0
                 .write_u32(pri::PRIV_RING_COMMAND, pri::PRIV_RING_CMD_ACK);
         }
 
-        // Also clear PMC INTR PRIV_RING bit
-        let pmc_intr = self.bar0.read_u32(pri::PMC_INTR).unwrap_or(0);
-        if pmc_intr & pri::PMC_INTR_PRIV_RING_BIT != 0 {
+        let pmc_intr = self.bar0.read_u32(pri::PMC_INTR).unwrap_or(0xFFFF_FFFF);
+        if !crate::nv::pri::is_pri_fault(pmc_intr)
+            && pmc_intr & pri::PMC_INTR_PRIV_RING_BIT != 0
+        {
             let _ = self
                 .bar0
                 .write_u32(pri::PMC_INTR, pri::PMC_INTR_PRIV_RING_BIT);

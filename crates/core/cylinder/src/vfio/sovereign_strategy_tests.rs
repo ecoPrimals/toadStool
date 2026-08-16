@@ -13,7 +13,9 @@ fn kepler_strategy_from_profile() {
     let strat = strategy_for_profile(profile, bridge, 35);
 
     assert_eq!(strat.family_name(), "Kepler");
-    assert!(!strat.needs_cg_sweep());
+    // Kepler's PBUS ring comes up PRI-faulted, which is what puts PROM (its
+    // only VBIOS source) out of reach, so the recovery stage must run.
+    assert!(strat.needs_cg_sweep());
     assert!(!strat.needs_pgob_before_memory());
     assert!(!strat.needs_gr_init_after_falcon());
     assert_eq!(strat.falcon_boot_style(), FalconBootStyle::DirectPio);

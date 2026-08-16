@@ -36,18 +36,24 @@ pub(crate) fn cg_sweep(bar0: &MappedBar) -> CgSweepResult {
     }
 
     // Phase 2: Per-FBPA clock gating disable
+    //
+    // Phase 1 above checks for a PRI fault *before* writing. Phases 2 and 3
+    // used to write first and check afterwards, so a faulted domain got the
+    // store anyway. On a cold Kepler the FBPAs front untrained memory and are
+    // exactly the domains answering 0xbad0*, which makes this the worst place
+    // to have the check backwards.
     for i in 0..cg::FBPA_COUNT {
         let reg = cg::FBPA0_BASE + i * cg::FBPA_STRIDE + cg::FBPA_CG_OFFSET;
         let old = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
-        let _ = bar0.write_u32(reg, cg::CG_DISABLE);
         if is_pri_fault(old) {
             faulted += 1;
-        } else {
-            let new = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
-            if old != new {
-                changes += 1;
-                detail_lines.push(format!("FBPA{i}: {old:#010x}->{new:#010x}"));
-            }
+            continue;
+        }
+        let _ = bar0.write_u32(reg, cg::CG_DISABLE);
+        let new = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+        if old != new {
+            changes += 1;
+            detail_lines.push(format!("FBPA{i}: {old:#010x}->{new:#010x}"));
         }
     }
 
@@ -55,15 +61,15 @@ pub(crate) fn cg_sweep(bar0: &MappedBar) -> CgSweepResult {
     for i in 0..cg::LTC_COUNT {
         let reg = cg::LTC0_BASE + i * cg::LTC_STRIDE + cg::LTC_CG_OFFSET;
         let old = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
-        let _ = bar0.write_u32(reg, cg::CG_DISABLE);
         if is_pri_fault(old) {
             faulted += 1;
-        } else {
-            let new = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
-            if old != new {
-                changes += 1;
-                detail_lines.push(format!("LTC{i}: {old:#010x}->{new:#010x}"));
-            }
+            continue;
+        }
+        let _ = bar0.write_u32(reg, cg::CG_DISABLE);
+        let new = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+        if old != new {
+            changes += 1;
+            detail_lines.push(format!("LTC{i}: {old:#010x}->{new:#010x}"));
         }
     }
 
@@ -108,8 +114,21 @@ pub(crate) fn pri_bus_recover(bar0: &MappedBar) -> PriRecoveryResult {
     // The station-level ACK at 0x12004c doesn't touch these. Stale
     // ringmaster faults from UEFI/firmware handoff block all GPC and
     // PGRAPH register access.
-    let rm_intr = bar0.read_u32(pri::PRI_RINGMASTER_INTR_STATUS).unwrap_or(0);
-    if rm_intr != 0 {
+    // The clear is a write-back of the value just read. If that read was a
+    // sentinel — 0xbad0011f from a faulted ring, or all-ones from a device
+    // that is gone — the write-back stuffs the sentinel into the ringmaster's
+    // control register and then issues ENUMERATE on top of it. `!= 0` is not
+    // a sufficient test for "there are real bits here to acknowledge"; a
+    // fault pattern is very much non-zero.
+    let rm_intr = bar0
+        .read_u32(pri::PRI_RINGMASTER_INTR_STATUS)
+        .unwrap_or(0xFFFF_FFFF);
+    if crate::nv::pri::is_pri_fault(rm_intr) {
+        tracing::warn!(
+            rm_intr = format!("{rm_intr:#010x}"),
+            "PRI ringmaster status is itself a fault pattern — not writing it back"
+        );
+    } else if rm_intr != 0 {
         tracing::info!(
             rm_intr = format!("{rm_intr:#010x}"),
             "PRI ringmaster has pending errors — clearing and re-enumerating"
@@ -198,5 +217,47 @@ pub(crate) fn pgob_ungating(
             tracing::warn!(%e, "PGOB ungating failed — GPCs may remain gated");
             Ok(format!("pgob: failed ({e})"))
         }
+    }
+}
+
+#[cfg(test)]
+mod fault_write_guard_tests {
+    use crate::nv::pri::is_pri_fault;
+
+    /// Mirror of the ringmaster gate: may we write this value back to
+    /// PRI_RINGMASTER_INTR_STATUS to acknowledge it?
+    fn may_write_back(rm_intr: u32) -> bool {
+        !is_pri_fault(rm_intr) && rm_intr != 0
+    }
+
+    /// The old test was `rm_intr != 0`, which a fault pattern passes. That
+    /// stuffed 0xbad0011f into the ringmaster and then issued ENUMERATE.
+    #[test]
+    fn fault_patterns_are_never_written_back() {
+        for v in [0xbad0_011f_u32, 0xbadf_1000, 0xFFFF_FFFF, 0xDEAD_DEAD] {
+            assert!(!may_write_back(v), "{v:#010x} must not be written back");
+            assert_ne!(v, 0, "and it is non-zero, which is why != 0 was not enough");
+        }
+    }
+
+    /// Real pending bits still get acknowledged.
+    #[test]
+    fn genuine_pending_bits_are_acknowledged() {
+        assert!(may_write_back(0x0000_0001));
+        assert!(may_write_back(0x0000_0100));
+    }
+
+    /// Nothing pending means nothing to do.
+    #[test]
+    fn zero_is_a_no_op() {
+        assert!(!may_write_back(0));
+    }
+
+    /// The CG sweep must skip a faulted domain rather than write into it.
+    /// Kepler's FBPAs front untrained memory and answer 0xbad0*.
+    #[test]
+    fn cg_sweep_skips_faulted_domains() {
+        assert!(is_pri_fault(0xbad0_011f), "FBPA cold read must count as faulted");
+        assert!(is_pri_fault(0xDEAD_DEAD), "failed read must count as faulted");
     }
 }

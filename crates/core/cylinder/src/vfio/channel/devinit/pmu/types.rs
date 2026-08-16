@@ -165,6 +165,11 @@ impl FalconDiagnostic {
         let prom_enable_reg = r(PROM_ENABLE_REG);
         let pbus_healthy = RegisterRead::classify(prom_enable_reg).valid().is_some();
 
+        // Clearing bit 0 un-shadows PROM, but on a K80 the aperture already
+        // decodes without it — measured 0xeb7baa55 at 0x300000 with 0x1854
+        // reading 0xbad0011f. So the write is an optimization, not a
+        // precondition, and the *read* is safe either way. Skip only the
+        // write when the ring is faulted, then read regardless.
         let (prom_signature, prom_accessible) = if pbus_healthy {
             let _ = bar0.write_u32(PROM_ENABLE_REG, prom_enable_reg & !1);
             let sig = r(PROM_BASE);
@@ -173,9 +178,10 @@ impl FalconDiagnostic {
         } else {
             tracing::warn!(
                 prom_enable_reg = format!("{prom_enable_reg:#010x}"),
-                "PBUS ring is PRI-faulted — skipping PROM read to avoid wedging the die"
+                "PBUS ring is PRI-faulted — reading PROM without the shadow write"
             );
-            (prom_enable_reg, false)
+            let sig = r(PROM_BASE);
+            (sig, (sig & 0xFFFF) == 0xAA55)
         };
 
         let hwcfg = status.pmu_hwcfg;

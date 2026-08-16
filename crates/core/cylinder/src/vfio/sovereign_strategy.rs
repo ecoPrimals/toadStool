@@ -304,8 +304,19 @@ impl SovereignStrategy for NvKeplerStrategy {
         &self.profile.power_safety
     }
 
+    /// Kepler needs this precisely because its PBUS ring comes up faulted.
+    ///
+    /// A cold K80 answers 0xbad0011f across PBUS, which puts the on-die VBIOS
+    /// at PROM out of reach — and PROM is the only VBIOS source on a Tesla
+    /// card, since it exposes no PCI expansion ROM BAR. Without devinit there
+    /// is no memory training, so the PRI fault is the first domino.
+    ///
+    /// This was `false`, so `pri_bus_recover` never ran on Kepler at all and
+    /// the ring was simply left faulted. It is safe to run only now that the
+    /// sweep and the recovery check for fault patterns before writing; until
+    /// then both would have written into the dead ring.
     fn needs_cg_sweep(&self) -> bool {
-        false
+        true
     }
 
     fn needs_pgob_before_memory(&self) -> bool {

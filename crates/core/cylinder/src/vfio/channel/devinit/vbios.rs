@@ -262,15 +262,37 @@ pub fn parse_pmu_table(rom: &[u8], bit: &BitTable) -> Result<Vec<PmuFirmware>, D
 ///
 /// Source: nouveau `nvkm/subdev/bios/shadowprom.c`
 pub fn read_vbios_prom(bar0: &MappedBar) -> Result<Vec<u8>, DevinitError> {
-    // Enable PROM access (clear bit 0 of 0x1854)
+    // Un-shadowing PROM means clearing bit 0 of 0x1854, which is a PBUS
+    // register. On a cold Kepler the whole PBUS ring answers 0xbad0011f, and
+    // writing into a faulted ring wedges the die until reboot — three K80
+    // dies were lost to exactly this write on 2026-08-16.
+    //
+    // The write turns out to be unnecessary here: the aperture already
+    // decodes on a cold K80 (measured 0xeb7baa55 at 0x300000 while 0x1854
+    // read 0xbad0011f). So skip the shadow write when the ring is faulted
+    // and read PROM directly; reads of a faulted ring are benign.
     let enable_reg = bar0.read_u32(PROM_ENABLE_REG).unwrap_or(0xDEAD);
-    let _ = bar0.write_u32(PROM_ENABLE_REG, enable_reg & !1);
+    let shadow_writable = !crate::nv::pri::is_pri_fault(enable_reg);
+
+    if shadow_writable {
+        let _ = bar0.write_u32(PROM_ENABLE_REG, enable_reg & !1);
+    } else {
+        tracing::warn!(
+            enable_reg = format!("{enable_reg:#010x}"),
+            "PBUS faulted — reading PROM without un-shadowing"
+        );
+    }
+
+    let restore = |bar0: &MappedBar| {
+        if shadow_writable {
+            let _ = bar0.write_u32(PROM_ENABLE_REG, enable_reg);
+        }
+    };
 
     // Probe ROM size — read first 4 bytes, check for 0x55AA signature
     let sig_lo = bar0.read_u32(PROM_BASE).unwrap_or(0);
     if (sig_lo & 0xFFFF) != 0xAA55 {
-        // Restore PROM enable
-        let _ = bar0.write_u32(PROM_ENABLE_REG, enable_reg);
+        restore(bar0);
         return Err(DevinitError::PromSignatureMismatch { got: sig_lo });
     }
 
@@ -305,8 +327,7 @@ pub fn read_vbios_prom(bar0: &MappedBar) -> Result<Vec<u8>, DevinitError> {
         rom.extend_from_slice(&word.to_le_bytes());
     }
 
-    // Restore PROM enable register
-    let _ = bar0.write_u32(PROM_ENABLE_REG, enable_reg);
+    restore(bar0);
 
     if rom.len() < 512 {
         return Err(DevinitError::PromTooSmall { len: rom.len() });

@@ -54,10 +54,37 @@ struct VbiosInterpreter<'a> {
     pri_domain_faults: std::collections::HashMap<String, u32>,
     /// BIOS generation for opcode stride/semantic branching.
     bios_gen: BiosGeneration,
+    /// Whether register writes actually reach the hardware.
+    ///
+    /// False during the validation pass. A desynced parse still "executes"
+    /// opcodes — it just decodes them out of whatever bytes follow — and a
+    /// write opcode built from garbage writes a garbage value to a garbage
+    /// address. Those writes must not land before we know the parse is real.
+    writes_armed: bool,
 }
 
 impl<'a> VbiosInterpreter<'a> {
     fn new(bar0: &'a MappedBar, rom: &'a [u8], start: usize, bios_gen: BiosGeneration) -> Self {
+        Self::with_writes(bar0, rom, start, bios_gen, true)
+    }
+
+    /// Build an interpreter that parses without touching the hardware.
+    fn validating(
+        bar0: &'a MappedBar,
+        rom: &'a [u8],
+        start: usize,
+        bios_gen: BiosGeneration,
+    ) -> Self {
+        Self::with_writes(bar0, rom, start, bios_gen, false)
+    }
+
+    fn with_writes(
+        bar0: &'a MappedBar,
+        rom: &'a [u8],
+        start: usize,
+        bios_gen: BiosGeneration,
+        writes_armed: bool,
+    ) -> Self {
         Self {
             bar0,
             rom,
@@ -71,6 +98,7 @@ impl<'a> VbiosInterpreter<'a> {
             pri_fault_threshold: 5,
             pri_domain_faults: std::collections::HashMap::new(),
             bios_gen,
+            writes_armed,
         }
     }
 
@@ -179,6 +207,15 @@ pub(crate) fn ram_restrict_group_count(rom: &[u8]) -> usize {
     4
 }
 
+/// Maximum share of unrecognised opcodes tolerated before a script is
+/// treated as misparsed rather than merely unsupported.
+///
+/// A correctly located script decodes almost entirely; the handful of misses
+/// are genuinely unimplemented opcodes. A misparsed one misses most of the
+/// stream, because each bad decode advances the offset by the wrong amount
+/// and everything after it is read at the wrong boundary.
+const MAX_UNKNOWN_PERCENT: usize = 25;
+
 /// Execute VBIOS init scripts from the host CPU via BAR0.
 ///
 /// This is the sovereign alternative to PMU FALCON execution. It interprets
@@ -243,6 +280,39 @@ pub fn interpret_boot_scripts(
             script_off = format!("{script_off:#06x}"),
             "VBIOS interpreter running init script"
         );
+
+        // Validation pass: walk the stream with writes disarmed and see
+        // whether we are actually decoding this script.
+        //
+        // On a Tesla K80 the interpreter reported 1044 ops of which 796 were
+        // unknown — a 76% miss rate, meaning the byte stream was not being
+        // parsed as the instructions it contains. It issued 196 register
+        // writes anyway, decoded from that garbage, and wedged the die.
+        // A parser that does not understand its input must not drive hardware.
+        let mut check = VbiosInterpreter::validating(bar0, rom, script_off, bios_gen);
+        let _ = check.run();
+        let seen = check.stats.ops_executed;
+        let unknown = check.stats.unknown_opcodes.len();
+
+        if seen > 0 && unknown * 100 / seen > MAX_UNKNOWN_PERCENT {
+            tracing::warn!(
+                script_idx,
+                script_off = format!("{script_off:#06x}"),
+                ops = seen,
+                unknown,
+                pct = unknown * 100 / seen,
+                "VBIOS: script does not decode — refusing to execute its writes"
+            );
+            combined_stats.ops_skipped += seen;
+            combined_stats
+                .unknown_opcodes
+                .extend(check.stats.unknown_opcodes.clone());
+            script_idx += 1;
+            if script_idx > 50 {
+                break;
+            }
+            continue;
+        }
 
         let mut interp = VbiosInterpreter::new(bar0, rom, script_off, bios_gen);
         match interp.run() {
@@ -354,5 +424,41 @@ mod ram_restrict_tests {
         let rom = rom_with_bit_m(0x400, 8);
         assert!(BitTable::parse(&rom).is_ok());
         assert_eq!(ram_restrict_group_count(&rom), 8);
+    }
+}
+
+#[cfg(test)]
+mod desync_guard_tests {
+    use super::MAX_UNKNOWN_PERCENT;
+
+    fn refuses(ops: usize, unknown: usize) -> bool {
+        ops > 0 && unknown * 100 / ops > MAX_UNKNOWN_PERCENT
+    }
+
+    /// The measured K80 run: 1044 ops, 796 unknown. It issued 196 writes from
+    /// this parse and wedged the die.
+    #[test]
+    fn k80_desynced_stream_is_refused() {
+        assert!(refuses(1044, 796), "76% unknown must not drive writes");
+    }
+
+    /// A script with a few genuinely unimplemented opcodes still runs —
+    /// refusing those would regress every working path.
+    #[test]
+    fn mostly_understood_script_still_executes() {
+        assert!(!refuses(1044, 20));
+        assert!(!refuses(100, 25), "exactly at threshold is allowed");
+    }
+
+    /// Just past the threshold is refused.
+    #[test]
+    fn just_over_threshold_is_refused() {
+        assert!(refuses(100, 26));
+    }
+
+    /// An empty script is not a desync; there is nothing to misparse.
+    #[test]
+    fn empty_script_is_not_a_desync() {
+        assert!(!refuses(0, 0));
     }
 }

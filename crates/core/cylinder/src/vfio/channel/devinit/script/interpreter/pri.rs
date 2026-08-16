@@ -28,7 +28,10 @@ impl VbiosInterpreter<'_> {
 
     pub(super) fn bar0_wr32(&mut self, reg: u32, val: u32) {
         let r = reg as usize;
-        if !self.execute || r >= 0x0100_0000 || !r.is_multiple_of(4) {
+        // `writes_armed` is false during the validation pass, which walks the
+        // opcode stream to find out whether we are parsing a real script
+        // before any of its writes reach the hardware.
+        if !self.writes_armed || !self.execute || r >= 0x0100_0000 || !r.is_multiple_of(4) {
             return;
         }
 
