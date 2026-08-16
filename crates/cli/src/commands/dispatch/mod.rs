@@ -141,6 +141,9 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             super::transport::execute_transport_command(action).await?;
         }
 
+        Commands::Sovereign { action } => {
+            crate::commands::sovereign::execute_sovereign_command(action.clone()).await?;
+        }
         Commands::Device { action } => {
             info!("Device lifecycle management");
             super::device::execute_device_command(action.clone()).await?;

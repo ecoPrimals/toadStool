@@ -355,6 +355,16 @@ pub enum Commands {
         action: DeviceCommand,
     },
 
+    /// Sovereign driver rotation (warm handoff, tier classification).
+    ///
+    /// Drives the `sovereign.*` JSON-RPC methods against a running toadStool
+    /// server, which holds the PCIe bridge keepalive the rotation depends on.
+    Sovereign {
+        /// Subcommand (handoff, status, strategies)
+        #[command(subcommand)]
+        action: SovereignCommand,
+    },
+
     /// GPU mode switching for single-GPU systems.
     ///
     /// Switches between gaming mode (nvidia/nouveau for display) and science
@@ -596,4 +606,39 @@ pub enum ModeCommand {
         #[arg(long)]
         bdf: Option<String>,
     },
+}
+
+/// Sovereign driver rotation subcommands.
+#[derive(Clone, Subcommand)]
+pub enum SovereignCommand {
+    /// Run a warm handoff: seed a GPU with a driver, then swap it to vfio-pci
+    /// while preserving initialized state.
+    Handoff {
+        /// PCI BDF address (e.g. "0000:21:00.0").
+        #[arg(short, long)]
+        bdf: String,
+        /// Strategy name. See `toadstool sovereign strategies`.
+        #[arg(short, long)]
+        strategy: String,
+        /// Seconds to let the seeder initialize hardware before swapping.
+        #[arg(long)]
+        settle_secs: Option<u64>,
+        /// Skip preflight, including session safety checks.
+        ///
+        /// Preflight is what refuses a rotation on a host where a display
+        /// server can hot-add the GPU mid-swap. That has taken down sessions.
+        #[arg(long)]
+        skip_preflight: bool,
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+    /// Show anchored sovereign devices.
+    Status {
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+    /// List available warm handoff strategies.
+    Strategies,
 }
