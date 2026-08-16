@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! `CircuitBreakerConfig` and friends are re-exported only under the
+//! `hardening` feature. Without a gate matching that conditional,
+//! these tests silently did not compile, so none of them ran.
+#![cfg(feature = "hardening")]
+
 #![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"

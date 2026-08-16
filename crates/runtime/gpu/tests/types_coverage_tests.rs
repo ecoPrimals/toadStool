@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 use bytes::Bytes;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 use toadstool_runtime_gpu::*;
@@ -517,7 +517,7 @@ async fn universal_compute_device_usage_rwlock_readable() {
         usage: Arc::clone(&usage),
         framework_handle: None,
     };
-    let u = d.usage.read().await;
+    let u = d.usage.read().expect("usage lock");
     assert_eq!(u.gpu_utilization_percent, 1.0);
 }
 

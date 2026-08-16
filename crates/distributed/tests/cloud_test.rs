@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Covers modules that are deprecated and feature-gated, so this file
+//! is compiled only when they are. Without a matching gate it did not
+//! compile at all, and none of its tests ran.
+#![cfg(all(
+    feature = "runtime",
+    feature = "legacy-cloud"
+))]
+
 #![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"

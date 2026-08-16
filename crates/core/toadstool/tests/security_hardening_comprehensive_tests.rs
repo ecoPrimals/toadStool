@@ -4,6 +4,10 @@
 //! Week 18 Sprint 7: Security hardening tests
 //! Target: 12.36% → 60% coverage (~40 tests)
 
+//! Exercises `hardening`-gated APIs. Without a matching gate this file
+//! did not compile, so none of its tests ran.
+#![cfg(feature = "hardening")]
+
 use std::collections::HashMap;
 use std::time::Duration;
 use toadstool::security_hardening::*;

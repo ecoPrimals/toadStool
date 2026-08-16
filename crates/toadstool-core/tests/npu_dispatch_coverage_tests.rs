@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for NPU dispatch module.
 //!
-//! Planned: `AkidaNpuDispatch` adapter in `akida-driver` (not yet written).
-//! Requires akida-driver + rustChip/akida-chip (biomeGate-only, C5).
-//! Disabled until the adapter lands — the empty `akida` Cargo feature stub was removed.
-#![cfg(all())]
+//! # Why the Akida adapter tests are not here
+//!
+//! This file used to end with four tests for `AkidaNpuDispatch`, an adapter
+//! its own header described as "not yet written". It was meant to be disabled
+//! until that landed, via `#![cfg(all())]` — but an empty `all()` is vacuously
+//! *true*, so the file stayed enabled and simply never compiled. Nothing in it
+//! had run since, including the tests below, which exercise types that do
+//! exist and pass.
+//!
+//! The adapter tests are removed rather than re-disabled: a test for code that
+//! was never written is a specification, and it belongs with the adapter when
+//! someone writes it. `SyntheticNpuBackend` lives in `akida-driver`, which is
+//! not a dependency of this crate.
 #![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
@@ -18,10 +27,9 @@
 
 use std::borrow::Cow;
 
-use akida_driver::SyntheticNpuBackend;
 use toadstool_core::npu_dispatch::{
-    AkidaNpuDispatch, DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError,
-    NpuInferenceRequest, NpuInfo, NpuModelHandle,
+    DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError, NpuInferenceRequest, NpuInfo,
+    NpuModelHandle,
 };
 
 // ─── NpuModelHandle ────────────────────────────────────────────────────────
@@ -251,49 +259,4 @@ fn npu_dispatch_dispatch_request_default() {
     assert!(result.is_ok());
     let r = result.unwrap();
     assert_eq!(r.output, vec![1.0, 2.0, 3.0]);
-}
-
-#[test]
-fn akida_npu_dispatch_from_backend_info() {
-    let dispatch =
-        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
-    let info = dispatch.info();
-    assert!(info.name.starts_with("Akida"));
-    assert_eq!(info.vendor, "brainchip");
-    assert_eq!(info.processing_elements, 80);
-    assert!(dispatch.supports(NpuCapability::Inference));
-    assert!(dispatch.supports(NpuCapability::PowerMonitoring));
-    assert!(dispatch.supports(NpuCapability::ReservoirComputing));
-    assert!(dispatch.supports(NpuCapability::BatchInference));
-    assert!(!dispatch.supports(NpuCapability::OnChipLearning));
-}
-
-#[test]
-fn akida_npu_dispatch_load_and_dispatch() {
-    let mut dispatch =
-        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
-    let handle = dispatch.load_model(b"fake_model_data").unwrap();
-    assert_eq!(handle.id(), 1);
-
-    let result = dispatch
-        .dispatch(handle, Cow::Borrowed(&[1.0, 2.0, 3.0]))
-        .unwrap();
-    assert_eq!(result.output, vec![1.0, 2.0, 3.0]);
-    assert!(result.latency_us > 0, "mock should return positive latency");
-    assert_eq!(result.power_mw, Some(1500.0));
-}
-
-#[test]
-fn akida_npu_dispatch_power_mw() {
-    let dispatch =
-        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
-    let power = dispatch.power_mw().unwrap();
-    assert!((power - 1500.0).abs() < f32::EPSILON);
-}
-
-#[test]
-fn akida_npu_dispatch_is_alive() {
-    let dispatch =
-        AkidaNpuDispatch::from_backend(Box::new(SyntheticNpuBackend::coverage_default()));
-    assert!(dispatch.is_alive());
 }

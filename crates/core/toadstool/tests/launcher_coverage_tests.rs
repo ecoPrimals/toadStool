@@ -13,7 +13,7 @@ use toadstool::launcher::{
 async fn test_discover_toadstool_endpoint_no_endpoint_returns_err() {
     // When no toadstool socket or discovery file exists, discover returns Err.
     // In typical CI/test env, no toadstool daemon is running.
-    let result = discover_toadstool_endpoint().await;
+    let result = discover_toadstool_endpoint();
     match result {
         Ok(_) => {
             // May succeed if socket happens to exist (e.g. dev machine with daemon)

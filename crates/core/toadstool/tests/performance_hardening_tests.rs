@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! `IntelligentCache` and the rest of `performance_hardening` are
+//! re-exported only under the `hardening` feature. Without a matching
+//! gate this file did not compile, so none of its tests ran.
+#![cfg(feature = "hardening")]
+
 #![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"

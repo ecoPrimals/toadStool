@@ -236,7 +236,6 @@ async fn find_peer_with_in_ignores_nonmatching_peer_files() {
     )
     .expect("write");
     let found = PrimalCapabilities::find_peer_with_in("nvidia", dir.path())
-        .await
         .expect("found");
     assert_eq!(found.primal_id, "b");
 }
@@ -253,7 +252,6 @@ async fn find_peer_with_in_skips_non_json_then_matches() {
     )
     .expect("write");
     let found = PrimalCapabilities::find_peer_with_in("compute", dir.path())
-        .await
         .expect("found");
     assert_eq!(found.primal_id, "p1");
 }
@@ -268,7 +266,6 @@ async fn find_peer_with_in_errors_when_no_peer_matches() {
     )
     .expect("write");
     let err = PrimalCapabilities::find_peer_with_in("missing-cap", dir.path())
-        .await
         .unwrap_err();
     assert!(err.contains("No peer found"));
 }
@@ -283,7 +280,6 @@ async fn find_peer_with_in_errors_when_capabilities_empty() {
     )
     .expect("write");
     let err = PrimalCapabilities::find_peer_with_in("compute", dir.path())
-        .await
         .unwrap_err();
     assert!(err.contains("No peer found"));
 }
@@ -294,7 +290,6 @@ async fn find_peer_with_in_errors_on_invalid_json() {
     std::fs::write(dir.path().join("bad.json"), "{ not json }")
         .expect("write");
     let err = PrimalCapabilities::find_peer_with_in("compute", dir.path())
-        .await
         .unwrap_err();
     assert!(err.contains("Failed to parse"));
 }
@@ -304,7 +299,6 @@ async fn find_peer_with_in_errors_when_discovery_dir_missing() {
     let dir = TempDir::new().expect("temp");
     let missing = dir.path().join("nope");
     let err = PrimalCapabilities::find_peer_with_in("x", &missing)
-        .await
         .unwrap_err();
     assert!(err.contains("Failed to read discovery directory"));
 }
@@ -313,7 +307,6 @@ async fn find_peer_with_in_errors_when_discovery_dir_missing() {
 async fn find_all_peers_in_empty_directory_returns_empty_vec() {
     let dir = TempDir::new().expect("temp");
     let peers = PrimalCapabilities::find_all_peers_in(dir.path())
-        .await
         .expect("ok");
     assert!(peers.is_empty());
 }
@@ -330,7 +323,6 @@ async fn find_all_peers_in_collects_valid_json_and_skips_invalid() {
     std::fs::write(dir.path().join("bad.json"), "{")
         .expect("write");
     let peers = PrimalCapabilities::find_all_peers_in(dir.path())
-        .await
         .expect("ok");
     assert_eq!(peers.len(), 1);
     assert_eq!(peers[0].primal_id, "good");
@@ -346,7 +338,6 @@ async fn find_all_peers_in_duplicate_files_same_primal_id_appear_twice() {
     std::fs::write(dir.path().join("two.json"), &json)
         .expect("write");
     let peers = PrimalCapabilities::find_all_peers_in(dir.path())
-        .await
         .expect("ok");
     assert_eq!(peers.len(), 2);
 }
@@ -356,7 +347,6 @@ async fn find_all_peers_in_errors_when_directory_unreadable() {
     let dir = TempDir::new().expect("temp");
     let missing = dir.path().join("missing");
     let err = PrimalCapabilities::find_all_peers_in(&missing)
-        .await
         .unwrap_err();
     assert!(err.contains("Failed to read discovery directory"));
 }
@@ -365,7 +355,7 @@ async fn find_all_peers_in_errors_when_directory_unreadable() {
 async fn announce_writes_canonical_and_compat_json_files() {
     with_temp_discovery(|discovery_base| async move {
         let caps = sample_peer("announce-dual", vec!["compute".to_string()]);
-        caps.announce().await.expect("announce");
+        caps.announce().expect("announce");
         let eco_root = discovery_base.parent().expect("ecoPrimals root");
         assert!(discovery_base.join("announce-dual.json").exists());
         assert!(eco_root.join("announce-dual.json").exists());
@@ -382,10 +372,10 @@ async fn announce_writes_canonical_and_compat_json_files() {
 async fn cleanup_removes_both_announcement_files() {
     with_temp_discovery(|discovery_base| async move {
         let caps = sample_peer("clean-me", vec!["compute".to_string()]);
-        caps.announce().await.expect("announce");
+        caps.announce().expect("announce");
         let eco_root = discovery_base.parent().expect("ecoPrimals root");
         assert!(discovery_base.join("clean-me.json").exists());
-        caps.cleanup().await.expect("cleanup");
+        caps.cleanup().expect("cleanup");
         assert!(!discovery_base.join("clean-me.json").exists());
         assert!(!eco_root.join("clean-me.json").exists());
     })
@@ -396,7 +386,7 @@ async fn cleanup_removes_both_announcement_files() {
 async fn cleanup_succeeds_when_announcement_files_absent() {
     with_temp_discovery(|_| async move {
         let caps = sample_peer("never-announced", vec!["compute".to_string()]);
-        caps.cleanup().await.expect("cleanup");
+        caps.cleanup().expect("cleanup");
     })
     .await;
 }
@@ -411,7 +401,6 @@ async fn find_peer_with_uses_global_discovery_directory_under_xdg() {
         )
         .expect("write");
         let found = PrimalCapabilities::find_peer_with("science.gpu")
-            .await
             .expect("peer");
         assert_eq!(found.primal_id, "global-find");
     })
@@ -427,7 +416,7 @@ async fn find_all_peers_global_collects_from_xdg_discovery() {
             serde_json::to_string_pretty(&p).expect("json"),
         )
         .expect("write");
-        let peers = PrimalCapabilities::find_all_peers().await.expect("peers");
+        let peers = PrimalCapabilities::find_all_peers().expect("peers");
         assert!(peers.iter().any(|x| x.primal_id == "all-global"));
     })
     .await;
@@ -440,7 +429,6 @@ async fn find_peer_with_errors_when_xdg_discovery_missing() {
     temp_env::async_with_vars([("XDG_RUNTIME_DIR", Some(base_str.as_str()))], async {
         let _keep = temp;
         let err = PrimalCapabilities::find_peer_with("compute")
-            .await
             .unwrap_err();
         assert!(
             err.contains("Failed to read discovery directory")

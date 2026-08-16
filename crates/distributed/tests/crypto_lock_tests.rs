@@ -15,6 +15,14 @@
 //! - `HPCScheduler` enum
 //! - `ServiceTier` enum
 
+//! Covers modules that are deprecated and feature-gated, so this file
+//! is compiled only when they are. Without a matching gate it did not
+//! compile at all, and none of its tests ran.
+#![cfg(all(
+    feature = "runtime",
+    feature = "legacy-security"
+))]
+
 use toadstool_distributed::crypto_lock::*;
 
 // ============================================================================

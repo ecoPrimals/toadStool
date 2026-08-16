@@ -15,7 +15,7 @@ use toadstool_runtime_gpu::types::{
     DataType, DeviceCapabilities, DeviceId, DeviceInfo, DeviceType, DeviceUsage, GpuFramework,
     KernelFormat, PerformanceCharacteristics, UniversalComputeDevice,
 };
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Test helper to create a test device
 fn create_test_device() -> UniversalComputeDevice {
@@ -162,7 +162,7 @@ fn test_performance_characteristics() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_device_usage_default() {
     let device = create_test_device();
-    let usage = device.usage.read().await;
+    let usage = device.usage.read().expect("usage lock");
 
     assert_eq!(usage.gpu_utilization_percent, 0.0);
     assert_eq!(usage.memory_utilization_percent, 0.0);
@@ -242,7 +242,7 @@ fn test_performance_optional_precision() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_device_usage_temperature() {
     let device = create_test_device();
-    let usage = device.usage.read().await;
+    let usage = device.usage.read().expect("usage lock");
 
     assert!(usage.temperature_celsius.is_none());
 }
@@ -250,7 +250,7 @@ async fn test_device_usage_temperature() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_device_usage_power() {
     let device = create_test_device();
-    let usage = device.usage.read().await;
+    let usage = device.usage.read().expect("usage lock");
 
     assert!(usage.power_usage_watts.is_none());
 }

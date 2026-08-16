@@ -6,6 +6,10 @@
 //!
 //! Strategy: Test data structures, configurations, and edge cases with correct field names
 
+//! Exercises `hardening`-gated APIs. Without a matching gate this file
+//! did not compile, so none of its tests ran.
+#![cfg(feature = "hardening")]
+
 use std::time::Duration;
 use toadstool::production_hardening::*;
 use toadstool::resources::ResourceRequirements;

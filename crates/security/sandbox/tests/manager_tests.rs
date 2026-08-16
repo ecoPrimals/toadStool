@@ -102,25 +102,25 @@ mod tests {
     async fn test_sandbox_spec_validation() {
         // Test valid spec
         let spec = create_test_sandbox_spec();
-        let result = helpers::validate_sandbox_spec(&spec).await;
+        let result = helpers::validate_sandbox_spec(&spec);
         assert!(result.is_ok());
 
         // Test invalid spec - zero memory limit
         let mut invalid_spec = create_test_sandbox_spec();
         invalid_spec.resource_limits.max_memory_bytes = Some(0);
-        let result = helpers::validate_sandbox_spec(&invalid_spec).await;
+        let result = helpers::validate_sandbox_spec(&invalid_spec);
         assert!(result.is_err());
 
         // Test invalid spec - invalid CPU limit
         let mut invalid_spec = create_test_sandbox_spec();
         invalid_spec.resource_limits.max_cpu_percent = Some(150.0);
-        let result = helpers::validate_sandbox_spec(&invalid_spec).await;
+        let result = helpers::validate_sandbox_spec(&invalid_spec);
         assert!(result.is_err());
 
         // Test invalid spec - negative CPU limit
         let mut invalid_spec = create_test_sandbox_spec();
         invalid_spec.resource_limits.max_cpu_percent = Some(-10.0);
-        let result = helpers::validate_sandbox_spec(&invalid_spec).await;
+        let result = helpers::validate_sandbox_spec(&invalid_spec);
         assert!(result.is_err());
     }
 
@@ -129,7 +129,7 @@ mod tests {
         let config = create_test_config();
         let sandbox_id = "test-sandbox";
 
-        let result = helpers::create_sandbox_directories(&config.sandbox_root, sandbox_id).await;
+        let result = helpers::create_sandbox_directories(&config.sandbox_root, sandbox_id);
         assert!(result.is_ok());
 
         let sandbox_dir = result.unwrap();

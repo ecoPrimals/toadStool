@@ -5,6 +5,17 @@
 //! security_provider (software_hsm, provider, factory), network/load_balancer,
 //! crypto_lock/validation, hosting/resources, cloud/cost/pricing
 
+//! Covers modules that are deprecated and feature-gated: `cloud`,
+//! `crypto_lock`, and `security_provider` are compiled only with their
+//! `legacy-*` features. Without a matching gate this file did not compile,
+//! so none of its tests ran — including those covering live code.
+#![cfg(all(
+    feature = "runtime",
+    feature = "legacy-security",
+    feature = "legacy-cloud",
+    feature = "legacy-coordination"
+))]
+
 #![allow(clippy::pedantic)]
 #![allow(deprecated)]
 
