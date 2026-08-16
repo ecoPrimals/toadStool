@@ -184,6 +184,15 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
     // baseline has to predate the insmod that would register the node.
     ctx.drm_watch = Some(session_safety::DrmNodeWatch::arm(&ctx.config.bdf));
 
+    // Decide once whether a node appearing would actually be claimable, so
+    // settle does not re-evaluate host state on every poll.
+    ctx.drm_node_claimable = session_safety::drm_node_claimable();
+    tracing::info!(
+        bdf = ctx.config.bdf.as_str(),
+        claimable = ctx.drm_node_claimable,
+        "DRM watch armed"
+    );
+
     ctx.steps.push(HandoffStep {
         name: "preflight".into(),
         ok: true,

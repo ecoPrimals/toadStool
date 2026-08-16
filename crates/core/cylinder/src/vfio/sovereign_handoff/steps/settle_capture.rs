@@ -8,7 +8,7 @@ use crate::vfio::sovereign_tiers::classify_tier;
 use toadstool_ember::pri_ring_anchor::BootServiceEvidence;
 
 use super::super::pipeline::PipelineContext;
-use super::super::rollback::deadline_exceeded;
+use super::super::rollback::{deadline_exceeded, halt_result};
 use super::super::types::{HandoffResult, HandoffStep};
 
 fn breadcrumb(msg: &str) {
@@ -48,45 +48,78 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         }
     }
 
+    // A DRM node is only a hazard if something can hot-add it. Every nouveau
+    // seed registers one, so aborting unconditionally would block the whole
+    // strategy on a host where the node is provably inert.
     if let Some(node) = drm_breach {
-        breadcrumb(&format!("settle: ABORT — DRM node {node} appeared on target"));
-        tracing::error!(
+        if ctx.drm_node_claimable {
+            breadcrumb(&format!("settle: ABORT — DRM node {node} appeared on target"));
+            tracing::error!(
+                bdf = ctx.config.bdf.as_str(),
+                node = node.as_str(),
+                seeder = ctx.config.seeder_driver.as_str(),
+                elapsed_ms = t.elapsed().as_millis() as u64,
+                "seeder registered a DRM node and a display server can claim it — aborting rotation"
+            );
+            ctx.steps.push(HandoffStep {
+                name: "seeder_settle".into(),
+                ok: false,
+                detail: Some(format!(
+                    "aborted after {}ms: seeder '{}' registered DRM node '{}' and a display \
+                     server can hot-add it; disable Xorg AutoAddGPU/AutoBindGPU to proceed",
+                    t.elapsed().as_millis(),
+                    ctx.config.seeder_driver,
+                    node
+                )),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+            ctx.needs_device_rollback = true;
+            return Some(halt_result(
+                &ctx.config.bdf,
+                "drm_node_claimable",
+                std::mem::take(&mut ctx.steps),
+                ctx.patch_result.take(),
+                ctx.module_loaded,
+                false,
+                ctx.overall,
+                &ctx.sibling_state,
+                &ctx.config.module_name,
+                true,
+            ));
+        }
+
+        // Node present but inert. Record it — this is the state that killed
+        // three sessions before hot-add was disabled, so it is worth seeing
+        // in the timeline even when it is safe.
+        tracing::warn!(
             bdf = ctx.config.bdf.as_str(),
             node = node.as_str(),
             seeder = ctx.config.seeder_driver.as_str(),
-            elapsed_ms = t.elapsed().as_millis() as u64,
-            "seeder registered a DRM node on the target — aborting before a display server claims it"
+            "seeder registered a DRM node; inert because no display server can claim it"
         );
-        ctx.steps.push(HandoffStep {
-            name: "seeder_settle".into(),
-            ok: false,
-            detail: Some(format!(
-                "aborted after {}ms: seeder '{}' registered DRM node '{}' on the target; \
-                 a display server may claim it mid-rotation",
-                t.elapsed().as_millis(),
-                ctx.config.seeder_driver,
-                node
-            )),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
-        ctx.needs_device_rollback = true;
-        return Some(deadline_exceeded(
-            &ctx.config.bdf,
-            std::mem::take(&mut ctx.steps),
-            ctx.patch_result.take(),
-            ctx.module_loaded,
-            &ctx.config.module_name,
-            &ctx.sibling_state,
-            ctx.overall,
-        ));
+        breadcrumb(&format!("settle: DRM node {node} appeared (inert, continuing)"));
+
+        // Finish the remainder of the settle the watch cut short.
+        let remaining = settle_deadline.saturating_duration_since(Instant::now());
+        if !remaining.is_zero() {
+            std::thread::sleep(remaining);
+        }
     }
 
     breadcrumb("settle: settle complete");
+    let drm_note = ctx
+        .drm_watch
+        .as_ref()
+        .and_then(DrmNodeWatch::breached)
+        .map_or_else(
+            || "no DRM node appeared on target".to_string(),
+            |n| format!("DRM node '{n}' appeared but is inert (no display server can claim it)"),
+        );
     ctx.steps.push(HandoffStep {
         name: "seeder_settle".into(),
         ok: true,
         detail: Some(format!(
-            "{}ms settle, no DRM node appeared on target",
+            "{}ms settle, {drm_note}",
             ctx.config.settle.as_millis()
         )),
         duration_ms: t.elapsed().as_millis() as u64,

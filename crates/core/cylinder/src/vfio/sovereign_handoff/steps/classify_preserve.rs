@@ -8,6 +8,39 @@ use crate::vfio::sovereign_tiers::classify_tier;
 use super::super::pipeline::PipelineContext;
 use super::super::types::{HandoffResult, HandoffStep, ModuleSourceConfig};
 
+fn read_power_state(bdf: &str) -> String {
+    std::fs::read_to_string(crate::linux_paths::sysfs_pci_device_file(bdf, "power_state"))
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| "unknown".into())
+}
+
+/// Bring a device out of runtime suspend so BAR0 reads mean something.
+///
+/// Best-effort and non-fatal: if the wake does not take, the all-ones check
+/// in the classifier reports the failure rather than hiding it.
+fn wake_for_classification(bdf: &str) {
+    let before = read_power_state(bdf);
+    if before == "D0" {
+        return;
+    }
+
+    // "on" pins the device out of runtime PM; writing enable powers it up and
+    // restores memory decode.
+    let _ = std::fs::write(
+        crate::linux_paths::sysfs_pci_device_file(bdf, "power/control"),
+        "on",
+    );
+    let _ = std::fs::write(crate::linux_paths::sysfs_pci_device_file(bdf, "enable"), "1");
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
+    tracing::info!(
+        bdf,
+        before = before.as_str(),
+        after = read_power_state(bdf).as_str(),
+        "woke device for tier classification"
+    );
+}
+
 pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
     // ── Step 7: Tier Classification ─────────────────────────────────
 
@@ -43,13 +76,42 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             Some(evidence)
         } else {
             let t = Instant::now();
+
+            // Wake the device before reading it. vfio-pci leaves the GPU in
+            // D3hot after a warm swap, and a D3hot BAR0 read returns all-ones
+            // instead of failing — so classification would silently describe
+            // a sleeping device rather than a cold one.
+            wake_for_classification(&ctx.config.bdf);
+
             match crate::vfio::device::MappedBar::from_sysfs_rw(&ctx.config.bdf, 16 * 1024 * 1024) {
                 Ok(sysfs_bar) => {
                     let evidence = classify_tier(&sysfs_bar);
+
+                    // An unreadable bus is not a tier. Say so, rather than
+                    // reporting the fallback verdict as though it were measured.
+                    let (ok, detail) = if evidence.bus_readable {
+                        (true, format!("{} (via sysfs)", evidence.tier))
+                    } else {
+                        tracing::error!(
+                            bdf = ctx.config.bdf.as_str(),
+                            pmc_enable = format_args!("{:#010x}", evidence.pmc_enable),
+                            power_state = read_power_state(&ctx.config.bdf).as_str(),
+                            "BAR0 returned all-ones — tier is not evidence, the device did not answer"
+                        );
+                        (
+                            false,
+                            format!(
+                                "BAR0 unreadable (all-ones, power_state={}) — no tier measured; \
+                                 device did not answer",
+                                read_power_state(&ctx.config.bdf)
+                            ),
+                        )
+                    };
+
                     ctx.steps.push(HandoffStep {
                         name: "tier_classify".into(),
-                        ok: true,
-                        detail: Some(format!("{} (via sysfs)", evidence.tier)),
+                        ok,
+                        detail: Some(detail),
                         duration_ms: t.elapsed().as_millis() as u64,
                     });
                     Some(evidence)

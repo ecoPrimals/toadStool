@@ -44,6 +44,11 @@ pub(crate) struct PipelineContext<'a> {
     /// during module load, so a watch armed at settle would capture the
     /// hazard as its own baseline and never fire.
     pub drm_watch: Option<crate::vfio::session_safety::DrmNodeWatch>,
+    /// Whether a DRM node appearing on the target could actually be claimed.
+    ///
+    /// Evaluated once in preflight. Every nouveau seed registers a node, so
+    /// this decides whether that is a hazard or merely a fact to record.
+    pub drm_node_claimable: bool,
     heartbeat_fn: Option<&'a (dyn Fn() + Send)>,
     signal_fn: Option<&'a (dyn Fn(PipelineSignal) + Send)>,
 }
@@ -135,6 +140,7 @@ fn execute_handoff_inner(
         handoff_guard: None,
         irq_clutch_engaged: false,
         drm_watch: None,
+        drm_node_claimable: true,
         heartbeat_fn: heartbeat_ref,
         signal_fn: signal_ref,
     };

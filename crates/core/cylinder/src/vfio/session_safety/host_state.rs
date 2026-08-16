@@ -83,31 +83,74 @@ fn xorg_config_sources() -> Vec<String> {
     out
 }
 
-/// Whether any display server is currently running.
+/// Which display server, if any, is running.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayServer {
+    /// Nothing is running that could claim a DRM node.
+    None,
+    /// Xorg. Hot-add is governed by `AutoAddGPU`/`AutoBindGPU`.
+    X11,
+    /// A Wayland compositor. No standard opt-out for GPU hot-add.
+    Wayland,
+}
+
+/// Detect the running display server.
 ///
-/// Detected via the abstract X socket directory and the Wayland runtime
-/// socket, which do not require inspecting other users' processes.
+/// Uses socket presence rather than process inspection, so it does not depend
+/// on being able to see other users' processes. X is checked first: an Xorg
+/// session started by a Wayland-capable display manager still leaves a
+/// Wayland socket in some configurations, and X is the one with a hot-add
+/// opt-out we can verify.
 #[must_use]
-pub fn display_server_running() -> bool {
+pub fn detect_display_server() -> DisplayServer {
     let x_live = std::fs::read_dir("/tmp/.X11-unix")
         .map(|mut d| d.next().is_some())
         .unwrap_or(false);
     if x_live {
-        return true;
+        return DisplayServer::X11;
     }
 
-    let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") else {
-        return false;
-    };
-    std::fs::read_dir(&runtime_dir)
-        .map(|entries| {
-            entries.flatten().any(|e| {
-                e.file_name()
-                    .to_str()
-                    .is_some_and(|n| n.starts_with("wayland-") && !n.ends_with(".lock"))
+    let wayland = std::env::var("XDG_RUNTIME_DIR").ok().is_some_and(|dir| {
+        std::fs::read_dir(&dir)
+            .map(|entries| {
+                entries.flatten().any(|e| {
+                    e.file_name()
+                        .to_str()
+                        .is_some_and(|n| n.starts_with("wayland-") && !n.ends_with(".lock"))
+                })
             })
-        })
-        .unwrap_or(false)
+            .unwrap_or(false)
+    });
+
+    if wayland {
+        DisplayServer::Wayland
+    } else {
+        DisplayServer::None
+    }
+}
+
+/// Whether any display server is currently running.
+#[must_use]
+pub fn display_server_running() -> bool {
+    detect_display_server() != DisplayServer::None
+}
+
+/// Whether a DRM node appearing on a secondary GPU could be claimed.
+///
+/// A card node is only a hazard if something is positioned to hot-add it.
+/// With no display server, or with Xorg's GPU hot-add explicitly disabled,
+/// the node is inert and a driver rotation can proceed through it.
+///
+/// Wayland is treated as claimable: compositors vary and there is no
+/// equivalent opt-out we can verify, so the conservative answer is the safe
+/// one.
+#[must_use]
+pub fn drm_node_claimable() -> bool {
+    match detect_display_server() {
+        DisplayServer::None => false,
+        DisplayServer::X11 => !xorg_gpu_hotadd_disabled(),
+        DisplayServer::Wayland => true,
+    }
 }
 
 /// Whether `bdf` is currently driving a display node.
@@ -156,5 +199,41 @@ mod tests {
     #[test]
     fn nonexistent_device_is_not_a_display_gpu() {
         assert!(!is_display_gpu("0000:ff:ff.9"));
+    }
+
+    /// A card node is only a hazard when something can hot-add it. Encoding
+    /// the matrix directly: the live functions read host state, so this
+    /// asserts the decision rule rather than the environment.
+    #[test]
+    fn claimability_matrix() {
+        fn claimable(server: DisplayServer, xorg_hotadd_off: bool) -> bool {
+            match server {
+                DisplayServer::None => false,
+                DisplayServer::X11 => !xorg_hotadd_off,
+                DisplayServer::Wayland => true,
+            }
+        }
+
+        // Headless: nothing can claim it.
+        assert!(!claimable(DisplayServer::None, false));
+        assert!(!claimable(DisplayServer::None, true));
+
+        // Xorg with hot-add disabled: inert. This is the biomeGate posture.
+        assert!(!claimable(DisplayServer::X11, true));
+
+        // Xorg with hot-add live: the 2026-08-16 failure.
+        assert!(claimable(DisplayServer::X11, false));
+
+        // Wayland: no verifiable opt-out, so stay conservative.
+        assert!(claimable(DisplayServer::Wayland, true));
+        assert!(claimable(DisplayServer::Wayland, false));
+    }
+
+    #[test]
+    fn display_server_running_agrees_with_detection() {
+        assert_eq!(
+            display_server_running(),
+            detect_display_server() != DisplayServer::None
+        );
     }
 }

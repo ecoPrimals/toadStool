@@ -210,6 +210,29 @@ pub struct TierEvidence {
     /// Whether any TPC control register across GPC0-5 is alive (non-fault).
     /// False means TPC PRI ring wall is active — shader dispatch impossible.
     pub tpc_alive: bool,
+    /// Whether BAR0 actually answered.
+    ///
+    /// When the device is in D3hot, or memory decode is off, PCI reads return
+    /// all-ones rather than failing. `read_u32` succeeds and hands back
+    /// `0xFFFFFFFF`, which has a popcount of 32 and sails past the cold
+    /// threshold — so every downstream register check then reasons about
+    /// garbage. When this is false the tier is **not evidence**; the
+    /// measurement never happened.
+    ///
+    /// Observed 2026-08-16: after warm swap to vfio-pci the Titan V sat in
+    /// D3hot and classified as `cold` with `pmc_popcount=32`, an impossible
+    /// pairing that only makes sense as a failed read.
+    pub bus_readable: bool,
+}
+
+/// Whether a PMC_ENABLE value indicates the bus did not answer.
+///
+/// `0xFFFFFFFF` is the PCI signature for an unreachable device. It is not a
+/// plausible PMC_ENABLE: it would claim every engine including reserved bits
+/// is enabled simultaneously.
+#[must_use]
+pub const fn is_bus_read_failure(pmc_enable: u32) -> bool {
+    pmc_enable == 0xFFFF_FFFF
 }
 
 /// Classify the sovereignty tier from live register state.
@@ -219,6 +242,27 @@ pub struct TierEvidence {
 pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     let pmc_enable = bar0.read_u32(0x200).unwrap_or(0);
     let pmc_popcount = pmc_enable.count_ones();
+
+    // A sleeping or decode-disabled device returns all-ones rather than
+    // erroring. Report that as an absent measurement instead of letting a
+    // popcount of 32 walk past the cold threshold into garbage reads.
+    if is_bus_read_failure(pmc_enable) {
+        return TierEvidence {
+            tier: SovereignTier::Cold,
+            pmc_enable,
+            pmc_popcount,
+            pramin_accessible: false,
+            fecs_pc: None,
+            gpc_enables: None,
+            ce_status: None,
+            gr_status: None,
+            pbdma_intr: None,
+            ce_runlist: None,
+            tpc_status: None,
+            tpc_alive: false,
+            bus_readable: false,
+        };
+    }
 
     // Below 8 engines enabled = cold state
     if pmc_popcount < 8 {
@@ -235,6 +279,7 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
             ce_runlist: None,
             tpc_status: None,
             tpc_alive: false,
+            bus_readable: true,
         };
     }
 
@@ -334,6 +379,7 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
         ce_runlist,
         tpc_status,
         tpc_alive,
+        bus_readable: true,
     }
 }
 
@@ -350,6 +396,27 @@ pub fn classify_tier_for_profile(
     let pmc_enable = bar0.read_u32(0x200).unwrap_or(0);
     let pmc_popcount = pmc_enable.count_ones();
 
+    // A sleeping or decode-disabled device returns all-ones rather than
+    // erroring. Report that as an absent measurement instead of letting a
+    // popcount of 32 walk past the cold threshold into garbage reads.
+    if is_bus_read_failure(pmc_enable) {
+        return TierEvidence {
+            tier: SovereignTier::Cold,
+            pmc_enable,
+            pmc_popcount,
+            pramin_accessible: false,
+            fecs_pc: None,
+            gpc_enables: None,
+            ce_status: None,
+            gr_status: None,
+            pbdma_intr: None,
+            ce_runlist: None,
+            tpc_status: None,
+            tpc_alive: false,
+            bus_readable: false,
+        };
+    }
+
     if pmc_popcount < 8 {
         return TierEvidence {
             tier: SovereignTier::Cold,
@@ -364,6 +431,7 @@ pub fn classify_tier_for_profile(
             ce_runlist: None,
             tpc_status: None,
             tpc_alive: false,
+            bus_readable: true,
         };
     }
 
@@ -442,6 +510,7 @@ pub fn classify_tier_for_profile(
         ce_runlist,
         tpc_status,
         tpc_alive,
+        bus_readable: true,
     }
 }
 
@@ -480,5 +549,35 @@ mod tests {
     fn display_format() {
         let s = format!("{}", SovereignTier::WarmInfrastructure);
         assert!(s.contains("Tier 1"));
+    }
+}
+
+#[cfg(test)]
+mod bus_read_tests {
+    use super::*;
+
+    /// All-ones is the PCI "no answer" signature, not a register value.
+    #[test]
+    fn all_ones_is_a_bus_read_failure() {
+        assert!(is_bus_read_failure(0xFFFF_FFFF));
+    }
+
+    /// The pairing observed on the Titan V in D3hot: popcount 32 with a
+    /// "cold" verdict. Plausible engine masks must not be caught.
+    #[test]
+    fn plausible_pmc_values_are_not_read_failures() {
+        for v in [0x0000_0000, 0x0000_0001, 0x1F00_1F3F, 0x7FFF_FFFF, 0xFFFF_FFFE] {
+            assert!(!is_bus_read_failure(v), "{v:#010x} misread as bus failure");
+        }
+    }
+
+    /// A popcount of 32 can only come from all-ones, which is exactly the
+    /// case that used to sail past the `< 8` cold threshold.
+    #[test]
+    fn full_popcount_implies_read_failure() {
+        let v = 0xFFFF_FFFFu32;
+        assert_eq!(v.count_ones(), 32);
+        assert!(v.count_ones() >= 8, "would bypass the cold guard");
+        assert!(is_bus_read_failure(v), "must be caught before that guard");
     }
 }

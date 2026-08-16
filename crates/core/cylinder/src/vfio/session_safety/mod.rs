@@ -30,6 +30,7 @@ pub mod drm_watch;
 pub mod host_state;
 
 pub use drm_watch::{DrmNodeWatch, DrmNodes};
+pub use host_state::{DisplayServer, drm_node_claimable};
 
 /// A single reason a rotation is considered unsafe.
 #[derive(Debug, Clone, PartialEq, Eq)]

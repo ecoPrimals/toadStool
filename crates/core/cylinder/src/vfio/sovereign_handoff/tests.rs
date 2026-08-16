@@ -128,6 +128,7 @@ fn handoff_result_display_success() {
             ce_runlist: None,
             tpc_status: None,
             tpc_alive: false,
+            bus_readable: true,
         }),
         module_loaded: true,
         module_unloaded: true,
