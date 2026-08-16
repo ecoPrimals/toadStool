@@ -49,6 +49,13 @@ base64 = { workspace = true }
 
 mdns-sd = { workspace = true, optional = true }
 
+# The demo initialises tracing-subscriber, which is optional and behind
+# `logging`. Declaring that here lets `cargo test --workspace` skip the
+# example instead of failing to build it.
+[[example]]
+name = "universal_demo"
+required-features = ["logging"]
+
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }

@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Exercises `hardening`-gated APIs. Without a matching gate this file
+//! did not compile, so none of its tests ran.
+#![cfg(feature = "hardening")]
+
 #![allow(deprecated)]
 #![allow(
     clippy::float_cmp,

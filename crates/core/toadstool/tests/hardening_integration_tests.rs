@@ -4,6 +4,10 @@
 //! These tests verify that production hardening (circuit breakers, leak detection, memory pressure)
 //! and performance hardening (monitoring, caching, pooling) work correctly when integrated.
 
+//! Exercises `hardening`-gated APIs. Without a matching gate this file
+//! did not compile, so none of its tests ran.
+#![cfg(feature = "hardening")]
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use toadstool::performance_hardening::*;

@@ -7,6 +7,10 @@
 //! - Memory pressure handling
 //! - Production hardening manager integration
 
+//! Exercises `hardening`-gated APIs. Without a matching gate this file
+//! did not compile, so none of its tests ran.
+#![cfg(feature = "hardening")]
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use uuid::Uuid;

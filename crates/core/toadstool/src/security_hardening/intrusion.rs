@@ -7,7 +7,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use std::time::Instant;
+// tokio's Instant, not std's, so that rate-limit windows and ban expiry can
+// be tested with `tokio::time::advance` under a paused clock. It wraps
+// std::time::Instant and is identical in production; only under
+// `start_paused = true` do they diverge, and there std's clock ignores
+// `advance` entirely — which silently made `expired_ban_is_cleared` assert
+// that a ban had lapsed when no time had passed for the code under test.
+use tokio::time::Instant;
 
 use std::sync::RwLock;
 use tracing::error;
