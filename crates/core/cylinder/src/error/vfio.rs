@@ -442,6 +442,21 @@ pub enum SovereignStagesError {
     #[error("DEVINIT not needed per register but PRAMIN is dead")]
     Gddr5PraminDeadDevinitSkipped,
 
+    /// Entry status said POST was needed; devinit then declined to run.
+    ///
+    /// The two readings disagree, so the state of memory is unknown and we
+    /// will not write into it to find out. Distinct from
+    /// [`Self::Gddr5PraminDeadDevinitSkipped`], which reports an actual dead
+    /// PRAMIN — this variant means PRAMIN was deliberately never touched.
+    #[error(
+        "devinit declined despite DEVINIT_STATUS={devinit_reg:#010x} reporting POST needed; \
+         memory state unknown, PRAMIN not probed"
+    )]
+    Gddr5DevinitDeclinedWhilePostNeeded {
+        /// The DEVINIT_STATUS value read on entry to memory training.
+        devinit_reg: u32,
+    },
+
     /// Kepler firmware blob read from `/lib/firmware/nvidia/...`.
     #[error("Kepler firmware read {path}: {source}")]
     KeplerFirmwareRead {

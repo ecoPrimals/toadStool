@@ -150,11 +150,33 @@ impl FalconDiagnostic {
 
         let status = DevinitStatus::probe(bar0);
 
+        // Reading the on-die VBIOS means clearing bit 0 of PROM_ENABLE_REG
+        // (0x1854) and reading the PROM aperture. 0x1854 is a PBUS register,
+        // and on a cold Kepler the whole PBUS ring answers 0xbad0011f — a PRI
+        // fault. Writing into a faulted ring and then reading a 1MB aperture
+        // behind it wedges the die: BAR0 goes all-ones and stays there until
+        // the next reboot. Three Tesla K80 die-losses on 2026-08-16 came
+        // through here, after the PGRAPH and PRAMIN guards had correctly held.
+        //
+        // So ask the ring whether it is answering before poking it. When it
+        // is not, PROM is simply unavailable — `best_vbios` has other sources
+        // (PCI ROM BAR, ACPI, cache) that do not depend on PBUS being healthy.
+        use crate::nv::register_read::RegisterRead;
         let prom_enable_reg = r(PROM_ENABLE_REG);
-        let _ = bar0.write_u32(PROM_ENABLE_REG, prom_enable_reg & !1);
-        let prom_signature = r(PROM_BASE);
-        let prom_accessible = (prom_signature & 0xFFFF) == 0xAA55;
-        let _ = bar0.write_u32(PROM_ENABLE_REG, prom_enable_reg);
+        let pbus_healthy = RegisterRead::classify(prom_enable_reg).valid().is_some();
+
+        let (prom_signature, prom_accessible) = if pbus_healthy {
+            let _ = bar0.write_u32(PROM_ENABLE_REG, prom_enable_reg & !1);
+            let sig = r(PROM_BASE);
+            let _ = bar0.write_u32(PROM_ENABLE_REG, prom_enable_reg);
+            (sig, (sig & 0xFFFF) == 0xAA55)
+        } else {
+            tracing::warn!(
+                prom_enable_reg = format!("{prom_enable_reg:#010x}"),
+                "PBUS ring is PRI-faulted — skipping PROM read to avoid wedging the die"
+            );
+            (prom_enable_reg, false)
+        };
 
         let hwcfg = status.pmu_hwcfg;
         let secure_boot = hwcfg & (1 << 8) != 0;
@@ -380,5 +402,37 @@ mod devinit_readability_tests {
         let (needs, readable) = needs_post(0xBADF_5040);
         assert!(!readable);
         assert!(needs);
+    }
+}
+
+#[cfg(test)]
+mod prom_guard_tests {
+    use crate::nv::register_read::RegisterRead;
+
+    /// Mirror of the gate in `FalconDiagnostic::probe`: may we clear bit 0 of
+    /// PROM_ENABLE_REG (0x1854, a PBUS register) and read the PROM aperture?
+    fn prom_read_allowed(prom_enable_reg: u32) -> bool {
+        RegisterRead::classify(prom_enable_reg).valid().is_some()
+    }
+
+    /// A cold K80's PBUS ring answers 0xbad0011f. Writing into it and then
+    /// reading the 1MB PROM aperture behind it wedges the die.
+    #[test]
+    fn pri_faulted_pbus_blocks_prom_read() {
+        assert!(!prom_read_allowed(0xbad0_011f), "PRI fault must block PROM");
+        assert!(!prom_read_allowed(0xbad0_0100));
+    }
+
+    /// An absent device must not be poked either.
+    #[test]
+    fn unresponsive_device_blocks_prom_read() {
+        assert!(!prom_read_allowed(0xFFFF_FFFF));
+    }
+
+    /// A healthy ring returns a plausible value and PROM is fair game.
+    #[test]
+    fn healthy_pbus_permits_prom_read() {
+        assert!(prom_read_allowed(0x0000_0000));
+        assert!(prom_read_allowed(0x0000_0001));
     }
 }

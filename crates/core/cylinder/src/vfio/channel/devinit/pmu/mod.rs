@@ -14,13 +14,40 @@ use super::script::interpret_boot_scripts;
 use super::vbios::{BitTable, parse_pmu_table};
 
 /// Quick VRAM check via PRAMIN sentinel.
+/// Verify VRAM by writing a sentinel through the PRAMIN aperture.
+///
+/// # Destructive
+///
+/// This *writes* `0xCAFE_DEAD` into video memory via `BAR0_WINDOW`. It is
+/// only valid once memory is up. Calling it to find out whether memory is up
+/// is what wedges cold Kepler dies — see [`pramin_sentinel_test`], of which
+/// this is a second copy that lived long enough to be missed by the guards
+/// added to that one.
+///
+/// [`pramin_sentinel_test`]: crate::vfio::sovereign_stages::pramin_sentinel_test
 fn check_vram_via_pramin(bar0: &MappedBar) -> bool {
     use crate::vfio::memory::{MemoryRegion, PraminRegion};
+
+    // A store into an aperture whose device is not answering is how the
+    // window register gets left steered at a dead ring.
+    if !bar0_is_answering(bar0) {
+        tracing::warn!("device not answering — refusing destructive PRAMIN probe");
+        return false;
+    }
+
     if let Ok(mut region) = PraminRegion::new(bar0, 0x0002_6000, 8) {
         region.probe_sentinel(0, 0xCAFE_DEAD).is_working()
     } else {
         false
     }
+}
+
+/// Cheap liveness check: does BAR0 decode at all?
+fn bar0_is_answering(bar0: &MappedBar) -> bool {
+    use crate::nv::register_read::RegisterRead;
+    RegisterRead::classify(bar0.read_u32(0x0).unwrap_or(0xFFFF_FFFF))
+        .valid()
+        .is_some_and(|boot0| boot0 != 0)
 }
 
 /// Execute devinit with enhanced diagnostics and automatic VBIOS source selection.

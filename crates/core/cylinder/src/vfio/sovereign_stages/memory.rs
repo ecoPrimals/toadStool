@@ -116,7 +116,9 @@ pub(crate) fn gddr5_training(bar0: &MappedBar, bdf: &str) -> Result<String, Sove
             // is what wedged K80 die 2 on 2026-08-16, after the entry guard
             // above had correctly kept us away from it moments earlier.
             if status.needs_post {
-                return Err(SovereignStagesError::Gddr5PraminDeadDevinitSkipped);
+                return Err(SovereignStagesError::Gddr5DevinitDeclinedWhilePostNeeded {
+                    devinit_reg: status.devinit_reg,
+                });
             }
             if pramin_sentinel_test(bar0) {
                 Ok("DEVINIT reports already done — PRAMIN verified".into())
