@@ -814,8 +814,25 @@ tightened; 7,789 lib tests, 0 failures, clippy and fmt clean.
 
 ## Active Debt
 
-Outstanding technical debt that still requires active engineering work (six
+Outstanding technical debt that still requires active engineering work (seven
 items).
+
+### D-TOOLCHAIN-DRIFT — Active (S382)
+**Scope**: Workspace | **File**: `rust-toolchain.toml`
+`channel = "stable"` is pinned with **no version**, so the toolchain floats.
+It has advanced to **1.97.1** and both CI gates — `cargo fmt --all -- --check`
+and `cargo clippy --workspace --all-targets -- -D warnings` — were **failing**
+while the root docs claimed "all quality gates green". The docs were true when
+written; the compiler moved underneath them.
+**S382**: 542 files reformatted; workspace lib clippy warnings 682 → 192 via
+`--fix`. One genuine bug surfaced (see below). Remainder needs judgement:
+100× needless `async`, 11× unfulfilled `#[expect]`, 8× missing `# Errors` docs,
+5× needless `Result`.
+**Root cause of the *drift*, not the lints**: nothing tells us the toolchain
+moved. A green badge from a pinned CI image and a red local gate are the same
+repo.
+**Closure**: pin an explicit version, and bump deliberately. A floating pin
+turns every compiler release into an unannounced, unattributed change.
 
 ### D-TEST-COMPILE — Active (S382)
 **Scope**: Workspace | **Metric**: `cargo test --workspace --no-run`

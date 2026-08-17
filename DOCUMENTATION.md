@@ -35,7 +35,7 @@ These root documents were **fully resolved** and **fossilized** in the ecosystem
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **8,521 lib tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **8,521 lib tests**, 0 failures, 0 fmt diffs; 192 lib clippy warnings after the 1.97.1 toolchain bump (D-TOOLCHAIN-DRIFT). Full workspace concurrent test suite.
 - **S380 (Aug 2026)** — wgpu 22→28 (MSRV 1.85→1.92), axum fully excised (BYOB server → UDS JSON-RPC), silicon ledger + idle-aware routing, darwin/graftGate cfg fix.
 - **S381 (Aug 2026)** — Deep debt cleanup: `platform_backends.rs` module split, akida capabilities DRY, inter-primal overstep cleanup (`coral_client`→`shader_service`), legacy test renames, script BDF env vars, string param modernization, `runtime/edge` orphan documented.
 - **16/16 cross-arch native targets** (S369) — x86_64/aarch64/armv7/riscv64/ppc64le/s390x/loongarch across Linux/macOS/Windows/iOS/Android.
