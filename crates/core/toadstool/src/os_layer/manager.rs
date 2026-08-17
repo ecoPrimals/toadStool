@@ -123,7 +123,10 @@ impl OSLayerManager {
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         info!("Initializing OS layer manager");
 
-        let mut layers = self.compatibility_layers.write().unwrap_or_else(|e| e.into_inner());
+        let mut layers = self
+            .compatibility_layers
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
 
         // Initialize Linux compatibility layer
         if self.config.enabled {
@@ -176,7 +179,12 @@ impl OSLayerManager {
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         // Try to find a suitable compatibility layer
-        for (name, layer) in self.compatibility_layers.read().unwrap_or_else(|e| e.into_inner()).iter() {
+        for (name, layer) in self
+            .compatibility_layers
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+        {
             if layer.can_handle(&request) {
                 info!("Using compatibility layer: {}", name);
                 return layer.execute_with_compatibility(request).await;
@@ -293,7 +301,10 @@ mod tests {
         let config = OSLayerConfig::default();
         let manager = OSLayerManager::new(config);
         manager.initialize().await.unwrap();
-        let layers = manager.compatibility_layers.read().unwrap_or_else(|e| e.into_inner());
+        let layers = manager
+            .compatibility_layers
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         assert!(layers.contains_key("linux"));
         assert!(layers.contains_key("windows"));
         assert!(layers.contains_key("macos"));
@@ -308,7 +319,10 @@ mod tests {
         };
         let manager = OSLayerManager::new(config);
         manager.initialize().await.unwrap();
-        let layers = manager.compatibility_layers.read().unwrap_or_else(|e| e.into_inner());
+        let layers = manager
+            .compatibility_layers
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         assert!(layers.is_empty());
     }
 

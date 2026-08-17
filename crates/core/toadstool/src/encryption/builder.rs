@@ -4,9 +4,9 @@ use std::marker::PhantomData;
 use uuid::Uuid;
 
 use super::EncryptionConfig;
+use super::SecurityLevel;
 use super::context::EncryptionContext;
 use super::provider::{CryptoProvider, NoopCryptoProvider};
-use super::SecurityLevel;
 
 /// Builder for encryption contexts
 ///

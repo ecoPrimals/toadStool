@@ -28,8 +28,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::sync::RwLock;
+use std::time::{Duration, Instant};
 
 /// Primal endpoint discovered at runtime
 #[derive(Clone, Debug)]
@@ -269,7 +269,10 @@ impl PrimalDiscovery {
     /// This implementation always succeeds. Returns [`DiscoveryError`] for API compatibility
     /// with implementations that may fail during refresh.
     pub async fn refresh(&self) -> Result<(), DiscoveryError> {
-        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
         tracing::debug!("Discovery cache cleared");
         Ok(())
     }

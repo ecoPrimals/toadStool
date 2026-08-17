@@ -147,13 +147,12 @@ pub use os_layer::{
 pub use resources::ResourceRequirements as UniversalResourceRequirements;
 #[cfg(all(any(test, feature = "test-mocks"), feature = "runtime"))]
 pub use resources::TestResourceMonitor;
-#[cfg(feature = "runtime")]
-pub use resources::{ResourceMonitor, ResourceMonitorDispatch, SystemResourceMonitor};
 pub use resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
-    ResourceRequirements, ResourceUsage, RuntimeMetrics,
-    StorageRequirements, SystemResources,
+    ResourceRequirements, ResourceUsage, RuntimeMetrics, StorageRequirements, SystemResources,
 };
+#[cfg(feature = "runtime")]
+pub use resources::{ResourceMonitor, ResourceMonitorDispatch, SystemResourceMonitor};
 pub use runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
 pub use security::{
     AuditEvent, AuditSettings, Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity,

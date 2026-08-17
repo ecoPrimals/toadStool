@@ -74,8 +74,7 @@ fn discover_via_wgpu(devices: &mut Vec<serde_json::Value>) {
         backends: wgpu::Backends::all(),
         ..Default::default()
     });
-    let adapters =
-        futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+    let adapters = futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
     for (idx, adapter) in adapters.iter().enumerate() {
         let info = adapter.get_info();
         if info.device_type == wgpu::DeviceType::Cpu {
@@ -345,11 +344,17 @@ mod sysfs_discovery_tests {
     #[test]
     fn discovery_reports_complete_records() {
         for d in discover_via_sysfs() {
-            assert!(d.get("id").and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()));
+            assert!(
+                d.get("id")
+                    .and_then(|v| v.as_str())
+                    .is_some_and(|s| !s.is_empty())
+            );
             assert!(d.get("vendor_id").is_some());
             assert!(d.get("backend").is_some());
             assert!(
-                d.get("responding").and_then(serde_json::Value::as_bool).is_some(),
+                d.get("responding")
+                    .and_then(serde_json::Value::as_bool)
+                    .is_some(),
                 "liveness must always be stated, never omitted"
             );
         }

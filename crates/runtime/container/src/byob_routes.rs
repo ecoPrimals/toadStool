@@ -193,7 +193,10 @@ impl<E: ByobExecutor + Send + Sync + 'static> ByobApi<E> {
             }
         };
 
-        info!("Received BYOB deployment request for team {}", request.team_id);
+        info!(
+            "Received BYOB deployment request for team {}",
+            request.team_id
+        );
 
         match self.executor.deploy_biome(request).await {
             Ok(response) => {
@@ -333,12 +336,13 @@ fn toadstool_error_to_jsonrpc(err: &ToadStoolError) -> JsonRpcError {
     use toadstool::error::{ConfigError, ResourceError, SystemError};
 
     match err {
-        ToadStoolError::Resource(ResourceError::NotFound { .. })
-        | ToadStoolError::NotFound(_) => JsonRpcError {
-            code: error_codes::WORKLOAD_NOT_FOUND,
-            message: err.to_string(),
-            data: None,
-        },
+        ToadStoolError::Resource(ResourceError::NotFound { .. }) | ToadStoolError::NotFound(_) => {
+            JsonRpcError {
+                code: error_codes::WORKLOAD_NOT_FOUND,
+                message: err.to_string(),
+                data: None,
+            }
+        }
         ToadStoolError::Configuration(ConfigError::ValidationError { .. }) => JsonRpcError {
             code: error_codes::INVALID_PARAMS,
             message: err.to_string(),

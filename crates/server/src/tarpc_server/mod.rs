@@ -22,10 +22,10 @@ pub use executor::TestExecutor;
 #[cfg(unix)]
 use std::io::ErrorKind;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 use tarpc::context::Context;
-use std::sync::RwLock;
 use tracing::info;
 #[cfg(unix)]
 use tracing::warn;
@@ -65,7 +65,11 @@ impl ToadStoolTarpcServer {
     /// - Returns 0.0-1.0 utilization percentage
     /// - Graceful degradation on query failure
     async fn calculate_resource_utilization(&self) -> f32 {
-        let active_count = self.workloads.read().unwrap_or_else(|e| e.into_inner()).len();
+        let active_count = self
+            .workloads
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .len();
         let max_capacity =
             std::thread::available_parallelism().map_or(4, std::num::NonZero::get) * 4; // ~4 workloads per core
 

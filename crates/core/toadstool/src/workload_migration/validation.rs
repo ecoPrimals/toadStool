@@ -188,7 +188,6 @@ fn check_local_capacity(_requirements: &ResourceRequirements) -> ToadStoolResult
     Ok(PreflightOutcome::Ok)
 }
 
-
 /// Snapshot of a workload's state immediately before migration.
 ///
 /// Pass this into `rollback()` to restore the workload to its pre-migration

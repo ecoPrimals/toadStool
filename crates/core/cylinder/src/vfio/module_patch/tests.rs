@@ -28,7 +28,10 @@ fn volta_patch_set_targets_correct_functions() {
 /// session and leaves nouveau an unremovable zombie.
 #[test]
 fn nouveau_patch_sets_never_nop_gr_fini() {
-    for ps in [PatchSet::volta_warm_handoff(), PatchSet::kepler_warm_handoff()] {
+    for ps in [
+        PatchSet::volta_warm_handoff(),
+        PatchSet::kepler_warm_handoff(),
+    ] {
         let names: Vec<&str> = ps.targets.iter().map(|t| t.symbol.as_str()).collect();
         assert!(
             !names.contains(&"gf100_gr_fini"),

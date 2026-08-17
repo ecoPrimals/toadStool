@@ -348,8 +348,7 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
     assert!(scheduler.available_runtimes().is_empty());
 
     let engine = Arc::new(simple_mock_engine::SimpleMockRuntimeEngine);
-    scheduler
-        .register_runtime_engine(RuntimeType::Native, engine);
+    scheduler.register_runtime_engine(RuntimeType::Native, engine);
 
     let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);

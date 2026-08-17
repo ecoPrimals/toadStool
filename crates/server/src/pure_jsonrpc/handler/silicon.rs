@@ -246,7 +246,9 @@ impl SiliconHandler {
                             reason: format!(
                                 "idle-silicon opportunistic: {} is powered but unused, \
                                  scheduling at {:.0} GFLOPS (vs {:.0} on primary)",
-                                idle_candidate, m.throughput_gflops, routed.estimated_throughput_gflops
+                                idle_candidate,
+                                m.throughput_gflops,
+                                routed.estimated_throughput_gflops
                             ),
                             fallback: Some(Box::new(routed)),
                         };
@@ -286,7 +288,10 @@ impl SiliconHandler {
         let idle_count = ledger.idle_units.len();
         let efficiency = ledger.utilization_efficiency();
 
-        let mut store = self.energy_ledger.write().unwrap_or_else(|e| e.into_inner());
+        let mut store = self
+            .energy_ledger
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         *store = Some(ledger);
 
         Ok(serde_json::json!({

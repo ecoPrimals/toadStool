@@ -332,9 +332,7 @@ async fn test_discover_provider_with_registered_provider() {
         .encrypt_results(true)
         .build();
     let registry = CryptoProviderRegistry::<TestProvider>::new();
-    registry
-        .register(Arc::new(TestProvider))
-        .expect("register");
+    registry.register(Arc::new(TestProvider)).expect("register");
 
     let result = ctx.discover_provider(&registry);
     assert!(result.is_ok());

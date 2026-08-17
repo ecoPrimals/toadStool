@@ -10,13 +10,13 @@
 
 use crate::visualization_client::SharedVisualizationClient;
 use std::sync::Arc;
-use std::time::Duration;
 use std::sync::RwLock;
+use std::time::Duration;
 use tracing::{debug, info};
 
 use toadstool_integration_primals::shader_compiler::{
-    ShaderCapabilitiesQuery, ShaderCompilerCapabilities, ShaderCompilerStatus,
-    SHADER_CAPABILITIES_METHOD,
+    SHADER_CAPABILITIES_METHOD, ShaderCapabilitiesQuery, ShaderCompilerCapabilities,
+    ShaderCompilerStatus,
 };
 
 const INITIAL_DELAY: Duration = Duration::from_secs(5);
@@ -58,10 +58,7 @@ pub fn create_silicon_registry() -> SharedSiliconRegistry {
 /// Waits for the shader compiler to become available, then queries
 /// `shader.compile.capabilities` to populate the silicon registry with
 /// compiler backend information for routing decisions.
-pub async fn run(
-    shader_client: SharedVisualizationClient,
-    registry: SharedSiliconRegistry,
-) {
+pub async fn run(shader_client: SharedVisualizationClient, registry: SharedSiliconRegistry) {
     info!("silicon discovery background task starting");
 
     tokio::time::sleep(INITIAL_DELAY).await;
@@ -132,8 +129,8 @@ async fn query_compiler_capabilities(
         .ok_or_else(|| "shader compiler client guard empty".to_string())?;
 
     let query = ShaderCapabilitiesQuery::default();
-    let params = serde_json::to_value(&query)
-        .map_err(|e| format!("failed to serialize query: {e}"))?;
+    let params =
+        serde_json::to_value(&query).map_err(|e| format!("failed to serialize query: {e}"))?;
 
     let response = client
         .call(SHADER_CAPABILITIES_METHOD, params)
@@ -174,8 +171,7 @@ mod tests {
                 max_workgroup_size: Some(1024),
                 compiler_version: Some("coralReef-v1.2".to_string()),
             });
-            reg.status =
-                ShaderCompilerStatus::Available("coralReef-v1.2".to_string());
+            reg.status = ShaderCompilerStatus::Available("coralReef-v1.2".to_string());
         }
 
         let reg = registry.read().unwrap_or_else(|e| e.into_inner());

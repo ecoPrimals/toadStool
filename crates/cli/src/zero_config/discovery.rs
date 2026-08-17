@@ -3,9 +3,9 @@
 
 use crate::{CliContextExt, Result};
 use std::future::Future;
+use std::process::Command;
 use toadstool_common::constants::network::LOCALHOST_IPV4;
 use toadstool_common::constants::platform_paths::procfs;
-use std::process::Command;
 use tracing::{debug, info};
 
 use super::types::*;
@@ -251,20 +251,11 @@ impl ZeroConfigDeployment {
     fn discover_container_runtime(&self) -> Result<ContainerRuntimeInfo> {
         debug!("Discovering container runtime");
 
-        let docker = Command::new("docker")
-            .arg("--version")
-            .output()
-            .is_ok();
+        let docker = Command::new("docker").arg("--version").output().is_ok();
 
-        let podman = Command::new("podman")
-            .arg("--version")
-            .output()
-            .is_ok();
+        let podman = Command::new("podman").arg("--version").output().is_ok();
 
-        let containerd = Command::new("containerd")
-            .arg("--version")
-            .output()
-            .is_ok();
+        let containerd = Command::new("containerd").arg("--version").output().is_ok();
 
         let version = if docker {
             self.get_docker_version().ok()

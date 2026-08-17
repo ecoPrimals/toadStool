@@ -4,8 +4,8 @@
 use super::{BiomeTemplate, TemplateGenerator};
 use crate::{BiomeManifest, BiomeMetadata};
 use crate::{CliContextExt, Result};
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 use tracing::info;
 
 impl TemplateGenerator {
@@ -39,11 +39,10 @@ impl TemplateGenerator {
         let yaml_content = super::rendering::manifest_to_yaml(&manifest)?;
 
         // Write to file
-        fs::write(&output_path, yaml_content)
-            .context(format!(
-                "Failed to write biome.yaml to {}",
-                output_path.display()
-            ))?;
+        fs::write(&output_path, yaml_content).context(format!(
+            "Failed to write biome.yaml to {}",
+            output_path.display()
+        ))?;
 
         info!("✅ Generated biome.yaml: {}", output_path.display());
         super::rendering::print_template_info(&template);

@@ -33,7 +33,11 @@ impl DispatchHandler {
                 .get(bdf)
                 .is_some_and(|dev| dev.dma_backend().is_some());
             drop(cache);
-            let in_pool = self.device_pool.read().unwrap_or_else(|e| e.into_inner()).contains_key(bdf);
+            let in_pool = self
+                .device_pool
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
+                .contains_key(bdf);
             let dma_ready = dma_ready || in_pool;
             return Ok(serde_json::json!({
                 "bdf": bdf,

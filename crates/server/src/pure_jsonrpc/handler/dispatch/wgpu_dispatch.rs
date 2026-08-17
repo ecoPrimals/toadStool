@@ -88,11 +88,15 @@ impl WgpuAdapterPool {
         .unwrap_or(0);
 
         contexts.resize_with(adapter_count, || None);
-        self.init_done.store(true, std::sync::atomic::Ordering::Release);
+        self.init_done
+            .store(true, std::sync::atomic::Ordering::Release);
         tracing::info!(adapter_count, "wgpu adapter pool: enumerated adapters");
     }
 
-    fn get_or_init(&self, selector: &AdapterSelector) -> Option<std::sync::Arc<WgpuDispatchContext>> {
+    fn get_or_init(
+        &self,
+        selector: &AdapterSelector,
+    ) -> Option<std::sync::Arc<WgpuDispatchContext>> {
         self.ensure_enumerated();
 
         let pool_size = {
@@ -108,10 +112,7 @@ impl WgpuAdapterPool {
             AdapterSelector::Default => {
                 // Return first already-initialized, or init index 0
                 let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
-                contexts
-                    .iter()
-                    .position(|c| c.is_some())
-                    .unwrap_or(0)
+                contexts.iter().position(|c| c.is_some()).unwrap_or(0)
             }
             AdapterSelector::Index(i) => {
                 if *i >= pool_size {
@@ -305,14 +306,23 @@ async fn init_wgpu_at_index(target_idx: usize) -> Option<WgpuDispatchContext> {
 /// Returns `Some(Ok(json))` on success, `Some(Err(msg))` on dispatch failure,
 /// or `None` if wgpu is not available. Uses the default adapter (first discrete GPU).
 #[cfg(feature = "gpu-discovery")]
-#[expect(dead_code, reason = "convenience wrapper; non-featured path uses this directly")]
+#[expect(
+    dead_code,
+    reason = "convenience wrapper; non-featured path uses this directly"
+)]
 pub(super) fn try_wgpu_dispatch(
     binary: &[u8],
     wgsl_source: Option<&str>,
     workgroup_size: [u32; 3],
     buffer_descs: &serde_json::Value,
 ) -> Option<Result<serde_json::Value, String>> {
-    try_wgpu_dispatch_on_adapter(&AdapterSelector::Default, binary, wgsl_source, workgroup_size, buffer_descs)
+    try_wgpu_dispatch_on_adapter(
+        &AdapterSelector::Default,
+        binary,
+        wgsl_source,
+        workgroup_size,
+        buffer_descs,
+    )
 }
 
 #[cfg(not(feature = "gpu-discovery"))]

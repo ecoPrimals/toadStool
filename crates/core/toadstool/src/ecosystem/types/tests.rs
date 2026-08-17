@@ -144,11 +144,7 @@ fn test_heartbeat_message() {
 
 #[test]
 fn test_error_message() {
-    let msg = EcosystemMessage::error(
-        "sender",
-        "receiver",
-        "oops",
-    );
+    let msg = EcosystemMessage::error("sender", "receiver", "oops");
     assert_eq!(msg.message_type, EcosystemMessageType::Error);
     assert_eq!(msg.payload["error"], "oops");
     assert_eq!(msg.from, "sender");

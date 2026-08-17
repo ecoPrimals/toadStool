@@ -15,7 +15,6 @@
     feature = "legacy-cloud",
     feature = "legacy-coordination"
 ))]
-
 #![allow(clippy::pedantic)]
 #![allow(deprecated)]
 

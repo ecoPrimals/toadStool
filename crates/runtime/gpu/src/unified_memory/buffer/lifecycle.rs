@@ -140,41 +140,45 @@ impl Drop for UnifiedBuffer {
             {
                 let backend = Arc::clone(&self.backend);
                 match tokio::runtime::Handle::try_current() {
-                Ok(handle) => {
-                    // We're in a tokio runtime, spawn a blocking task
-                    handle.spawn(async move {
-                        if let Err(e) = backend.free_unified(allocation).await {
-                            tracing::error!(
-                                "Failed to free buffer {} ({} bytes): {}. Memory leaked.",
-                                id,
-                                size,
-                                e
-                            );
-                        } else {
-                            tracing::debug!("Successfully freed buffer {} ({} bytes)", id, size);
-                        }
-                    });
-                }
-                Err(_) => {
-                    // No runtime available, try to create one for cleanup
-                    // This is expensive but better than leaking
-                    tracing::warn!(
-                        "No tokio runtime available for buffer {} cleanup, creating one-shot runtime",
-                        id
-                    );
+                    Ok(handle) => {
+                        // We're in a tokio runtime, spawn a blocking task
+                        handle.spawn(async move {
+                            if let Err(e) = backend.free_unified(allocation).await {
+                                tracing::error!(
+                                    "Failed to free buffer {} ({} bytes): {}. Memory leaked.",
+                                    id,
+                                    size,
+                                    e
+                                );
+                            } else {
+                                tracing::debug!(
+                                    "Successfully freed buffer {} ({} bytes)",
+                                    id,
+                                    size
+                                );
+                            }
+                        });
+                    }
+                    Err(_) => {
+                        // No runtime available, try to create one for cleanup
+                        // This is expensive but better than leaking
+                        tracing::warn!(
+                            "No tokio runtime available for buffer {} cleanup, creating one-shot runtime",
+                            id
+                        );
 
-                    std::thread::spawn(move || {
-                        let Ok(rt) = tokio::runtime::Builder::new_current_thread()
-                            .enable_all()
-                            .build()
-                        else {
-                            tracing::error!(
-                                "Failed to create runtime for buffer cleanup. Memory leaked."
-                            );
-                            return;
-                        };
+                        std::thread::spawn(move || {
+                            let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                                .enable_all()
+                                .build()
+                            else {
+                                tracing::error!(
+                                    "Failed to create runtime for buffer cleanup. Memory leaked."
+                                );
+                                return;
+                            };
 
-                        rt.block_on(async {
+                            rt.block_on(async {
                             if let Err(e) = backend.free_unified(allocation).await {
                                 tracing::error!(
                                     "Failed to free buffer {} ({} bytes): {}. Memory leaked.",
@@ -190,9 +194,9 @@ impl Drop for UnifiedBuffer {
                                 );
                             }
                         });
-                    });
+                        });
+                    }
                 }
-            }
             }
 
             // Without the runtime feature, rely on BackendAllocation drop semantics

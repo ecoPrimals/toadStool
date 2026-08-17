@@ -175,7 +175,12 @@ impl SecurityMonitor {
 
     /// Return a snapshot of all buffered events (newest last).
     pub async fn events(&self) -> Vec<SecurityEvent> {
-        self.events.read().unwrap_or_else(|e| e.into_inner()).iter().cloned().collect()
+        self.events
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .cloned()
+            .collect()
     }
 
     /// Return events at or above the given severity.
@@ -227,7 +232,10 @@ impl SecurityMonitor {
             memory_total_bytes: mem_total,
         };
 
-        let mut history = self.resource_history.write().unwrap_or_else(|e| e.into_inner());
+        let mut history = self
+            .resource_history
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if history.len() >= 64 {
             history.pop_front();
         }

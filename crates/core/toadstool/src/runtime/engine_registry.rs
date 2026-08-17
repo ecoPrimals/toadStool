@@ -30,7 +30,10 @@ impl<E: RuntimeEngine> EngineRegistry<E> {
     ) -> ToadStoolResult<()> {
         info!("Registering runtime engine: {:?}", runtime_type);
 
-        self.engines.write().unwrap_or_else(|e| e.into_inner()).insert(runtime_type, engine);
+        self.engines
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(runtime_type, engine);
         info!("Successfully registered runtime engine");
         Ok(())
     }

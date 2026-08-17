@@ -228,7 +228,8 @@ impl DispatchHandler {
                     });
 
                     {
-                        let mut pipelines = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
+                        let mut pipelines =
+                            self.pipelines.write().unwrap_or_else(|e| e.into_inner());
                         if let Some(pj) = pipelines.get_mut(&pipeline_id) {
                             pj.status = PipelineStatus::PartialFailure {
                                 completed,

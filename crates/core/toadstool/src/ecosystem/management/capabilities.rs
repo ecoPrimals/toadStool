@@ -45,7 +45,8 @@ impl ServiceManager {
     ) -> ToadStoolResult<Vec<Capability>> {
         let service = self
             .services
-            .read().unwrap_or_else(|e| e.into_inner())
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
             .get(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?
             .capabilities

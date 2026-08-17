@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use std::sync::RwLock;
+use std::time::SystemTime;
 use tracing::debug;
 use uuid::Uuid;
 
@@ -97,7 +97,8 @@ impl ResourceCoordinator {
         };
 
         self.allocation_history
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .push(allocation.clone());
         debug!("Allocated resources for job: {}", allocation.job_id);
         Ok(allocation)
@@ -116,7 +117,10 @@ impl ResourceCoordinator {
         allocation.released_at = Some(SystemTime::now());
 
         // Add to history
-        self.allocation_history.write().unwrap_or_else(|e| e.into_inner()).push(allocation);
+        self.allocation_history
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(allocation);
 
         debug!("Released resources for job");
         Ok(())
@@ -124,7 +128,10 @@ impl ResourceCoordinator {
 
     /// Get available resources
     pub async fn get_available_resources(&self) -> UniversalSystemResources {
-        self.available_resources.read().unwrap_or_else(|e| e.into_inner()).clone()
+        self.available_resources
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 }
 

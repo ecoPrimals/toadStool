@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::path::Path;
-use std::process::Command;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+use std::path::Path;
+use std::process::Command;
 #[cfg(any(unix, target_os = "linux"))]
 use tracing::info;
 use tracing::{debug, warn};

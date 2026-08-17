@@ -4,8 +4,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
 use std::sync::RwLock;
+use std::time::Instant;
 use uuid::Uuid;
 
 /// GPU compute frameworks supported by the runtime

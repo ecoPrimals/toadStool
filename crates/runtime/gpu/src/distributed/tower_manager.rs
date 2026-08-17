@@ -10,8 +10,8 @@
 use super::types::RemoteTowerEndpoint;
 use crate::universal::ComputeRequirements;
 use std::sync::Arc;
-use toadstool::error::{ToadStoolError, ToadStoolResult};
 use std::sync::RwLock;
+use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 /// Manages remote tower discovery and health monitoring
 pub struct TowerManager {
@@ -38,7 +38,10 @@ impl TowerManager {
 
     /// Register a remote tower discovered via the coordination service
     pub async fn register_tower(&self, endpoint: RemoteTowerEndpoint) {
-        let mut towers = self.remote_towers.write().unwrap_or_else(|e| e.into_inner());
+        let mut towers = self
+            .remote_towers
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
 
         // Remove stale entry if exists
         towers.retain(|t| t.tower_id != endpoint.tower_id);
@@ -205,7 +208,10 @@ impl TowerManager {
 
     /// Prune stale towers (not seen recently)
     pub async fn prune_stale_towers(&self, max_age_secs: u64) {
-        let mut towers = self.remote_towers.write().unwrap_or_else(|e| e.into_inner());
+        let mut towers = self
+            .remote_towers
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let now = std::time::Instant::now();
 
         let before_count = towers.len();

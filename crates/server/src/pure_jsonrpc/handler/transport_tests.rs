@@ -6,7 +6,10 @@ use toadstool_core::TransportDirection;
 use toadstool_display::{HardwareTransportDispatch, TestLoopbackTransport};
 
 async fn register_rx_tx_pair(handler: &TransportHandler) {
-    let mut router = handler.transport_router.lock().unwrap_or_else(|e| e.into_inner());
+    let mut router = handler
+        .transport_router
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     let rx = TestLoopbackTransport::with_default_bandwidth("rx", TransportDirection::Rx)
         .with_initial_recv_data(b"chunk");
     router.register(HardwareTransportDispatch::TestLoopback(rx));

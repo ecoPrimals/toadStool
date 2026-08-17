@@ -3,8 +3,8 @@
 
 mod provider;
 
-pub use toadstool_core::security::*;
 pub use provider::SecurityProvider;
+pub use toadstool_core::security::*;
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]

@@ -44,7 +44,8 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         };
 
         self.workload_locations
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), new_location.clone());
 
         let duration = start.elapsed();

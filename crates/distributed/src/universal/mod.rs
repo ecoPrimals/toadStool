@@ -10,13 +10,13 @@ pub use types::*;
 /// Universal adapter for cross-platform execution.
 pub mod adapter;
 #[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
+mod detection;
+#[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
 /// Platform detection and capabilities.
 pub mod platform;
 #[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
 /// Universal scheduler for job distribution.
 pub mod scheduler;
-#[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
-mod detection;
 
 #[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
 pub use adapter::*;

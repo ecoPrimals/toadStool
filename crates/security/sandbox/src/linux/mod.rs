@@ -12,9 +12,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use std::sync::RwLock;
 use toadstool_common::platform::FilesystemIsolation;
 use toadstool_hw_safe::LinuxFilesystemIsolation;
-use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use toadstool::error::{SecurityError, ToadStoolResult};

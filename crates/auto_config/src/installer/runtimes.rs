@@ -51,9 +51,7 @@ pub async fn setup_container_runtime(installation_path: &Path) -> Result<(), Toa
 pub async fn setup_gpu_runtime(installation_path: &Path) -> Result<(), ToadStoolError> {
     info!("🎮 Setting up GPU runtime support...");
 
-    if let Ok(output) = ProcessCommand::new("nvidia-smi")
-        .arg("--version")
-        .output()
+    if let Ok(output) = ProcessCommand::new("nvidia-smi").arg("--version").output()
         && output.status.success()
     {
         info!("🎮 NVIDIA GPU runtime detected");

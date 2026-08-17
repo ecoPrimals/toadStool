@@ -77,11 +77,7 @@ pub(super) fn convert_to_workload_spec(
                 env_vars,
             })
         }
-        ExecutionSpec::Wasm {
-            module,
-            args,
-            env,
-        } => {
+        ExecutionSpec::Wasm { module, args, env } => {
             if let Some(env) = env {
                 env_vars.extend(env.clone());
             }

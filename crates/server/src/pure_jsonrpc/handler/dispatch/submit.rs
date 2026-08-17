@@ -24,7 +24,10 @@ impl DispatchHandler {
         &self,
     ) -> Result<std::sync::Arc<toadstool::encryption::EncryptionKey>, JsonRpcError> {
         {
-            let guard = self.cached_purpose_key.read().unwrap_or_else(|e| e.into_inner());
+            let guard = self
+                .cached_purpose_key
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(ref key) = *guard {
                 return Ok(std::sync::Arc::clone(key));
             }
@@ -42,7 +45,10 @@ impl DispatchHandler {
             })?;
 
         let key = std::sync::Arc::new(key);
-        let mut guard = self.cached_purpose_key.write().unwrap_or_else(|e| e.into_inner());
+        let mut guard = self
+            .cached_purpose_key
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         *guard = Some(std::sync::Arc::clone(&key));
         Ok(key)
     }

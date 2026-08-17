@@ -267,7 +267,10 @@ impl super::AiMcpInterface {
         preferences: AiPreferences,
     ) -> ToadStoolResult<McpResponse> {
         if let Some(session_id) = session_id {
-            let mut sessions = self.active_sessions.write().unwrap_or_else(|e| e.into_inner());
+            let mut sessions = self
+                .active_sessions
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.preferences = preferences.clone();
                 session.last_activity = SystemTime::now();

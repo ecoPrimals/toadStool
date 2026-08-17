@@ -66,8 +66,7 @@ async fn test_find_peer_with_success() {
         };
 
         let path = discovery_base.join("peer-gpu-123.json");
-        std::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap())
-            .unwrap();
+        std::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap()).unwrap();
 
         let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base);
         assert!(found.is_ok());
@@ -99,8 +98,7 @@ async fn test_find_peer_with_partial_match() {
         };
 
         let path = discovery_base.join("peer-partial.json");
-        std::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap())
-            .unwrap();
+        std::fs::write(&path, serde_json::to_string_pretty(&peer).unwrap()).unwrap();
 
         let found = PrimalCapabilities::find_peer_with_in("nvidia", &discovery_base);
         assert!(found.is_ok());

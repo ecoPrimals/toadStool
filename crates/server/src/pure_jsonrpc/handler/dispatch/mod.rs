@@ -36,6 +36,7 @@ mod tests;
 use crate::visualization_client::SharedVisualizationClient;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::sync::atomic::AtomicU64;
 #[cfg(target_os = "linux")]
 use toadstool_ember::VfioAnchor;
@@ -43,7 +44,6 @@ use toadstool_ember::VfioAnchor;
 use toadstool_ember::held_resource::HeldResource;
 #[cfg(target_os = "linux")]
 use toadstool_ember::vfio_handle::VfioResourceHandle;
-use std::sync::RwLock;
 use types::{DispatchJob, PipelineJob};
 
 /// Shared collection of VFIO warm-keepalive anchors.

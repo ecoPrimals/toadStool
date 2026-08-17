@@ -5,9 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Mutex;
 use std::time::SystemTime;
 use toadstool::error::ToadStoolResult;
-use std::sync::Mutex;
 
 use crate::{UniversalJob, UniversalJobType};
 
@@ -239,7 +239,10 @@ impl HybridCloudScheduler {
         job: &UniversalJob,
     ) -> ToadStoolResult<HashMap<String, f64>> {
         let estimates = compute_heuristic_performance_scores(job);
-        let mut tracker = self.performance_tracker.lock().unwrap_or_else(|e| e.into_inner());
+        let mut tracker = self
+            .performance_tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         for (provider, value) in &estimates {
             let key = format!("{provider}:score");
             tracker.record_metric(
@@ -350,7 +353,10 @@ impl HybridCloudScheduler {
                     .collect())
             }
             HybridSchedulingStrategy::PerformanceOptimized => {
-                let perf_tracker = self.performance_tracker.lock().unwrap_or_else(|e| e.into_inner());
+                let perf_tracker = self
+                    .performance_tracker
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
                 let scores: HashMap<String, f64> = candidates
                     .iter()
                     .map(|p| {

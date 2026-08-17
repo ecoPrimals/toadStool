@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::sync::RwLock;
+use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -288,7 +288,12 @@ impl RuntimeEngine for NativeRuntimeEngine {
         &self,
     ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         async {
-            if self.active_processes.read().unwrap_or_else(|e| e.into_inner()).is_empty() {
+            if self
+                .active_processes
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
+                .is_empty()
+            {
                 return Ok(RuntimeMetrics::default());
             }
 
@@ -301,7 +306,10 @@ impl RuntimeEngine for NativeRuntimeEngine {
             info!("Shutting down Native Runtime Engine");
 
             let to_kill: Vec<(Uuid, Option<Child>)> = {
-                let mut processes = self.active_processes.write().unwrap_or_else(|e| e.into_inner());
+                let mut processes = self
+                    .active_processes
+                    .write()
+                    .unwrap_or_else(|e| e.into_inner());
                 processes
                     .drain()
                     .map(|(id, mut h)| (id, h.child.take()))

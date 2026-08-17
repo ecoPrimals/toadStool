@@ -7,8 +7,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::SystemTime;
 use std::sync::RwLock;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 /// Job identifier

@@ -298,9 +298,7 @@ impl<'a> PriBusMonitor<'a> {
         }
 
         let pmc_intr = self.bar0.read_u32(pri::PMC_INTR).unwrap_or(0xFFFF_FFFF);
-        if !crate::nv::pri::is_pri_fault(pmc_intr)
-            && pmc_intr & pri::PMC_INTR_PRIV_RING_BIT != 0
-        {
+        if !crate::nv::pri::is_pri_fault(pmc_intr) && pmc_intr & pri::PMC_INTR_PRIV_RING_BIT != 0 {
             let _ = self
                 .bar0
                 .write_u32(pri::PMC_INTR, pri::PMC_INTR_PRIV_RING_BIT);

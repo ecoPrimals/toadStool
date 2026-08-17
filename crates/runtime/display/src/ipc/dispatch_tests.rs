@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use toadstool_common::constants::PRIMAL_NAME;
 use std::sync::RwLock;
+use toadstool_common::constants::PRIMAL_NAME;
 
 use super::dispatch::handle_request;
 use crate::input::InputManager;

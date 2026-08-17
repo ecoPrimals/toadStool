@@ -2,8 +2,8 @@
 //! Root CLI struct, execution context, and manifest loading helpers.
 
 use clap::Parser;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 use crate::biome_model::BiomeManifest;
 use crate::error::{CliContextExt, Result};
@@ -90,11 +90,8 @@ pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
     let manifest: BiomeManifest = match extension.to_lowercase().as_str() {
         "toml" => try_canonical_then_legacy_toml(&content, path)?,
         "yaml" | "yml" => try_canonical_then_legacy_yaml(&content, path)?,
-        _ => {
-            try_canonical_then_legacy_toml(&content, path).or_else(|_| {
-                try_canonical_then_legacy_yaml(&content, path)
-            })?
-        }
+        _ => try_canonical_then_legacy_toml(&content, path)
+            .or_else(|_| try_canonical_then_legacy_yaml(&content, path))?,
     };
 
     Ok(manifest)
@@ -104,12 +101,13 @@ fn try_canonical_then_legacy_toml(content: &str, path: &PathBuf) -> Result<Biome
     if let Ok(canonical) = toml::from_str::<toadstool_core::manifest::BiomeManifest>(content) {
         return Ok(BiomeManifest::from(canonical));
     }
-    toml::from_str(content)
-        .context(format!("Failed to parse TOML manifest: {}", path.display()))
+    toml::from_str(content).context(format!("Failed to parse TOML manifest: {}", path.display()))
 }
 
 fn try_canonical_then_legacy_yaml(content: &str, path: &PathBuf) -> Result<BiomeManifest> {
-    if let Ok(canonical) = serde_yaml_ng::from_str::<toadstool_core::manifest::BiomeManifest>(content) {
+    if let Ok(canonical) =
+        serde_yaml_ng::from_str::<toadstool_core::manifest::BiomeManifest>(content)
+    {
         return Ok(BiomeManifest::from(canonical));
     }
     serde_yaml_ng::from_str(content)

@@ -36,7 +36,12 @@ impl GateOwnership {
 
     /// Resolved hardware owner gate id (may differ from local when guest).
     pub async fn hardware_owner_gate_id(&self) -> Arc<str> {
-        Arc::clone(&*self.hardware_owner_gate_id.read().unwrap_or_else(|e| e.into_inner()))
+        Arc::clone(
+            &*self
+                .hardware_owner_gate_id
+                .read()
+                .unwrap_or_else(|e| e.into_inner()),
+        )
     }
 
     /// Whether the caller gate is the hardware owner (yield bypass).
@@ -50,13 +55,19 @@ impl GateOwnership {
     /// Record ownership from a `gate.update` advertisement.
     pub async fn note_gate_update(&self, gate_id: &Arc<str>, is_owner: bool) {
         if is_owner {
-            *self.hardware_owner_gate_id.write().unwrap_or_else(|e| e.into_inner()) = Arc::clone(gate_id);
+            *self
+                .hardware_owner_gate_id
+                .write()
+                .unwrap_or_else(|e| e.into_inner()) = Arc::clone(gate_id);
         }
     }
 
     /// Reset hardware ownership to the local gate when the remote owner
     /// goes offline or revokes ownership.
     pub async fn revert_to_local_owner(&self) {
-        *self.hardware_owner_gate_id.write().unwrap_or_else(|e| e.into_inner()) = Arc::clone(&self.local_gate_id);
+        *self
+            .hardware_owner_gate_id
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = Arc::clone(&self.local_gate_id);
     }
 }

@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use std::sync::Mutex;
 use toadstool_core::HardwareTransport;
 use toadstool_display::{HardwareTransportDispatch, TransportRouter};
-use std::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::pure_jsonrpc::types::JsonRpcError;
@@ -62,7 +62,10 @@ impl TransportHandler {
     }
 
     pub(super) async fn transport_list(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let router = self.transport_router.lock().unwrap_or_else(|e| e.into_inner());
+        let router = self
+            .transport_router
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let list: Vec<_> = router
             .list()
             .iter()
@@ -100,7 +103,10 @@ impl TransportHandler {
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(65536) as usize;
 
-        let mut router = self.transport_router.lock().unwrap_or_else(|e| e.into_inner());
+        let mut router = self
+            .transport_router
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let bytes = router
             .route_once(rx_id, tx_id, buf_size)
             .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
@@ -145,7 +151,10 @@ impl TransportHandler {
         let id = transport.info().id.clone();
         let bandwidth = transport.bandwidth_bps();
 
-        let mut router = self.transport_router.lock().unwrap_or_else(|e| e.into_inner());
+        let mut router = self
+            .transport_router
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         router.register(HardwareTransportDispatch::Pcie(transport));
 
         Ok(serde_json::json!({
@@ -184,7 +193,10 @@ impl TransportHandler {
             .unwrap_or(65536) as usize;
 
         {
-            let router = self.transport_router.lock().unwrap_or_else(|e| e.into_inner());
+            let router = self
+                .transport_router
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if router.get(&rx_id).is_none() {
                 return Err(JsonRpcError::invalid_params(format!(
                     "rx transport not registered: {rx_id}"
@@ -197,7 +209,10 @@ impl TransportHandler {
             }
         }
 
-        let mut id_counter = self.next_stream_id.lock().unwrap_or_else(|e| e.into_inner());
+        let mut id_counter = self
+            .next_stream_id
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let stream_id = format!("stream-{}", *id_counter);
         *id_counter += 1;
 
@@ -258,7 +273,10 @@ impl TransportHandler {
         &self,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let streams = self.active_streams.lock().unwrap_or_else(|e| e.into_inner());
+        let streams = self
+            .active_streams
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
 
         if let Some(params) = params
             && let Some(stream_id) = params.get("stream_id").and_then(|v| v.as_str())

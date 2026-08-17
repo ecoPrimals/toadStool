@@ -128,10 +128,9 @@ impl<E: RuntimeEngine> UniversalComputePlatform<E> {
         };
 
         let inner = ToadStoolPrimalProvider::new(context);
-        self.primal_registry
-            .register_primal(Arc::new(UniversalPrimalProviderDispatch::ToadStool(
-                inner.clone(),
-            )))?;
+        self.primal_registry.register_primal(Arc::new(
+            UniversalPrimalProviderDispatch::ToadStool(inner.clone()),
+        ))?;
         self.toadstool_provider = Some(Arc::new(inner));
 
         info!("ToadStool registered as universal primal");
@@ -161,14 +160,20 @@ impl<E: RuntimeEngine> UniversalComputePlatform<E> {
         engine: Arc<E>,
     ) -> ToadStoolResult<()> {
         self.runtime_engines
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(runtime_type, engine);
         Ok(())
     }
 
     /// Get available runtime types
     pub fn get_available_runtimes(&self) -> Vec<RuntimeType> {
-        self.runtime_engines.read().unwrap_or_else(|e| e.into_inner()).keys().cloned().collect()
+        self.runtime_engines
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .keys()
+            .cloned()
+            .collect()
     }
 
     /// Find primals by capability
@@ -251,8 +256,7 @@ pub async fn init_with_runtime_engines<E: RuntimeEngine>(
         UniversalComputePlatform::<E>::new_with_config(UniversalPlatformConfig::default()).await?;
 
     for (runtime_type, engine) in engines {
-        platform
-            .register_runtime_engine(runtime_type, engine)?;
+        platform.register_runtime_engine(runtime_type, engine)?;
     }
 
     Ok(platform)
@@ -382,10 +386,9 @@ mod tests {
     async fn test_find_primals_by_capability_empty_registry() {
         use crate::universal::types::PrimalCapability;
         let platform = UniversalComputePlatform::new().await.unwrap();
-        let results = platform
-            .find_primals_by_capability(&PrimalCapability::NativeExecution {
-                architectures: vec!["x86_64".to_string()],
-            });
+        let results = platform.find_primals_by_capability(&PrimalCapability::NativeExecution {
+            architectures: vec!["x86_64".to_string()],
+        });
         assert!(results.is_empty());
     }
 

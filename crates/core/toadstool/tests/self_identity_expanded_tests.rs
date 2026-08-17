@@ -209,8 +209,7 @@ fn test_network_with_port() {
 /// Test network identity without port
 #[test]
 fn test_network_without_port() {
-    let identity =
-        SelfIdentity::new().with_network("example.com", None, vec!["unix".to_string()]);
+    let identity = SelfIdentity::new().with_network("example.com", None, vec!["unix".to_string()]);
 
     assert!(identity.network.is_some());
     let network = identity.network.unwrap();
@@ -405,11 +404,8 @@ fn test_matches_requirement_empty_features() {
 /// Test discovered service from advertisement
 #[test]
 fn test_discovered_service_from_advertisement() {
-    let identity = SelfIdentity::new().with_network(
-        "peer.local",
-        Some(5555),
-        vec!["grpc".to_string()],
-    );
+    let identity =
+        SelfIdentity::new().with_network("peer.local", Some(5555), vec!["grpc".to_string()]);
 
     let ad = identity.to_advertisement();
     let service: DiscoveredService = ad.into();
@@ -496,11 +492,8 @@ fn test_default_implementation() {
 /// Test serialization of `SelfIdentity`
 #[test]
 fn test_self_identity_serialization() {
-    let identity = SelfIdentity::new().with_network(
-        "test.local",
-        Some(3000),
-        vec!["http".to_string()],
-    );
+    let identity =
+        SelfIdentity::new().with_network("test.local", Some(3000), vec!["http".to_string()]);
 
     // Just test that it can serialize (deserialization has lifetime issues with &'static str)
     let json = serde_json::to_string(&identity).expect("Should serialize");

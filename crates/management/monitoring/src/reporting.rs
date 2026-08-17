@@ -38,9 +38,18 @@ impl ResourceMonitor for SystemResourceMonitor {
         let threshold_data = Arc::clone(&self.threshold_data);
 
         tokio::spawn(async move {
-            process_map.write().unwrap_or_else(|e| e.into_inner()).remove(&workload_id);
-            usage_data.write().unwrap_or_else(|e| e.into_inner()).remove(&workload_id);
-            threshold_data.write().unwrap_or_else(|e| e.into_inner()).remove(&workload_id);
+            process_map
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&workload_id);
+            usage_data
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&workload_id);
+            threshold_data
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&workload_id);
         });
         Ok(())
     }

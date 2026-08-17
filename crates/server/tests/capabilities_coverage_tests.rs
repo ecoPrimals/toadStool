@@ -235,24 +235,21 @@ async fn find_peer_with_in_ignores_nonmatching_peer_files() {
         serde_json::to_string_pretty(&peer_b).expect("json"),
     )
     .expect("write");
-    let found = PrimalCapabilities::find_peer_with_in("nvidia", dir.path())
-        .expect("found");
+    let found = PrimalCapabilities::find_peer_with_in("nvidia", dir.path()).expect("found");
     assert_eq!(found.primal_id, "b");
 }
 
 #[tokio::test]
 async fn find_peer_with_in_skips_non_json_then_matches() {
     let dir = TempDir::new().expect("temp");
-    std::fs::write(dir.path().join("readme.md"), "# x")
-        .expect("write");
+    std::fs::write(dir.path().join("readme.md"), "# x").expect("write");
     let peer = sample_peer("p1", vec!["compute".to_string()]);
     std::fs::write(
         dir.path().join("p1.json"),
         serde_json::to_string_pretty(&peer).expect("json"),
     )
     .expect("write");
-    let found = PrimalCapabilities::find_peer_with_in("compute", dir.path())
-        .expect("found");
+    let found = PrimalCapabilities::find_peer_with_in("compute", dir.path()).expect("found");
     assert_eq!(found.primal_id, "p1");
 }
 
@@ -265,8 +262,7 @@ async fn find_peer_with_in_errors_when_no_peer_matches() {
         serde_json::to_string_pretty(&peer).expect("json"),
     )
     .expect("write");
-    let err = PrimalCapabilities::find_peer_with_in("missing-cap", dir.path())
-        .unwrap_err();
+    let err = PrimalCapabilities::find_peer_with_in("missing-cap", dir.path()).unwrap_err();
     assert!(err.contains("No peer found"));
 }
 
@@ -279,18 +275,15 @@ async fn find_peer_with_in_errors_when_capabilities_empty() {
         serde_json::to_string_pretty(&peer).expect("json"),
     )
     .expect("write");
-    let err = PrimalCapabilities::find_peer_with_in("compute", dir.path())
-        .unwrap_err();
+    let err = PrimalCapabilities::find_peer_with_in("compute", dir.path()).unwrap_err();
     assert!(err.contains("No peer found"));
 }
 
 #[tokio::test]
 async fn find_peer_with_in_errors_on_invalid_json() {
     let dir = TempDir::new().expect("temp");
-    std::fs::write(dir.path().join("bad.json"), "{ not json }")
-        .expect("write");
-    let err = PrimalCapabilities::find_peer_with_in("compute", dir.path())
-        .unwrap_err();
+    std::fs::write(dir.path().join("bad.json"), "{ not json }").expect("write");
+    let err = PrimalCapabilities::find_peer_with_in("compute", dir.path()).unwrap_err();
     assert!(err.contains("Failed to parse"));
 }
 
@@ -298,16 +291,14 @@ async fn find_peer_with_in_errors_on_invalid_json() {
 async fn find_peer_with_in_errors_when_discovery_dir_missing() {
     let dir = TempDir::new().expect("temp");
     let missing = dir.path().join("nope");
-    let err = PrimalCapabilities::find_peer_with_in("x", &missing)
-        .unwrap_err();
+    let err = PrimalCapabilities::find_peer_with_in("x", &missing).unwrap_err();
     assert!(err.contains("Failed to read discovery directory"));
 }
 
 #[tokio::test]
 async fn find_all_peers_in_empty_directory_returns_empty_vec() {
     let dir = TempDir::new().expect("temp");
-    let peers = PrimalCapabilities::find_all_peers_in(dir.path())
-        .expect("ok");
+    let peers = PrimalCapabilities::find_all_peers_in(dir.path()).expect("ok");
     assert!(peers.is_empty());
 }
 
@@ -320,10 +311,8 @@ async fn find_all_peers_in_collects_valid_json_and_skips_invalid() {
         serde_json::to_string_pretty(&good).expect("json"),
     )
     .expect("write");
-    std::fs::write(dir.path().join("bad.json"), "{")
-        .expect("write");
-    let peers = PrimalCapabilities::find_all_peers_in(dir.path())
-        .expect("ok");
+    std::fs::write(dir.path().join("bad.json"), "{").expect("write");
+    let peers = PrimalCapabilities::find_all_peers_in(dir.path()).expect("ok");
     assert_eq!(peers.len(), 1);
     assert_eq!(peers[0].primal_id, "good");
 }
@@ -333,12 +322,9 @@ async fn find_all_peers_in_duplicate_files_same_primal_id_appear_twice() {
     let dir = TempDir::new().expect("temp");
     let peer = sample_peer("dup-id", vec!["compute".to_string()]);
     let json = serde_json::to_string_pretty(&peer).expect("json");
-    std::fs::write(dir.path().join("one.json"), &json)
-        .expect("write");
-    std::fs::write(dir.path().join("two.json"), &json)
-        .expect("write");
-    let peers = PrimalCapabilities::find_all_peers_in(dir.path())
-        .expect("ok");
+    std::fs::write(dir.path().join("one.json"), &json).expect("write");
+    std::fs::write(dir.path().join("two.json"), &json).expect("write");
+    let peers = PrimalCapabilities::find_all_peers_in(dir.path()).expect("ok");
     assert_eq!(peers.len(), 2);
 }
 
@@ -346,8 +332,7 @@ async fn find_all_peers_in_duplicate_files_same_primal_id_appear_twice() {
 async fn find_all_peers_in_errors_when_directory_unreadable() {
     let dir = TempDir::new().expect("temp");
     let missing = dir.path().join("missing");
-    let err = PrimalCapabilities::find_all_peers_in(&missing)
-        .unwrap_err();
+    let err = PrimalCapabilities::find_all_peers_in(&missing).unwrap_err();
     assert!(err.contains("Failed to read discovery directory"));
 }
 
@@ -359,10 +344,8 @@ async fn announce_writes_canonical_and_compat_json_files() {
         let eco_root = discovery_base.parent().expect("ecoPrimals root");
         assert!(discovery_base.join("announce-dual.json").exists());
         assert!(eco_root.join("announce-dual.json").exists());
-        let a = std::fs::read_to_string(discovery_base.join("announce-dual.json"))
-            .expect("read");
-        let b = std::fs::read_to_string(eco_root.join("announce-dual.json"))
-            .expect("read");
+        let a = std::fs::read_to_string(discovery_base.join("announce-dual.json")).expect("read");
+        let b = std::fs::read_to_string(eco_root.join("announce-dual.json")).expect("read");
         assert_eq!(a, b);
     })
     .await;
@@ -400,8 +383,7 @@ async fn find_peer_with_uses_global_discovery_directory_under_xdg() {
             serde_json::to_string_pretty(&peer).expect("json"),
         )
         .expect("write");
-        let found = PrimalCapabilities::find_peer_with("science.gpu")
-            .expect("peer");
+        let found = PrimalCapabilities::find_peer_with("science.gpu").expect("peer");
         assert_eq!(found.primal_id, "global-find");
     })
     .await;
@@ -428,8 +410,7 @@ async fn find_peer_with_errors_when_xdg_discovery_missing() {
     let base_str = temp.path().to_string_lossy().to_string();
     temp_env::async_with_vars([("XDG_RUNTIME_DIR", Some(base_str.as_str()))], async {
         let _keep = temp;
-        let err = PrimalCapabilities::find_peer_with("compute")
-            .unwrap_err();
+        let err = PrimalCapabilities::find_peer_with("compute").unwrap_err();
         assert!(
             err.contains("Failed to read discovery directory")
                 || err.contains("No such file")

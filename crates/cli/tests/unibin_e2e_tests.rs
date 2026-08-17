@@ -340,8 +340,7 @@ memory_limit = "256M"
 "#;
 
     let manifest_path = "/tmp/test-workload.toml";
-    std::fs::write(manifest_path, manifest_content)
-        .expect("Failed to write test manifest");
+    std::fs::write(manifest_path, manifest_content).expect("Failed to write test manifest");
 
     // Start server
     let mut server = Command::new("cargo")

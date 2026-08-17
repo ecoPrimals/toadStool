@@ -26,10 +26,12 @@ impl ServiceManager {
         };
 
         self.services
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(service_id.clone(), service.clone());
         self.statuses
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(service_id.clone(), initial_status);
 
         info!("✅ Service registered: {}", service_id);
@@ -45,11 +47,15 @@ impl ServiceManager {
         info!("🗑️  Unregistering service: {}", service_id);
 
         self.services
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .remove(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?;
 
-        self.statuses.write().unwrap_or_else(|e| e.into_inner()).remove(service_id);
+        self.statuses
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(service_id);
 
         info!("✅ Service unregistered: {}", service_id);
         Ok(())
@@ -70,8 +76,14 @@ impl ServiceManager {
     /// Clear all services
     pub async fn clear_all(&self) {
         info!("🗑️  Clearing all services");
-        self.services.write().unwrap_or_else(|e| e.into_inner()).clear();
-        self.statuses.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.services
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        self.statuses
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
     }
 
     /// Get service count

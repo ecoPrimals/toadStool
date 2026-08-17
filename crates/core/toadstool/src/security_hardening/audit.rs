@@ -90,7 +90,10 @@ impl SecurityAuditLogger {
 
     /// Log security event
     pub async fn log_event(&self, event: SecurityAuditEvent) {
-        self.events.write().unwrap_or_else(|e| e.into_inner()).push(event.clone());
+        self.events
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(event.clone());
 
         // Log to tracing
         match event.severity {

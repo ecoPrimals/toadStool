@@ -14,8 +14,8 @@
 //! Coverage target: 0% → 30% (20 tests)
 
 use std::collections::HashMap;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 use toadstool_cli::executor::workload::*;
 

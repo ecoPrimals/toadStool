@@ -51,10 +51,7 @@ impl NetworkLoadBalancer {
 
     /// Select the least-loaded healthy node. Returns `None` if no remote nodes are registered.
     pub async fn select_node(&self) -> Option<String> {
-        let health = self
-            .node_health
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
+        let health = self.node_health.read().unwrap_or_else(|e| e.into_inner());
         health
             .iter()
             .filter(|(_, h)| h.healthy)

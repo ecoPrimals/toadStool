@@ -252,9 +252,7 @@ mod tests {
                     Err(e) => {
                         // Acceptable: /tmp/biomeos may be owned by another user,
                         // set_access fails without root.
-                        println!(
-                            "Socket path fallback failed (expected in non-root CI): {e}"
-                        );
+                        println!("Socket path fallback failed (expected in non-root CI): {e}");
                     }
                 }
             },
@@ -351,9 +349,7 @@ mod tests {
                     Err(e) => {
                         // Acceptable: fallback dir may be owned by another user,
                         // set_access fails without root.
-                        println!(
-                            "Socket path fallback failed (expected in non-root CI): {e}"
-                        );
+                        println!("Socket path fallback failed (expected in non-root CI): {e}");
                     }
                 }
             },

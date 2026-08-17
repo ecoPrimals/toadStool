@@ -4,9 +4,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use std::sync::RwLock;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::timeouts::CPU_USAGE_SAMPLE_WINDOW;
-use std::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
@@ -72,10 +72,7 @@ impl CoordinationNetworkDiscovery {
     )] // nodes are refs from registry
     /// Aggregate CPU, memory, and storage across active registered nodes.
     pub async fn get_network_capacity(&self) -> ToadStoolResult<NetworkCapacity> {
-        let registry = self
-            .node_registry
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
+        let registry = self.node_registry.read().unwrap_or_else(|e| e.into_inner());
         let nodes = registry.get_active_nodes();
 
         let mut total_cpu_cores = 0.0;
@@ -113,10 +110,7 @@ impl CoordinationNetworkDiscovery {
         subtasks: &[SubTask],
         preferred_types: &[NodeType],
     ) -> ToadStoolResult<DistributionPlan> {
-        let registry = self
-            .node_registry
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
+        let registry = self.node_registry.read().unwrap_or_else(|e| e.into_inner());
         let available_nodes = registry.get_nodes_by_types(preferred_types);
 
         if available_nodes.is_empty() {
@@ -244,10 +238,7 @@ impl CoordinationNetworkDiscovery {
     )] // all_nodes/active_nodes are refs from registry
     /// Summarize node counts, pooled capacity, and estimated local utilization.
     pub async fn get_network_status(&self) -> ToadStoolResult<NetworkStatus> {
-        let registry = self
-            .node_registry
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
+        let registry = self.node_registry.read().unwrap_or_else(|e| e.into_inner());
         let all_nodes = registry.get_all_nodes();
         let active_nodes = registry.get_active_nodes();
 

@@ -161,7 +161,10 @@ C 03  Display controller
     fn parses_vendors_and_devices() {
         let db = parse_pci_ids(SAMPLE);
         assert_eq!(db.vendors.get(&0x10de).unwrap(), "NVIDIA Corporation");
-        assert_eq!(db.devices.get(&(0x10de, 0x1d81)).unwrap(), "GV100 [TITAN V]");
+        assert_eq!(
+            db.devices.get(&(0x10de, 0x1d81)).unwrap(),
+            "GV100 [TITAN V]"
+        );
         assert_eq!(
             db.devices.get(&(0x10de, 0x102d)).unwrap(),
             "GK210GL [Tesla K80]"

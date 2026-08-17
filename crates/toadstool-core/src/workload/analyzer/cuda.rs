@@ -8,7 +8,10 @@ use super::characteristics::{
 use crate::workload::CudaWorkload;
 
 impl WorkloadAnalyzer {
-    #[expect(clippy::unused_self, reason = "method pattern — analyzer may gain state")]
+    #[expect(
+        clippy::unused_self,
+        reason = "method pattern — analyzer may gain state"
+    )]
     pub(super) const fn analyze_cuda(&self, workload: &CudaWorkload) -> WorkloadCharacteristics {
         let total_threads = workload.launch_config.total_threads();
 

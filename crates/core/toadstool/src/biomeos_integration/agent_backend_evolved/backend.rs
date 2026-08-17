@@ -3,9 +3,9 @@
 
 use serde_json::json;
 use std::sync::Arc;
+use std::sync::RwLock;
 use toadstool_common::capability_provider::{CapabilityError, CapabilityProvider};
 use toadstool_common::primal_identity::Capability;
-use std::sync::RwLock;
 
 use super::error::{AgentBackendError, Result};
 use super::types::{AgentInfo, DeployAgentRequest, LoadModelRequest, ModelInfo};

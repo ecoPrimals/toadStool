@@ -60,7 +60,8 @@ impl ComponentRegistry {
 
         let interface = self
             .interfaces
-            .read().unwrap_or_else(|e| e.into_inner())
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
             .get(interface_name)
             .ok_or_else(|| {
                 ToadStoolError::not_found(format!("Interface not found: {interface_name}"))
@@ -80,7 +81,8 @@ impl ComponentRegistry {
         };
 
         self.instances
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(instance_id.clone(), instance);
 
         info!("Created component instance: {}", instance_id);

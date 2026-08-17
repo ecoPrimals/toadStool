@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::sync::RwLock;
+use std::time::{Duration, Instant};
 
 use super::taxonomy::CapabilityId;
 use toadstool_common::infant_discovery::{DiscoveredService, ServiceHealth, ServiceMetadata};

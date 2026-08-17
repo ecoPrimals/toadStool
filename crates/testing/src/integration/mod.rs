@@ -21,8 +21,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use toadstool::ToadStoolResult as Result;
 use std::sync::RwLock;
+use toadstool::ToadStoolResult as Result;
 use tracing::info;
 
 /// Integration test result

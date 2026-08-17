@@ -37,8 +37,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::sync::RwLock;
+use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
 
 use crate::constants::discovery_ports::{
@@ -442,7 +442,11 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
 
     /// Get service from cache
     async fn get_from_cache(&self, capability: &str) -> Option<CachedEndpoint> {
-        self.cache.read().unwrap_or_else(|e| e.into_inner()).get(capability).cloned()
+        self.cache
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(capability)
+            .cloned()
     }
 
     /// Cache discovered service
@@ -455,13 +459,17 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
         };
 
         self.cache
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(capability.to_string(), cached);
     }
 
     /// Clear cache (useful for testing or forced refresh)
     pub async fn clear_cache(&self) {
-        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
         debug!("Discovery cache cleared");
     }
 

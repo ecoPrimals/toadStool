@@ -231,7 +231,10 @@ impl JobHandler {
         } else if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id.as_ref() {
             self.gate_ownership.revert_to_local_owner().await;
         }
-        self.router.write().unwrap_or_else(|e| e.into_inner()).update_gate(gate_info);
+        self.router
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .update_gate(gate_info);
         Ok(serde_json::json!({"updated": true, "gate_id": gate_id.as_ref()}))
     }
 
@@ -246,7 +249,10 @@ impl JobHandler {
         if self.gate_ownership.hardware_owner_gate_id().await.as_ref() == gate_id {
             self.gate_ownership.revert_to_local_owner().await;
         }
-        self.router.write().unwrap_or_else(|e| e.into_inner()).remove_gate(gate_id);
+        self.router
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove_gate(gate_id);
         Ok(serde_json::json!({"removed": true, "gate_id": gate_id}))
     }
 

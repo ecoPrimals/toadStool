@@ -128,7 +128,10 @@ where
         } else {
             // No primal found - try local native runtime engine
             let native_engine = {
-                let engines = self.runtime_engines().read().unwrap_or_else(|e| e.into_inner());
+                let engines = self
+                    .runtime_engines()
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
                 engines.get(&RuntimeType::Native).cloned()
             };
             if let Some(native_engine) = native_engine {

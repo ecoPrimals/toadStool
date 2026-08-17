@@ -450,9 +450,11 @@ impl From<toadstool_core::manifest::BiomeManifest> for BiomeManifest {
                         name,
                         PrimalConfig {
                             version: pc.version.unwrap_or_default(),
-                            source: pc.source.map(convert_source).unwrap_or(WorkloadSource::Local {
-                                path: PathBuf::from("."),
-                            }),
+                            source: pc.source.map(convert_source).unwrap_or(
+                                WorkloadSource::Local {
+                                    path: PathBuf::from("."),
+                                },
+                            ),
                             enabled: pc.enabled,
                             config,
                             dependencies: pc.dependencies,
@@ -469,15 +471,20 @@ impl From<toadstool_core::manifest::BiomeManifest> for BiomeManifest {
                         name,
                         ServiceConfig {
                             version: sc.version.unwrap_or_default(),
-                            source: sc.source.map(convert_source).unwrap_or(WorkloadSource::Local {
-                                path: PathBuf::from("."),
-                            }),
+                            source: sc.source.map(convert_source).unwrap_or(
+                                WorkloadSource::Local {
+                                    path: PathBuf::from("."),
+                                },
+                            ),
                             replicas: Some(sc.replicas),
-                            resources: sc.resources.map(|r| ServiceResources {
-                                cpu_limit: r.cpu_limit,
-                                memory_limit: r.memory_limit,
-                                storage_limit: r.storage_limit,
-                            }).unwrap_or_default(),
+                            resources: sc
+                                .resources
+                                .map(|r| ServiceResources {
+                                    cpu_limit: r.cpu_limit,
+                                    memory_limit: r.memory_limit,
+                                    storage_limit: r.storage_limit,
+                                })
+                                .unwrap_or_default(),
                             environment: sc.environment,
                             ports: sc
                                 .ports
@@ -503,62 +510,84 @@ impl From<toadstool_core::manifest::BiomeManifest> for BiomeManifest {
                     )
                 })
                 .collect(),
-            resources: canonical.resources.map(|r| BiomeResources {
-                cpu_limit: r.cpu_limit,
-                memory_limit: r.memory_limit,
-                storage_limit: r.storage_limit,
-                gpu_limit: r.gpu_limit,
-                network_bandwidth: None,
-            }).unwrap_or(BiomeResources {
-                cpu_limit: None, memory_limit: None, storage_limit: None,
-                gpu_limit: None, network_bandwidth: None,
-            }),
-            security: canonical.security.map(|s| BiomeSecurity {
-                isolation_level: s.isolation_level,
-                trust_level: s.trust_level,
-                security_required: s.crypto_required,
-                crypto_policies: s.crypto_policies,
-                allowed_networks: s.allowed_networks,
-                forbidden_syscalls: vec![],
-            }).unwrap_or(BiomeSecurity {
-                isolation_level: "process".into(), trust_level: "medium".into(),
-                security_required: false, crypto_policies: vec![],
-                allowed_networks: vec![], forbidden_syscalls: vec![],
-            }),
-            networking: canonical.networking.map(|n| BiomeNetworking {
-                mode: n.mode,
-                dns_servers: n.dns_servers,
-                port_mappings: n
-                    .port_mappings
-                    .into_iter()
-                    .map(|p| PortMapping {
-                        host_port: p.host_port.unwrap_or(p.container_port),
-                        container_port: p.container_port,
-                        protocol: p.protocol,
-                    })
-                    .collect(),
-                network_policies: vec![],
-            }).unwrap_or(BiomeNetworking {
-                mode: "bridge".into(), dns_servers: vec![],
-                port_mappings: vec![], network_policies: vec![],
-            }),
-            storage: canonical.storage.map(|s| BiomeStorage {
-                storage_integration: s.integration,
-                datasets: vec![],
-                volumes: s
-                    .volumes
-                    .into_iter()
-                    .map(|v| VolumeConfig {
-                        name: v.source.clone(),
-                        driver: "local".into(),
-                        options: HashMap::new(),
-                    })
-                    .collect(),
-                backup_policy: s.backup_policy,
-            }).unwrap_or(BiomeStorage {
-                storage_integration: None, datasets: vec![],
-                volumes: vec![], backup_policy: None,
-            }),
+            resources: canonical
+                .resources
+                .map(|r| BiomeResources {
+                    cpu_limit: r.cpu_limit,
+                    memory_limit: r.memory_limit,
+                    storage_limit: r.storage_limit,
+                    gpu_limit: r.gpu_limit,
+                    network_bandwidth: None,
+                })
+                .unwrap_or(BiomeResources {
+                    cpu_limit: None,
+                    memory_limit: None,
+                    storage_limit: None,
+                    gpu_limit: None,
+                    network_bandwidth: None,
+                }),
+            security: canonical
+                .security
+                .map(|s| BiomeSecurity {
+                    isolation_level: s.isolation_level,
+                    trust_level: s.trust_level,
+                    security_required: s.crypto_required,
+                    crypto_policies: s.crypto_policies,
+                    allowed_networks: s.allowed_networks,
+                    forbidden_syscalls: vec![],
+                })
+                .unwrap_or(BiomeSecurity {
+                    isolation_level: "process".into(),
+                    trust_level: "medium".into(),
+                    security_required: false,
+                    crypto_policies: vec![],
+                    allowed_networks: vec![],
+                    forbidden_syscalls: vec![],
+                }),
+            networking: canonical
+                .networking
+                .map(|n| BiomeNetworking {
+                    mode: n.mode,
+                    dns_servers: n.dns_servers,
+                    port_mappings: n
+                        .port_mappings
+                        .into_iter()
+                        .map(|p| PortMapping {
+                            host_port: p.host_port.unwrap_or(p.container_port),
+                            container_port: p.container_port,
+                            protocol: p.protocol,
+                        })
+                        .collect(),
+                    network_policies: vec![],
+                })
+                .unwrap_or(BiomeNetworking {
+                    mode: "bridge".into(),
+                    dns_servers: vec![],
+                    port_mappings: vec![],
+                    network_policies: vec![],
+                }),
+            storage: canonical
+                .storage
+                .map(|s| BiomeStorage {
+                    storage_integration: s.integration,
+                    datasets: vec![],
+                    volumes: s
+                        .volumes
+                        .into_iter()
+                        .map(|v| VolumeConfig {
+                            name: v.source.clone(),
+                            driver: "local".into(),
+                            options: HashMap::new(),
+                        })
+                        .collect(),
+                    backup_policy: s.backup_policy,
+                })
+                .unwrap_or(BiomeStorage {
+                    storage_integration: None,
+                    datasets: vec![],
+                    volumes: vec![],
+                    backup_policy: None,
+                }),
         }
     }
 }
@@ -606,9 +635,7 @@ fn convert_source(src: toadstool_core::manifest::ManifestWorkloadSource) -> Work
     }
 }
 
-fn convert_health_check(
-    hc: toadstool_core::manifest::ManifestHealthCheck,
-) -> HealthCheck {
+fn convert_health_check(hc: toadstool_core::manifest::ManifestHealthCheck) -> HealthCheck {
     HealthCheck {
         command: hc.command,
         interval: hc.interval_secs,
@@ -626,9 +653,7 @@ fn json_to_yaml(v: &serde_json::Value) -> serde_yaml_ng::Value {
             if let Some(i) = n.as_i64() {
                 serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(i))
             } else if let Some(f) = n.as_f64() {
-                serde_yaml_ng::Value::Number(
-                    serde_yaml_ng::Number::from(f),
-                )
+                serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(f))
             } else {
                 serde_yaml_ng::Value::Null
             }

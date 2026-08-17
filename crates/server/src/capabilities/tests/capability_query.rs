@@ -142,8 +142,7 @@ async fn test_find_peer_with_capability_contains_match() {
         )
         .unwrap();
 
-        let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base)
-            .unwrap();
+        let found = PrimalCapabilities::find_peer_with_in("gpu-nvidia", &discovery_base).unwrap();
         assert_eq!(found.primal_id, "contain-match");
     })
     .await;
@@ -210,8 +209,7 @@ async fn test_find_all_peers_in_returns_multiple() {
             .unwrap();
         }
 
-        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base)
-            .unwrap();
+        let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).unwrap();
         assert_eq!(peers.len(), 3);
     })
     .await;

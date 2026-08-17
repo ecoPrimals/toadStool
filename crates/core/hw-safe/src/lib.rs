@@ -78,10 +78,9 @@ pub use process_isolation::WaitResult;
 pub use platform_backends::{
     LinuxDeviceFile, LinuxDeviceIo, LinuxEvent, LinuxEventNotifier, LinuxFilesystemIsolation,
     LinuxMemoryMapper, LinuxPinnedMemory, LinuxPrivilegeProbeBackend, LinuxSystemParameters,
-    clock_monotonic_ns, delete_module, finit_module, fs_stats, ioctl_infra, lock_memory, mknod_char,
-    mmap_device, munmap_device, open_path, open_path_wronly, recv_with_fds, seek_end,
-    sendmsg_with_fds,
-    unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap,
+    clock_monotonic_ns, delete_module, finit_module, fs_stats, ioctl_infra, lock_memory,
+    mknod_char, mmap_device, munmap_device, open_path, open_path_wronly, recv_with_fds, seek_end,
+    sendmsg_with_fds, unix_dgram_socket, unlock_memory, vfio_bar_map, vfio_bar_unmap,
 };
 
 #[cfg(target_os = "linux")]

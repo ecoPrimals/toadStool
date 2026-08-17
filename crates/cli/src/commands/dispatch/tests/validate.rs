@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use crate::commands::definitions::Commands;
 use crate::commands::dispatch::execute_command;
 use crate::{Cli, CliContext};
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 fn valid_manifest_yaml() -> &'static str {
     r#"
@@ -48,8 +48,7 @@ storage:
 async fn test_execute_command_validate_valid_manifest() {
     let temp_dir = TempDir::new().expect("temp dir");
     let manifest_path = temp_dir.path().join("biome.yaml");
-    fs::write(&manifest_path, valid_manifest_yaml())
-        .expect("write manifest");
+    fs::write(&manifest_path, valid_manifest_yaml()).expect("write manifest");
 
     let cli = Cli {
         command: Commands::Validate {
@@ -76,8 +75,7 @@ async fn test_execute_command_validate_valid_manifest() {
 async fn test_execute_command_validate_json_format() {
     let temp_dir = TempDir::new().expect("temp dir");
     let manifest_path = temp_dir.path().join("biome.yaml");
-    fs::write(&manifest_path, valid_manifest_yaml())
-        .expect("write manifest");
+    fs::write(&manifest_path, valid_manifest_yaml()).expect("write manifest");
 
     let cli = Cli {
         command: Commands::Validate {

@@ -20,14 +20,12 @@ pub use device_io::{
     LinuxDeviceFile, LinuxDeviceIo, mknod_char, open_path, open_path_wronly, seek_end,
 };
 pub use event::{LinuxEvent, LinuxEventNotifier};
-pub use ipc::{
-    UnixAddr, ioctl_infra, recv_with_fds, sendmsg_with_fds, unix_dgram_socket,
-};
+pub use ipc::{UnixAddr, ioctl_infra, recv_with_fds, sendmsg_with_fds, unix_dgram_socket};
 pub use isolation::LinuxFilesystemIsolation;
 pub use kmod::{delete_module, finit_module};
 pub use memory::{
-    LinuxMemoryMapper, LinuxPinnedMemory, lock_memory, mmap_device, munmap_device,
-    unlock_memory, vfio_bar_map, vfio_bar_unmap,
+    LinuxMemoryMapper, LinuxPinnedMemory, lock_memory, mmap_device, munmap_device, unlock_memory,
+    vfio_bar_map, vfio_bar_unmap,
 };
 pub use system::{
     FsStats, LinuxPrivilegeProbeBackend, LinuxSystemParameters, clock_monotonic_ns, fs_stats,

@@ -20,10 +20,10 @@
 
 use anyhow::Result;
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
-use std::fs;
 
 /// Helper to create test manifest
 async fn create_test_manifest(temp_dir: &TempDir) -> Result<PathBuf> {

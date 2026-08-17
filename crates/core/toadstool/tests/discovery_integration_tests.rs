@@ -25,11 +25,8 @@ async fn test_mdns_service_lifecycle() {
     };
 
     // Test with identity that has network
-    let identity = SelfIdentity::new().with_network(
-        "test-node",
-        Some(8084),
-        vec!["http".to_string()],
-    );
+    let identity =
+        SelfIdentity::new().with_network("test-node", Some(8084), vec!["http".to_string()]);
 
     // Test advertisement
     let result = mdns.advertise(&identity);
@@ -51,11 +48,8 @@ async fn test_capability_based_discovery() {
     };
 
     // Create identity with network (capabilities are auto-detected)
-    let identity = SelfIdentity::new().with_network(
-        "multi-cap-node",
-        Some(9000),
-        vec!["http".to_string()],
-    );
+    let identity =
+        SelfIdentity::new().with_network("multi-cap-node", Some(9000), vec!["http".to_string()]);
 
     if mdns.advertise(&identity).is_err() {
         eprintln!("⚠️  mDNS advertise not available");
@@ -187,11 +181,8 @@ async fn test_cached_services() {
 
 #[test]
 fn test_self_identity_builder() {
-    let identity = SelfIdentity::new().with_network(
-        "test-host",
-        Some(8080),
-        vec!["http".to_string()],
-    );
+    let identity =
+        SelfIdentity::new().with_network("test-host", Some(8080), vec!["http".to_string()]);
 
     // Identity has auto-detected capabilities
     assert!(!identity.capabilities.is_empty());

@@ -174,7 +174,8 @@ impl SystemResourceMonitor {
         };
 
         self.workload_metrics
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), metrics);
         tracing::info!("Started real-time monitoring for workload: {workload_id}");
         Ok(())
@@ -245,7 +246,8 @@ impl SystemResourceMonitor {
         };
 
         self.workload_metrics
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), updated_metrics);
         Ok(())
     }

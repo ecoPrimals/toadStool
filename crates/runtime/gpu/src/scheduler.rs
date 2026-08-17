@@ -7,9 +7,9 @@ use crate::compute_dispatch::UniversalComputeResourceDispatch;
 use crate::universal::{ComputeRequirements, UniversalComputeResource};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::{Duration, Instant};
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use std::sync::RwLock;
 
 /// Scheduling policy for resource selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

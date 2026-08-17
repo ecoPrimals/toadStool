@@ -127,7 +127,8 @@ impl RuntimeDiscovery {
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
         let matching: Vec<DiscoveredService> = self
             .services
-            .read().unwrap_or_else(|e| e.into_inner())
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|service| {
                 service
@@ -158,7 +159,8 @@ impl RuntimeDiscovery {
     ) -> ToadStoolResult<Vec<DiscoveredService>> {
         let matching: Vec<DiscoveredService> = self
             .services
-            .read().unwrap_or_else(|e| e.into_inner())
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|service| self.identity.matches_requirement(requirement, service))
             .cloned()

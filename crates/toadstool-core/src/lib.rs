@@ -8,11 +8,21 @@
 //! - Self-evolves and adapts to hardware changes
 //! - Compute services run the math on all hardware via ToadStool
 
+/// Encryption types — security levels, payloads, config.
+pub mod encryption;
+/// Execution types — requests, responses, status, runtime config.
+pub mod execution;
 /// Hardware discovery and management (GPU, NPU, CPU, FPGA).
 pub mod hardware;
 pub mod hardware_transport;
+/// Canonical NUCLEUS composition manifest — `biome.yaml` schema.
+pub mod manifest;
 pub mod npu_controller;
 pub mod npu_dispatch;
+/// Resource types — metrics, requirements, limits, system info.
+pub mod resources;
+/// Security types — isolation levels, capabilities, contexts, policies.
+pub mod security;
 /// GPU silicon unit discovery and performance surface types.
 ///
 /// Every functional unit on the GPU die — shader cores, tensor cores,
@@ -22,21 +32,15 @@ pub mod silicon;
 /// Workload specification types — compute job definitions, executable sources,
 /// AI/ML workload descriptors, CUDA kernels, validators, and analyzers.
 pub mod workload;
-/// Resource types — metrics, requirements, limits, system info.
-pub mod resources;
-/// Security types — isolation levels, capabilities, contexts, policies.
-pub mod security;
-/// Encryption types — security levels, payloads, config.
-pub mod encryption;
-/// Execution types — requests, responses, status, runtime config.
-pub mod execution;
-/// Canonical NUCLEUS composition manifest — `biome.yaml` schema.
-pub mod manifest;
 
 pub use hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 pub use hardware_transport::{
     FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, TransportInfo,
     TransportMedium, decode_frame, encode_frame,
+};
+pub use manifest::{
+    BiomeManifest, BiomeMetadata, CompositionGraph, CompositionKind, ManifestPrimalConfig,
+    ManifestServiceConfig,
 };
 pub use npu_controller::{
     AdaptiveSimulationController, ControllerError, NpuParameterController, ParameterSuggestion,
@@ -50,9 +54,5 @@ pub use silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,
     RtCoreGen, SiliconCapabilities, SiliconEnergyLedger, SiliconUnit, SiliconUnitEnergyEntry,
     SiliconUnitUtilization, TensorCoreGen,
-};
-pub use manifest::{
-    BiomeManifest, BiomeMetadata, CompositionGraph, CompositionKind, ManifestPrimalConfig,
-    ManifestServiceConfig,
 };
 pub use workload::{WorkloadSpec, WorkloadType};

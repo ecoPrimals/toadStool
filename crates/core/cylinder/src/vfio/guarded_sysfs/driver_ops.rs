@@ -8,8 +8,8 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use toadstool_hw_safe::{
-    ForkResult, LinuxDeviceIo, Pid, WaitResult, exit_group, fork, kill_process,
-    open_path_wronly, waitpid_nohang,
+    ForkResult, LinuxDeviceIo, Pid, WaitResult, exit_group, fork, kill_process, open_path_wronly,
+    waitpid_nohang,
 };
 
 use super::GuardedSysfsError;

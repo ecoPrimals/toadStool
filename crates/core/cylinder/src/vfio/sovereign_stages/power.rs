@@ -257,7 +257,13 @@ mod fault_write_guard_tests {
     /// Kepler's FBPAs front untrained memory and answer 0xbad0*.
     #[test]
     fn cg_sweep_skips_faulted_domains() {
-        assert!(is_pri_fault(0xbad0_011f), "FBPA cold read must count as faulted");
-        assert!(is_pri_fault(0xDEAD_DEAD), "failed read must count as faulted");
+        assert!(
+            is_pri_fault(0xbad0_011f),
+            "FBPA cold read must count as faulted"
+        );
+        assert!(
+            is_pri_fault(0xDEAD_DEAD),
+            "failed read must count as faulted"
+        );
     }
 }

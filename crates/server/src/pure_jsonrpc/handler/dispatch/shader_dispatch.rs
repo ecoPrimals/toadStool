@@ -195,15 +195,11 @@ impl DispatchHandler {
 
             // Adapter selection: honor explicit adapter_index or adapter_name params.
             #[cfg(feature = "gpu-discovery")]
-            let adapter_selector = if let Some(idx) = p
-                .get("adapter_index")
-                .and_then(serde_json::Value::as_u64)
+            let adapter_selector = if let Some(idx) =
+                p.get("adapter_index").and_then(serde_json::Value::as_u64)
             {
                 super::wgpu_dispatch::AdapterSelector::Index(idx as usize)
-            } else if let Some(name) = p
-                .get("adapter_name")
-                .and_then(serde_json::Value::as_str)
-            {
+            } else if let Some(name) = p.get("adapter_name").and_then(serde_json::Value::as_str) {
                 super::wgpu_dispatch::AdapterSelector::Name(name.to_string())
             } else {
                 super::wgpu_dispatch::AdapterSelector::Default

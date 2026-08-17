@@ -30,8 +30,6 @@ mod health;
 #[cfg(target_os = "linux")]
 pub(crate) mod ipc_watch;
 #[cfg(target_os = "linux")]
-pub(crate) mod silicon_discovery;
-#[cfg(target_os = "linux")]
 pub(crate) mod kernel_sentinel;
 #[cfg(all(test, target_os = "linux"))]
 mod kernel_sentinel_tests;
@@ -41,6 +39,8 @@ pub(crate) mod pcie_keepalive;
 mod pcie_keepalive_tests;
 #[cfg(feature = "background-monitors")]
 mod resource;
+#[cfg(target_os = "linux")]
+pub(crate) mod silicon_discovery;
 #[cfg(feature = "background-monitors")]
 mod statistics;
 

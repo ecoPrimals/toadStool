@@ -8,9 +8,7 @@ use crate::ecosystem::{DiscoveredServices, EcosystemDiscoverer};
 use crate::hardware::{HardwareDetector, SystemCapabilities};
 use toadstool_config::ToadStoolConfig;
 
-use super::{
-    ConfigGenerator, ConfigValidator, PlatformOptimizer, UsageLearner,
-};
+use super::{ConfigGenerator, ConfigValidator, PlatformOptimizer, UsageLearner};
 
 /// Intelligent auto-configuration system that makes `ToadStool` work out-of-the-box
 /// with optimal settings for any environment.
@@ -217,8 +215,8 @@ impl Default for IntelligentAutoConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{PlatformOptimizer, UsageHints};
+    use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     #[cfg_attr(

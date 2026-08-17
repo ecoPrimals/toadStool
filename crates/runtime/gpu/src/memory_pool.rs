@@ -52,10 +52,7 @@ impl MemoryPool {
 
     /// Get pool statistics
     pub async fn statistics(&self) -> PoolStatistics {
-        self.stats
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
+        self.stats.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Clear all buffers from pool

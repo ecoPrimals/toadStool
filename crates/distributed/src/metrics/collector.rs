@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use std::sync::RwLock;
+use std::time::Duration;
 
 /// Universal metrics collector
 pub struct UniversalMetricsCollector {

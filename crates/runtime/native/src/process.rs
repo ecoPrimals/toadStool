@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Instant;
 use std::process::Child;
+use std::sync::Arc;
 use std::sync::RwLock;
+use std::time::Instant;
 use tracing::warn;
 use uuid::Uuid;
 

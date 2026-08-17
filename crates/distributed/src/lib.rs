@@ -46,24 +46,47 @@
 #![forbid(unsafe_code)]
 
 // Always available: pure types and shared abstractions
+/// Common distributed abstractions (shared across Coordination, Cloud, etc.)
+pub mod common;
 /// Error types for the distributed layer.
 pub mod error;
 /// Shared types for jobs, resources, and execution.
 pub mod types;
-/// Common distributed abstractions (shared across Coordination, Cloud, etc.)
-pub mod common;
 
 // Universal substrate types (pure serde definitions, no async runtime)
 /// Substrate type definitions for biological, quantum, neuromorphic, and edge platforms.
 pub mod universal;
 
 // Runtime-gated modules: networking, coordination, security, hosting, execution
+#[cfg(all(feature = "runtime", feature = "legacy-cloud"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "biomeOS owns orchestration; cloud/ is vestigial scaffold with zero production callers"
+)]
+/// Cloud integration - universal cloud orchestration (DEPRECATED: biomeOS owns orchestration).
+pub mod cloud;
 #[cfg(feature = "runtime")]
 /// Compatibility layer for legacy distributed APIs.
 pub mod compatibility;
+#[cfg(all(feature = "runtime", feature = "legacy-coordination"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Use coordination_integration for vendor-agnostic coordination services"
+)]
+/// Coordination integration - universal signal coordination (DEPRECATED: use coordination_integration).
+pub mod coordination;
+#[cfg(feature = "runtime")]
+/// Coordination integration - vendor-agnostic service coordination.
+pub mod coordination_integration;
 #[cfg(feature = "runtime")]
 /// Core coordinator, config, and execution environment types.
 pub mod core;
+#[cfg(feature = "runtime")]
+/// Crypto integration - vendor-agnostic cryptographic services.
+pub mod crypto_integration;
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+/// Crypto lock system (depends on security_provider; vestigial — zero production callers).
+pub mod crypto_lock;
 #[cfg(feature = "runtime")]
 /// Ecosystem auth, registry, and service discovery.
 pub mod ecosystem;
@@ -79,40 +102,26 @@ pub mod network;
 #[cfg(feature = "runtime")]
 /// OS-layer abstraction for cross-platform execution.
 pub mod os_layer;
-#[cfg(all(feature = "runtime", feature = "legacy-cloud"))]
-#[deprecated(since = "2.0.0", note = "biomeOS owns orchestration; cloud/ is vestigial scaffold with zero production callers")]
-/// Cloud integration - universal cloud orchestration (DEPRECATED: biomeOS owns orchestration).
-pub mod cloud;
-#[cfg(feature = "runtime")]
-/// Coordination integration - vendor-agnostic service coordination.
-pub mod coordination_integration;
-#[cfg(all(feature = "runtime", feature = "legacy-coordination"))]
-#[deprecated(
-    since = "2.0.0",
-    note = "Use coordination_integration for vendor-agnostic coordination services"
-)]
-/// Coordination integration - universal signal coordination (DEPRECATED: use coordination_integration).
-pub mod coordination;
-#[cfg(all(feature = "runtime", feature = "legacy-security"))]
-/// Crypto lock system (depends on security_provider; vestigial — zero production callers).
-pub mod crypto_lock;
-#[cfg(all(feature = "runtime", feature = "legacy-security"))]
-#[deprecated(since = "2.0.0", note = "Production uses crypto_integration; security_provider is vestigial")]
-/// Security provider abstraction (DEPRECATED: use crypto_integration).
-pub mod security_provider;
-#[cfg(feature = "runtime")]
-/// Crypto integration - vendor-agnostic cryptographic services.
-pub mod crypto_integration;
-#[cfg(all(feature = "runtime", feature = "legacy-security"))]
-#[deprecated(since = "2.0.0", note = "Use crypto_integration for vendor-agnostic crypto services")]
-/// Security integration (DEPRECATED: use crypto_integration).
-pub mod security;
-#[cfg(feature = "runtime")]
-/// Substrate detection for universal compute platforms.
-pub mod substrate_detection;
 #[cfg(feature = "runtime")]
 /// Primal capability system - agnostic integration with any primal.
 pub mod primal_capabilities;
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Use crypto_integration for vendor-agnostic crypto services"
+)]
+/// Security integration (DEPRECATED: use crypto_integration).
+pub mod security;
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+#[deprecated(
+    since = "2.0.0",
+    note = "Production uses crypto_integration; security_provider is vestigial"
+)]
+/// Security provider abstraction (DEPRECATED: use crypto_integration).
+pub mod security_provider;
+#[cfg(feature = "runtime")]
+/// Substrate detection for universal compute platforms.
+pub mod substrate_detection;
 
 // Re-exports: always available
 pub use types::{
@@ -139,6 +148,9 @@ pub use universal::substrate::{
 };
 
 // Re-exports: runtime-gated
+#[cfg(all(feature = "runtime", feature = "legacy-cloud"))]
+#[allow(deprecated, reason = "re-exporting legacy-gated items")]
+pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
 #[cfg(feature = "runtime")]
 pub use compatibility::{
     CompatibilityLayer, LegacyCompatConfig, LegacyCompatibilityLayer, LinuxCompatConfig,
@@ -150,9 +162,21 @@ pub use core::{
     CoordinationConfig, DistributedConfig, DistributedCoordinator, ExecutionEnvironment,
     PlatformCapabilities, StandaloneConfig, StandaloneExecutor, ToadStoolCapabilities,
 };
+#[cfg(all(feature = "runtime", feature = "legacy-security"))]
+pub use crypto_lock::{
+    AccessPolicies, CryptoValidator, DelegationValidator, PermissionHolder,
+    PermissionRevocationList, SecurityPermissionValidator, SecurityProviderPermission,
+    ToadStoolCryptoLock,
+};
 #[cfg(feature = "runtime")]
 pub use ecosystem::{
     AuthToken, AuthenticationManager, Credentials, RegisteredService, ServiceRegistry,
+};
+#[cfg(feature = "runtime")]
+pub use hosting::{
+    ChildResourceAllocator, ChildToadStoolInstance, CommunicationChannel, HostingResourceConfig,
+    HostingResourceManager, InterInstanceCommunication, RecursiveHostingConfig,
+    RecursiveHostingManager,
 };
 #[cfg(feature = "runtime")]
 pub use metrics::{
@@ -166,26 +190,7 @@ pub use network::{
     NodeHealth, RetryManager,
 };
 #[cfg(feature = "runtime")]
-pub use hosting::{
-    ChildResourceAllocator, ChildToadStoolInstance, CommunicationChannel, HostingResourceConfig,
-    HostingResourceManager, InterInstanceCommunication, RecursiveHostingConfig,
-    RecursiveHostingManager,
-};
-#[cfg(feature = "runtime")]
 pub use os_layer::{OSLayerConfig, OSLayerManager};
-#[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
-pub use universal::{
-    AdapterConfig, UniversalAdapter, UniversalScheduler, UniversalSchedulerConfig,
-};
-#[cfg(all(feature = "runtime", feature = "legacy-cloud"))]
-#[allow(deprecated, reason = "re-exporting legacy-gated items")]
-pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
-#[cfg(all(feature = "runtime", feature = "legacy-security"))]
-pub use crypto_lock::{
-    AccessPolicies, CryptoValidator, DelegationValidator, PermissionHolder,
-    PermissionRevocationList, SecurityPermissionValidator, SecurityProviderPermission,
-    ToadStoolCryptoLock,
-};
 #[cfg(feature = "runtime")]
 pub use primal_capabilities::{
     Capability, CapabilityProvider, CapabilityRegistry, CoordinationAdapter, PrimalAdapter,
@@ -196,6 +201,10 @@ pub use primal_capabilities::{
 pub use security_provider::ExternalTarget;
 #[cfg(feature = "runtime")]
 pub use substrate_detection::{PlatformType, SubstrateCapabilities, SubstrateDetector};
+#[cfg(all(feature = "runtime", feature = "legacy-scheduler"))]
+pub use universal::{
+    AdapterConfig, UniversalAdapter, UniversalScheduler, UniversalSchedulerConfig,
+};
 
 // Tests module
 #[cfg(all(test, feature = "runtime"))]

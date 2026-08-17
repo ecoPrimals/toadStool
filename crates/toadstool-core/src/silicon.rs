@@ -231,9 +231,9 @@ impl SiliconCapabilities {
     /// can emit native GPU instructions (PTX for NVIDIA, AMDGCN for AMD).
     #[must_use]
     pub fn has_native_compiler(&self) -> bool {
-        self.compiler_backends.iter().any(|b| {
-            b == "ptx" || b == "amdgcn" || b == "spirv"
-        })
+        self.compiler_backends
+            .iter()
+            .any(|b| b == "ptx" || b == "amdgcn" || b == "spirv")
     }
 
     /// Set compiler backends (called after IPC query to shader.compile.capabilities).

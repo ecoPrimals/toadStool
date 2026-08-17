@@ -255,8 +255,7 @@ impl DispatchHandler {
                 // via PcieTransport when physical GPU links are available.
                 let mut exchanges = Vec::new();
                 for i in 0..partitions.len().saturating_sub(1) {
-                    let ghost_bytes =
-                        ghost_width as u64 * config.non_split_volume() * 8;
+                    let ghost_bytes = ghost_width as u64 * config.non_split_volume() * 8;
 
                     // Find PCIe link between adjacent adapters
                     let link_info = pcie_links.iter().find(|link| {
@@ -266,7 +265,11 @@ impl DispatchHandler {
 
                     let (transport_type, bandwidth_bps, hops) = match link_info {
                         Some(link) => (
-                            if link.hops == 0 { "pcie_p2p" } else { "pcie_switch" },
+                            if link.hops == 0 {
+                                "pcie_p2p"
+                            } else {
+                                "pcie_switch"
+                            },
                             link.bandwidth_bps,
                             link.hops,
                         ),

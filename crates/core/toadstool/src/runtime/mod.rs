@@ -91,7 +91,11 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
         let runtime_type = self.select_runtime(&request)?;
         debug!("Selected runtime: {:?}", runtime_type);
 
-        let engines = self.registry.engines().read().unwrap_or_else(|e| e.into_inner());
+        let engines = self
+            .registry
+            .engines()
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let engine = engines.get(&runtime_type).ok_or_else(|| {
             ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
         })?;
@@ -115,7 +119,13 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
 
     fn select_runtime(&self, request: &ExecutionRequest) -> ToadStoolResult<RuntimeType> {
         if let Some(hint) = &request.runtime_hint {
-            if let Some(engine) = self.registry.engines().read().unwrap_or_else(|e| e.into_inner()).get(hint) {
+            if let Some(engine) = self
+                .registry
+                .engines()
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
+                .get(hint)
+            {
                 if engine.supports_workload(&request.workload.workload_type()) {
                     return Ok(hint.clone());
                 }
@@ -124,13 +134,10 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
 
         let workload_type = request.workload.workload_type();
         match workload_type {
-            WorkloadType::AiMl | WorkloadType::Cuda => {
-                self.select_intelligent_backend(request)
-            }
-            _ => {
-                self.selection_strategy
-                    .select_runtime(request, self.registry.engines())
-            }
+            WorkloadType::AiMl | WorkloadType::Cuda => self.select_intelligent_backend(request),
+            _ => self
+                .selection_strategy
+                .select_runtime(request, self.registry.engines()),
         }
     }
 
@@ -162,7 +169,8 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
             if self
                 .registry
                 .engines()
-                .read().unwrap_or_else(|e| e.into_inner())
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
                 .contains_key(&RuntimeType::Gpu)
             {
                 Ok(RuntimeType::Gpu)
@@ -171,7 +179,11 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
                 Ok(RuntimeType::Native)
             }
         } else {
-            let engines = self.registry.engines().read().unwrap_or_else(|e| e.into_inner());
+            let engines = self
+                .registry
+                .engines()
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             let result = if engines.contains_key(&RuntimeType::Gpu) {
                 info!("AI/ML workload: using GPU runtime");
                 Ok(RuntimeType::Gpu)

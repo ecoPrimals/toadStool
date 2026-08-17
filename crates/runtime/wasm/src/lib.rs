@@ -90,9 +90,9 @@ pub use module_loader::ModuleLoader;
 pub use wasi_context::{WasiConfig, create_wasi_context};
 
 pub use component_model::{
-    ComponentInstance, ComponentInterface, ComponentModelConfig,
-    ComponentModelSupport, ComponentResourceUsage, ComponentState,
-    ComponentStats, ComponentValue, InterfaceFunction, InterfaceType,
+    ComponentInstance, ComponentInterface, ComponentModelConfig, ComponentModelSupport,
+    ComponentResourceUsage, ComponentState, ComponentStats, ComponentValue, InterfaceFunction,
+    InterfaceType,
 };
 
 #[cfg(feature = "runtime")]

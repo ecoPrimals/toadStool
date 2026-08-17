@@ -62,9 +62,9 @@ mod capabilities;
 mod error;
 pub mod evolution;
 pub mod hybrid;
+mod pcie_config;
 pub mod sentinel;
 mod synthetic;
-mod pcie_config;
 pub use pcie_config::PcieConfig;
 
 // Hardware modules — Linux-only (VFIO/sysfs kernel interfaces).
@@ -109,8 +109,7 @@ pub use backend::{BackendSelection, BackendType, LoadVerification, ModelHandle, 
 pub use backends::UserspaceBackend;
 pub use backends::software::{SoftwareBackend, pack_software_model};
 pub use capabilities::{
-    BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology,
-    WeightMutationSupport,
+    BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, WeightMutationSupport,
 };
 #[cfg(target_os = "linux")]
 pub use device::{AkidaDevice, DeviceHandle};

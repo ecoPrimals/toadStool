@@ -98,8 +98,8 @@ async fn demo_capability_discovery(platform: &UniversalComputePlatform) -> ToadS
     println!("{}", "-".repeat(40));
 
     // Discover native execution capabilities
-    let native_providers = platform
-        .find_primals_by_capability(&PrimalCapability::NativeExecution {
+    let native_providers =
+        platform.find_primals_by_capability(&PrimalCapability::NativeExecution {
             architectures: vec!["x86_64".to_string()],
         });
     println!("🖥️  Native execution providers: {}", native_providers.len());
@@ -110,8 +110,8 @@ async fn demo_capability_discovery(platform: &UniversalComputePlatform) -> ToadS
     println!("🕸️  WASM execution providers: {}", wasm_providers.len());
 
     // Discover container capabilities
-    let container_providers = platform
-        .find_primals_by_capability(&PrimalCapability::ContainerRuntime {
+    let container_providers =
+        platform.find_primals_by_capability(&PrimalCapability::ContainerRuntime {
             orchestrators: vec!["docker".to_string()],
         });
     println!(
@@ -120,10 +120,9 @@ async fn demo_capability_discovery(platform: &UniversalComputePlatform) -> ToadS
     );
 
     // Discover load balancing capabilities
-    let lb_providers = platform
-        .find_primals_by_capability(&PrimalCapability::LoadBalancing {
-            algorithms: vec!["round_robin".to_string()],
-        });
+    let lb_providers = platform.find_primals_by_capability(&PrimalCapability::LoadBalancing {
+        algorithms: vec!["round_robin".to_string()],
+    });
     println!("⚖️  Load balancing providers: {}", lb_providers.len());
 
     Ok(())

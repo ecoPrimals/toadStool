@@ -203,7 +203,10 @@ mod tests {
                 gossip_events: vec![],
             },
         );
-        let manifest = BiomeManifest { primals, ..manifest };
+        let manifest = BiomeManifest {
+            primals,
+            ..manifest
+        };
 
         let result = manager.bootstrap_from_manifest(&manifest).await.unwrap();
         assert_eq!(result.successful_primals, 1);

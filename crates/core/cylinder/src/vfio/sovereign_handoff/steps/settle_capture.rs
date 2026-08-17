@@ -53,7 +53,9 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
     // strategy on a host where the node is provably inert.
     if let Some(node) = drm_breach {
         if ctx.drm_node_claimable {
-            breadcrumb(&format!("settle: ABORT — DRM node {node} appeared on target"));
+            breadcrumb(&format!(
+                "settle: ABORT — DRM node {node} appeared on target"
+            ));
             tracing::error!(
                 bdf = ctx.config.bdf.as_str(),
                 node = node.as_str(),
@@ -97,7 +99,9 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
             seeder = ctx.config.seeder_driver.as_str(),
             "seeder registered a DRM node; inert because no display server can claim it"
         );
-        breadcrumb(&format!("settle: DRM node {node} appeared (inert, continuing)"));
+        breadcrumb(&format!(
+            "settle: DRM node {node} appeared (inert, continuing)"
+        ));
 
         // Finish the remainder of the settle the watch cut short.
         let remaining = settle_deadline.saturating_duration_since(Instant::now());
@@ -136,7 +140,9 @@ pub(crate) fn run(ctx: &mut PipelineContext<'_>) -> Option<HandoffResult> {
         // Map full 16MB BAR0 — FECS is at 0x409xxx, TPC at 0x504xxx.
         match crate::vfio::device::MappedBar::from_sysfs_rw(&ctx.config.bdf, 16 * 1024 * 1024) {
             Ok(bar0) => {
-                let pmc_read = crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(pmc::ENABLE as usize));
+                let pmc_read = crate::nv::register_read::RegisterRead::from_result(
+                    bar0.read_u32(pmc::ENABLE as usize),
+                );
                 let pmc = pmc_read.raw().unwrap_or(0);
                 let popcount = pmc_read.count_ones().unwrap_or(0);
                 if popcount < ctx.hw.pmc_warm_threshold {

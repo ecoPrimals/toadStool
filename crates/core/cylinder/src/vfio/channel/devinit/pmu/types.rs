@@ -101,7 +101,10 @@ impl DevinitStatus {
                 "║     Wake the device to D0 before drawing any conclusion."
             );
         } else if self.needs_post {
-            let _ = writeln!(s, "║ *** GPU REQUIRES DEVINIT POST (memory not trained) ***");
+            let _ = writeln!(
+                s,
+                "║ *** GPU REQUIRES DEVINIT POST (memory not trained) ***"
+            );
         } else {
             let _ = writeln!(
                 s,
@@ -383,7 +386,10 @@ mod devinit_readability_tests {
     fn unreadable_never_reports_post_complete() {
         let (needs, readable) = needs_post(0xFFFF_FFFF);
         assert!(!readable, "all-ones is not a real read");
-        assert!(needs, "an unanswering device must not be called POST-complete");
+        assert!(
+            needs,
+            "an unanswering device must not be called POST-complete"
+        );
     }
 
     /// The Titan V on the same day: a genuine 0x2, POST really is done.

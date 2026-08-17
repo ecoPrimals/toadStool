@@ -5,16 +5,16 @@
 
 mod definitions;
 pub use definitions::{
-    Commands, DeviceCommand, EcosystemCommands, ModeCommand, SovereignCommand,
-    TransportCommands, UniversalCommands,
+    Commands, DeviceCommand, EcosystemCommands, ModeCommand, SovereignCommand, TransportCommands,
+    UniversalCommands,
 };
 
 mod device;
 pub mod dispatch;
-pub mod sovereign;
 pub mod doctor;
 mod kernel_health;
 mod mode;
+pub mod sovereign;
 pub mod transport;
 
 /// NPU management commands (Akida hardware setup, status, listing)

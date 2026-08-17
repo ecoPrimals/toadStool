@@ -11,9 +11,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
+use std::sync::RwLock;
 use toadstool_common::capability_provider::{CapabilityError, CapabilityProvider};
 use toadstool_common::primal_identity::Capability;
-use std::sync::RwLock;
 
 /// Errors for authentication backend
 #[derive(Debug, thiserror::Error)]

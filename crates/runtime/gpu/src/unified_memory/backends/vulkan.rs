@@ -144,9 +144,7 @@ impl VulkanBackend {
                 ..Default::default()
             })
             .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Vulkan device creation failed: {e}"))
-            })?;
+            .map_err(|e| ToadStoolError::runtime(format!("Vulkan device creation failed: {e}")))?;
 
         let limits = device.limits();
 

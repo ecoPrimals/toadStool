@@ -200,7 +200,10 @@ mod tests {
     fn badf_is_pri_fault_not_bus_failure() {
         let r = RegisterRead::classify(0xBADF_5040);
         assert!(r.is_pri_fault());
-        assert!(!r.is_bus_failure(), "a gated register does not mean a dead device");
+        assert!(
+            !r.is_bus_failure(),
+            "a gated register does not mean a dead device"
+        );
     }
 
     /// The Aug 16 bug in one assertion: a sentinel must never reach
@@ -215,7 +218,9 @@ mod tests {
         }
         // The real PMC_ENABLE observed after waking the Titan V.
         assert_eq!(
-            RegisterRead::classify(0x5FEC_DFF1).valid().map(u32::count_ones),
+            RegisterRead::classify(0x5FEC_DFF1)
+                .valid()
+                .map(u32::count_ones),
             Some(23)
         );
     }
@@ -272,8 +277,16 @@ mod tests {
     #[test]
     fn describe_is_unambiguous() {
         assert_eq!(RegisterRead::classify(0x1234).describe(), "0x00001234");
-        assert!(RegisterRead::classify(0xFFFF_FFFF).describe().contains("bus-failure"));
-        assert!(RegisterRead::classify(0xBADF_5040).describe().contains("pri-fault"));
+        assert!(
+            RegisterRead::classify(0xFFFF_FFFF)
+                .describe()
+                .contains("bus-failure")
+        );
+        assert!(
+            RegisterRead::classify(0xBADF_5040)
+                .describe()
+                .contains("pri-fault")
+        );
     }
 }
 
@@ -300,21 +313,18 @@ mod engine_count_tests {
     #[test]
     fn valid_readings_count_normally() {
         // Titan V, warm, after nouveau handoff.
-        assert_eq!(
-            RegisterRead::classify(0x5FEC_DFF1).count_ones(),
-            Some(23)
-        );
+        assert_eq!(RegisterRead::classify(0x5FEC_DFF1).count_ones(), Some(23));
         // Tesla K80, genuinely cold.
-        assert_eq!(
-            RegisterRead::classify(0xC000_2020).count_ones(),
-            Some(4)
-        );
+        assert_eq!(RegisterRead::classify(0xC000_2020).count_ones(), Some(4));
         assert_eq!(RegisterRead::classify(0).count_ones(), Some(0));
     }
 
     #[test]
     fn faults_and_unread_have_no_count() {
         assert_eq!(RegisterRead::classify(0xBADF_5040).count_ones(), None);
-        assert_eq!(RegisterRead::from_result(Err::<u32, ()>(())).count_ones(), None);
+        assert_eq!(
+            RegisterRead::from_result(Err::<u32, ()>(())).count_ones(),
+            None
+        );
     }
 }

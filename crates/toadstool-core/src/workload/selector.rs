@@ -282,7 +282,10 @@ impl BackendSelector {
     }
 
     /// Should use native CUDA?
-    #[expect(clippy::unused_self, reason = "method pattern — selector may gain state")]
+    #[expect(
+        clippy::unused_self,
+        reason = "method pattern — selector may gain state"
+    )]
     const fn should_use_native_cuda(&self, chars: &WorkloadCharacteristics) -> bool {
         // Always use native CUDA if available, unless workload is trivial
         !matches!(chars.compute_intensity, ComputeIntensity::Minimal)

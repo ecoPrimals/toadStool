@@ -63,7 +63,8 @@ impl AgentBackend for InMemoryAgentBackend {
             };
 
             self.agents
-                .lock().unwrap_or_else(|e| e.into_inner())
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(config.name.clone(), agent_info.clone());
 
             tracing::debug!("Deployed test agent: {}", config.name);
@@ -97,7 +98,8 @@ impl AgentBackend for InMemoryAgentBackend {
             };
 
             self.models
-                .lock().unwrap_or_else(|e| e.into_inner())
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(config.name.clone(), model_info.clone());
 
             tracing::debug!("Loaded test model: {}", config.name);
@@ -149,9 +151,13 @@ impl AgentBackend for InMemoryAgentBackend {
         agent_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
-            self.agents.lock().unwrap_or_else(|e| e.into_inner()).remove(agent_name).ok_or_else(|| {
-                ToadStoolError::not_found(format!("Agent {agent_name} not found"))
-            })?;
+            self.agents
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(agent_name)
+                .ok_or_else(|| {
+                    ToadStoolError::not_found(format!("Agent {agent_name} not found"))
+                })?;
 
             tracing::debug!("Removed test agent {}", agent_name);
             Ok(())
@@ -203,9 +209,13 @@ impl AgentBackend for InMemoryAgentBackend {
         model_name: &'a str,
     ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         async move {
-            self.models.lock().unwrap_or_else(|e| e.into_inner()).remove(model_name).ok_or_else(|| {
-                ToadStoolError::not_found(format!("Model {model_name} not found"))
-            })?;
+            self.models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(model_name)
+                .ok_or_else(|| {
+                    ToadStoolError::not_found(format!("Model {model_name} not found"))
+                })?;
 
             tracing::debug!("Unloaded test model {}", model_name);
             Ok(())

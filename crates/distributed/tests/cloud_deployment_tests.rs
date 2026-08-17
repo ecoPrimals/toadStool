@@ -11,10 +11,7 @@
 //! Covers modules that are deprecated and feature-gated, so this file
 //! is compiled only when they are. Without a matching gate it did not
 //! compile at all, and none of its tests ran.
-#![cfg(all(
-    feature = "runtime",
-    feature = "legacy-cloud"
-))]
+#![cfg(all(feature = "runtime", feature = "legacy-cloud"))]
 
 use std::collections::HashMap;
 use toadstool_common::SecretString;

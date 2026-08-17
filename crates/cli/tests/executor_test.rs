@@ -21,9 +21,9 @@
 //! - Error handling
 
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use std::fs;
 use uuid::Uuid;
 
 use toadstool_cli::executor::*;

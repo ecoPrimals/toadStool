@@ -72,7 +72,10 @@ impl DiscoveryManager {
         // Check capability cache first
         let capability_key = format!("{capability:?}");
         {
-            let cap_cache = self.capability_cache.read().unwrap_or_else(|e| e.into_inner());
+            let cap_cache = self
+                .capability_cache
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(service_ids) = cap_cache.get(&capability_key) {
                 if let Some(service_id) = service_ids.first() {
                     let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
@@ -202,8 +205,14 @@ impl DiscoveryManager {
 
     /// Clear the discovery cache
     pub async fn clear_cache(&self) {
-        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
-        self.capability_cache.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        self.capability_cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
         info!("🗑️  Discovery cache cleared");
     }
 
@@ -211,12 +220,16 @@ impl DiscoveryManager {
     async fn add_to_cache(&self, service: DiscoveredService, capability_key: Option<String>) {
         // ✅ OPTIMIZED: Use Entry API - only clone if not already cached
         self.cache
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .entry(service.id.clone())
             .or_insert_with(|| service.clone());
 
         if let Some(cap_key) = capability_key {
-            let mut cap_cache = self.capability_cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cap_cache = self
+                .capability_cache
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             cap_cache
                 .entry(cap_key)
                 .or_insert_with(Vec::new)
@@ -231,7 +244,10 @@ impl DiscoveryManager {
             info!("🗑️  Removed service from cache: {}", service.name);
 
             // Also remove from capability cache
-            let mut cap_cache = self.capability_cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cap_cache = self
+                .capability_cache
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             for service_ids in cap_cache.values_mut() {
                 service_ids.retain(|id| id != service_id);
             }
@@ -258,7 +274,7 @@ impl DiscoveryManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-#[cfg(feature = "runtime")]
+    #[cfg(feature = "runtime")]
     use toadstool_common::service_discovery::DiscoveryMethod;
 
     #[tokio::test]

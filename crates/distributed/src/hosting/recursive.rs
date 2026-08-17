@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::SystemTime;
 use toadstool::ToadStoolResult;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
-use std::sync::RwLock;
 
 use crate::types::{
     InstanceStatus, ProcessHandle, ResourceAllocation, ResourceAllocationStrategy, ResourceLimits,

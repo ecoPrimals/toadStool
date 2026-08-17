@@ -11,8 +11,8 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use tempfile::TempDir;
 use std::sync::RwLock;
+use tempfile::TempDir;
 
 /// Isolated test environment with its own temporary directory
 pub struct IsolatedEnv {

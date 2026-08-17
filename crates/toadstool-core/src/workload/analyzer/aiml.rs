@@ -8,7 +8,10 @@ use super::characteristics::{
 use crate::workload::{AiMlWorkload, AiOperation, ModelSize};
 
 impl WorkloadAnalyzer {
-    #[expect(clippy::unused_self, reason = "method pattern — analyzer may gain state")]
+    #[expect(
+        clippy::unused_self,
+        reason = "method pattern — analyzer may gain state"
+    )]
     pub(super) const fn analyze_aiml(&self, workload: &AiMlWorkload) -> WorkloadCharacteristics {
         let compute_intensity = match (&workload.operation, &workload.model_size) {
             (AiOperation::Training, ModelSize::XXLarge) => ComputeIntensity::Extreme,

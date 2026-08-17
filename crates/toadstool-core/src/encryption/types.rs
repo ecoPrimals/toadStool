@@ -247,19 +247,22 @@ impl KeyRotationPolicy {
     /// Check if key should be rotated
     pub const fn should_rotate(&self, uses: u64, age_seconds: u64, data_bytes: u64) -> bool {
         if let Some(max_uses) = self.max_uses
-            && uses >= max_uses {
-                return true;
-            }
+            && uses >= max_uses
+        {
+            return true;
+        }
 
         if let Some(max_age) = self.max_age_seconds
-            && age_seconds >= max_age {
-                return true;
-            }
+            && age_seconds >= max_age
+        {
+            return true;
+        }
 
         if let Some(max_data) = self.max_data_bytes
-            && data_bytes >= max_data {
-                return true;
-            }
+            && data_bytes >= max_data
+        {
+            return true;
+        }
 
         false
     }

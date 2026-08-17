@@ -12,8 +12,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::sync::RwLock;
+use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use tracing::{debug, info};
 
@@ -298,10 +298,13 @@ impl ChaosEngine {
         }
 
         // Track active fault
-        self.active_faults.write().unwrap_or_else(|e| e.into_inner()).push(ActiveFault {
-            _fault_type: fault.clone(),
-            _injected_at: Instant::now(),
-        });
+        self.active_faults
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(ActiveFault {
+                _fault_type: fault.clone(),
+                _injected_at: Instant::now(),
+            });
 
         Ok(())
     }
@@ -421,7 +424,10 @@ impl ChaosEngine {
     async fn heal_all(&self) -> ToadStoolResult<()> {
         debug!("Healing all active faults");
 
-        self.active_faults.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.active_faults
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
 
         // Ensure system is healthy
         {

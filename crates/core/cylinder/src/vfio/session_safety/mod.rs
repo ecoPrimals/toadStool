@@ -62,7 +62,9 @@ impl SessionSafety {
         if host_state::is_display_gpu(bdf) {
             concerns.push(SafetyConcern {
                 code: "target_is_display_gpu",
-                detail: format!("{bdf} currently exposes a DRM card node and may be driving the display"),
+                detail: format!(
+                    "{bdf} currently exposes a DRM card node and may be driving the display"
+                ),
                 remedy: "rotate a secondary GPU, or stop the display server first",
             });
         }

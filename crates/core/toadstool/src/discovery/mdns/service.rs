@@ -11,8 +11,8 @@ use crate::self_identity::SelfIdentity;
 use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use std::sync::RwLock;
+use std::time::Duration;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -148,7 +148,8 @@ impl MdnsDiscoveryService {
 
                         // Update cache
                         self.services
-                            .write().unwrap_or_else(|e| e.into_inner())
+                            .write()
+                            .unwrap_or_else(|e| e.into_inner())
                             .insert(service.instance_id, service.clone());
 
                         discovered.push(service);
@@ -334,11 +335,8 @@ mod tests {
             return;
         };
 
-        let identity = SelfIdentity::new().with_network(
-            "test-host",
-            Some(8084),
-            vec!["http".to_string()],
-        );
+        let identity =
+            SelfIdentity::new().with_network("test-host", Some(8084), vec!["http".to_string()]);
 
         let result = mdns.advertise(&identity);
         if result.is_err() {

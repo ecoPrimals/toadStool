@@ -112,4 +112,3 @@ impl PcieConfig {
             .ok_or_else(|| AkidaError::capability_query_failed("Could not read PCIe lane count"))
     }
 }
-

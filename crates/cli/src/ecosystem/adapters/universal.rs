@@ -13,9 +13,9 @@ use crate::{CliContextExt, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use toadstool_common::ToadStoolError;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-use std::time::Duration;
 
 use crate::ecosystem::capabilities::{CapabilityId, CapabilityResolver, ServiceProvider};
 

@@ -12,9 +12,9 @@ use tracing::{error, info, warn};
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::resources::RuntimeMetrics;
 
+use crate::metric_types::ProcessInfo;
 use crate::metric_types::SystemResourceMonitor;
 use crate::platform;
-use crate::metric_types::ProcessInfo;
 use crate::types::{MonitoringConfig, ResourceMonitorError};
 
 impl SystemResourceMonitor {
@@ -53,7 +53,10 @@ impl SystemResourceMonitor {
 
     /// Starts the monitoring loop
     pub async fn start_monitoring_loop(&self) -> Result<(), ToadStoolError> {
-        let mut is_monitoring = self.is_monitoring.write().unwrap_or_else(|e| e.into_inner());
+        let mut is_monitoring = self
+            .is_monitoring
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if *is_monitoring {
             return Ok(());
         }
@@ -139,7 +142,10 @@ impl SystemResourceMonitor {
     /// Stops the monitoring loop
     pub async fn stop_monitoring_loop(&self) -> ToadStoolResult<()> {
         {
-            let mut is_monitoring = self.is_monitoring.write().unwrap_or_else(|e| e.into_inner());
+            let mut is_monitoring = self
+                .is_monitoring
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             *is_monitoring = false;
         }
         info!("Stopped resource monitoring");

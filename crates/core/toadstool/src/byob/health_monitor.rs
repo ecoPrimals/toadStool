@@ -77,7 +77,10 @@ impl HealthMonitor for ByobHealthMonitor {
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 
-        let mut deployments = self.active_deployments.write().unwrap_or_else(|e| e.into_inner());
+        let mut deployments = self
+            .active_deployments
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(deployment) = deployments.get_mut(&deployment_id) {
             // Check health of all services in the deployment
             let mut all_healthy = true;

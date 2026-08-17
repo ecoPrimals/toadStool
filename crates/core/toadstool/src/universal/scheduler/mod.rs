@@ -105,13 +105,19 @@ where
     pub fn register_runtime_engine(&self, runtime_type: RuntimeType, engine: Arc<E>) {
         info!("Registering runtime engine: {:?}", runtime_type);
         self.runtime_engines
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(runtime_type, engine);
     }
 
     /// Get available runtime types
     pub fn available_runtimes(&self) -> Vec<RuntimeType> {
-        self.runtime_engines.read().unwrap_or_else(|e| e.into_inner()).keys().cloned().collect()
+        self.runtime_engines
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .keys()
+            .cloned()
+            .collect()
     }
 
     /// Schedule a job
@@ -127,7 +133,10 @@ where
         info!("Scheduling job: {}", job_id);
 
         // Add to active jobs
-        self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job_id, job.clone());
+        self.active_jobs
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(job_id, job.clone());
 
         // Allocate resources
         let _allocation = self
@@ -143,9 +152,16 @@ where
                 env,
             } => {
                 #[cfg(feature = "runtime")]
-                { self.execute_native(executable, args, env).await }
+                {
+                    self.execute_native(executable, args, env).await
+                }
                 #[cfg(not(feature = "runtime"))]
-                { let _ = (executable, args, env); Err(crate::ToadStoolError::runtime("native execution requires runtime feature".to_string())) }
+                {
+                    let _ = (executable, args, env);
+                    Err(crate::ToadStoolError::runtime(
+                        "native execution requires runtime feature".to_string(),
+                    ))
+                }
             }
             UniversalJobType::Wasm { module, args, env } => {
                 self.execute_wasm(module, args, env).await
@@ -162,14 +178,20 @@ where
         };
 
         // Remove from active jobs
-        self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).remove(&job_id);
+        self.active_jobs
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&job_id);
 
         result
     }
 
     /// Get active job count
     pub fn get_active_job_count(&self) -> usize {
-        self.active_jobs.read().unwrap_or_else(|e| e.into_inner()).len()
+        self.active_jobs
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .len()
     }
 
     /// Find primals by capability using the registry

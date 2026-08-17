@@ -30,9 +30,9 @@ pub use types::{
 use crate::{CliContextExt, Result};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fs;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::fs;
 use tracing::{error, info, warn};
 
 use toadstool_distributed::substrate_detection::{SubstrateCapabilities, SubstrateDetector};

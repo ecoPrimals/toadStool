@@ -20,13 +20,13 @@ pub mod types;
 mod byob_routes;
 mod docker;
 mod engine;
-pub use byob_routes::{ByobApi, JsonRpcRequest, JsonRpcResponse, JsonRpcError};
+pub use byob_routes::{ByobApi, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 pub mod byob_server;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
 use std::sync::RwLock;
+use std::time::Instant;
 use uuid::Uuid;
 
 #[cfg(feature = "docker")]

@@ -152,20 +152,19 @@ pub async fn run_server_main(
     #[cfg(unix)]
     let (early_stop_tx, early_stop_rx) = tokio::sync::watch::channel(false);
     #[cfg(unix)]
-    let jsonrpc_listener =
-        match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path) {
-            Ok(listener) => {
-                let listener = Arc::new(listener);
-                let _early_health =
-                    crate::pure_jsonrpc::spawn_early_health_responder(&listener, early_stop_rx);
-                info!("⚡ JSON-RPC socket pre-bound — early health responder active");
-                Some(listener)
-            }
-            Err(e) => {
-                warn!("Pre-bind failed (will bind later): {e}");
-                None
-            }
-        };
+    let jsonrpc_listener = match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path) {
+        Ok(listener) => {
+            let listener = Arc::new(listener);
+            let _early_health =
+                crate::pure_jsonrpc::spawn_early_health_responder(&listener, early_stop_rx);
+            info!("⚡ JSON-RPC socket pre-bound — early health responder active");
+            Some(listener)
+        }
+        Err(e) => {
+            warn!("Pre-bind failed (will bind later): {e}");
+            None
+        }
+    };
 
     let mut unibin_config = execution::UnibinExecutionConfig::from_env();
 

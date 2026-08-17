@@ -4,9 +4,9 @@
 //! This module provides `From` implementations to convert common error types
 //! from the standard library and external crates into ToadStool error types.
 
-use super::types::{SystemError, ToadStoolError};
 #[cfg(feature = "runtime")]
 use super::types::ExecutionError;
+use super::types::{SystemError, ToadStoolError};
 
 // ============================================================================
 // Standard Error Conversions

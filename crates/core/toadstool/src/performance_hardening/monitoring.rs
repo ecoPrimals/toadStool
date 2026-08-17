@@ -8,8 +8,8 @@ use super::types::{AggregatedMetrics, OptimizedMonitoringConfig};
 use crate::resources::RuntimeMetrics;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::Duration;
 use std::sync::RwLock;
+use std::time::Duration;
 
 /// Optimized resource monitor
 pub struct OptimizedResourceMonitor {
@@ -41,7 +41,10 @@ impl OptimizedResourceMonitor {
     /// Add metrics sample
     pub async fn add_sample(&self, workload_id: &str, metrics: RuntimeMetrics) {
         {
-            let mut buffer = self.metrics_buffer.write().unwrap_or_else(|e| e.into_inner());
+            let mut buffer = self
+                .metrics_buffer
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             buffer.push_back(metrics.clone());
 
             // Keep buffer size manageable
@@ -65,7 +68,10 @@ impl OptimizedResourceMonitor {
         reason = "drop order is intentional"
     )] // agg_metrics borrows from guard for two field updates
     async fn update_aggregated_metrics(&self, workload_id: &str, metrics: &RuntimeMetrics) {
-        let mut aggregated = self.aggregated_metrics.write().unwrap_or_else(|e| e.into_inner());
+        let mut aggregated = self
+            .aggregated_metrics
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let agg_metrics = aggregated
             .entry(workload_id.to_string())
             .or_insert_with(|| AggregatedMetrics {
@@ -87,7 +93,10 @@ impl OptimizedResourceMonitor {
 
         *self.current_load.write().unwrap_or_else(|e| e.into_inner()) = load;
 
-        let mut sampling_interval = self.current_sampling_interval.write().unwrap_or_else(|e| e.into_inner());
+        let mut sampling_interval = self
+            .current_sampling_interval
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
 
         if load > 0.8 {
             // High load - sample more frequently
@@ -119,13 +128,19 @@ impl OptimizedResourceMonitor {
 
     /// Get aggregated metrics
     pub async fn get_aggregated_metrics(&self, workload_id: &str) -> Option<AggregatedMetrics> {
-        let aggregated = self.aggregated_metrics.read().unwrap_or_else(|e| e.into_inner());
+        let aggregated = self
+            .aggregated_metrics
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         aggregated.get(workload_id).cloned()
     }
 
     /// Get current sampling interval
     pub async fn get_sampling_interval(&self) -> Duration {
-        *self.current_sampling_interval.read().unwrap_or_else(|e| e.into_inner())
+        *self
+            .current_sampling_interval
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
     }
 }
 

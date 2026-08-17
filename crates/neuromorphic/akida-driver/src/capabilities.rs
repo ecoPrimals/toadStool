@@ -11,8 +11,8 @@
 //! and weight mutation support — all validated by hardware probing on a
 //! physical AKD1000 (see `hotSpring/metalForge/npu/akida/BEYOND_SDK.md` — ecosystem context — not a runtime dependency).
 
-use crate::error::{AkidaError, Result};
 pub use crate::PcieConfig;
+use crate::error::{AkidaError, Result};
 
 /// Akida device capabilities discovered at runtime
 #[derive(Debug, Clone, PartialEq)]
@@ -335,10 +335,7 @@ impl Capabilities {
     /// Walks `/sys/bus/pci/devices/{addr}/hwmon/hwmonN/` directories looking
     /// for `sensor_file` (e.g. `power1_input`, `temp1_input`). Returns the
     /// first successfully-parsed value, or `None`.
-    fn read_hwmon_sensor<T: std::str::FromStr>(
-        pcie_address: &str,
-        sensor_file: &str,
-    ) -> Option<T> {
+    fn read_hwmon_sensor<T: std::str::FromStr>(pcie_address: &str, sensor_file: &str) -> Option<T> {
         let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
         let hwmon_dir = std::fs::read_dir(&hwmon_path).ok()?;
 

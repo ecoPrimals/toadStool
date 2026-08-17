@@ -70,10 +70,7 @@ impl ComputeResourceCoordinator {
         available_devices: &[DeviceId],
         requirements: &DeviceRequirements,
     ) -> ToadStoolResult<DeviceId> {
-        let load_balancer = self
-            .load_balancer
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let load_balancer = self.load_balancer.lock().unwrap_or_else(|e| e.into_inner());
         load_balancer.select_device(available_devices, requirements)
     }
 
@@ -183,10 +180,7 @@ impl ComputeResourceCoordinator {
 
     /// Update device load information
     pub async fn update_device_load(&self, device_id: &DeviceId, usage: &DeviceUsage) {
-        let mut load_balancer = self
-            .load_balancer
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut load_balancer = self.load_balancer.lock().unwrap_or_else(|e| e.into_inner());
         load_balancer.update_device_load(device_id, usage);
     }
 }

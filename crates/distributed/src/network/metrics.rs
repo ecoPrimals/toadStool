@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use std::sync::Arc;
-use std::time::Duration;
 use std::sync::RwLock;
+use std::time::Duration;
 
 /// Network metrics collector for distributed execution
 pub struct NetworkMetricsCollector {

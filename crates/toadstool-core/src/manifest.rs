@@ -584,7 +584,10 @@ compositions:
         assert_eq!(deps["barracuda"], vec!["toadstool", "coralreef"]);
         assert_eq!(manifest.primals.len(), 3);
         let ts = &manifest.primals["toadstool"];
-        assert_eq!(ts.gossip_events, vec!["hardware.gpu.added", "hardware.gpu.removed"]);
+        assert_eq!(
+            ts.gossip_events,
+            vec!["hardware.gpu.added", "hardware.gpu.removed"]
+        );
     }
 
     #[test]

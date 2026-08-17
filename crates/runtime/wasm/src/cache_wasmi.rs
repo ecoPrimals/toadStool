@@ -148,7 +148,10 @@ impl ModuleCache {
 
     /// Clear the cache
     pub fn clear(&self) {
-        self.cache.write().unwrap_or_else(|e| e.into_inner()).clear();
+        self.cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
         *self.hits.write().unwrap_or_else(|e| e.into_inner()) = 0;
         *self.misses.write().unwrap_or_else(|e| e.into_inner()) = 0;
         debug!("Cache cleared");

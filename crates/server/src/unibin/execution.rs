@@ -313,14 +313,12 @@ async fn try_unix_servers(
     jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
 ) -> ServerResult<()> {
     if let Some(parent) = socket_path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| ServerError::Initialization(e.to_string()))?;
+        std::fs::create_dir_all(parent).map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
     if jsonrpc_listener.is_none()
         && let Some(parent) = jsonrpc_socket.parent()
     {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| ServerError::Initialization(e.to_string()))?;
+        std::fs::create_dir_all(parent).map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
 
     if let Err(e) = std::fs::remove_file(socket_path) {

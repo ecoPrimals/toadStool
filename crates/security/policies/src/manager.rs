@@ -262,7 +262,10 @@ impl PolicyManager for FilePolicyManager {
         }
 
         // Remove from cache
-        self.policy_cache.write().unwrap_or_else(|e| e.into_inner()).remove(policy_id);
+        self.policy_cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(policy_id);
 
         info!("Deleted policy: {}", policy_id);
         Ok(())

@@ -171,7 +171,11 @@ async fn deploy_biome_returns_success() {
     });
     let req = jsonrpc_request("byob.deploy", Some(params));
     let resp = api.dispatch(&req).await;
-    assert!(resp.result.is_some(), "expected success, got {:?}", resp.error);
+    assert!(
+        resp.result.is_some(),
+        "expected success, got {:?}",
+        resp.error
+    );
     assert!(resp.error.is_none());
 }
 

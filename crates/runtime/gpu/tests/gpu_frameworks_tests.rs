@@ -10,12 +10,12 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::RwLock;
 use toadstool_runtime_gpu::frameworks::WebGpuFramework;
 use toadstool_runtime_gpu::types::{
     DataType, DeviceCapabilities, DeviceId, DeviceInfo, DeviceType, DeviceUsage, GpuFramework,
     KernelFormat, PerformanceCharacteristics, UniversalComputeDevice,
 };
-use std::sync::RwLock;
 
 /// Test helper to create a test device
 fn create_test_device() -> UniversalComputeDevice {

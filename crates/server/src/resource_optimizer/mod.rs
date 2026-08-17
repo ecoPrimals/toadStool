@@ -140,9 +140,7 @@ impl ResourceOptimizer {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-        let adapters: Vec<_> = instance
-            .enumerate_adapters(wgpu::Backends::all())
-            .await;
+        let adapters: Vec<_> = instance.enumerate_adapters(wgpu::Backends::all()).await;
         if adapters.is_empty() {
             return (0, 0, 0, Vec::new());
         }

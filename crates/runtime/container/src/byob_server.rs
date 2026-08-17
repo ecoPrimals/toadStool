@@ -77,7 +77,10 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     {
         match te {
             toadstool_common::TransportEndpoint::Uds { ref path } => {
-                info!("Starting BYOB server on Unix socket {} (transport-injected)", path.display());
+                info!(
+                    "Starting BYOB server on Unix socket {} (transport-injected)",
+                    path.display()
+                );
                 return serve_unix(api, path.clone()).await;
             }
             toadstool_common::TransportEndpoint::Tcp { ref host, port } => {
@@ -90,9 +93,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
                 return serve_tcp(api, addr).await;
             }
             other => {
-                info!(
-                    "TRANSPORT_ENDPOINT={other} not directly applicable, falling back to config"
-                );
+                info!("TRANSPORT_ENDPOINT={other} not directly applicable, falling back to config");
             }
         }
     }

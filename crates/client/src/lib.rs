@@ -108,24 +108,10 @@ mod tarpc_client;
 
 // Re-export all public types and functions
 pub use client::{
-    AuthConfig,
-    ClientConfig,
-    ClientError,
-    ClientResult,
-    ClusterStatus,
-    ContainerWorkloadBuilder,
-    ExecutionInfo,
-    ExecutionMetrics,
-    ExecutionOutput,
-    ExecutionStatus,
-    JobPriority,
-    NativeWorkloadBuilder,
-    PythonWorkloadBuilder,
-    ResourceRequirements,
-    ToadStoolEvent,
-    WasmWorkloadBuilder,
-    WorkloadSubmission,
-    WorkloadType,
+    AuthConfig, ClientConfig, ClientError, ClientResult, ClusterStatus, ContainerWorkloadBuilder,
+    ExecutionInfo, ExecutionMetrics, ExecutionOutput, ExecutionStatus, JobPriority,
+    NativeWorkloadBuilder, PythonWorkloadBuilder, ResourceRequirements, ToadStoolEvent,
+    WasmWorkloadBuilder, WorkloadSubmission, WorkloadType,
 };
 
 #[cfg(feature = "runtime")]

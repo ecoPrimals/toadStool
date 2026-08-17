@@ -400,11 +400,8 @@ mod tests {
 
     #[test]
     fn test_with_network() {
-        let identity = SelfIdentity::new().with_network(
-            "localhost",
-            Some(8084),
-            vec!["http".to_string()],
-        );
+        let identity =
+            SelfIdentity::new().with_network("localhost", Some(8084), vec!["http".to_string()]);
 
         assert!(identity.network.is_some());
         let network = identity
@@ -418,11 +415,8 @@ mod tests {
 
     #[test]
     fn test_advertisement() {
-        let identity = SelfIdentity::new().with_network(
-            "localhost",
-            Some(8084),
-            vec!["http".to_string()],
-        );
+        let identity =
+            SelfIdentity::new().with_network("localhost", Some(8084), vec!["http".to_string()]);
 
         let ad = identity.to_advertisement();
 

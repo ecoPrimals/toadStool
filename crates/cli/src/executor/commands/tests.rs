@@ -3,9 +3,9 @@
 
 use super::super::*;
 use crate::CliContext;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use std::fs;
 
 async fn create_valid_manifest_file(name: &str) -> (PathBuf, TempDir) {
     let temp_dir = TempDir::new().expect("temp dir");
@@ -61,8 +61,7 @@ volumes = []
         name, created_secs, created_secs
     );
 
-    fs::write(&manifest_path, content)
-        .expect("write manifest");
+    fs::write(&manifest_path, content).expect("write manifest");
     (manifest_path, temp_dir)
 }
 

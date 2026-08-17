@@ -11,10 +11,10 @@ const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
 const DEFAULT_RETRY_DELAY_SECS: u64 = 5;
 
-use crate::PrimalIntegration;
-use crate::health::{HealthCheck, HealthCheckStatus, HealthStatus};
 use crate::BiomeManifest;
 use crate::PrimalConfig;
+use crate::PrimalIntegration;
+use crate::health::{HealthCheck, HealthCheckStatus, HealthStatus};
 use crate::service::StartupStatus;
 
 /// Primal Integration Manager
@@ -357,10 +357,7 @@ mod tests {
     fn calculate_startup_order_topological_dependencies() {
         let manager = PrimalIntegrationManager::new(PrimalIntegrationConfig::default());
         let mut primals = HashMap::new();
-        primals.insert(
-            "worker".to_string(),
-            primal_entry(vec!["base".to_string()]),
-        );
+        primals.insert("worker".to_string(), primal_entry(vec!["base".to_string()]));
         primals.insert("base".to_string(), primal_entry(vec![]));
         let manifest = empty_manifest(primals);
         let order = manager.calculate_startup_order(&manifest).unwrap();

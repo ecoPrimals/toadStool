@@ -41,10 +41,10 @@ use crate::{DisplayError, Result};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::RwLock;
 use toadstool_common::constants::network::LOCALHOST_IPV4;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
-use std::sync::RwLock;
 
 /// IPC transport type
 #[derive(Debug, Clone)]
@@ -205,7 +205,8 @@ impl DisplayServer {
         platform::write_tcp_discovery_file(&local_addr);
 
         // Update transport
-        *self.transport.write().unwrap_or_else(|e| e.into_inner()) = Some(IpcTransport::TcpFallback(local_addr));
+        *self.transport.write().unwrap_or_else(|e| e.into_inner()) =
+            Some(IpcTransport::TcpFallback(local_addr));
 
         tracing::info!("   Status: READY ✅ (isomorphic TCP fallback active)");
 
@@ -324,7 +325,10 @@ impl DisplayServer {
 
     /// Get current transport
     pub async fn transport(&self) -> Option<IpcTransport> {
-        self.transport.read().unwrap_or_else(|e| e.into_inner()).clone()
+        self.transport
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 }
 

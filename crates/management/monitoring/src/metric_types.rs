@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use toadstool_core::resources::{ResourceRequirements, RuntimeMetrics};
 use std::sync::RwLock;
+use toadstool_core::resources::{ResourceRequirements, RuntimeMetrics};
 
 use crate::types::MonitoringConfig;
 

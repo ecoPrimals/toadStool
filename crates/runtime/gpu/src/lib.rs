@@ -82,7 +82,10 @@ pub mod shader_spirv;
 ///
 /// Result is cached via `OnceLock` — safe to call from hot paths.
 #[cfg(feature = "webgpu")]
-#[allow(unsafe_code, reason = "libloading::Library::new requires unsafe for dlopen")]
+#[allow(
+    unsafe_code,
+    reason = "libloading::Library::new requires unsafe for dlopen"
+)]
 pub fn vulkan_loader_available() -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -93,9 +96,7 @@ pub fn vulkan_loader_available() -> bool {
                     return true;
                 }
             }
-            tracing::debug!(
-                "Vulkan loader unavailable (tried libvulkan.so.1, libvulkan.so)"
-            );
+            tracing::debug!("Vulkan loader unavailable (tried libvulkan.so.1, libvulkan.so)");
             false
         })
     }

@@ -10,9 +10,9 @@ use super::types::{
 use std::collections::HashMap;
 #[cfg(feature = "webgpu")]
 use std::sync::Arc;
-use toadstool::error::{ToadStoolError, ToadStoolResult};
 #[cfg(feature = "webgpu")]
 use std::sync::RwLock;
+use toadstool::error::{ToadStoolError, ToadStoolResult};
 use uuid::Uuid;
 
 /// `WebGPU` adapter wrapper for conditional compilation.
@@ -66,7 +66,9 @@ impl WebGpuFramework {
                     compatible_surface: None,
                 })
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("No WebGPU adapter available: {e}")))?;
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("No WebGPU adapter available: {e}"))
+                })?;
 
             Ok(WebGPUAdapter { instance, adapter })
         }
@@ -180,10 +182,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                     let (_device, _queue) = webgpu_adapter
                         .adapter
                         .request_device(&wgpu::DeviceDescriptor {
-                            label: Some(&format!(
-                                "ToadStool WebGPU Session {}",
-                                device_id.uuid
-                            )),
+                            label: Some(&format!("ToadStool WebGPU Session {}", device_id.uuid)),
                             required_features: wgpu::Features::empty(),
                             required_limits: wgpu::Limits::default(),
                             memory_hints: wgpu::MemoryHints::default(),

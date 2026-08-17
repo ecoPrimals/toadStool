@@ -12,6 +12,6 @@ mod tests;
 
 pub use execution_target::{ExecutionTarget, LoadBalancingStrategy};
 pub use hosting::{CompatibilityMode, ToadStoolHostingConfig};
-pub use queue::{DependencyGraph, JobMetadata, ResourceRequirementIndex, UniversalJobQueue};
 pub use priority::JobPriority;
+pub use queue::{DependencyGraph, JobMetadata, ResourceRequirementIndex, UniversalJobQueue};
 pub use universal_job::{UniversalJob, UniversalJobType};

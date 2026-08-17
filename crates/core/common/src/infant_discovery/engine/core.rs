@@ -49,8 +49,13 @@ impl DiscoveryEngine {
     /// Returns `DiscoveryError::CapabilityNotFound` if no source can resolve the capability.
     pub async fn discover_endpoint(&self, capability: &str) -> Result<String, DiscoveryError> {
         // Try each source in order (clone to avoid holding lock across await)
-        let sources: Vec<Arc<dyn EndpointSource>> =
-            self.sources.read().unwrap_or_else(|e| e.into_inner()).iter().map(Arc::clone).collect();
+        let sources: Vec<Arc<dyn EndpointSource>> = self
+            .sources
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .map(Arc::clone)
+            .collect();
 
         for source in &sources {
             match source.resolve(capability).await {
@@ -90,8 +95,13 @@ impl DiscoveryEngine {
     ///
     /// Returns `DiscoveryError` if substrate detection fails or no detectors are available.
     pub async fn detect_substrate(&self) -> Result<DetectedSubstrate, DiscoveryError> {
-        let detectors: Vec<Arc<dyn SubstrateDetector>> =
-            self.detectors.read().unwrap_or_else(|e| e.into_inner()).iter().map(Arc::clone).collect();
+        let detectors: Vec<Arc<dyn SubstrateDetector>> = self
+            .detectors
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .map(Arc::clone)
+            .collect();
 
         for detector in &detectors {
             match detector.detect().await {

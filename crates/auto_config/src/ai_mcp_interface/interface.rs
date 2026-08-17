@@ -70,7 +70,10 @@ impl AiMcpInterface {
     ) -> ToadStoolResult<McpResponse> {
         // Increment request counter
         {
-            let mut counter = self.request_counter.write().unwrap_or_else(|e| e.into_inner());
+            let mut counter = self
+                .request_counter
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             *counter += 1;
         }
 
@@ -124,7 +127,10 @@ impl AiMcpInterface {
 
     /// Update session activity timestamp
     async fn update_session_activity(&self, session_id: &str) {
-        let mut sessions = self.active_sessions.write().unwrap_or_else(|e| e.into_inner());
+        let mut sessions = self
+            .active_sessions
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(session) = sessions.get_mut(session_id) {
             session.last_activity = SystemTime::now();
         }
@@ -132,8 +138,14 @@ impl AiMcpInterface {
 
     /// Get session statistics
     pub async fn get_session_stats(&self) -> HashMap<String, serde_json::Value> {
-        let sessions = self.active_sessions.read().unwrap_or_else(|e| e.into_inner());
-        let request_count = *self.request_counter.read().unwrap_or_else(|e| e.into_inner());
+        let sessions = self
+            .active_sessions
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
+        let request_count = *self
+            .request_counter
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         let mut stats = HashMap::new();
         stats.insert(

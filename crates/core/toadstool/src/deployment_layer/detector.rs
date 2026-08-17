@@ -181,10 +181,7 @@ impl LayerDetector {
         }
         #[cfg(target_os = "linux")]
         if std::fs::metadata(devfs::KVM).is_ok() {
-            if let Ok(output) = std::process::Command::new("lsof")
-                .arg(devfs::KVM)
-                .output()
-            {
+            if let Ok(output) = std::process::Command::new("lsof").arg(devfs::KVM).output() {
                 return output.status.success() && !output.stdout.is_empty();
             }
         }
@@ -212,8 +209,7 @@ impl LayerDetector {
                 return true;
             }
         }
-        std::fs::metadata(etc_paths::KUBERNETES_MANIFESTS)
-            .is_ok()
+        std::fs::metadata(etc_paths::KUBERNETES_MANIFESTS).is_ok()
     }
 
     fn read_container_id(&self) -> Result<String, DetectionError> {

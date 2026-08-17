@@ -35,9 +35,9 @@ pub mod workload;
 // Core imports
 use crate::{CliContextExt, Result};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::fs;
 use tracing::{info, warn};
 
 use toadstool_config::ToadStoolConfig;

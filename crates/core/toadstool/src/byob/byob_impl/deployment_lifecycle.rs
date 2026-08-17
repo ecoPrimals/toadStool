@@ -230,7 +230,8 @@ impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
 
         if let Some(deployment) = self
             .active_deployments
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .get_mut(&deployment_id)
         {
             // Check health of all services in the deployment
@@ -366,13 +367,19 @@ impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
                 }
             }
 
-            handles.write().unwrap_or_else(|e| e.into_inner()).remove(&deployment_id);
+            handles
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&deployment_id);
         });
 
         // Store handle so it can be cancelled on teardown.
         let handles = Arc::clone(&self.health_handles);
         tokio::spawn(async move {
-            handles.write().unwrap_or_else(|e| e.into_inner()).insert(deployment_id, handle);
+            handles
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(deployment_id, handle);
         });
     }
 

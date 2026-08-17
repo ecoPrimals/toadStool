@@ -41,7 +41,7 @@ use std::fs;
 use toadstool_common::pci_discovery::{PciDevice, PciFilter, discover_pci_devices};
 
 use super::device_info::PciDeviceInfo;
-use super::parse::{pci_class_base, parse_pci_resource_file};
+use super::parse::{parse_pci_resource_file, pci_class_base};
 use crate::error::PciDiscoveryError;
 use crate::linux_paths::sysfs_pci_device_file;
 

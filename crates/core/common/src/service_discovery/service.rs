@@ -282,7 +282,10 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         // within the cache TTL and found nothing, return empty rather than
         // re-scanning for every capability lookup.
         {
-            let lr = self.last_refreshed.read().unwrap_or_else(|e| e.into_inner());
+            let lr = self
+                .last_refreshed
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(t) = *lr {
                 if t.elapsed() < self.config.cache_ttl {
                     debug!(
@@ -304,7 +307,10 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
                     .or_insert_with(|| service.clone());
             }
         }
-        *self.last_refreshed.write().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+        *self
+            .last_refreshed
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
         Ok(services
             .into_iter()
             .filter(|s| s.has_capability(capability))
@@ -335,7 +341,10 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
             }
             cache.len()
         };
-        *self.last_refreshed.write().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+        *self
+            .last_refreshed
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
         info!("Discovery cache refreshed: {count} services");
         Ok(())
     }

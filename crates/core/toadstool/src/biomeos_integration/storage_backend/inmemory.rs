@@ -56,7 +56,8 @@ impl StorageBackend for InMemoryBackend {
             };
 
             volumes
-                .lock().unwrap_or_else(|e| e.into_inner())
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(config_name, volume_info.clone());
 
             tracing::debug!("Provisioned test volume: {}", volume_info.name);
@@ -84,7 +85,8 @@ impl StorageBackend for InMemoryBackend {
             };
 
             volumes
-                .lock().unwrap_or_else(|e| e.into_inner())
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(config_name, volume_info.clone());
 
             tracing::debug!("Provisioned test persistent volume: {}", volume_info.name);
@@ -103,7 +105,11 @@ impl StorageBackend for InMemoryBackend {
         let service_name = service_name.to_string();
 
         async move {
-            if !volumes.lock().unwrap_or_else(|e| e.into_inner()).contains_key(&volume_name) {
+            if !volumes
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .contains_key(&volume_name)
+            {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
                 )));
@@ -128,7 +134,11 @@ impl StorageBackend for InMemoryBackend {
         let service_name = service_name.to_string();
 
         async move {
-            if !volumes.lock().unwrap_or_else(|e| e.into_inner()).contains_key(&volume_name) {
+            if !volumes
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .contains_key(&volume_name)
+            {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
                 )));
@@ -151,9 +161,13 @@ impl StorageBackend for InMemoryBackend {
         let volume_name = volume_name.to_string();
 
         async move {
-            volumes.lock().unwrap_or_else(|e| e.into_inner()).remove(&volume_name).ok_or_else(|| {
-                ToadStoolError::not_found(format!("Volume {volume_name} not found"))
-            })?;
+            volumes
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&volume_name)
+                .ok_or_else(|| {
+                    ToadStoolError::not_found(format!("Volume {volume_name} not found"))
+                })?;
 
             tracing::debug!("Deleted test volume: {}", volume_name);
             Ok(())

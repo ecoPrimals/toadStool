@@ -14,6 +14,7 @@
 //! Focus: `load_biome_manifest()`, `validate_manifest()`, `CliContext`
 
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 use toadstool_cli::{
@@ -21,7 +22,6 @@ use toadstool_cli::{
     Cli, CliContext, Commands, PrimalConfig, ServiceConfig, WorkloadSource, load_biome_manifest,
     validate_manifest,
 };
-use std::fs;
 
 // ============================================================================
 // CliContext Tests
@@ -249,8 +249,7 @@ async fn test_load_biome_manifest_invalid_yaml() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("invalid.yaml");
 
-    fs::write(&manifest_path, "invalid: yaml: content: {{{")
-        .unwrap();
+    fs::write(&manifest_path, "invalid: yaml: content: {{{").unwrap();
 
     let result = load_biome_manifest(&manifest_path).await;
 

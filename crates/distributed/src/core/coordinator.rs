@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
 use std::sync::RwLock;
+use std::time::Instant;
 use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 use uuid::Uuid;

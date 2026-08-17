@@ -6,9 +6,9 @@ use crate::hardware::SystemCapabilities;
 #[cfg(feature = "runtime")]
 use crate::ecosystem::EcosystemDiscoverer;
 #[cfg(feature = "runtime")]
-use crate::hardware::HardwareDetector;
-#[cfg(feature = "runtime")]
 use crate::error::ToadStoolResult;
+#[cfg(feature = "runtime")]
+use crate::hardware::HardwareDetector;
 
 /// System information summary for display and debugging.
 #[derive(Debug, Clone)]

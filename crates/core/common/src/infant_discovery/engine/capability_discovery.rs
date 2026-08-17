@@ -141,8 +141,13 @@ impl CapabilityDiscovery for DiscoveryEngine {
 
         Box::pin(async move {
             let mut discovered_services = Vec::new();
-            let sources: Vec<Arc<dyn EndpointSource>> =
-                self.sources.read().unwrap_or_else(|e| e.into_inner()).iter().map(Arc::clone).collect();
+            let sources: Vec<Arc<dyn EndpointSource>> = self
+                .sources
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
+                .iter()
+                .map(Arc::clone)
+                .collect();
 
             // Query all sources sequentially (avoid lifetime issues)
             for source in &sources {

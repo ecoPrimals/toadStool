@@ -19,10 +19,7 @@ async fn discover_network_services(
 }
 
 #[cfg(not(feature = "network-scan"))]
-async fn probe_service(
-    _endpoint: &str,
-    _pattern: &ServicePattern,
-) -> ToadStoolResult<ServiceInfo> {
+async fn probe_service(_endpoint: &str, _pattern: &ServicePattern) -> ToadStoolResult<ServiceInfo> {
     Err(ToadStoolError::network(
         "TCP service probing requires the `network-scan` feature".to_string(),
     ))

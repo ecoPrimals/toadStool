@@ -16,9 +16,9 @@
 
 pub mod cpu;
 pub mod gpu;
-pub mod pci_names;
 pub mod memory;
 pub mod network;
+pub mod pci_names;
 pub mod storage;
 
 // Re-export all public types for backward compatibility

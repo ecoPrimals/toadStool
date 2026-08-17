@@ -326,8 +326,8 @@ mod gddr5_ordering_tests {
     fn pramin_probe_allowed(devinit_reg: u32) -> bool {
         let read = RegisterRead::classify(devinit_reg);
         match read.valid() {
-            None => false,             // unreadable: the device is not there
-            Some(v) => (v & 2) != 0,   // POST complete: VRAM is up
+            None => false,           // unreadable: the device is not there
+            Some(v) => (v & 2) != 0, // POST complete: VRAM is up
         }
     }
 

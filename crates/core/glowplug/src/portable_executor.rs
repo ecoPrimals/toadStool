@@ -100,7 +100,10 @@ impl SwapExecutor for PortableSwapExecutor {
         };
 
         {
-            let mut map = self.personalities.write().unwrap_or_else(|e| e.into_inner());
+            let mut map = self
+                .personalities
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             map.insert(key, target_personality.to_string());
         }
 
@@ -120,7 +123,10 @@ impl SwapExecutor for PortableSwapExecutor {
 
     async fn release(&self, device: &DeviceId) -> Result<(), Self::Error> {
         let key = device.to_string();
-        let mut map = self.personalities.write().unwrap_or_else(|e| e.into_inner());
+        let mut map = self
+            .personalities
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         map.insert(key, "unbound".to_string());
         Ok(())
     }

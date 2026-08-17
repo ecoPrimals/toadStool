@@ -45,41 +45,39 @@ impl DispatchHandler {
             }
 
             // Determine which adapters to use
-            let target_indices: Vec<usize> =
-                if let Some(explicit) = p.get("adapter_indices").and_then(|v| v.as_array()) {
-                    explicit
-                        .iter()
-                        .filter_map(|v| v.as_u64().map(|i| i as usize))
-                        .filter(|&i| i < total_adapters)
-                        .collect()
+            let target_indices: Vec<usize> = if let Some(explicit) =
+                p.get("adapter_indices").and_then(|v| v.as_array())
+            {
+                explicit
+                    .iter()
+                    .filter_map(|v| v.as_u64().map(|i| i as usize))
+                    .filter(|&i| i < total_adapters)
+                    .collect()
+            } else {
+                let gpu_count = p
+                    .get("gpu_count")
+                    .and_then(serde_json::Value::as_u64)
+                    .map(|n| n as usize)
+                    .unwrap_or(total_adapters);
+
+                // Use topology-aware placement via WorkloadRouter
+                let available: Vec<u32> = (0..total_adapters as u32).collect();
+                let topology = toadstool_sysmon::pcie_topology::discover_topology();
+                let router =
+                    toadstool_runtime_orchestration::workload_routing::WorkloadRouter::new();
+
+                if let Some(placement) = router.route_multi_gpu(&available, gpu_count, &topology) {
+                    tracing::info!(
+                        gpu_indices = ?placement.gpu_indices,
+                        shared_switch = placement.shared_switch,
+                        min_bw = placement.min_interconnect_bps,
+                        "multi-GPU placement via topology routing"
+                    );
+                    placement.gpu_indices.iter().map(|&i| i as usize).collect()
                 } else {
-                    let gpu_count = p
-                        .get("gpu_count")
-                        .and_then(serde_json::Value::as_u64)
-                        .map(|n| n as usize)
-                        .unwrap_or(total_adapters);
-
-                    // Use topology-aware placement via WorkloadRouter
-                    let available: Vec<u32> = (0..total_adapters as u32).collect();
-                    let topology =
-                        toadstool_sysmon::pcie_topology::discover_topology();
-                    let router =
-                        toadstool_runtime_orchestration::workload_routing::WorkloadRouter::new();
-
-                    if let Some(placement) =
-                        router.route_multi_gpu(&available, gpu_count, &topology)
-                    {
-                        tracing::info!(
-                            gpu_indices = ?placement.gpu_indices,
-                            shared_switch = placement.shared_switch,
-                            min_bw = placement.min_interconnect_bps,
-                            "multi-GPU placement via topology routing"
-                        );
-                        placement.gpu_indices.iter().map(|&i| i as usize).collect()
-                    } else {
-                        (0..gpu_count.min(total_adapters)).collect()
-                    }
-                };
+                    (0..gpu_count.min(total_adapters)).collect()
+                }
+            };
 
             if target_indices.is_empty() {
                 return Err(JsonRpcError::invalid_params(

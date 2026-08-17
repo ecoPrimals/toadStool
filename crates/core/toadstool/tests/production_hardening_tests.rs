@@ -3,7 +3,6 @@
 //! `hardening` feature. Without a gate matching that conditional,
 //! these tests silently did not compile, so none of them ran.
 #![cfg(feature = "hardening")]
-
 #![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"

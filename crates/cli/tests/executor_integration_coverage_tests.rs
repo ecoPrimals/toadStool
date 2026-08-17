@@ -5,9 +5,9 @@
 //! Goal: Increase CLI executor coverage from 1.81% to 30%+
 //! Focus: Core biome lifecycle operations with realistic scenarios
 
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use std::fs;
 
 /// Helper to create a minimal valid biome manifest
 async fn create_test_manifest(dir: &std::path::Path, name: &str) -> PathBuf {
@@ -36,8 +36,7 @@ command = ["sleep", "infinity"]
 "#
     );
 
-    fs::write(&manifest_path, content)
-        .expect("Failed to write test manifest");
+    fs::write(&manifest_path, content).expect("Failed to write test manifest");
     manifest_path
 }
 
@@ -48,8 +47,7 @@ async fn test_manifest_loading_success() {
 
     // Verify manifest file exists and is readable
     assert!(manifest_path.exists());
-    let content = fs::read_to_string(&manifest_path)
-        .expect("Failed to read manifest");
+    let content = fs::read_to_string(&manifest_path).expect("Failed to read manifest");
     assert!(content.contains("test-biome"));
     assert!(content.contains("test-service"));
 }
@@ -91,11 +89,9 @@ image = "postgres:alpine"
 environment = ["POSTGRES_DB=testdb"]
 "#;
 
-    fs::write(&manifest_path, content)
-        .expect("Failed to write manifest");
+    fs::write(&manifest_path, content).expect("Failed to write manifest");
 
-    let content = fs::read_to_string(&manifest_path)
-        .expect("Failed to read manifest");
+    let content = fs::read_to_string(&manifest_path).expect("Failed to read manifest");
     assert!(content.contains("web"));
     assert!(content.contains("api"));
     assert!(content.contains("db"));
@@ -472,8 +468,7 @@ async fn test_manifest_path_validation() {
     assert!(!manifest_path.exists());
 
     // Create manifest
-    fs::write(&manifest_path, "# Test manifest")
-        .expect("Failed to write");
+    fs::write(&manifest_path, "# Test manifest").expect("Failed to write");
 
     // After creation
     assert!(manifest_path.exists());

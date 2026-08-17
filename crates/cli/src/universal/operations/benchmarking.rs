@@ -5,8 +5,8 @@
 
 use crate::Result;
 use std::collections::HashMap;
-use std::future::Future;
 use std::fs;
+use std::future::Future;
 use std::process::Command;
 use std::time::Instant;
 

@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
 use std::sync::RwLock;
+use std::time::{Duration, SystemTime};
 use tracing::{debug, info};
 
 use toadstool_common::ToadStoolResult;
@@ -155,12 +155,20 @@ impl MdnsDiscoveryClient {
             last_seen: now,
         };
 
-        self.cache.write().unwrap_or_else(|e| e.into_inner()).insert(id, cached);
+        self.cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, cached);
     }
 
     /// Update `last_seen` timestamp for a service
     pub(super) async fn touch_service(&self, service_id: &str) {
-        if let Some(entry) = self.cache.write().unwrap_or_else(|e| e.into_inner()).get_mut(service_id) {
+        if let Some(entry) = self
+            .cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(service_id)
+        {
             entry.last_seen = SystemTime::now();
         }
     }
@@ -195,7 +203,8 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         // Query cache for services with requested capability
         let services: Vec<DiscoveredService> = self
             .cache
-            .read().unwrap_or_else(|e| e.into_inner())
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .filter_map(|entry| {
                 if entry.service.capabilities.contains(capability) {
@@ -227,7 +236,8 @@ impl DiscoveryClient for MdnsDiscoveryClient {
 
         let services: Vec<DiscoveredService> = self
             .cache
-            .read().unwrap_or_else(|e| e.into_inner())
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .map(|entry| entry.service.clone())
             .collect();
@@ -244,7 +254,8 @@ impl DiscoveryClient for MdnsDiscoveryClient {
             let hostname = format!("{service_id}.local");
 
             self.advertised_services
-                .write().unwrap_or_else(|e| e.into_inner())
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(service_id.to_string(), hostname.clone());
 
             info!(
@@ -262,7 +273,11 @@ impl DiscoveryClient for MdnsDiscoveryClient {
     async fn deregister_service(&self, service_id: &str) -> ToadStoolResult<()> {
         info!("Deregistering service {} from mDNS", service_id);
 
-        let value = self.advertised_services.write().unwrap_or_else(|e| e.into_inner()).remove(service_id);
+        let value = self
+            .advertised_services
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(service_id);
         if let Some(hostname) = value {
             info!(
                 "Deregistered service {} (hostname: {})",
@@ -270,7 +285,10 @@ impl DiscoveryClient for MdnsDiscoveryClient {
             );
         }
 
-        self.cache.write().unwrap_or_else(|e| e.into_inner()).remove(service_id);
+        self.cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(service_id);
 
         Ok(())
     }

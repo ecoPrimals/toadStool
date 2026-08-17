@@ -10,8 +10,8 @@ use tracing::info;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::resources::RuntimeMetrics;
 
-use crate::metric_types::ProcessInfo;
 use crate::SystemResourceMonitor;
+use crate::metric_types::ProcessInfo;
 use crate::types::ResourceMonitorError;
 
 impl SystemResourceMonitor {
@@ -35,7 +35,8 @@ impl SystemResourceMonitor {
         };
 
         self.process_map
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(workload_id.to_string(), process_info);
         info!(
             "Registered process {} with PID {} for monitoring",
@@ -46,10 +47,21 @@ impl SystemResourceMonitor {
 
     /// Unregisters a process from monitoring
     pub async fn unregister_process(&self, workload_id: &str) -> Result<(), ToadStoolError> {
-        let was_registered = self.process_map.write().unwrap_or_else(|e| e.into_inner()).remove(workload_id).is_some();
+        let was_registered = self
+            .process_map
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(workload_id)
+            .is_some();
         if was_registered {
-            self.usage_data.write().unwrap_or_else(|e| e.into_inner()).remove(workload_id);
-            self.threshold_data.write().unwrap_or_else(|e| e.into_inner()).remove(workload_id);
+            self.usage_data
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(workload_id);
+            self.threshold_data
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(workload_id);
             info!("Unregistered process {} from monitoring", workload_id);
             Ok(())
         } else {

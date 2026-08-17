@@ -127,7 +127,10 @@ impl LegacyAdapter for VxWorksAdapter {
                 status: JobStatus::Queued,
             };
 
-            self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job.job_id, rt_job);
+            self.active_jobs
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(job.job_id, rt_job);
             Ok(job.job_id)
         }
     }
@@ -262,7 +265,10 @@ impl LegacyAdapter for QNXAdapter {
                 status: JobStatus::Queued,
             };
 
-            self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job.job_id, rt_job);
+            self.active_jobs
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(job.job_id, rt_job);
             Ok(job.job_id)
         }
     }

@@ -8,10 +8,7 @@ use super::{AuditEvent, Capability, SecurityContext, SecurityPolicy};
 /// Security provider trait
 pub trait SecurityProvider: Send + Sync {
     /// Create a security context
-    fn create_security_context(
-        &self,
-        policy: &SecurityPolicy,
-    ) -> ToadStoolResult<SecurityContext>;
+    fn create_security_context(&self, policy: &SecurityPolicy) -> ToadStoolResult<SecurityContext>;
 
     /// Validate a security context
     fn validate_security_context(&self, context: &SecurityContext) -> ToadStoolResult<()>;
@@ -34,9 +31,5 @@ pub trait SecurityProvider: Send + Sync {
     ) -> ToadStoolResult<bool>;
 
     /// Audit security event
-    fn audit_event(
-        &self,
-        event: AuditEvent,
-        context: &SecurityContext,
-    ) -> ToadStoolResult<()>;
+    fn audit_event(&self, event: AuditEvent, context: &SecurityContext) -> ToadStoolResult<()>;
 }

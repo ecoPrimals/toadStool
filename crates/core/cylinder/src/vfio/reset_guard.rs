@@ -112,7 +112,10 @@ pub fn guarded_function_reset(bdf: &str) -> Result<(), String> {
         r.to_string()
     })?;
 
-    tracing::warn!(bdf, "issuing PCI function reset (device confirmed responsive)");
+    tracing::warn!(
+        bdf,
+        "issuing PCI function reset (device confirmed responsive)"
+    );
     std::fs::write(linux_paths::sysfs_pci_device_file(bdf, "reset"), "1")
         .map_err(|e| format!("reset write failed: {e}"))?;
 

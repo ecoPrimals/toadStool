@@ -135,15 +135,13 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
 
     assert!(scheduler.available_runtimes().is_empty());
 
-    scheduler
-        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
+    scheduler.register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
 
     let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1);
     assert_eq!(runtimes[0], RuntimeType::Native);
 
-    scheduler
-        .register_runtime_engine(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine));
+    scheduler.register_runtime_engine(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine));
 
     let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 2);
@@ -590,10 +588,8 @@ async fn test_register_runtime_engine_replaces_existing() {
     let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = SchedWithSimpleMock::create(registry).await.unwrap();
 
-    scheduler
-        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
-    scheduler
-        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
+    scheduler.register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
+    scheduler.register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
 
     let runtimes = scheduler.available_runtimes();
     assert_eq!(runtimes.len(), 1, "should replace not duplicate");

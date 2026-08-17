@@ -84,7 +84,12 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
 
     fn health_check(&self) -> impl std::future::Future<Output = PrimalHealth> + Send + '_ {
         let health_status = self.health_status.clone();
-        async move { health_status.read().unwrap_or_else(|e| e.into_inner()).clone() }
+        async move {
+            health_status
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone()
+        }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {

@@ -143,10 +143,7 @@ impl ConfigManager {
         Ok(())
     }
 
-    fn write_observability_config(
-        &self,
-        config: &ToadStoolConfig,
-    ) -> Result<(), ToadStoolError> {
+    fn write_observability_config(&self, config: &ToadStoolConfig) -> Result<(), ToadStoolError> {
         let observability_config = serde_json::json!({
             "logging": {
                 "level": config.logging.level,

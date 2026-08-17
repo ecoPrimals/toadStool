@@ -15,10 +15,10 @@ use std::future::Future;
 #[cfg(any(test, feature = "test-mocks"))]
 use std::sync::Arc;
 #[cfg(any(test, feature = "test-mocks"))]
+use std::sync::Mutex;
+#[cfg(any(test, feature = "test-mocks"))]
 use std::time::Duration;
 use std::time::SystemTime;
-#[cfg(any(test, feature = "test-mocks"))]
-use std::sync::Mutex;
 
 use toadstool_common::constants::ecosystem::capabilities;
 use toadstool_common::constants::primal_identity::{PRIMAL_NAME, audience};
@@ -431,7 +431,8 @@ impl AuthBackend for InMemoryAuthBackend {
             let token = Self::generate_test_token(&request.requesting_primal);
 
             self.tokens
-                .lock().unwrap_or_else(|e| e.into_inner())
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(token.id.clone(), token.clone());
 
             tracing::debug!("Generated test token for {}", request.requesting_primal);
@@ -461,7 +462,8 @@ impl AuthBackend for InMemoryAuthBackend {
             };
 
             self.tokens
-                .lock().unwrap_or_else(|e| e.into_inner())
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
                 .insert(token.id.clone(), token.clone());
 
             tracing::debug!("Refreshed test token for {}", request.requesting_primal);

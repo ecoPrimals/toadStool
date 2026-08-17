@@ -269,7 +269,8 @@ pub(crate) fn pgraph_engine_reset(
     // Clocking PGRAPH before its power sequencer has run is what wedges
     // Kepler. If GR is already on, a reset toggle is still legitimate — the
     // engine is powered and we are only cycling its ring stations.
-    if devinit == DevinitState::NotRun && !gr_was_enabled && (power.initial_pmc_mask & GR_BIT) == 0 {
+    if devinit == DevinitState::NotRun && !gr_was_enabled && (power.initial_pmc_mask & GR_BIT) == 0
+    {
         tracing::info!(
             initial_pmc_mask = format!("{:#010x}", power.initial_pmc_mask),
             "PGRAPH excluded from pre-devinit PMC mask — deferring ungate"

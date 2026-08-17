@@ -467,8 +467,9 @@ pub fn classify_tier_for_profile(
 
     // FECS gates Tier 2 here for the same reason as the Volta path: it is
     // the engine that dispatches shader work.
-    let fecs_read =
-        crate::nv::register_read::RegisterRead::from_result(bar0.read_u32(profile.fecs_pc_offset as usize));
+    let fecs_read = crate::nv::register_read::RegisterRead::from_result(
+        bar0.read_u32(profile.fecs_pc_offset as usize),
+    );
     let fecs_alive = fecs_read.is_alive();
     let fecs_pc = fecs_read.raw();
     let gpc_enables = bar0.read_u32(profile.gpc_broadcast_offset as usize).ok();
@@ -601,7 +602,13 @@ mod bus_read_tests {
     /// "cold" verdict. Plausible engine masks must not be caught.
     #[test]
     fn plausible_pmc_values_are_not_read_failures() {
-        for v in [0x0000_0000, 0x0000_0001, 0x1F00_1F3F, 0x7FFF_FFFF, 0xFFFF_FFFE] {
+        for v in [
+            0x0000_0000,
+            0x0000_0001,
+            0x1F00_1F3F,
+            0x7FFF_FFFF,
+            0xFFFF_FFFE,
+        ] {
             assert!(!is_bus_read_failure(v), "{v:#010x} misread as bus failure");
         }
     }

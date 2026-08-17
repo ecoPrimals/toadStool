@@ -88,7 +88,11 @@ pub fn wake_to_d0(bdf: &str) -> WakeResult {
     let after = power_state(bdf);
     let awake = after == "D0";
     if awake {
-        tracing::info!(bdf, before = before.as_str(), "woke device to D0 for probing");
+        tracing::info!(
+            bdf,
+            before = before.as_str(),
+            "woke device to D0 for probing"
+        );
     } else {
         tracing::warn!(
             bdf,

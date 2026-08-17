@@ -37,7 +37,10 @@ where
 
         // Check if we have a WASM runtime engine registered
         let wasm_engine = {
-            let engines = self.runtime_engines().read().unwrap_or_else(|e| e.into_inner());
+            let engines = self
+                .runtime_engines()
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             engines.get(&RuntimeType::Wasm).cloned()
         };
         if let Some(wasm_engine) = wasm_engine {

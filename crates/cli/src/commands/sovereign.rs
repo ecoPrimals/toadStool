@@ -88,7 +88,10 @@ fn rpc(method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
     if let Some(err) = resp.get("error") {
         return Err(crate::CliError::Other(format!("server error: {err}")));
     }
-    Ok(resp.get("result").cloned().unwrap_or(serde_json::Value::Null))
+    Ok(resp
+        .get("result")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null))
 }
 
 fn print_steps(result: &serde_json::Value) {
@@ -112,7 +115,9 @@ fn print_steps(result: &serde_json::Value) {
 
 /// Report the tier without letting an unmeasured device look like a verdict.
 fn print_tier(result: &serde_json::Value) {
-    let Some(tier) = result.get("tier") else { return };
+    let Some(tier) = result.get("tier") else {
+        return;
+    };
     if tier.is_null() {
         println!("\n  tier: none (classification did not run)");
         return;
@@ -262,7 +267,12 @@ pub async fn execute_sovereign_command(cmd: SovereignCommand) -> Result<()> {
                 }
             }
 
-            for key in ["compute_ready", "falcon_booted", "gr_initialized", "halted_at"] {
+            for key in [
+                "compute_ready",
+                "falcon_booted",
+                "gr_initialized",
+                "halted_at",
+            ] {
                 if let Some(v) = result.get(key) {
                     if !v.is_null() {
                         println!("  {key}: {v}");
@@ -280,7 +290,9 @@ pub async fn execute_sovereign_command(cmd: SovereignCommand) -> Result<()> {
                 println!("Sovereign anchors:");
                 println!(
                     "  anchor_count    : {}",
-                    result.get("anchor_count").unwrap_or(&serde_json::Value::Null)
+                    result
+                        .get("anchor_count")
+                        .unwrap_or(&serde_json::Value::Null)
                 );
                 println!(
                     "  fd_store_capable: {}",
@@ -304,10 +316,19 @@ pub async fn execute_sovereign_command(cmd: SovereignCommand) -> Result<()> {
             println!("Warm handoff strategies:");
             for (name, note) in [
                 ("nouveau_titanv", "Titan V (GV100) via patched nouveau"),
-                ("nouveau_k80", "Tesla K80 (GK210) via nouveau — unsigned falcons"),
+                (
+                    "nouveau_k80",
+                    "Tesla K80 (GK210) via nouveau — unsigned falcons",
+                ),
                 ("nvidia_titanv", "Titan V via the loaded nvidia driver"),
-                ("nvidia_patched_titanv", "Titan V via nvidia with teardown NOPs"),
-                ("nvidia_catalyst_titanv", "Titan V catalyst boot (SBR, full RM init)"),
+                (
+                    "nvidia_patched_titanv",
+                    "Titan V via nvidia with teardown NOPs",
+                ),
+                (
+                    "nvidia_catalyst_titanv",
+                    "Titan V catalyst boot (SBR, full RM init)",
+                ),
                 (
                     "nvidia_catalyst_minimal_nop_titanv",
                     "catalyst with a reduced NOP set",

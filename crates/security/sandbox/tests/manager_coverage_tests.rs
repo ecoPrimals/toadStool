@@ -287,9 +287,7 @@ async fn validation_rejects_empty_mount_source_before_platform() {
 async fn helpers_validate_matches_manager_create_errors() {
     let mut spec = native_echo_spec("h");
     spec.resource_limits.max_memory_bytes = Some(0);
-    helpers::validate_sandbox_spec(&spec)
-        
-        .expect_err("helper agrees");
+    helpers::validate_sandbox_spec(&spec).expect_err("helper agrees");
 
     spec.resource_limits = ResourceLimits::default();
     helpers::validate_sandbox_spec(&spec).expect("ok");

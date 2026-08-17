@@ -34,11 +34,7 @@ fn test_ecosystem_message_heartbeat_factory() {
 
 #[test]
 fn test_ecosystem_message_error_factory() {
-    let msg = EcosystemMessage::error(
-        "a",
-        "b",
-        "something failed",
-    );
+    let msg = EcosystemMessage::error("a", "b", "something failed");
     assert_eq!(msg.message_type, EcosystemMessageType::Error);
     assert_eq!(msg.payload["error"], "something failed");
 }
@@ -145,12 +141,7 @@ fn test_ecosystem_message_serialization_all_types() {
         EcosystemMessageType::WorkloadResponse,
     ];
     for mt in types {
-        let msg = EcosystemMessage::new(
-            "a",
-            "b",
-            mt.clone(),
-            serde_json::json!({}),
-        );
+        let msg = EcosystemMessage::new("a", "b", mt.clone(), serde_json::json!({}));
         let json = serde_json::to_string(&msg).expect("serialize message");
         let parsed: EcosystemMessage = serde_json::from_str(&json).expect("deserialize message");
         assert_eq!(parsed.message_type, mt);

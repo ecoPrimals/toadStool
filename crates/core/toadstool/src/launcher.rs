@@ -24,11 +24,11 @@
 
 use crate::error::{ToadStoolError, ToadStoolResult};
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::Duration;
 use toadstool_common::constants::primal_identity::{PRIMAL_BINARY_NAME, PRIMAL_NAME};
 use toadstool_common::constants::timeouts;
 use toadstool_common::interned_strings::socket_env;
-use std::process::Command;
 use tracing::info;
 
 /// ToadStool launch configuration

@@ -152,8 +152,8 @@ impl AuthenticationManager {
                     backend: Arc::new(AuthBackendDispatch::Security(backend)),
                     #[cfg(feature = "runtime")]
                     #[cfg(feature = "runtime")]
-                #[cfg(feature = "runtime")]
-            refresh_task: None,
+                    #[cfg(feature = "runtime")]
+                    refresh_task: None,
                 });
             }
             #[cfg(not(unix))]
@@ -185,7 +185,7 @@ impl AuthenticationManager {
                 backend: Arc::new(AuthBackendDispatch::Security(backend)),
                 #[cfg(feature = "runtime")]
                 #[cfg(feature = "runtime")]
-            refresh_task: None,
+                refresh_task: None,
             })
         }
         #[cfg(not(unix))]

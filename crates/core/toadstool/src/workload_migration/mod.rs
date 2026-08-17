@@ -184,7 +184,10 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
     /// Register a cloud provider
     pub async fn register_provider(&self, provider: Box<P>) {
         let name = provider.name().to_string();
-        self.providers.write().unwrap_or_else(|e| e.into_inner()).register(provider);
+        self.providers
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .register(provider);
         info!("📦 Registered cloud provider: {}", name);
     }
 
@@ -196,13 +199,19 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
 
     /// Get workload location
     pub async fn get_workload_location(&self, workload_id: &str) -> Option<WorkloadLocation> {
-        let locations = self.workload_locations.read().unwrap_or_else(|e| e.into_inner());
+        let locations = self
+            .workload_locations
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         locations.get(workload_id).cloned()
     }
 
     /// Track workload location
     pub async fn track_workload(&self, workload_id: impl Into<String>, location: WorkloadLocation) {
-        let mut locations = self.workload_locations.write().unwrap_or_else(|e| e.into_inner());
+        let mut locations = self
+            .workload_locations
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         locations.insert(workload_id.into(), location);
     }
 

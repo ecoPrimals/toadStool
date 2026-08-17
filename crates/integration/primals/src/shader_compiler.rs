@@ -77,10 +77,7 @@ pub struct ShaderCapabilitiesQuery {
 impl Default for ShaderCapabilitiesQuery {
     fn default() -> Self {
         Self {
-            target_units: vec![
-                "shader_core".to_string(),
-                "tensor_core".to_string(),
-            ],
+            target_units: vec!["shader_core".to_string(), "tensor_core".to_string()],
             include_experimental: false,
         }
     }

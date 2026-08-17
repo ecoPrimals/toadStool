@@ -7,6 +7,7 @@
 //! not what specific service provides it.
 
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::Duration;
 use std::time::SystemTime;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -15,7 +16,6 @@ use toadstool_common::infant_discovery::{
     DiscoveredService, DiscoveryEngine, DiscoverySource, ServiceHealth, ServiceMetadata,
 };
 use toadstool_common::interned_strings::capabilities;
-use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use super::types::CoordinationTransport;

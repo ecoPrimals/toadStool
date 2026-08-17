@@ -104,12 +104,18 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         }
 
         {
-            let mut stats = self.runtime_stats.write().unwrap_or_else(|e| e.into_inner());
+            let mut stats = self
+                .runtime_stats
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             update_runtime_stats(&mut stats, &metrics);
         }
 
         {
-            let mut history = self.metrics_history.write().unwrap_or_else(|e| e.into_inner());
+            let mut history = self
+                .metrics_history
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             history.push_back(metrics);
             cleanup_old_metrics(&mut history, self.config.history_retention_hours);
             drop(history);
@@ -134,7 +140,10 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         const MIN_EXECUTION_TIME: Duration = Duration::from_secs(1);
         const DEFAULT_PREDICTION_EXECUTION_SECS: u64 = 10;
 
-        let models = self.prediction_models.read().unwrap_or_else(|e| e.into_inner());
+        let models = self
+            .prediction_models
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some((_, model)) = models.iter().max_by_key(|(_, m)| m.sample_count())
             && model.sample_count() > 0
         {
@@ -171,10 +180,22 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
     }
 
     async fn update_model(&self) -> ToadStoolResult<()> {
-        let history = self.metrics_history.read().unwrap_or_else(|e| e.into_inner());
-        let mut stats = self.runtime_stats.write().unwrap_or_else(|e| e.into_inner());
-        let mut baselines = self.baseline_measurements.write().unwrap_or_else(|e| e.into_inner());
-        let mut models = self.prediction_models.write().unwrap_or_else(|e| e.into_inner());
+        let history = self
+            .metrics_history
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
+        let mut stats = self
+            .runtime_stats
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
+        let mut baselines = self
+            .baseline_measurements
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
+        let mut models = self
+            .prediction_models
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
 
         update_model_from_history(
             &history,

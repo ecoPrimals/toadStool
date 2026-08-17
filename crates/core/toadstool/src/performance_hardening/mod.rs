@@ -167,7 +167,8 @@ impl PerformanceHardeningManager {
         ));
 
         self.memory_pools
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(name.to_string(), pool.clone());
 
         Ok(pool)
@@ -195,7 +196,8 @@ impl PerformanceHardeningManager {
         cache.start_cleanup_task().await;
 
         self.caches
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(name.to_string(), cache.clone());
 
         Ok(cache)

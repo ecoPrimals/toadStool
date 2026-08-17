@@ -15,9 +15,9 @@
 //! from 1.81% to a meaningful level. Focus on testable units and integration points.
 
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use std::fs;
 
 // We can't easily test BiomeExecutor::new() without full infrastructure,
 // but we CAN test the helper logic that's used within executor_impl.rs
@@ -166,8 +166,7 @@ async fn test_log_directory_creation_logic() {
     let log_dir = temp_dir.path().join(format!("logs/{biome_name}"));
 
     // Create directory
-    fs::create_dir_all(&log_dir)
-        .expect("Failed to create log dir");
+    fs::create_dir_all(&log_dir).expect("Failed to create log dir");
 
     // Verify it exists
     assert!(log_dir.exists());
@@ -175,8 +174,7 @@ async fn test_log_directory_creation_logic() {
 
     // Test nested structure
     let service_log = log_dir.join("service.log");
-    fs::write(&service_log, "test log content")
-        .expect("Failed to write log");
+    fs::write(&service_log, "test log content").expect("Failed to write log");
 
     assert!(service_log.exists());
     assert!(service_log.is_file());
@@ -187,8 +185,7 @@ async fn test_log_file_path_generation() {
     // Test log file path generation for services/primals
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let log_dir = temp_dir.path().join("logs/test-biome");
-    fs::create_dir_all(&log_dir)
-        .expect("Failed to create log dir");
+    fs::create_dir_all(&log_dir).expect("Failed to create log dir");
 
     // Test different log file types
     let primal_log = log_dir.join("beardog.log");
@@ -196,8 +193,7 @@ async fn test_log_file_path_generation() {
     let system_log = log_dir.join("system.log");
 
     for log_path in [&primal_log, &service_log, &system_log] {
-        fs::write(log_path, "log content")
-            .expect("Failed to write log");
+        fs::write(log_path, "log content").expect("Failed to write log");
         assert!(log_path.exists());
     }
 

@@ -30,11 +30,7 @@ pub(crate) async fn sovereign_runlist_diagnostic(
         } else {
             drop(anchors);
             let cache = handler.cached_devices.lock().await;
-            cache
-                .keys()
-                .next()
-                .cloned()
-                .unwrap_or_default()
+            cache.keys().next().cloned().unwrap_or_default()
         }
     };
 

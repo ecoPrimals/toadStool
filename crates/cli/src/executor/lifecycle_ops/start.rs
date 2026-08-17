@@ -7,8 +7,8 @@ use std::time::Duration;
 
 const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
 
-use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use std::fs;
+use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tracing::info;
 use uuid::Uuid;
 
@@ -16,8 +16,7 @@ use super::super::workload::infer_runtime_type;
 use super::super::{BiomeExecutor, BiomeProcess, ProcessType, RunningBiome};
 use crate::{BiomeInfo, BiomeManifest, BiomeStatus, ResourceUsage, ServiceInfo, WorkloadSource};
 use toadstool::{
-    ExecutionInput, ExecutionRequest, ResourceRequirements, SecurityContext,
-    WorkloadSpec,
+    ExecutionInput, ExecutionRequest, ResourceRequirements, SecurityContext, WorkloadSpec,
 };
 
 /// Parse env vars from "KEY=VALUE" strings. Used by start_biome_internal.

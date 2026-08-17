@@ -320,8 +320,7 @@ fn detect_wgpu_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
         backends: wgpu::Backends::all(),
         ..Default::default()
     });
-    let adapters =
-        futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+    let adapters = futures::executor::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
     for adapter in adapters {
         let info = adapter.get_info();
         if info.device_type == wgpu::DeviceType::Cpu {

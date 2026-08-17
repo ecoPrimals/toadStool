@@ -136,7 +136,10 @@ impl LegacyAdapter for PLCAdapter {
                 status: JobStatus::Queued,
             };
 
-            self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job.job_id, plc_job);
+            self.active_jobs
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(job.job_id, plc_job);
             Ok(job.job_id)
         }
     }
@@ -273,7 +276,10 @@ impl LegacyAdapter for SCADAAdapter {
                 status: JobStatus::Queued,
             };
 
-            self.active_jobs.write().unwrap_or_else(|e| e.into_inner()).insert(job.job_id, scada_job);
+            self.active_jobs
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(job.job_id, scada_job);
             Ok(job.job_id)
         }
     }

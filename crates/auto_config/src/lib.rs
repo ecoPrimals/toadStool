@@ -99,8 +99,8 @@ pub mod ai_mcp_interface;
 pub mod capability_traits;
 mod ecosystem_types;
 pub mod hardware;
-pub mod intelligent;
 pub mod installer;
+pub mod intelligent;
 pub mod natural_language;
 
 #[cfg(feature = "network-scan")]
@@ -118,42 +118,42 @@ mod bootstrap;
 mod config_builder;
 
 // Re-export the main types for easy access
+#[cfg(feature = "runtime")]
+pub use ai_mcp_interface::AiMcpInterface;
 pub use ai_mcp_interface::{
     AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, McpRequest, McpRequestType,
     McpResponse, PerformanceExpectations, ResourceHints, SessionInfo,
 };
-#[cfg(feature = "runtime")]
-pub use ai_mcp_interface::AiMcpInterface;
 pub use capability_traits::{EcosystemServiceDiscoverer, HardwareCapabilityDetector};
 
 /// Mock implementations for testing only. Production uses real `HardwareDetector` and
 /// `EcosystemDiscoverer`. Evolution: Mocks avoid I/O in tests; real impls use toadstool-sysmon + network scan.
 #[cfg(any(test, feature = "test-mocks"))]
 pub use capability_traits::{MockEcosystemDiscoverer, MockHardwareDetector};
+#[cfg(feature = "runtime")]
+pub use ecosystem::EcosystemDiscoverer;
 pub use ecosystem_types::{
     DiscoveredServices, DiscoverySummary, ServiceInfo, ServicePattern, ServiceStatus, ServiceType,
 };
-#[cfg(feature = "runtime")]
-pub use ecosystem::EcosystemDiscoverer;
 pub use hardware::{
     CpuInfo, GpuInfo, HardwareDetector, MemoryInfo, PerformanceClass, StorageInfo, StorageType,
     SystemCapabilities,
 };
-pub use installer::{InstallationConfig, InstallationResult};
 #[cfg(feature = "runtime")]
 pub use installer::{ConfigManager, SmartInstaller};
+pub use installer::{InstallationConfig, InstallationResult};
+#[cfg(feature = "runtime")]
+pub use intelligent::IntelligentAutoConfig;
 pub use intelligent::{
     ConfigSnapshot, PlatformConfig, PlatformOptimizer, UsageHints, UsageLearner,
 };
 #[cfg(feature = "runtime")]
-pub use intelligent::IntelligentAutoConfig;
+pub use natural_language::NaturalLanguageConfig;
 pub use natural_language::{
     ConfigurationIntent, ConfigurationTemplate, ExplicitPreferences, IntentAnalysis,
     PerformancePreference, ResourcePreferences, RuntimePreferences, SecurityPreference,
     UsagePattern,
 };
-#[cfg(feature = "runtime")]
-pub use natural_language::NaturalLanguageConfig;
 
 #[cfg(feature = "runtime")]
 pub use bootstrap::quick_start;

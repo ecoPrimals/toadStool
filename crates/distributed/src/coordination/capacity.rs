@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use toadstool::error::ToadStoolResult;
 use std::sync::RwLock;
+use toadstool::error::ToadStoolResult;
 
 use super::types::{
     CapacityConfig, CapacityInfo, LocalCapacityManager, NodeCapabilities, ResourceReservation,

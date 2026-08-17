@@ -33,11 +33,9 @@ pub fn resolve_config_path(path: &str) -> String {
 pub fn discover_from_config(path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
     let resolved_path = resolve_config_path(path);
 
-    let content =
-        std::fs::read(&resolved_path)
-            .map_err(|e| DiscoveryError::MethodUnavailable {
-                method: format!("cannot read discovery config {resolved_path:?}: {e}"),
-            })?;
+    let content = std::fs::read(&resolved_path).map_err(|e| DiscoveryError::MethodUnavailable {
+        method: format!("cannot read discovery config {resolved_path:?}: {e}"),
+    })?;
 
     let config_file: ConfigFile =
         serde_json::from_slice(&content).map_err(|e| DiscoveryError::InvalidResponse {

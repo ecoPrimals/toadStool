@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::SystemTime;
 use std::sync::RwLock;
+use std::time::SystemTime;
 use tracing::{debug, info};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -55,20 +55,20 @@ impl CrossPlatformSandboxManager {
 
         // Ensure sandbox directories exist
         std::fs::create_dir_all(&config.sandbox_root).map_err(|e| {
-                ToadStoolError::configuration(format!(
-                    "Failed to create sandbox root directory {}: {}",
-                    config.sandbox_root.display(),
-                    e
-                ))
-            })?;
+            ToadStoolError::configuration(format!(
+                "Failed to create sandbox root directory {}: {}",
+                config.sandbox_root.display(),
+                e
+            ))
+        })?;
 
         std::fs::create_dir_all(&config.temp_dir).map_err(|e| {
-                ToadStoolError::configuration(format!(
-                    "Failed to create temp directory {}: {}",
-                    config.temp_dir.display(),
-                    e
-                ))
-            })?;
+            ToadStoolError::configuration(format!(
+                "Failed to create temp directory {}: {}",
+                config.temp_dir.display(),
+                e
+            ))
+        })?;
 
         Ok(Self {
             sandboxes: Arc::new(RwLock::new(HashMap::new())),

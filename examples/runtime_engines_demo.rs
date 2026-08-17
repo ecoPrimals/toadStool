@@ -64,8 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Native Runtime Engine (always available)
     let native_engine = NativeRuntimeEngine::new();
     println!("✅ Native Runtime Engine initialized");
-    let _ = orchestrator
-        .register_engine(RuntimeType::Native, Arc::new(native_engine));
+    let _ = orchestrator.register_engine(RuntimeType::Native, Arc::new(native_engine));
 
     // 2. WebAssembly Runtime Engine
     let wasm_config = toadstool_runtime_wasm::WasmRuntimeConfig::default();

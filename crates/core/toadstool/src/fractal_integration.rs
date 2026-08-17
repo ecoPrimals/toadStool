@@ -33,6 +33,9 @@
 //! }
 //! ```
 
+#[cfg(feature = "runtime")]
+use crate::ToadStoolError;
+use crate::ToadStoolResult;
 use crate::deployment_layer::DeploymentLayer;
 #[cfg(feature = "runtime")]
 use crate::deployment_layer::LayerDetector;
@@ -40,9 +43,6 @@ use crate::layer_adaptation::AdaptedCapabilities;
 #[cfg(feature = "runtime")]
 use crate::layer_adaptation::LayerCapabilityAdapter;
 use crate::self_identity::SelfIdentity;
-#[cfg(feature = "runtime")]
-use crate::ToadStoolError;
-use crate::ToadStoolResult;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::{debug, info};

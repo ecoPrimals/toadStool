@@ -746,8 +746,7 @@ async fn save_benchmark_results(results: &[NetworkBenchmarkResults]) -> ToadStoo
         .replace([':', 'Z'], "");
     let filename = format!("network_benchmark_results_{datetime}.json");
 
-    std::fs::write(&filename, json_results)
-        .map_err(ToadStoolError::from)?;
+    std::fs::write(&filename, json_results).map_err(ToadStoolError::from)?;
 
     println!("💾 Network benchmark results saved to: {filename}");
 

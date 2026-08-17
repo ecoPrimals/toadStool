@@ -127,7 +127,10 @@ impl ProductionHardeningManager {
     #[cfg(feature = "hardening")]
     pub async fn get_circuit_breaker(&self, service: &str) -> Arc<CircuitBreaker> {
         {
-            let breakers = self.circuit_breakers.read().unwrap_or_else(|e| e.into_inner());
+            let breakers = self
+                .circuit_breakers
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(b) = breakers.get(service) {
                 return Arc::clone(b);
             }
@@ -137,7 +140,8 @@ impl ProductionHardeningManager {
             self.config.default_circuit_config.clone(),
         ));
         self.circuit_breakers
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(service.to_string(), Arc::clone(&breaker));
         breaker
     }
@@ -145,7 +149,11 @@ impl ProductionHardeningManager {
     /// Look up an existing circuit breaker without creating one.
     #[cfg(feature = "hardening")]
     pub async fn find_circuit_breaker(&self, service: &str) -> Option<Arc<CircuitBreaker>> {
-        self.circuit_breakers.read().unwrap_or_else(|e| e.into_inner()).get(service).cloned()
+        self.circuit_breakers
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(service)
+            .cloned()
     }
 
     // ── Resource leak detection API ────────────────────────────────────────────

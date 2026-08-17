@@ -76,14 +76,16 @@ where
 
         // Register provider
         self.providers
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(instance_id.clone(), provider);
 
         // Index capabilities
         for capability in capabilities {
             let cap_key = format!("{capability:?}");
             self.capability_index
-                .write().unwrap_or_else(|e| e.into_inner())
+                .write()
+                .unwrap_or_else(|e| e.into_inner())
                 .entry(cap_key)
                 .or_insert_with(Vec::new)
                 .push(instance_id.clone());
@@ -91,7 +93,8 @@ where
 
         // Index context
         self.context_index
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .entry(context.user_id.clone())
             .or_insert_with(Vec::new)
             .push(instance_id.clone());
@@ -99,7 +102,8 @@ where
         // Index type
         let type_key = format!("{primal_type:?}");
         self.type_index
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .entry(type_key)
             .or_insert_with(Vec::new)
             .push(instance_id.clone());
@@ -111,7 +115,10 @@ where
     /// Find providers by capability
     pub fn find_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
         let cap_key = format!("{capability:?}");
-        let capability_index = self.capability_index.read().unwrap_or_else(|e| e.into_inner());
+        let capability_index = self
+            .capability_index
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let providers = self.providers.read().unwrap_or_else(|e| e.into_inner());
 
         capability_index
@@ -165,7 +172,12 @@ where
 
     /// Get all registered providers
     pub async fn get_all_providers(&self) -> Vec<Arc<P>> {
-        self.providers.read().unwrap_or_else(|e| e.into_inner()).values().cloned().collect()
+        self.providers
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .cloned()
+            .collect()
     }
 }
 
@@ -222,8 +234,8 @@ mod tests {
         ));
         registry.register_primal(provider).unwrap();
 
-        let providers = registry
-            .find_by_capability(&PrimalCapability::WasmExecution { wasi_support: true });
+        let providers =
+            registry.find_by_capability(&PrimalCapability::WasmExecution { wasi_support: true });
         assert!(!providers.is_empty());
     }
 

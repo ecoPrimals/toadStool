@@ -120,8 +120,8 @@ impl NvGspBridge {
                     format!("firmware read failed: {}: {e}", zst.display()).into(),
                 )
             })?;
-            let mut decoder =
-                ruzstd::decoding::StreamingDecoder::new(compressed.as_slice()).map_err(|e| {
+            let mut decoder = ruzstd::decoding::StreamingDecoder::new(compressed.as_slice())
+                .map_err(|e| {
                     DriverError::Unsupported(
                         format!("zstd init failed for {}: {e}", zst.display()).into(),
                     )

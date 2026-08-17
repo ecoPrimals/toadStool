@@ -92,7 +92,8 @@ impl CommunicationManager {
         };
 
         self.channels
-            .write().unwrap_or_else(|e| e.into_inner())
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .entry(service.id.clone())
             .or_insert_with(|| channel.clone());
 
@@ -207,13 +208,17 @@ impl CommunicationManager {
             .get(service_id)
             .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found: {service_id}")))?;
 
-        let heartbeat_msg =
-            EcosystemMessage::heartbeat(PRIMAL_NAME, channel.service_name.clone());
+        let heartbeat_msg = EcosystemMessage::heartbeat(PRIMAL_NAME, channel.service_name.clone());
 
         self.send_message(channel, heartbeat_msg).await?;
 
         drop(channels);
-        if let Some(channel) = self.channels.write().unwrap_or_else(|e| e.into_inner()).get_mut(service_id) {
+        if let Some(channel) = self
+            .channels
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(service_id)
+        {
             channel.last_heartbeat = std::time::SystemTime::now();
         }
 

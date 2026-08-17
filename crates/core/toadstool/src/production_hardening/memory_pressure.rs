@@ -139,7 +139,10 @@ impl MemoryPressureHandler {
             MemoryPressureLevel::Normal
         };
 
-        *self.current_usage.write().unwrap_or_else(|e| e.into_inner()) = used_memory;
+        *self
+            .current_usage
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = used_memory;
 
         if level != MemoryPressureLevel::Normal {
             // Clone Arc refs and release lock before await (avoid holding lock across .await)
