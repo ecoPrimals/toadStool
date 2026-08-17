@@ -298,8 +298,20 @@ mod tests {
         let _ = format!("{config:?}");
     }
 
+    /// A bad config path must surface as a config error.
+    ///
+    /// `run_byob_server` builds the container runtime engine before it looks at
+    /// the config, and that connects to the Docker socket. On a host without
+    /// Docker the call fails with "Socket not found" — which contains neither
+    /// "config" nor "read", so this asserted against an error it could never
+    /// reach and failed for a reason having nothing to do with config paths.
     #[tokio::test]
     async fn test_run_byob_server_invalid_config_path() {
+        if ContainerRuntimeEngine::new().is_err() {
+            eprintln!("skipping: no container runtime available on this host");
+            return;
+        }
+
         let config = ByobServerConfig {
             bind_address: None,
             port: None,
