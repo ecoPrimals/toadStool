@@ -34,28 +34,35 @@ impl AgentBackend {
     /// Get or discover agent provider
     ///
     /// Discovers by capability: "Who can deploy AI agents?"
+    ///
+    /// The guard is dropped before discovery awaits. Holding a
+    /// [`std::sync::RwLock`] guard across an await makes the future `!Send` —
+    /// which propagates to every public method here and bars the backend from
+    /// `tokio::spawn` — and blocks any other task wanting the lock, since a
+    /// blocking lock cannot yield to the runtime.
+    ///
+    /// Two callers racing on a cold cache may both discover. That is harmless:
+    /// discovery is idempotent and the first result is kept.
     async fn get_provider(&self) -> Result<CapabilityProvider> {
-        let mut provider_lock = self.provider.write().unwrap_or_else(|e| e.into_inner());
-
-        if provider_lock.is_none() {
-            use toadstool_common::primal_identity::ComputeCapability;
-            let capability = Capability::Compute(ComputeCapability::NativeExecution);
-
-            let discovered =
-                CapabilityProvider::discover(capability)
-                    .await
-                    .map_err(|e| match e {
-                        CapabilityError::NoProviderFound(_) => AgentBackendError::NoAgentProvider,
-                        other => AgentBackendError::Capability(other),
-                    })?;
-
-            *provider_lock = Some(discovered);
+        {
+            let cached = self.provider.read().unwrap_or_else(|e| e.into_inner());
+            if let Some(provider) = cached.as_ref() {
+                return Ok(provider.clone());
+            }
         }
 
-        provider_lock
-            .as_ref()
-            .ok_or(AgentBackendError::NoAgentProvider)
-            .cloned()
+        use toadstool_common::primal_identity::ComputeCapability;
+        let capability = Capability::Compute(ComputeCapability::NativeExecution);
+
+        let discovered = CapabilityProvider::discover(capability)
+            .await
+            .map_err(|e| match e {
+                CapabilityError::NoProviderFound(_) => AgentBackendError::NoAgentProvider,
+                other => AgentBackendError::Capability(other),
+            })?;
+
+        let mut cache = self.provider.write().unwrap_or_else(|e| e.into_inner());
+        Ok(cache.get_or_insert(discovered).clone())
     }
 
     /// Deploy an AI agent
@@ -280,5 +287,35 @@ impl AgentBackend {
 impl Default for AgentBackend {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every public future must stay `Send` so the backend can be spawned.
+    ///
+    /// This is a compile-time check: holding a lock guard across an await
+    /// silently makes a future `!Send`, and nothing fails until a caller
+    /// tries to `tokio::spawn` it, possibly in another crate.
+    #[test]
+    fn public_futures_are_send() {
+        fn assert_send<T: Send>(_: T) {}
+
+        let backend = AgentBackend::new();
+        assert_send(backend.is_available());
+        assert_send(backend.list_agents());
+        assert_send(backend.list_models());
+        assert_send(backend.get_agent_status("agent"));
+        assert_send(backend.stop_agent("agent"));
+        assert_send(backend.remove_agent("agent"));
+        assert_send(backend.unload_model("model"));
+        assert_send(backend.provider_info());
+    }
+
+    #[tokio::test]
+    async fn provider_info_is_none_before_discovery() {
+        assert!(AgentBackend::new().provider_info().await.is_none());
     }
 }
