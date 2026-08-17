@@ -214,7 +214,19 @@ impl<'a> VbiosInterpreter<'a> {
             let op = self.rd08(self.offset);
             self.stats.ops_executed += 1;
 
+            // Per-opcode trace. A desync only shows up as the *sequence* of
+            // offsets: an opcode whose length is wrong is invisible on its own
+            // and obvious the moment you can see what the walk did next.
+            // Off unless TRACE is enabled, so it costs nothing in production.
+            let before = self.offset;
             opcodes::dispatch_opcode(self, op, cond_table)?;
+            tracing::trace!(
+                at = format!("{before:#06x}"),
+                op = format!("{op:#04x}"),
+                len = self.offset.wrapping_sub(before),
+                next = format!("{:#06x}", self.offset),
+                "vbios op"
+            );
         }
 
         self.nested -= 1;
@@ -608,6 +620,57 @@ mod offline_interpreter_tests {
                 bus.writes().is_empty(),
                 "a {pct}% unknown parse issued {} writes — the guard failed",
                 bus.writes().len()
+            );
+        }
+    }
+
+    /// Dump the opcode walk of one script, with the bytes at each step.
+    ///
+    /// A wrong opcode length is invisible on its own and obvious as soon as you
+    /// can see where the walk went next, so this is the first tool to reach for
+    /// on a desync. Run it against the script offset in question:
+    ///
+    /// ```text
+    /// cargo test -p toadstool-cylinder --lib dump_script_walk -- --ignored --nocapture
+    /// ```
+    ///
+    /// Ignored because it is a diagnostic, not an assertion, and because it
+    /// needs the gitignored vendor fixture.
+    #[test]
+    #[ignore = "diagnostic tool; prints a walk rather than asserting"]
+    fn dump_script_walk() {
+        const START: usize = 0x9271;
+        const MAX_STEPS: usize = 400;
+
+        let Some(rom) = fixture("k80_gk210.rom") else {
+            eprintln!("skipping: testdata/vbios/k80_gk210.rom not present");
+            return;
+        };
+
+        let bus = RecordingBus::default();
+        let mut vm = VbiosInterpreter::validating(&bus, &rom, START, BiosGeneration::Kepler);
+        let cond = vm.find_condition_table();
+
+        for _ in 0..MAX_STEPS {
+            if vm.offset == 0 {
+                eprintln!("script ended");
+                break;
+            }
+            let at = vm.offset;
+            let op = vm.rd08(at);
+            let bytes: Vec<String> = rom[at..(at + 8).min(rom.len())]
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            if super::opcodes::dispatch_opcode(&mut vm, op, cond).is_err() {
+                eprintln!("{at:#06x}: {op:#04x} ERROR  [{}]", bytes.join(" "));
+                break;
+            }
+            eprintln!(
+                "{at:#06x}: {op:#04x} len {:>3} -> {:#06x}  [{}]",
+                vm.offset.wrapping_sub(at),
+                vm.offset,
+                bytes.join(" ")
             );
         }
     }
