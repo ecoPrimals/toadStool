@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`UniversalSubstrateCapabilities::detect_all()` documented as missing** (D-SUBSTRATE-DETECT-ALL). It is advertised in module docs and called by a gated unit test but was never written; the detectors exist, the mapping into ten typed hierarchies does not. Its two tests are kept disabled beside the gap under `#[cfg(any())]` rather than deleted or faked.
 - `tokio`'s `process` feature moved to `cli` dev-dependencies, keeping it out of the shipped binary.
 
+### Session S383b (Aug 17, 2026) — `await_holding_lock` denied; six more found
+
+- **`clippy::await_holding_lock` and `await_holding_invalid_type` are now `deny`** at the workspace root. Enabling the lint turned a four-instance hand-count into **ten**: `send_heartbeat`, `execute_with_os_layer`, `evaluate_migration_targets`, `record_resource_snapshot`, `get_statistics`, plus the auth and storage backends.
+- **Fixing one instance of a duplicated defect left two live.** S382 fixed `AgentBackend::get_provider`; the identical function had been copy-pasted into `auth_backend_evolved` and `storage_backend_evolved`, and both still held a write guard across provider discovery — serialising every caller behind one round-trip. When a fix lands, grep for the shape of the bug.
+- **`get_statistics` held a `std` guard across a `tokio` `.read().await`** — two lock families interleaved in one function, which no single-family review would have caught.
+- **`CloudProviderRegistry` now stores `Arc<P>` rather than `Box<P>`** and exposes `handle()`. With `Box`, `get()` borrows from the registry and pins the lock guard for as long as the provider is used, so the await could not be moved out of the critical section without the ownership change. `os_layer`'s `compatibility_layers` changed the same way.
+- **The lint was verified non-inert** before being trusted: the pre-fix shape was re-injected and clippy confirmed to reject it. That check also caught that `-p toadstool-core` (`crates/toadstool-core`) is a different package from `-p toadstool` (`crates/core/toadstool`), so an earlier verification had measured the wrong crate.
+- 2,121 lib tests pass; `cargo test --workspace --no-run` still exits 0.
+
 ### Session S382 (Aug 16-17, 2026) — Vendor Tool Excision + Test Recovery
 
 - **GPU detection evolved off vendor tools** — `nvidia-smi`, `rocm-smi`, and `lspci` replaced by native sysfs + procfs. Detection goes **1 → 4 GPUs** on biomeGate: `nvidia-smi` reports only devices bound to the proprietary driver, so it missed an unbound Titan V and both `vfio-pci` Tesla K80 dies — the sovereign configuration this project targets.

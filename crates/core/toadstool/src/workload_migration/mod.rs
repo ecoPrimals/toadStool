@@ -182,7 +182,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
     }
 
     /// Register a cloud provider
-    pub async fn register_provider(&self, provider: Box<P>) {
+    pub async fn register_provider(&self, provider: Arc<P>) {
         let name = provider.name().to_string();
         self.providers
             .write()

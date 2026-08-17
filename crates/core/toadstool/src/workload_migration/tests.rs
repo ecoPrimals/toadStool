@@ -237,7 +237,7 @@ async fn test_provider_registration() {
     assert_eq!(initial.len(), 0);
 
     coordinator
-        .register_provider(Box::new(MockCloudProvider {
+        .register_provider(std::sync::Arc::new(MockCloudProvider {
             name: "TestCloud".to_string(),
             supports_gpu: true,
         }))
@@ -350,7 +350,7 @@ async fn coordinator_with_provider() -> MigrationCoordinator<MockCloudProvider> 
         .await
         .unwrap();
     coordinator
-        .register_provider(Box::new(MockCloudProvider {
+        .register_provider(std::sync::Arc::new(MockCloudProvider {
             name: "TestCloud".to_string(),
             supports_gpu: true,
         }))

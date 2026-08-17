@@ -121,7 +121,9 @@ async fn planner_local_minimize_cost_stays_local() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "cost-wl",
@@ -149,7 +151,9 @@ async fn planner_local_max_cost_per_hour_stays_local() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "local-wl",
@@ -170,7 +174,9 @@ async fn planner_local_no_constraints_sufficient() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "local-wl",
@@ -196,7 +202,9 @@ async fn planner_local_requires_gpu_may_migrate() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "gpu-wl",
@@ -220,7 +228,9 @@ async fn planner_cloud_minimize_cost() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "cloud-wl",
@@ -244,7 +254,9 @@ async fn planner_cloud_max_cost_per_hour() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "cloud-wl",
@@ -267,7 +279,9 @@ async fn planner_cloud_no_cost_constraint() {
     let coordinator = MigrationCoordinator::<MockProvider>::new()
         .await
         .expect("coordinator");
-    coordinator.register_provider(Box::new(MockProvider)).await;
+    coordinator
+        .register_provider(std::sync::Arc::new(MockProvider))
+        .await;
     coordinator
         .track_workload(
             "cloud-wl",

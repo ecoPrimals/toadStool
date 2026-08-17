@@ -102,28 +102,29 @@ impl AuthBackend {
     /// This discovers the provider by capability:
     /// "Who can manage tokens?" not "Connect to a specific primal"
     async fn get_provider(&self) -> Result<CapabilityProvider> {
-        let mut provider_lock = self.provider.write().unwrap_or_else(|e| e.into_inner());
-
-        if provider_lock.is_none() {
-            // Discover security provider by capability
-            use toadstool_common::primal_identity::AuthCapability;
-            let capability = Capability::Authentication(AuthCapability::TokenManagement);
-
-            let discovered =
-                CapabilityProvider::discover(capability)
-                    .await
-                    .map_err(|e| match e {
-                        CapabilityError::NoProviderFound(_) => AuthBackendError::NoSecurityProvider,
-                        other => AuthBackendError::Capability(other),
-                    })?;
-
-            *provider_lock = Some(discovered);
+        // Check the cache, then release the lock before discovering. Holding
+        // the write guard across the await made this future !Send and
+        // serialised every caller behind one discovery round-trip.
+        {
+            let cached = self.provider.read().unwrap_or_else(|e| e.into_inner());
+            if let Some(provider) = cached.as_ref() {
+                return Ok(provider.clone());
+            }
         }
 
-        provider_lock
-            .as_ref()
-            .ok_or(AuthBackendError::NoSecurityProvider)
-            .cloned()
+        // Discover security provider by capability
+        use toadstool_common::primal_identity::AuthCapability;
+        let capability = Capability::Authentication(AuthCapability::TokenManagement);
+
+        let discovered = CapabilityProvider::discover(capability)
+            .await
+            .map_err(|e| match e {
+                CapabilityError::NoProviderFound(_) => AuthBackendError::NoSecurityProvider,
+                other => AuthBackendError::Capability(other),
+            })?;
+
+        let mut cache = self.provider.write().unwrap_or_else(|e| e.into_inner());
+        Ok(cache.get_or_insert(discovered).clone())
     }
 
     /// Request a new token

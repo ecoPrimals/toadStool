@@ -232,15 +232,16 @@ impl SecurityMonitor {
             memory_total_bytes: mem_total,
         };
 
-        let mut history = self
-            .resource_history
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if history.len() >= 64 {
-            history.pop_front();
+        {
+            let mut history = self
+                .resource_history
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if history.len() >= 64 {
+                history.pop_front();
+            }
+            history.push_back(snapshot);
         }
-        history.push_back(snapshot);
-        drop(history);
 
         if mem_total > 0 {
             let mem_pct = mem_used as f64 / mem_total as f64 * 100.0;

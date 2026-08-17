@@ -157,7 +157,7 @@ mod tests {
     async fn test_provider_registry() {
         let mut registry = CloudProviderRegistry::<MockProvider>::new();
 
-        let provider = Box::new(MockProvider {
+        let provider = std::sync::Arc::new(MockProvider {
             name: "TestCloud".to_string(),
         });
 

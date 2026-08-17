@@ -22,22 +22,31 @@ impl UniversalGpuEngine {
     /// Get engine statistics
     pub async fn get_statistics(&self) -> ComputeEngineStatistics {
         let devices = self.devices.read().await;
-        let sessions = self
-            .active_sessions
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let frameworks = self.frameworks.read().await;
 
-        let recursive_sessions = sessions.values().filter(|s| s.recursion_depth > 0).count();
-        let max_recursion_depth = sessions
-            .values()
-            .map(|s| s.recursion_depth)
-            .max()
-            .unwrap_or(0);
+        // `active_sessions` is a std lock while `frameworks` is a tokio one.
+        // Reduce the sessions to plain numbers and release the std guard before
+        // the next await, otherwise it spans it and makes this future !Send.
+        let (active_sessions, recursive_sessions, max_recursion_depth) = {
+            let sessions = self
+                .active_sessions
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            (
+                sessions.len(),
+                sessions.values().filter(|s| s.recursion_depth > 0).count(),
+                sessions
+                    .values()
+                    .map(|s| s.recursion_depth)
+                    .max()
+                    .unwrap_or(0),
+            )
+        };
+
+        let frameworks = self.frameworks.read().await;
 
         ComputeEngineStatistics {
             total_devices: devices.len(),
-            active_sessions: sessions.len(),
+            active_sessions,
             frameworks_available: frameworks.len(),
             recursive_sessions,
             max_recursion_depth,

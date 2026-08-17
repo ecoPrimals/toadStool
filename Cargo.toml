@@ -313,6 +313,16 @@ missing_const_for_fn = "allow"     # Compiler will inline regardless; const adds
 option_if_let_else = "allow"       # match/if-let is often clearer than map_or
 significant_drop_tightening = "allow" # False positives on lock guards
 
+# Holding a std::sync guard across an await makes the future !Send and can
+# deadlock. Found four times by hand (AgentBackend S382; RuntimeOrchestrator,
+# show_logs, list_biomes S383) — three of those only surfaced because a test
+# tried to tokio::spawn them. Denied so the fifth cannot land silently.
+# Note: significant_drop_tightening above is allowed for noise, but this lint
+# is the precise, low-false-positive form of the same concern. Do not relax it
+# to "allow" to make a build pass; take the snapshot and drop the guard.
+await_holding_lock = "deny"
+await_holding_invalid_type = "deny"
+
 # Pedantic lint exceptions — match_same_arms is common in dispatch tables
 match_same_arms = "allow"          # Dispatch tables intentionally share arms for clarity
 # RPITIT / trait impls often use `fn -> impl Future { async {} }` for Send bounds; async-fn-in-trait has tradeoffs

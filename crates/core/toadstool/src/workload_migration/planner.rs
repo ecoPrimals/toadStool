@@ -3,6 +3,8 @@
 
 //! Migration planning logic — evaluation of when and where to migrate.
 
+use std::sync::Arc;
+
 use crate::cloud_provider_trait::{CloudProvider, WorkloadLocation, WorkloadSpec};
 use crate::composition_constraints::{CompositionRequest, Constraint, ConstraintPriority};
 use crate::workload_migration::{CostImpact, MigrationRecommendation, MigrationTarget};
@@ -65,8 +67,19 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         constraints: &[Constraint],
         current_location: Option<&WorkloadLocation>,
     ) -> ToadStoolResult<MigrationRecommendation> {
-        let registry = self.providers.read().unwrap_or_else(|e| e.into_inner());
-        let available = registry.available_providers();
+        // Take owned provider handles and release the registry lock before any
+        // await. Holding the guard through the capability/cost queries made
+        // this future !Send and blocked provider registration for the whole
+        // round of network calls.
+        let handles: Vec<(String, Arc<P>)> = {
+            let registry = self.providers.read().unwrap_or_else(|e| e.into_inner());
+            registry
+                .available_providers()
+                .into_iter()
+                .filter_map(|name| registry.handle(&name).map(|p| (name, p)))
+                .collect()
+        };
+        let available: Vec<String> = handles.iter().map(|(n, _)| n.clone()).collect();
 
         if available.is_empty() {
             return Ok(MigrationRecommendation {
@@ -89,9 +102,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         match current_location {
             None | Some(WorkloadLocation::Local { .. }) => {
                 if requires_gpu && !self.runtime.has_direct_gpu_access() {
-                    let best = self
-                        .query_best_gpu_provider(&registry, &available, workload_id)
-                        .await;
+                    let best = self.query_best_gpu_provider(&handles, workload_id).await;
                     match best {
                         Some((provider, region, cost)) => Ok(MigrationRecommendation {
                             should_migrate: true,
@@ -148,7 +159,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
             }) => {
                 if has_cost_constraint {
                     let cloud_cost = self
-                        .query_provider_cost(&registry, provider, workload_id, region)
+                        .query_provider_cost(&handles, provider, workload_id, region)
                         .await;
                     Ok(MigrationRecommendation {
                         should_migrate: true,
@@ -178,10 +189,11 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         }
     }
 
+    /// Takes owned provider handles rather than a registry reference so the
+    /// caller can drop its lock guard before awaiting.
     async fn query_best_gpu_provider(
         &self,
-        registry: &crate::cloud_provider_trait::CloudProviderRegistry<P>,
-        available: &[String],
+        handles: &[(String, Arc<P>)],
         workload_id: &str,
     ) -> Option<(String, String, f64)> {
         let spec = WorkloadSpec {
@@ -196,10 +208,7 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
 
         let mut best: Option<(String, String, f64)> = None;
 
-        for name in available {
-            let Some(provider) = registry.get(name) else {
-                continue;
-            };
+        for (name, provider) in handles {
             let caps = match provider.capabilities().await {
                 Ok(c) if c.supports_gpu => c,
                 Ok(_) => continue,
@@ -222,14 +231,19 @@ impl<P: CloudProvider> MigrationCoordinator<P> {
         best
     }
 
+    /// Takes owned provider handles rather than a registry reference so the
+    /// caller can drop its lock guard before awaiting.
     async fn query_provider_cost(
         &self,
-        registry: &crate::cloud_provider_trait::CloudProviderRegistry<P>,
+        handles: &[(String, Arc<P>)],
         provider_name: &str,
         workload_id: &str,
         region: &str,
     ) -> Option<f64> {
-        let provider = registry.get(provider_name)?;
+        let provider = handles
+            .iter()
+            .find(|(name, _)| name == provider_name)
+            .map(|(_, p)| p)?;
         let spec = WorkloadSpec {
             id: workload_id.to_string(),
             memory_gb: 8.0,
@@ -357,7 +371,9 @@ mod tests {
         let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
-        coordinator.register_provider(Box::new(MockProvider)).await;
+        coordinator
+            .register_provider(std::sync::Arc::new(MockProvider))
+            .await;
         coordinator
             .track_workload(
                 "cost-wl",
@@ -385,7 +401,9 @@ mod tests {
         let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
-        coordinator.register_provider(Box::new(MockProvider)).await;
+        coordinator
+            .register_provider(std::sync::Arc::new(MockProvider))
+            .await;
         coordinator
             .track_workload(
                 "cloud-wl",
@@ -416,7 +434,9 @@ mod tests {
         let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
-        coordinator.register_provider(Box::new(MockProvider)).await;
+        coordinator
+            .register_provider(std::sync::Arc::new(MockProvider))
+            .await;
         coordinator
             .track_workload(
                 "local-wl",

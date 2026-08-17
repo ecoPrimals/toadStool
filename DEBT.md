@@ -874,6 +874,39 @@ release the lock before awaiting. This is the same defect fixed in
 `AgentBackend::get_provider` — a *fourth* instance, which makes it a pattern
 worth linting rather than fixing case by case.
 
+**S383b — the lint found six more.** `clippy::await_holding_lock` is now
+`deny` at the workspace root. Enabling it turned a four-instance hand-count
+into ten:
+
+| Site | Note |
+|---|---|
+| `ecosystem/communication::send_heartbeat` | guard held through the network send |
+| `os_layer/manager::execute_with_os_layer` | awaited *inside* the iteration holding the guard |
+| `workload_migration/planner::evaluate_migration_targets` | guard spanned a whole round of provider capability/cost queries |
+| `security/monitoring::record_resource_snapshot` | had a correct `drop`; scoped for clarity |
+| `runtime/gpu/engine/meta::get_statistics` | a **std** guard spanning a **tokio** `.read().await` — mixed lock families in one function |
+| `auth_backend_evolved::get_provider` | ← |
+| `storage_backend_evolved::get_provider` | ← copy-paste siblings of the S382 `AgentBackend` fix |
+
+The last two matter most as a process lesson: S382 fixed `AgentBackend::get_provider`
+and stopped. The identical function had been copy-pasted into the auth and
+storage backends, and fixing one instance of a duplicated defect left two live.
+**When a fix lands, grep for the shape of the bug, not just the symptom.**
+
+Two structural changes were needed rather than local ones. `CloudProviderRegistry`
+now stores `Arc<P>` instead of `Box<P>` and exposes `handle()` — with `Box`,
+`get()` borrows from the registry, which pins the guard for as long as the
+provider is in use, so no amount of local rearrangement fixes it. The OS layer's
+`compatibility_layers` map went the same way.
+
+**Verifying the lint is not inert**: a lint that has never fired is
+indistinguishable from one that cannot. The pre-fix shape was re-injected into
+`RuntimeOrchestrator::execute` and clippy was confirmed to reject it before the
+`deny` was trusted. That check also exposed a measurement error — `-p toadstool-core`
+is `crates/toadstool-core`, a *different* package from `crates/core/toadstool`
+(`-p toadstool`), so an earlier verification run had tested the wrong crate.
+**Two packages differing only by path/name arrangement is itself a trap.**
+
 The E0275 `wgpu` overflow was a red herring: raising `recursion_limit` to 256
 in the one affected test revealed it had been *masking* the third `!Send` bug.
 A resolver overflow can hide a real error underneath it.

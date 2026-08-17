@@ -18,7 +18,10 @@ pub use super::compat::{CompatibilityLayer, CompatibilityLayerDispatch};
 /// OS Layer Manager for universal compatibility
 pub struct OSLayerManager {
     /// Available compatibility layers
-    compatibility_layers: Arc<RwLock<HashMap<String, CompatibilityLayerDispatch>>>,
+    // Arc-wrapped so a layer can be selected under the lock and executed after
+    // releasing it; the dispatch type is not Clone and executing while holding
+    // the guard makes the caller !Send.
+    compatibility_layers: Arc<RwLock<HashMap<String, Arc<CompatibilityLayerDispatch>>>>,
     /// OS layer configuration
     config: OSLayerConfig,
 }
@@ -133,7 +136,7 @@ impl OSLayerManager {
             let linux_layer = LinuxCompatibilityLayer::new();
             layers.insert(
                 "linux".to_string(),
-                CompatibilityLayerDispatch::Linux(linux_layer),
+                Arc::new(CompatibilityLayerDispatch::Linux(linux_layer)),
             );
         }
 
@@ -142,7 +145,7 @@ impl OSLayerManager {
             let windows_layer = WindowsCompatibilityLayer::new();
             layers.insert(
                 "windows".to_string(),
-                CompatibilityLayerDispatch::Windows(windows_layer),
+                Arc::new(CompatibilityLayerDispatch::Windows(windows_layer)),
             );
         }
 
@@ -151,7 +154,7 @@ impl OSLayerManager {
             let macos_layer = MacOSCompatibilityLayer::new();
             layers.insert(
                 "macos".to_string(),
-                CompatibilityLayerDispatch::MacOS(macos_layer),
+                Arc::new(CompatibilityLayerDispatch::MacOS(macos_layer)),
             );
         }
 
@@ -160,7 +163,7 @@ impl OSLayerManager {
             let legacy_layer = LegacyCompatibilityLayer::new();
             layers.insert(
                 "legacy".to_string(),
-                CompatibilityLayerDispatch::Legacy(legacy_layer),
+                Arc::new(CompatibilityLayerDispatch::Legacy(legacy_layer)),
             );
         }
         drop(layers);
@@ -178,17 +181,23 @@ impl OSLayerManager {
         _job: &UniversalJob,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
-        // Try to find a suitable compatibility layer
-        for (name, layer) in self
-            .compatibility_layers
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .iter()
-        {
-            if layer.can_handle(&request) {
-                info!("Using compatibility layer: {}", name);
-                return layer.execute_with_compatibility(request).await;
-            }
+        // Select under the lock, execute after releasing it. Awaiting inside
+        // the iteration held the read guard for the whole execution, blocking
+        // layer registration and making this future !Send.
+        let selected = {
+            let layers = self
+                .compatibility_layers
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            layers
+                .iter()
+                .find(|(_, layer)| layer.can_handle(&request))
+                .map(|(name, layer)| (name.clone(), Arc::clone(layer)))
+        };
+
+        if let Some((name, layer)) = selected {
+            info!("Using compatibility layer: {}", name);
+            return layer.execute_with_compatibility(request).await;
         }
 
         Err(crate::ToadStoolError::not_supported(

@@ -203,16 +203,23 @@ impl CommunicationManager {
     ///
     /// Returns error if the channel is missing or sending the heartbeat message fails.
     pub async fn send_heartbeat(&self, service_id: &str) -> ToadStoolResult<()> {
-        let channels = self.channels.read().unwrap_or_else(|e| e.into_inner());
-        let channel = channels
-            .get(service_id)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found: {service_id}")))?;
+        // Snapshot the channel and release the lock before sending. Holding
+        // the read guard across the await made this future !Send and blocked
+        // every other channel operation for the duration of the network call.
+        let channel = {
+            let channels = self.channels.read().unwrap_or_else(|e| e.into_inner());
+            channels
+                .get(service_id)
+                .ok_or_else(|| {
+                    ToadStoolError::not_found(format!("Channel not found: {service_id}"))
+                })?
+                .clone()
+        };
 
         let heartbeat_msg = EcosystemMessage::heartbeat(PRIMAL_NAME, channel.service_name.clone());
 
-        self.send_message(channel, heartbeat_msg).await?;
+        self.send_message(&channel, heartbeat_msg).await?;
 
-        drop(channels);
         if let Some(channel) = self
             .channels
             .write()
