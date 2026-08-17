@@ -142,13 +142,13 @@ impl SecurityExt for super::OrchestrationNetworkConfigurator {
                 )));
             }
             for p in &rule.ports {
-                if let Some(end) = p.end_port {
-                    if end < p.port {
-                        return Err(toadstool::error::ToadStoolError::configuration(format!(
-                            "Ingress rule `{}`: port range end {} is before start {}",
-                            rule.name, end, p.port
-                        )));
-                    }
+                if let Some(end) = p.end_port
+                    && end < p.port
+                {
+                    return Err(toadstool::error::ToadStoolError::configuration(format!(
+                        "Ingress rule `{}`: port range end {} is before start {}",
+                        rule.name, end, p.port
+                    )));
                 }
             }
         }
@@ -166,13 +166,13 @@ impl SecurityExt for super::OrchestrationNetworkConfigurator {
                 )));
             }
             for p in &rule.ports {
-                if let Some(end) = p.end_port {
-                    if end < p.port {
-                        return Err(toadstool::error::ToadStoolError::configuration(format!(
-                            "Egress rule `{}`: port range end {} is before start {}",
-                            rule.name, end, p.port
-                        )));
-                    }
+                if let Some(end) = p.end_port
+                    && end < p.port
+                {
+                    return Err(toadstool::error::ToadStoolError::configuration(format!(
+                        "Egress rule `{}`: port range end {} is before start {}",
+                        rule.name, end, p.port
+                    )));
                 }
             }
         }

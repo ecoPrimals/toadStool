@@ -170,10 +170,10 @@ impl MultiWorkloadCompositor {
 
             placements.push(placement);
 
-            if !evaluation.is_feasible {
-                if let Some(c) = scheduling::detect_conflict(request, &placements) {
-                    conflicts.push(c);
-                }
+            if !evaluation.is_feasible
+                && let Some(c) = scheduling::detect_conflict(request, &placements)
+            {
+                conflicts.push(c);
             }
         }
 

@@ -138,7 +138,7 @@ impl LegacyAdapter for PLCAdapter {
 
             self.active_jobs
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .insert(job.job_id, plc_job);
             Ok(job.job_id)
         }
@@ -149,7 +149,10 @@ impl LegacyAdapter for PLCAdapter {
         job_id: Uuid,
     ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
         async move {
-            let jobs = self.active_jobs.read().unwrap_or_else(|e| e.into_inner());
+            let jobs = self
+                .active_jobs
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             jobs.get(&job_id).map_or_else(
                 || {
                     Err(ToadStoolError::runtime(format!(
@@ -164,7 +167,10 @@ impl LegacyAdapter for PLCAdapter {
 
     fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
-            let mut jobs = self.active_jobs.write().unwrap_or_else(|e| e.into_inner());
+            let mut jobs = self
+                .active_jobs
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }
@@ -278,7 +284,7 @@ impl LegacyAdapter for SCADAAdapter {
 
             self.active_jobs
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .insert(job.job_id, scada_job);
             Ok(job.job_id)
         }
@@ -289,7 +295,10 @@ impl LegacyAdapter for SCADAAdapter {
         job_id: Uuid,
     ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
         async move {
-            let jobs = self.active_jobs.read().unwrap_or_else(|e| e.into_inner());
+            let jobs = self
+                .active_jobs
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             jobs.get(&job_id).map_or_else(
                 || {
                     Err(ToadStoolError::runtime(format!(
@@ -304,7 +313,10 @@ impl LegacyAdapter for SCADAAdapter {
 
     fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
         async move {
-            let mut jobs = self.active_jobs.write().unwrap_or_else(|e| e.into_inner());
+            let mut jobs = self
+                .active_jobs
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }

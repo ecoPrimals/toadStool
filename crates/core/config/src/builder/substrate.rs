@@ -118,12 +118,12 @@ impl ToadStoolConfigTrait for SubstrateConfig {
     }
 
     fn validate(&self) -> Result<()> {
-        if let Some(w) = self.power_budget_watts {
-            if !w.is_finite() || w <= 0.0 {
-                return Err(ConfigError::Validation(
-                    "power_budget_watts must be positive and finite when set".to_string(),
-                ));
-            }
+        if let Some(w) = self.power_budget_watts
+            && (!w.is_finite() || w <= 0.0)
+        {
+            return Err(ConfigError::Validation(
+                "power_budget_watts must be positive and finite when set".to_string(),
+            ));
         }
         if self.fallback_order.is_empty() {
             return Err(ConfigError::Validation(

@@ -41,12 +41,12 @@ fn validate_service(name: &str, spec: &ServiceSpec) -> ToadStoolResult<()> {
 
     let mut seen_host_ports = HashSet::new();
     for port_mapping in &spec.ports {
-        if let Some(host_port) = port_mapping.host_port {
-            if !seen_host_ports.insert(host_port) {
-                return Err(ToadStoolError::validation(format!(
-                    "Service '{name}' has duplicate host port: {host_port}"
-                )));
-            }
+        if let Some(host_port) = port_mapping.host_port
+            && !seen_host_ports.insert(host_port)
+        {
+            return Err(ToadStoolError::validation(format!(
+                "Service '{name}' has duplicate host port: {host_port}"
+            )));
         }
     }
 

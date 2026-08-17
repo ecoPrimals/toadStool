@@ -79,19 +79,19 @@ impl TrafficExt for super::OrchestrationNetworkConfigurator {
             ));
         }
 
-        if config.rate_limiting.enabled {
-            if let Some(ref global) = config.rate_limiting.global_limit {
-                if global.requests_per_second == 0 || global.burst_size == 0 {
-                    return Err(toadstool::error::ToadStoolError::configuration(
+        if config.rate_limiting.enabled
+            && let Some(ref global) = config.rate_limiting.global_limit
+        {
+            if global.requests_per_second == 0 || global.burst_size == 0 {
+                return Err(toadstool::error::ToadStoolError::configuration(
                         "Global rate limit requests_per_second and burst_size must be non-zero when set"
                             .to_string(),
                     ));
-                }
-                if global.window_size.is_zero() {
-                    return Err(toadstool::error::ToadStoolError::configuration(
-                        "Global rate limit window_size cannot be zero".to_string(),
-                    ));
-                }
+            }
+            if global.window_size.is_zero() {
+                return Err(toadstool::error::ToadStoolError::configuration(
+                    "Global rate limit window_size cannot be zero".to_string(),
+                ));
             }
         }
 

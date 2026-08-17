@@ -87,7 +87,7 @@ where
                 .write()
                 .unwrap_or_else(|e| e.into_inner())
                 .entry(cap_key)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(instance_id.clone());
         }
 
@@ -95,8 +95,8 @@ where
         self.context_index
             .write()
             .unwrap_or_else(|e| e.into_inner())
-            .entry(context.user_id.clone())
-            .or_insert_with(Vec::new)
+            .entry(context.user_id)
+            .or_default()
             .push(instance_id.clone());
 
         // Index type
@@ -105,7 +105,7 @@ where
             .write()
             .unwrap_or_else(|e| e.into_inner())
             .entry(type_key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(instance_id.clone());
 
         info!("Registered primal provider: {}", instance_id);

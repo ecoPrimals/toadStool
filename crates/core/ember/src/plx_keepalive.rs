@@ -234,11 +234,11 @@ impl PcieBridgeKeepalive {
                 ticker.tick().await;
 
                 // Skip synthetic heartbeat if real traffic was recent
-                if let Some(ref tracker) = activity {
-                    if tracker.ms_since_last() < interval.as_millis() as u64 {
-                        heartbeats.fetch_add(1, Ordering::Relaxed);
-                        continue;
-                    }
+                if let Some(ref tracker) = activity
+                    && tracker.ms_since_last() < interval.as_millis() as u64
+                {
+                    heartbeats.fetch_add(1, Ordering::Relaxed);
+                    continue;
                 }
 
                 let mut all_alive = true;

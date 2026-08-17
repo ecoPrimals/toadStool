@@ -164,7 +164,10 @@ impl DisplayServer {
         );
 
         // Update transport
-        *self.transport.write().unwrap_or_else(|e| e.into_inner()) = Some(IpcTransport::UnixSocket);
+        *self
+            .transport
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(IpcTransport::UnixSocket);
 
         // Accept loop
         loop {
@@ -205,7 +208,10 @@ impl DisplayServer {
         platform::write_tcp_discovery_file(&local_addr);
 
         // Update transport
-        *self.transport.write().unwrap_or_else(|e| e.into_inner()) =
+        *self
+            .transport
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
             Some(IpcTransport::TcpFallback(local_addr));
 
         tracing::info!("   Status: READY ✅ (isomorphic TCP fallback active)");
@@ -327,7 +333,7 @@ impl DisplayServer {
     pub async fn transport(&self) -> Option<IpcTransport> {
         self.transport
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 }

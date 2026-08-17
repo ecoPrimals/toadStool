@@ -221,10 +221,10 @@ impl AuthenticationManager {
     ///
     /// Returns an error if token request or refresh fails.
     pub async fn get_current_token(&self) -> ToadStoolResult<AuthenticationToken> {
-        if let Some(token) = &self.current_token {
-            if token.expires_at > SystemTime::now() + Duration::from_secs(30) {
-                return Ok(token.clone());
-            }
+        if let Some(token) = &self.current_token
+            && token.expires_at > SystemTime::now() + Duration::from_secs(30)
+        {
+            return Ok(token.clone());
         }
         self.request_new_token().await
     }

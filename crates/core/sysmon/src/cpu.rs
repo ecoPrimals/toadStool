@@ -22,10 +22,10 @@ pub fn cpu_brand() -> Result<String> {
     let content = std::fs::read_to_string("/proc/cpuinfo")
         .map_err(|e| SysmonError::new("/proc/cpuinfo", e))?;
     for line in content.lines() {
-        if let Some(value) = line.strip_prefix("model name") {
-            if let Some(brand) = value.trim_start().strip_prefix(':') {
-                return Ok(brand.trim().to_string());
-            }
+        if let Some(value) = line.strip_prefix("model name")
+            && let Some(brand) = value.trim_start().strip_prefix(':')
+        {
+            return Ok(brand.trim().to_string());
         }
     }
     Ok(String::from("Unknown CPU"))

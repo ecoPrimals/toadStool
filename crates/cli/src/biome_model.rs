@@ -575,7 +575,7 @@ impl From<toadstool_core::manifest::BiomeManifest> for BiomeManifest {
                         .volumes
                         .into_iter()
                         .map(|v| VolumeConfig {
-                            name: v.source.clone(),
+                            name: v.source,
                             driver: "local".into(),
                             options: HashMap::new(),
                         })

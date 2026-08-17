@@ -50,10 +50,10 @@ pub fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
                 let mut capabilities = Vec::new();
                 for prop in info.get_properties().iter() {
                     let key = prop.key();
-                    if let Some(cap_name) = key.strip_prefix("cap_") {
-                        if !cap_name.ends_with("_features") {
-                            capabilities.push(cap_name.to_string());
-                        }
+                    if let Some(cap_name) = key.strip_prefix("cap_")
+                        && !cap_name.ends_with("_features")
+                    {
+                        capabilities.push(cap_name.to_string());
                     }
                 }
                 if capabilities.iter().any(|c| c == capability) {

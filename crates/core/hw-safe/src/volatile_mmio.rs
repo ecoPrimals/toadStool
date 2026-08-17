@@ -106,7 +106,7 @@ impl VolatileMmio<'_> {
     fn check_alignment<T>(&self, offset: usize) -> Result<(), MmioError> {
         let align = std::mem::align_of::<T>();
         let addr = (self.ptr.as_ptr() as usize).wrapping_add(offset);
-        if addr % align != 0 {
+        if !addr.is_multiple_of(align) {
             return Err(MmioError::Misaligned {
                 address: addr,
                 alignment: align,

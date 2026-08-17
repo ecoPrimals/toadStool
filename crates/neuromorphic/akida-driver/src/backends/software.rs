@@ -240,11 +240,11 @@ impl SoftwareBackend {
             let mut val = 0.0f32;
             // W_in contribution
             for (j, &inp) in input.iter().enumerate().take(is.min(input.len())) {
-                val += self.w_in[i * is + j] * inp;
+                val = self.w_in[i * is + j].mul_add(inp, val);
             }
             // W_res contribution
             for j in 0..rs {
-                val += self.w_res[i * rs + j] * self.state[j];
+                val = self.w_res[i * rs + j].mul_add(self.state[j], val);
             }
             *pre_slot = val;
         }

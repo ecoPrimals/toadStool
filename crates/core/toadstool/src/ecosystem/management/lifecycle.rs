@@ -28,7 +28,7 @@ impl ServiceManager {
         self.services
             .write()
             .unwrap_or_else(|e| e.into_inner())
-            .insert(service_id.clone(), service.clone());
+            .insert(service_id.clone(), service);
         self.statuses
             .write()
             .unwrap_or_else(|e| e.into_inner())

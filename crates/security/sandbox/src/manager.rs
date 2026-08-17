@@ -188,7 +188,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Store sandbox info
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             sandboxes.insert(sandbox_id.clone(), sandbox_info);
         }
 
@@ -210,7 +213,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status to ready
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(info) = sandboxes.get_mut(&sandbox_id) {
                 info.status = SandboxStatus::Ready;
                 info.updated_at = SystemTime::now();
@@ -226,7 +232,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status to running
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 if info.status != SandboxStatus::Ready {
                     return Err(ToadStoolError::runtime(format!(
@@ -272,7 +281,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 info.status = SandboxStatus::Completed;
                 info.updated_at = SystemTime::now();
@@ -289,7 +301,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update status to destroying
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 info.status = SandboxStatus::Destroying;
                 info.updated_at = SystemTime::now();
@@ -327,7 +342,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Remove from tracking
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             sandboxes.remove(sandbox_id);
         }
 
@@ -336,7 +354,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
     }
 
     async fn get_sandbox_info(&self, sandbox_id: &str) -> ToadStoolResult<SandboxInfo> {
-        let sandboxes = self.sandboxes.read().unwrap_or_else(|e| e.into_inner());
+        let sandboxes = self
+            .sandboxes
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         sandboxes
             .get(sandbox_id)
             .cloned()
@@ -344,7 +365,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
     }
 
     async fn list_sandboxes(&self) -> ToadStoolResult<Vec<String>> {
-        let sandboxes = self.sandboxes.read().unwrap_or_else(|e| e.into_inner());
+        let sandboxes = self
+            .sandboxes
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(sandboxes.keys().cloned().collect())
     }
 
@@ -366,7 +390,10 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Update stored resource usage
         {
-            let mut sandboxes = self.sandboxes.write().unwrap_or_else(|e| e.into_inner());
+            let mut sandboxes = self
+                .sandboxes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(info) = sandboxes.get_mut(sandbox_id) {
                 info.resource_usage = usage.clone();
                 info.updated_at = SystemTime::now();

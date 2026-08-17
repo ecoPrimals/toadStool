@@ -205,7 +205,7 @@ impl StandaloneExecutor {
             let active_executions = self
                 .active_executions
                 .read()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if active_executions.len() >= self.config.max_concurrent_executions as usize {
                 warn!("Rejecting execution - at capacity");
                 return Err(toadstool::ToadStoolError::resource(
@@ -219,7 +219,7 @@ impl StandaloneExecutor {
             let mut active_executions = self
                 .active_executions
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             active_executions.insert(execution_id, session);
         }
 
@@ -234,7 +234,7 @@ impl StandaloneExecutor {
         let mut active_executions = self
             .active_executions
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let session = active_executions.remove(&execution_id).ok_or_else(|| {
             toadstool::ToadStoolError::execution(format!(
                 "Execution {execution_id} not found (already completed or never submitted)"

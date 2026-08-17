@@ -35,7 +35,10 @@ impl DiscoveryEngine {
         }
 
         let service = {
-            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+            let cache = self
+                .cache
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             cache.get(capability)?.clone()
         };
 
@@ -54,7 +57,10 @@ impl DiscoveryEngine {
             return;
         }
 
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.insert(service.capability.clone(), service);
     }
 }

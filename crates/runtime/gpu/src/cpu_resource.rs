@@ -280,7 +280,10 @@ impl UniversalComputeResource for CpuComputeResource {
     }
 
     async fn utilization(&self) -> f32 {
-        *self.utilization.read().unwrap_or_else(|e| e.into_inner())
+        *self
+            .utilization
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     #[expect(
@@ -335,7 +338,10 @@ impl ComputeContext for CpuComputeContext {
 
         // Update utilization
         {
-            let mut util = self.utilization.write().unwrap_or_else(|e| e.into_inner());
+            let mut util = self
+                .utilization
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *util = 1.0; // Mark as busy
         }
 
@@ -358,7 +364,10 @@ impl ComputeContext for CpuComputeContext {
 
         // Update utilization
         {
-            let mut util = self.utilization.write().unwrap_or_else(|e| e.into_inner());
+            let mut util = self
+                .utilization
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *util = 0.0; // Mark as idle
         }
 

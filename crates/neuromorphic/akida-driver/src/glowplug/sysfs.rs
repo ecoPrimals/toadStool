@@ -76,7 +76,7 @@ pub fn read_power_state(bdf: &str) -> Option<String> {
 // ── Writes ────────────────────────────────────────────────────────────
 
 /// Direct sysfs write — for paths that never enter D-state
-/// (power/control, d3cold_allowed, reset_method, driver_override).
+/// (power/control, `d3cold_allowed`, `reset_method`, `driver_override`).
 ///
 /// Empty values are written as `"\n"` because the kernel ignores
 /// zero-byte writes (the sysfs store function is never invoked).
@@ -212,7 +212,7 @@ pub fn pin_bridge_power(bdf: &str) {
     }
 }
 
-/// Disable the kernel's reset_method for a device. This prevents
+/// Disable the kernel's `reset_method` for a device. This prevents
 /// firmware-destroying PCI resets during driver transitions.
 pub fn disable_reset_method(bdf: &str) {
     let path = sysfs_pci_device(bdf, "reset_method");
@@ -230,7 +230,7 @@ pub fn unbind_driver(bdf: &str, driver: &str) -> Result<()> {
     sysfs_write(&sysfs_pci_driver_unbind(driver), bdf)
 }
 
-/// Set the driver_override for a PCI device.
+/// Set the `driver_override` for a PCI device.
 pub fn set_driver_override(bdf: &str, driver: &str) -> Result<()> {
     sysfs_write_direct(&sysfs_pci_device(bdf, "driver_override"), driver)
 }
@@ -277,8 +277,7 @@ pub fn module_available(module: &str) -> bool {
     std::process::Command::new("modinfo")
         .arg(module)
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 // ── IOMMU group operations ───────────────────────────────────────────

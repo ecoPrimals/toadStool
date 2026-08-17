@@ -5,7 +5,7 @@
 //! Absorbed from coralReef's `coral-ember/src/swap/`. This is the only
 //! module that performs sysfs driver/unbind and drivers/*/bind writes.
 //!
-//! For the full swap orchestrator with HeldDevice fd management, DRM
+//! For the full swap orchestrator with `HeldDevice` fd management, DRM
 //! isolation, and multi-vendor rebind strategies, see:
 //! `primals/coralReef/crates/coral-ember/src/swap/`.
 
@@ -36,13 +36,13 @@ pub struct SwapOutcome {
 /// 1. Detect current driver
 /// 2. Run lifecycle `prepare_for_unbind` hooks
 /// 3. Unbind current driver (with D-state protection)
-/// 4. Set driver_override to target
+/// 4. Set `driver_override` to target
 /// 5. Load target module if needed
 /// 6. Bind target driver
 /// 7. Settle and stabilize
 /// 8. Verify health
 ///
-/// For vfio-pci targets, also disables reset_method and binds IOMMU
+/// For vfio-pci targets, also disables `reset_method` and binds IOMMU
 /// group peers.
 pub fn swap_to_driver(
     bdf: &str,

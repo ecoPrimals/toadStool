@@ -34,7 +34,10 @@ impl ComponentRegistry {
 
     /// Register a component interface
     pub async fn register_interface(&self, interface: ComponentInterface) -> ToadStoolResult<()> {
-        let mut interfaces = self.interfaces.write().unwrap_or_else(|e| e.into_inner());
+        let mut interfaces = self
+            .interfaces
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if interfaces.contains_key(&interface.name) {
             warn!("Overriding existing interface: {}", interface.name);
@@ -49,7 +52,10 @@ impl ComponentRegistry {
 
     /// Create a new component instance
     pub async fn create_instance(&self, interface_name: &str) -> ToadStoolResult<String> {
-        let instances = self.instances.read().unwrap_or_else(|e| e.into_inner());
+        let instances = self
+            .instances
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if instances.len() >= self.config.max_instances {
             return Err(ToadStoolError::resource(
@@ -61,7 +67,7 @@ impl ComponentRegistry {
         let interface = self
             .interfaces
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get(interface_name)
             .ok_or_else(|| {
                 ToadStoolError::not_found(format!("Interface not found: {interface_name}"))
@@ -82,7 +88,7 @@ impl ComponentRegistry {
 
         self.instances
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(instance_id.clone(), instance);
 
         info!("Created component instance: {}", instance_id);
@@ -91,7 +97,10 @@ impl ComponentRegistry {
 
     /// Get component instance
     pub async fn get_instance(&self, instance_id: &str) -> ToadStoolResult<ComponentInstance> {
-        let instances = self.instances.read().unwrap_or_else(|e| e.into_inner());
+        let instances = self
+            .instances
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let result = instances.get(instance_id).map_or_else(
             || {
                 Err(ToadStoolError::not_found(format!(
@@ -118,7 +127,10 @@ impl ComponentRegistry {
         instance_id: &str,
         state: ComponentState,
     ) -> ToadStoolResult<()> {
-        let mut instances = self.instances.write().unwrap_or_else(|e| e.into_inner());
+        let mut instances = self
+            .instances
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(instance) = instances.get_mut(instance_id) {
             instance.state = state;
@@ -132,7 +144,10 @@ impl ComponentRegistry {
 
     /// Remove component instance
     pub async fn remove_instance(&self, instance_id: &str) -> ToadStoolResult<()> {
-        let mut instances = self.instances.write().unwrap_or_else(|e| e.into_inner());
+        let mut instances = self
+            .instances
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if instances.remove(instance_id).is_some() {
             info!("Removed component instance: {}", instance_id);
@@ -146,14 +161,23 @@ impl ComponentRegistry {
 
     /// Get all active instances
     pub async fn get_active_instances(&self) -> Vec<String> {
-        let instances = self.instances.read().unwrap_or_else(|e| e.into_inner());
+        let instances = self
+            .instances
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         instances.keys().cloned().collect()
     }
 
     /// Get component statistics
     pub async fn get_stats(&self) -> ComponentStats {
-        let instances = self.instances.read().unwrap_or_else(|e| e.into_inner());
-        let interfaces = self.interfaces.read().unwrap_or_else(|e| e.into_inner());
+        let instances = self
+            .instances
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let interfaces = self
+            .interfaces
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let mut stats = ComponentStats {
             total_instances: instances.len(),

@@ -163,23 +163,22 @@ pub fn localhost_capability_fallback(capability: &Capability) -> Vec<DiscoveredS
         }
 
         let fallbacks = crate::discovery_defaults::LocalhostFallbacks::default();
-        if fallbacks.should_use_fallback() {
-            if let Some(url) = fallbacks.get_fallback_url(PRIMAL_NAME) {
-                if let Ok(ep) = ServiceEndpoint::from_url_string(&url) {
-                    let mut svc = DiscoveredService::discovered_now(
-                        format!("fallback-{PRIMAL_NAME}"),
-                        PRIMAL_NAME,
-                        "dev",
-                        vec![Capability::Compute(ComputeCapability::NativeExecution)],
-                        vec![ep],
-                    )
-                    .with_metadata("source", "fallback-tcp")
-                    .with_metadata("deprecation", "tcp_url_fallback");
-                    svc.discovered_at = now;
-                    svc.last_seen = now;
-                    out.push(svc);
-                }
-            }
+        if fallbacks.should_use_fallback()
+            && let Some(url) = fallbacks.get_fallback_url(PRIMAL_NAME)
+            && let Ok(ep) = ServiceEndpoint::from_url_string(&url)
+        {
+            let mut svc = DiscoveredService::discovered_now(
+                format!("fallback-{PRIMAL_NAME}"),
+                PRIMAL_NAME,
+                "dev",
+                vec![Capability::Compute(ComputeCapability::NativeExecution)],
+                vec![ep],
+            )
+            .with_metadata("source", "fallback-tcp")
+            .with_metadata("deprecation", "tcp_url_fallback");
+            svc.discovered_at = now;
+            svc.last_seen = now;
+            out.push(svc);
         }
     }
 

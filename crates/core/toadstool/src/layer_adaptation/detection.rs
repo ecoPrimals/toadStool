@@ -97,10 +97,10 @@ pub fn detect_storage_read_bandwidth() -> Option<u64> {
                 let path = entry.path();
                 let rotational_path = path.join("queue/rotational");
 
-                if let Ok(content) = fs::read_to_string(&rotational_path) {
-                    if let Ok(flag) = content.trim().parse::<u8>() {
-                        return Some(estimate_storage_bandwidth(flag != 0));
-                    }
+                if let Ok(content) = fs::read_to_string(&rotational_path)
+                    && let Ok(flag) = content.trim().parse::<u8>()
+                {
+                    return Some(estimate_storage_bandwidth(flag != 0));
                 }
             }
         }
@@ -141,17 +141,17 @@ pub fn detect_network_bandwidth() -> Option<u64> {
                 let speed_path = path.join("speed");
 
                 // Skip loopback
-                if let Some(name) = path.file_name() {
-                    if name == "lo" {
-                        continue;
-                    }
+                if let Some(name) = path.file_name()
+                    && name == "lo"
+                {
+                    continue;
                 }
 
-                if let Ok(content) = fs::read_to_string(&speed_path) {
-                    if let Some(mbps) = parse_net_speed_mbps(&content) {
-                        let bytes_per_sec = mbps_to_bytes_per_sec(mbps);
-                        max_speed = max_speed.max(bytes_per_sec);
-                    }
+                if let Ok(content) = fs::read_to_string(&speed_path)
+                    && let Some(mbps) = parse_net_speed_mbps(&content)
+                {
+                    let bytes_per_sec = mbps_to_bytes_per_sec(mbps);
+                    max_speed = max_speed.max(bytes_per_sec);
                 }
             }
 

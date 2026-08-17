@@ -16,10 +16,10 @@ use crate::universal::types::{BenchmarkTest, BenchmarkType, SystemInfo};
 fn detect_container_runtime() -> Option<(String, String)> {
     // Prefer Docker, then Podman
     for (name, cmd) in [("docker", "docker"), ("podman", "podman")] {
-        if let Ok(output) = Command::new(cmd).arg("--version").output() {
-            if output.status.success() {
-                return Some((name.to_string(), cmd.to_string()));
-            }
+        if let Ok(output) = Command::new(cmd).arg("--version").output()
+            && output.status.success()
+        {
+            return Some((name.to_string(), cmd.to_string()));
         }
     }
     None
@@ -306,7 +306,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         let mut details = HashMap::new();
         details.insert(
             "runtime".to_string(),
-            serde_json::Value::String(runtime_name.to_string()),
+            serde_json::Value::String(runtime_name),
         );
         details.insert(
             "image".to_string(),

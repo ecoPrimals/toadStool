@@ -38,16 +38,16 @@ impl EndpointSource for MDNSSource {
             if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                        if service.contains(name) {
-                            let endpoint = format!("unix://{}", path.display());
-                            tracing::debug!(
-                                service,
-                                endpoint,
-                                "Found local service via biomeos socket discovery"
-                            );
-                            return Ok(Some(endpoint));
-                        }
+                    if let Some(name) = path.file_stem().and_then(|s| s.to_str())
+                        && service.contains(name)
+                    {
+                        let endpoint = format!("unix://{}", path.display());
+                        tracing::debug!(
+                            service,
+                            endpoint,
+                            "Found local service via biomeos socket discovery"
+                        );
+                        return Ok(Some(endpoint));
                     }
                 }
             }

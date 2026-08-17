@@ -75,7 +75,7 @@ fn rd_to_year_doy(rd: u32) -> (u32, u16) {
     reason = "truncation acceptable for this conversion"
 )]
 fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
-    let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    let leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
     let days_in_month: [u16; 12] = if leap {
         [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     } else {

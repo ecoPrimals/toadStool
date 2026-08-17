@@ -85,7 +85,7 @@ impl CapabilityRegistry {
         let capability = capability.into();
         let mut providers = self.providers.write().unwrap_or_else(|e| e.into_inner());
 
-        let provider_list = providers.entry(capability).or_insert_with(Vec::new);
+        let provider_list = providers.entry(capability).or_default();
 
         // Check if provider already exists (update instead of duplicate)
         if let Some(existing) = provider_list

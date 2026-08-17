@@ -158,7 +158,7 @@ impl RuntimeEngine for UniversalGpuEngine {
                 let sessions = self
                     .active_sessions
                     .read()
-                    .unwrap_or_else(|e| e.into_inner());
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 sessions.keys().copied().collect()
             };
 

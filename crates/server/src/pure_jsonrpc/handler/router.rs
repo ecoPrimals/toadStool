@@ -620,7 +620,7 @@ impl JsonRpcHandler {
         let reg = self
             .silicon_registry
             .read()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let status = match &reg.status {
             toadstool_integration_primals::shader_compiler::ShaderCompilerStatus::Unknown => {
                 "unknown"

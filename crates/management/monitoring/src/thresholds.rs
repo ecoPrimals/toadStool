@@ -21,7 +21,7 @@ impl SystemResourceMonitor {
     ) -> ToadStoolResult<()> {
         self.threshold_data
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(workload_id.to_string(), requirements);
         tracing::debug!("Set thresholds for workload: {}", workload_id);
         Ok(())

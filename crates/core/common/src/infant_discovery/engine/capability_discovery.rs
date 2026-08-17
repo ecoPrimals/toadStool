@@ -110,7 +110,10 @@ impl CapabilityDiscovery for DiscoveryEngine {
 
                 if !is_local {
                     // Try to find a local alternative from cache
-                    let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+                    let cache = self
+                        .cache
+                        .read()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     if let Some(cached) = cache.get(&capability_str) {
                         let is_cached_local =
                             cached.endpoint.contains(crate::constants::DEFAULT_HOSTNAME)
@@ -144,7 +147,7 @@ impl CapabilityDiscovery for DiscoveryEngine {
             let sources: Vec<Arc<dyn EndpointSource>> = self
                 .sources
                 .read()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .iter()
                 .map(Arc::clone)
                 .collect();

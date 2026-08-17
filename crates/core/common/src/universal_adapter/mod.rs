@@ -140,7 +140,10 @@ impl UniversalAdapter {
         let count = providers.len();
 
         {
-            let mut registry = self.registry.write().unwrap_or_else(|e| e.into_inner());
+            let mut registry = self
+                .registry
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             for provider in providers {
                 registry.register(provider)?;
             }
@@ -178,7 +181,10 @@ impl UniversalAdapter {
         capability: CapabilityType,
     ) -> ToadStoolResult<CapabilityHandle> {
         let provider = {
-            let registry = self.registry.read().unwrap_or_else(|e| e.into_inner());
+            let registry = self
+                .registry
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             registry.find_best_match(&capability)?
         };
 
@@ -196,7 +202,10 @@ impl UniversalAdapter {
     ///
     /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub async fn list_available_capabilities(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        let registry = self.registry.read().unwrap_or_else(|e| e.into_inner());
+        let registry = self
+            .registry
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(registry.list_capabilities())
     }
 
@@ -211,7 +220,10 @@ impl UniversalAdapter {
 
     /// Check if a specific capability is available
     pub async fn has_capability(&self, capability: &CapabilityType) -> bool {
-        let registry = self.registry.read().unwrap_or_else(|e| e.into_inner());
+        let registry = self
+            .registry
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         registry.find_best_match(capability).is_ok()
     }
 }

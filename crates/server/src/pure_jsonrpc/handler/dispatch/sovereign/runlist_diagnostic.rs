@@ -183,12 +183,11 @@ pub(crate) async fn sovereign_runlist_diagnostic(
         },
         "diagnosis": {
             "runlist_configured": gr_runlist
-                .map(|rl| {
+                .is_some_and(|rl| {
                     let base_reg = 0x2270 + (rl as usize) * 0x10;
                     let val = bar0.read_u32(base_reg).unwrap_or(0);
                     val != 0 && val != 0xDEAD_DEAD
-                })
-                .unwrap_or(false),
+                }),
             "pri_ring_healthy": pri_status == 0,
             "scheduler_active": sched_disable == 0 || sched_en == 1,
         },

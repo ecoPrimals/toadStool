@@ -72,7 +72,10 @@ impl PortableSwapExecutor {
 
     /// Query the current personality for a device, if tracked.
     pub async fn current_personality(&self, device: &DeviceId) -> Option<String> {
-        let map = self.personalities.read().unwrap_or_else(|e| e.into_inner());
+        let map = self
+            .personalities
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         map.get(&device.to_string()).cloned()
     }
 }
@@ -95,7 +98,10 @@ impl SwapExecutor for PortableSwapExecutor {
         let key = device.to_string();
 
         let from = {
-            let map = self.personalities.read().unwrap_or_else(|e| e.into_inner());
+            let map = self
+                .personalities
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             map.get(&key).cloned().unwrap_or_else(|| "unbound".into())
         };
 
@@ -103,7 +109,7 @@ impl SwapExecutor for PortableSwapExecutor {
             let mut map = self
                 .personalities
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             map.insert(key, target_personality.to_string());
         }
 
@@ -126,7 +132,7 @@ impl SwapExecutor for PortableSwapExecutor {
         let mut map = self
             .personalities
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         map.insert(key, "unbound".to_string());
         Ok(())
     }

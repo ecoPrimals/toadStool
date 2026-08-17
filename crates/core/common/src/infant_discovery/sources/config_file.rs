@@ -66,16 +66,14 @@ impl EndpointSource for ConfigFileSource {
                                 }
                             }
 
-                            if found {
-                                if let Some(endpoint) = current.as_str() {
-                                    tracing::info!(
-                                        service,
-                                        endpoint,
-                                        config_path = ?config_path,
-                                        "Found service endpoint in config file"
-                                    );
-                                    return Ok(Some(endpoint.to_string()));
-                                }
+                            if found && let Some(endpoint) = current.as_str() {
+                                tracing::info!(
+                                    service,
+                                    endpoint,
+                                    config_path = ?config_path,
+                                    "Found service endpoint in config file"
+                                );
+                                return Ok(Some(endpoint.to_string()));
                             }
                         }
 

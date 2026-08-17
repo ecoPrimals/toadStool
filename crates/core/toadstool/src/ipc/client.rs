@@ -190,16 +190,16 @@ impl IpcClient {
     /// **Deep Debt**: Self-knowledge pattern. Ports discovered from environment.
     fn resolve_port(primal_name: &str) -> u16 {
         let env_key = format!("{}_PORT", primal_name.to_uppercase().replace('-', "_"));
-        if let Ok(port_str) = std::env::var(&env_key) {
-            if let Ok(port) = port_str.parse::<u16>() {
-                return port;
-            }
+        if let Ok(port_str) = std::env::var(&env_key)
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return port;
         }
 
-        if let Ok(port_str) = std::env::var(socket_env::BIOMEOS_IPC_PORT) {
-            if let Ok(port) = port_str.parse::<u16>() {
-                return port;
-            }
+        if let Ok(port_str) = std::env::var(socket_env::BIOMEOS_IPC_PORT)
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return port;
         }
 
         // Self-knowledge: ToadStool's own default port

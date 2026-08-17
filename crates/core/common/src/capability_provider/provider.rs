@@ -94,7 +94,10 @@ impl CapabilityProvider {
     #[cfg(unix)]
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let client = {
-            let mut client_lock = self.client.write().unwrap_or_else(|e| e.into_inner());
+            let mut client_lock = self
+                .client
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             #[expect(
                 clippy::option_if_let_else,

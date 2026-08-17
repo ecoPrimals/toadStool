@@ -180,10 +180,10 @@ impl LayerDetector {
             return output.status.success() && !output.stdout.is_empty();
         }
         #[cfg(target_os = "linux")]
-        if std::fs::metadata(devfs::KVM).is_ok() {
-            if let Ok(output) = std::process::Command::new("lsof").arg(devfs::KVM).output() {
-                return output.status.success() && !output.stdout.is_empty();
-            }
+        if std::fs::metadata(devfs::KVM).is_ok()
+            && let Ok(output) = std::process::Command::new("lsof").arg(devfs::KVM).output()
+        {
+            return output.status.success() && !output.stdout.is_empty();
         }
         false
     }
@@ -204,20 +204,20 @@ impl LayerDetector {
             .arg("-x")
             .arg("kubelet")
             .output()
+            && output.status.success()
+            && !output.stdout.is_empty()
         {
-            if output.status.success() && !output.stdout.is_empty() {
-                return true;
-            }
+            return true;
         }
         std::fs::metadata(etc_paths::KUBERNETES_MANIFESTS).is_ok()
     }
 
     fn read_container_id(&self) -> Result<String, DetectionError> {
         let cgroup = std::fs::read_to_string(procfs::PROC_SELF_CGROUP)?;
-        if let Some(line) = cgroup.lines().next() {
-            if let Some(id) = line.split('/').next_back() {
-                return Ok(id.to_string());
-            }
+        if let Some(line) = cgroup.lines().next()
+            && let Some(id) = line.split('/').next_back()
+        {
+            return Ok(id.to_string());
         }
         Err(DetectionError::ContainerIdNotFound)
     }

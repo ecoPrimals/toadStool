@@ -207,7 +207,7 @@ fn parse_list_or(value: Option<&str>, default: Vec<String>) -> Vec<String> {
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<String>>()
         })
-        .and_then(|list| if list.is_empty() { None } else { Some(list) })
+        .filter(|list| !list.is_empty())
         .unwrap_or(default)
 }
 

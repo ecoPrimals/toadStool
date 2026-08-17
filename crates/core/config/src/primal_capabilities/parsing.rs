@@ -212,10 +212,10 @@ impl PrimalCapabilitiesRegistry {
     /// Returns error if no file found or parse fails
     pub fn load_default() -> CapabilityResult<Self> {
         // Try environment variable
-        if let Ok(path) = std::env::var(socket_env::PRIMAL_CAPABILITIES_PATH) {
-            if Path::new(&path).exists() {
-                return Self::load_from_file(&path);
-            }
+        if let Ok(path) = std::env::var(socket_env::PRIMAL_CAPABILITIES_PATH)
+            && Path::new(&path).exists()
+        {
+            return Self::load_from_file(&path);
         }
 
         // Try current directory

@@ -97,21 +97,21 @@ pub fn pin_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
 /// Pin upstream PCI bridge power (walk parents).
 pub fn pin_bridge_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
     let device_path = PathBuf::from(sysfs_pci_device_path(bdf));
-    if let Ok(parent) = std::fs::read_link(device_path.join("..")) {
-        if let Some(bridge_name) = parent.file_name().and_then(|n| n.to_str()) {
-            let _ = sysfs.write(
-                &pci_device_path(bridge_name, "power/control")
-                    .display()
-                    .to_string(),
-                "on",
-            );
-            let _ = sysfs.write(
-                &pci_device_path(bridge_name, "d3cold_allowed")
-                    .display()
-                    .to_string(),
-                "0",
-            );
-        }
+    if let Ok(parent) = std::fs::read_link(device_path.join(".."))
+        && let Some(bridge_name) = parent.file_name().and_then(|n| n.to_str())
+    {
+        let _ = sysfs.write(
+            &pci_device_path(bridge_name, "power/control")
+                .display()
+                .to_string(),
+            "on",
+        );
+        let _ = sysfs.write(
+            &pci_device_path(bridge_name, "d3cold_allowed")
+                .display()
+                .to_string(),
+            "0",
+        );
     }
 }
 
@@ -121,11 +121,11 @@ pub fn pin_bridge_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
 /// use [`pin_bridge_hierarchy`] instead to walk the full ancestry.
 pub fn pin_bridge_power(bdf: &str) {
     let device_path = PathBuf::from(sysfs_pci_device_path(bdf));
-    if let Ok(parent) = std::fs::read_link(device_path.join("..")) {
-        if let Some(bridge_name) = parent.file_name().and_then(|n| n.to_str()) {
-            let _ = std::fs::write(pci_device_path(bridge_name, "power/control"), "on");
-            let _ = std::fs::write(pci_device_path(bridge_name, "d3cold_allowed"), "0");
-        }
+    if let Ok(parent) = std::fs::read_link(device_path.join(".."))
+        && let Some(bridge_name) = parent.file_name().and_then(|n| n.to_str())
+    {
+        let _ = std::fs::write(pci_device_path(bridge_name, "power/control"), "on");
+        let _ = std::fs::write(pci_device_path(bridge_name, "d3cold_allowed"), "0");
     }
 }
 

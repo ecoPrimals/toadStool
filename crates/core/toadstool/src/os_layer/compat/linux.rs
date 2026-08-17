@@ -23,10 +23,10 @@ fn parse_kernel_version(uname_or_proc_version: &str) -> String {
     }
     if let Some(idx) = s.find("Linux version ") {
         let rest = s[idx + "Linux version ".len()..].trim_start();
-        if let Some(ver) = rest.split_whitespace().next() {
-            if !ver.is_empty() {
-                return ver.to_string();
-            }
+        if let Some(ver) = rest.split_whitespace().next()
+            && !ver.is_empty()
+        {
+            return ver.to_string();
         }
     }
     let parts: Vec<&str> = s.split_whitespace().collect();

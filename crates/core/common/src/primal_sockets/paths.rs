@@ -173,10 +173,10 @@ pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv)
     let cap = cap.as_str();
 
     // Highest precedence: DISCOVERY_SOCKET (set by composition_nucleus.sh → Songbird).
-    if matches!(cap, "coordination" | "discovery") {
-        if let Some(ref p) = env.discovery_socket {
-            return PathBuf::from(p);
-        }
+    if matches!(cap, "coordination" | "discovery")
+        && let Some(ref p) = env.discovery_socket
+    {
+        return PathBuf::from(p);
     }
 
     if let Some(p) = match cap {

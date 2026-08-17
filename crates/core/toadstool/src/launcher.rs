@@ -110,11 +110,11 @@ pub fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
     for file in discovery_files {
         if let Ok(contents) = std::fs::read_to_string(&file) {
             // Parse format: tcp:127.0.0.1:PORT
-            if let Some(addr_str) = contents.trim().strip_prefix("tcp:") {
-                if let Ok(addr) = addr_str.parse() {
-                    info!("✅ Discovered TCP endpoint: {}", addr);
-                    return Ok(Endpoint::Tcp(addr));
-                }
+            if let Some(addr_str) = contents.trim().strip_prefix("tcp:")
+                && let Ok(addr) = addr_str.parse()
+            {
+                info!("✅ Discovered TCP endpoint: {}", addr);
+                return Ok(Endpoint::Tcp(addr));
             }
         }
     }

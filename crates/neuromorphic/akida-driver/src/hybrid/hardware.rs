@@ -182,10 +182,10 @@ impl HardwareEsnExecutor {
         let mut hw_out = vec![0.0f32; rs];
         for (i, hw_slot) in hw_out.iter_mut().enumerate() {
             for (j, &inp) in input.iter().enumerate().take(is) {
-                *hw_slot += self.w_in_scaled[i * is + j] * inp;
+                *hw_slot = self.w_in_scaled[i * is + j].mul_add(inp, *hw_slot);
             }
             for j in 0..rs {
-                *hw_slot += self.w_res_scaled[i * rs + j] * self.state[j];
+                *hw_slot = self.w_res_scaled[i * rs + j].mul_add(self.state[j], *hw_slot);
             }
             *hw_slot = (*hw_slot).max(0.0);
         }
@@ -215,10 +215,10 @@ impl HardwareEsnExecutor {
         let mut pre = vec![0.0f32; rs];
         for (i, pre_slot) in pre.iter_mut().enumerate() {
             for (j, &inp) in input.iter().enumerate().take(is) {
-                *pre_slot += self.w_in[i * is + j] * inp;
+                *pre_slot = self.w_in[i * is + j].mul_add(inp, *pre_slot);
             }
             for j in 0..rs {
-                *pre_slot += self.w_res[i * rs + j] * self.state[j];
+                *pre_slot = self.w_res[i * rs + j].mul_add(self.state[j], *pre_slot);
             }
         }
         for (i, pre_v) in pre.iter().enumerate() {

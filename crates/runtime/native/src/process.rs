@@ -21,7 +21,9 @@ pub async fn cleanup_process(
     processes: &Arc<RwLock<HashMap<Uuid, ProcessHandle>>>,
     execution_id: &Uuid,
 ) {
-    let mut processes_guard = processes.write().unwrap_or_else(|e| e.into_inner());
+    let mut processes_guard = processes
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     if let Some(mut process_handle) = processes_guard.remove(execution_id)
         && let Some(mut child) = process_handle.child.take()
         && let Err(e) = child.kill()

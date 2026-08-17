@@ -88,28 +88,25 @@ pub(crate) async fn sovereign_warm_handoff(
 
         if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
             let read = RegisterRead::from_result(bar.read_u32(0x200));
-            match read.valid() {
-                Some(pmc) => {
-                    let popcount = pmc.count_ones();
-                    tracing::info!(
-                        bdf,
-                        pmc = format_args!("0x{pmc:08x}"),
-                        popcount,
-                        "pre-release PMC_ENABLE"
-                    );
-                    popcount >= 10
-                }
-                None => {
-                    // Unreadable is not warm. Assuming warm here would skip
-                    // the reset that a genuinely wedged GPU needs.
-                    tracing::warn!(
-                        bdf,
-                        read = read.describe(),
-                        power_state = power::power_state(bdf).as_str(),
-                        "pre-release PMC_ENABLE unreadable — treating GPU as not-warm"
-                    );
-                    false
-                }
+            if let Some(pmc) = read.valid() {
+                let popcount = pmc.count_ones();
+                tracing::info!(
+                    bdf,
+                    pmc = format_args!("0x{pmc:08x}"),
+                    popcount,
+                    "pre-release PMC_ENABLE"
+                );
+                popcount >= 10
+            } else {
+                // Unreadable is not warm. Assuming warm here would skip
+                // the reset that a genuinely wedged GPU needs.
+                tracing::warn!(
+                    bdf,
+                    read = read.describe(),
+                    power_state = power::power_state(bdf).as_str(),
+                    "pre-release PMC_ENABLE unreadable — treating GPU as not-warm"
+                );
+                false
             }
         } else {
             true

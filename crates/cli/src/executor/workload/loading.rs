@@ -37,18 +37,19 @@ fn expand_env_vars(input: &str) -> String {
             continue;
         }
 
-        if i + 1 < len && bytes[i + 1] == b'{' {
-            if let Some(close) = input[i + 2..].find('}') {
-                let var_name = &input[i + 2..i + 2 + close];
-                match std::env::var(var_name) {
-                    Ok(val) => result.push_str(&val),
-                    Err(_) => {
-                        tracing::debug!(var = var_name, "Undefined env var in workload file");
-                    }
+        if i + 1 < len
+            && bytes[i + 1] == b'{'
+            && let Some(close) = input[i + 2..].find('}')
+        {
+            let var_name = &input[i + 2..i + 2 + close];
+            match std::env::var(var_name) {
+                Ok(val) => result.push_str(&val),
+                Err(_) => {
+                    tracing::debug!(var = var_name, "Undefined env var in workload file");
                 }
-                i += 2 + close + 1;
-                continue;
             }
+            i += 2 + close + 1;
+            continue;
         }
 
         if i + 1 < len && (bytes[i + 1].is_ascii_alphabetic() || bytes[i + 1] == b'_') {

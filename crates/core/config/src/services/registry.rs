@@ -104,10 +104,10 @@ impl ServiceRegistry {
         let stype = service.service_type.clone();
 
         // Remove from old type index if exists
-        if let Some(old_service) = self.services.get(&name) {
-            if let Some(names) = self.by_type.get_mut(&old_service.service_type) {
-                names.retain(|n| n != &name);
-            }
+        if let Some(old_service) = self.services.get(&name)
+            && let Some(names) = self.by_type.get_mut(&old_service.service_type)
+        {
+            names.retain(|n| n != &name);
         }
 
         self.services.insert(name.clone(), service);
@@ -187,29 +187,28 @@ impl ServiceRegistry {
         let mut registry = Self::default();
 
         // Load coordinator
-        if let Ok(coord_str) = std::env::var(socket_env::TOADSTOOL_COORDINATOR) {
-            if let Some((name, endpoint)) = coord_str.split_once(':') {
-                let service =
-                    ServiceEndpoint::new(name.trim(), ServiceType::Coordinator, endpoint.trim());
-                registry.register_or_update(service);
-            }
+        if let Ok(coord_str) = std::env::var(socket_env::TOADSTOOL_COORDINATOR)
+            && let Some((name, endpoint)) = coord_str.split_once(':')
+        {
+            let service =
+                ServiceEndpoint::new(name.trim(), ServiceType::Coordinator, endpoint.trim());
+            registry.register_or_update(service);
         }
 
         // Load storage
-        if let Ok(storage_str) = std::env::var(socket_env::TOADSTOOL_STORAGE) {
-            if let Some((name, endpoint)) = storage_str.split_once(':') {
-                let service =
-                    ServiceEndpoint::new(name.trim(), ServiceType::Storage, endpoint.trim());
-                registry.register_or_update(service);
-            }
+        if let Ok(storage_str) = std::env::var(socket_env::TOADSTOOL_STORAGE)
+            && let Some((name, endpoint)) = storage_str.split_once(':')
+        {
+            let service = ServiceEndpoint::new(name.trim(), ServiceType::Storage, endpoint.trim());
+            registry.register_or_update(service);
         }
 
         // Load services from JSON
-        if let Ok(services_json) = std::env::var(socket_env::TOADSTOOL_SERVICES) {
-            if let Ok(services) = serde_json::from_str::<Vec<ServiceEndpoint>>(&services_json) {
-                for service in services {
-                    registry.register_or_update(service);
-                }
+        if let Ok(services_json) = std::env::var(socket_env::TOADSTOOL_SERVICES)
+            && let Ok(services) = serde_json::from_str::<Vec<ServiceEndpoint>>(&services_json)
+        {
+            for service in services {
+                registry.register_or_update(service);
             }
         }
 

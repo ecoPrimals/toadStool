@@ -55,7 +55,7 @@ impl ComputeResourceCoordinator {
 
         self.resource_pools
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(device.id.clone(), pool);
         Ok(())
     }
@@ -70,7 +70,10 @@ impl ComputeResourceCoordinator {
         available_devices: &[DeviceId],
         requirements: &DeviceRequirements,
     ) -> ToadStoolResult<DeviceId> {
-        let load_balancer = self.load_balancer.lock().unwrap_or_else(|e| e.into_inner());
+        let load_balancer = self
+            .load_balancer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         load_balancer.select_device(available_devices, requirements)
     }
 
@@ -87,7 +90,7 @@ impl ComputeResourceCoordinator {
         let mut pools = self
             .resource_pools
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let pool = pools
             .get_mut(device_id)
             .ok_or_else(|| ToadStoolError::runtime("Device pool not found"))?;
@@ -137,7 +140,7 @@ impl ComputeResourceCoordinator {
         let mut pools = self
             .resource_pools
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let pool = pools
             .get_mut(device_id)
             .ok_or_else(|| ToadStoolError::runtime("Device pool not found"))?;
@@ -162,7 +165,7 @@ impl ComputeResourceCoordinator {
         let pools = self
             .resource_pools
             .read()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         pools.get(device_id).map(|pool| ResourcePoolStats {
             total_memory: pool.total_memory,
             allocated_memory: pool.allocated_memory,
@@ -180,7 +183,10 @@ impl ComputeResourceCoordinator {
 
     /// Update device load information
     pub async fn update_device_load(&self, device_id: &DeviceId, usage: &DeviceUsage) {
-        let mut load_balancer = self.load_balancer.lock().unwrap_or_else(|e| e.into_inner());
+        let mut load_balancer = self
+            .load_balancer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         load_balancer.update_device_load(device_id, usage);
     }
 }

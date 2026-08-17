@@ -17,7 +17,7 @@ pub(crate) async fn sovereign_warm_status(
     let mut devices = serde_json::Map::new();
 
     // Report on anchored devices
-    for (bdf, _anchor) in anchors.iter() {
+    for bdf in anchors.keys() {
         let boot_probe = probe_boot_state_sysfs(bdf);
         let tier = classify_tier_sysfs(bdf);
         devices.insert(

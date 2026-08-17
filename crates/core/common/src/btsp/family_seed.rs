@@ -70,10 +70,10 @@ pub fn load_family_seed_for_btsp() -> Result<String, BtspFamilySeedError> {
         }
     }
 
-    if let Some(path) = socket_dir_family_seed_path() {
-        if let Some(s) = read_seed_file_as_string(&path) {
-            return Ok(s);
-        }
+    if let Some(path) = socket_dir_family_seed_path()
+        && let Some(s) = read_seed_file_as_string(&path)
+    {
+        return Ok(s);
     }
 
     let cfg = config_family_seed_path();

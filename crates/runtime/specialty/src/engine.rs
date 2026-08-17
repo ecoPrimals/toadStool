@@ -363,7 +363,7 @@ impl SpecialtyRuntimeEngine {
         drop(adapters);
 
         let mut emulators = self.emulators.write().await;
-        for (_, emulator) in emulators.iter_mut() {
+        for emulator in emulators.values_mut() {
             if let Err(e) = emulator.stop().await {
                 error!("Error stopping emulator: {}", e);
             }

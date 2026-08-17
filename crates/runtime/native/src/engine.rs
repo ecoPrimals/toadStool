@@ -112,7 +112,9 @@ impl NativeRuntimeEngine {
         let active_processes = Arc::clone(&self.active_processes);
         let execution_future = async move {
             {
-                let mut processes = active_processes.write().unwrap_or_else(|e| e.into_inner());
+                let mut processes = active_processes
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 processes.insert(
                     request.execution_id,
                     ProcessHandle {
@@ -237,7 +239,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
                 let processes = self
                     .active_processes
                     .read()
-                    .unwrap_or_else(|e| e.into_inner());
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if processes.len()
                     >= self.capabilities.max_concurrent_executions.unwrap_or(100) as usize
                 {
@@ -291,7 +293,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
             if self
                 .active_processes
                 .read()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .is_empty()
             {
                 return Ok(RuntimeMetrics::default());
@@ -309,7 +311,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
                 let mut processes = self
                     .active_processes
                     .write()
-                    .unwrap_or_else(|e| e.into_inner());
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 processes
                     .drain()
                     .map(|(id, mut h)| (id, h.child.take()))

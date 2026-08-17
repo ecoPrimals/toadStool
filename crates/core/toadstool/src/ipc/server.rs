@@ -104,16 +104,16 @@ impl IpcServer {
     /// 3. Port `0` — OS-assigned ephemeral (production uses Unix sockets)
     fn resolve_port(primal_name: &str) -> u16 {
         let env_key = format!("{}_PORT", primal_name.to_uppercase().replace('-', "_"));
-        if let Ok(port_str) = std::env::var(&env_key) {
-            if let Ok(port) = port_str.parse::<u16>() {
-                return port;
-            }
+        if let Ok(port_str) = std::env::var(&env_key)
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return port;
         }
 
-        if let Ok(port_str) = std::env::var(socket_env::BIOMEOS_IPC_PORT) {
-            if let Ok(port) = port_str.parse::<u16>() {
-                return port;
-            }
+        if let Ok(port_str) = std::env::var(socket_env::BIOMEOS_IPC_PORT)
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return port;
         }
 
         0
@@ -195,11 +195,11 @@ impl Drop for IpcServer {
         // Clean up Unix sockets on drop
         #[cfg(unix)]
         for endpoint in &self.endpoints {
-            if let Endpoint::Unix { path } = endpoint {
-                if path.exists() {
-                    let _ = std::fs::remove_file(path);
-                    tracing::debug!("🧹 Cleaned up {}", path.display());
-                }
+            if let Endpoint::Unix { path } = endpoint
+                && path.exists()
+            {
+                let _ = std::fs::remove_file(path);
+                tracing::debug!("🧹 Cleaned up {}", path.display());
             }
         }
     }

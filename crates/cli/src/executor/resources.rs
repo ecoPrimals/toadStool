@@ -88,7 +88,7 @@ impl<'a> ResourceManager<'a> {
             .read()
             .unwrap_or_else(|e| e.into_inner());
         let result = 'block: {
-            for (_biome_name, biome) in biomes.iter() {
+            for biome in biomes.values() {
                 for process in &biome.process_handles {
                     if process.execution_id == *execution_id {
                         break 'block process.pid;

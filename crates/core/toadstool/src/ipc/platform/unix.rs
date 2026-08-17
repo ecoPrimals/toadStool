@@ -39,16 +39,16 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
     let path = path.as_ref();
 
     // Create parent directory if needed
-    if let Some(parent) = path.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                ToadStoolError::integration(format!(
-                    "Failed to create socket directory {}: {}",
-                    parent.display(),
-                    e
-                ))
-            })?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            ToadStoolError::integration(format!(
+                "Failed to create socket directory {}: {}",
+                parent.display(),
+                e
+            ))
+        })?;
     }
 
     // Remove stale socket if exists

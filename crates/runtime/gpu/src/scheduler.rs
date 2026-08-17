@@ -68,7 +68,10 @@ impl UniversalComputeScheduler {
 
     /// Register a compute resource (GPU, CPU, TPU, etc.)
     pub async fn register_resource(&self, resource: Arc<UniversalComputeResourceDispatch>) {
-        let mut resources = self.resources.write().unwrap_or_else(|e| e.into_inner());
+        let mut resources = self
+            .resources
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         tracing::info!(
             "Registered compute resource: {} ({})",
             resource.resource_id(),
@@ -79,7 +82,10 @@ impl UniversalComputeScheduler {
 
     /// Get list of all registered resources (as descriptive strings)
     pub async fn list_resources(&self) -> Vec<String> {
-        let resources = self.resources.read().unwrap_or_else(|e| e.into_inner());
+        let resources = self
+            .resources
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         resources
             .iter()
             .map(|r| format!("{} ({})", r.resource_id(), r.capabilities().resource_type))
@@ -88,7 +94,10 @@ impl UniversalComputeScheduler {
 
     /// Get all registered compute resource objects
     pub async fn get_resources(&self) -> Vec<Arc<UniversalComputeResourceDispatch>> {
-        let resources = self.resources.read().unwrap_or_else(|e| e.into_inner());
+        let resources = self
+            .resources
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         resources.clone()
     }
 
@@ -103,7 +112,10 @@ impl UniversalComputeScheduler {
     ) -> ToadStoolResult<Arc<UniversalComputeResourceDispatch>> {
         // Clone capable resources before await to avoid holding lock across .await
         let capable: Vec<Arc<UniversalComputeResourceDispatch>> = {
-            let resources = self.resources.read().unwrap_or_else(|e| e.into_inner());
+            let resources = self
+                .resources
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if resources.is_empty() {
                 return Err(ToadStoolError::runtime("No compute resources registered"));
             }
@@ -168,7 +180,10 @@ impl UniversalComputeScheduler {
     ) -> ToadStoolResult<&'a Arc<UniversalComputeResourceDispatch>> {
         // Check history first
         let workload_sig = self.workload_signature(requirements);
-        let history = self.history.read().unwrap_or_else(|e| e.into_inner());
+        let history = self
+            .history
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         // If we have performance data, use it
         let best_from_history = history
@@ -288,7 +303,7 @@ impl UniversalComputeScheduler {
             let cache = self
                 .utilization_cache
                 .read()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             const UTILIZATION_CACHE_TTL: Duration = Duration::from_secs(1);
             if let Some((utilization, timestamp)) = cache.get(&resource_id)
                 && timestamp.elapsed() < UTILIZATION_CACHE_TTL
@@ -304,7 +319,7 @@ impl UniversalComputeScheduler {
         let mut cache = self
             .utilization_cache
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.insert(resource_id, (utilization, Instant::now()));
         utilization
     }
@@ -323,7 +338,10 @@ impl UniversalComputeScheduler {
             timestamp: Instant::now(),
         };
 
-        let mut history = self.history.write().unwrap_or_else(|e| e.into_inner());
+        let mut history = self
+            .history
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         history.push(record);
 
         // Keep history reasonable size (last 1000 records)

@@ -104,10 +104,10 @@ fn detect_nvidia_proprietary() -> bool {
         let uevent_path = entry.path().join("device").join("uevent");
         if let Ok(content) = std::fs::read_to_string(&uevent_path) {
             for line in content.lines() {
-                if let Some(driver) = line.strip_prefix("DRIVER=") {
-                    if driver == "nvidia" {
-                        return true;
-                    }
+                if let Some(driver) = line.strip_prefix("DRIVER=")
+                    && driver == "nvidia"
+                {
+                    return true;
                 }
             }
         }

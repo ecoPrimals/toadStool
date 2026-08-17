@@ -63,7 +63,10 @@ impl WgpuAdapterPool {
             return;
         }
 
-        let mut contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        let mut contexts = self
+            .contexts
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if self.init_done.load(std::sync::atomic::Ordering::Relaxed) {
             return;
         }
@@ -100,7 +103,10 @@ impl WgpuAdapterPool {
         self.ensure_enumerated();
 
         let pool_size = {
-            let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+            let contexts = self
+                .contexts
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             contexts.len()
         };
 
@@ -111,8 +117,14 @@ impl WgpuAdapterPool {
         let idx = match selector {
             AdapterSelector::Default => {
                 // Return first already-initialized, or init index 0
-                let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
-                contexts.iter().position(|c| c.is_some()).unwrap_or(0)
+                let contexts = self
+                    .contexts
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                contexts
+                    .iter()
+                    .position(std::option::Option::is_some)
+                    .unwrap_or(0)
             }
             AdapterSelector::Index(i) => {
                 if *i >= pool_size {
@@ -121,7 +133,10 @@ impl WgpuAdapterPool {
                 *i
             }
             AdapterSelector::Name(name) => {
-                let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+                let contexts = self
+                    .contexts
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if let Some(pos) = contexts.iter().position(|c| {
                     c.as_ref()
                         .is_some_and(|ctx| ctx.adapter_name.contains(name.as_str()))
@@ -139,7 +154,10 @@ impl WgpuAdapterPool {
 
     fn init_adapter(&self, idx: usize) -> Option<std::sync::Arc<WgpuDispatchContext>> {
         {
-            let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+            let contexts = self
+                .contexts
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if idx >= contexts.len() {
                 return None;
             }
@@ -156,7 +174,10 @@ impl WgpuAdapterPool {
         .ok()??;
 
         let arc = std::sync::Arc::new(ctx);
-        let mut contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        let mut contexts = self
+            .contexts
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if idx >= contexts.len() {
             return None;
         }
@@ -166,15 +187,18 @@ impl WgpuAdapterPool {
 
     fn init_adapter_by_name(&self, name: &str) -> Option<usize> {
         let pool_size = {
-            let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+            let contexts = self
+                .contexts
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             contexts.len()
         };
 
         for i in 0..pool_size {
-            if let Some(ctx) = self.init_adapter(i) {
-                if ctx.adapter_name.contains(name) {
-                    return Some(i);
-                }
+            if let Some(ctx) = self.init_adapter(i)
+                && ctx.adapter_name.contains(name)
+            {
+                return Some(i);
             }
         }
         None
@@ -183,14 +207,20 @@ impl WgpuAdapterPool {
     /// Number of adapters discovered (0 if not yet enumerated).
     fn adapter_count(&self) -> usize {
         self.ensure_enumerated();
-        let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        let contexts = self
+            .contexts
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         contexts.len()
     }
 
     /// List adapter info for all initialized adapters.
     fn list_adapters(&self) -> Vec<(usize, String)> {
         self.ensure_enumerated();
-        let contexts = self.contexts.lock().unwrap_or_else(|e| e.into_inner());
+        let contexts = self
+            .contexts
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         contexts
             .iter()
             .enumerate()

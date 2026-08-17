@@ -134,19 +134,19 @@ impl<T: Send + Sync + 'static> Drop for PooledObject<T> {
             // Use try_lock for immediate return without async spawning
             // This is safe: if locks are held, the pool will grow temporarily
             // but will be reclaimed on next successful return
-            if let Ok(mut available) = self.pool.try_write() {
-                if let Ok(mut stats_guard) = self.stats.try_write() {
-                    let max_size = self.config.max_size;
+            if let Ok(mut available) = self.pool.try_write()
+                && let Ok(mut stats_guard) = self.stats.try_write()
+            {
+                let max_size = self.config.max_size;
 
-                    if available.len() < max_size {
-                        available.push(object);
-                        stats_guard.current_size = available.len();
-                    }
-
-                    stats_guard.total_deallocations += 1;
-                    stats_guard.in_use = stats_guard.current_size.saturating_sub(available.len());
-                    stats_guard.available = available.len();
+                if available.len() < max_size {
+                    available.push(object);
+                    stats_guard.current_size = available.len();
                 }
+
+                stats_guard.total_deallocations += 1;
+                stats_guard.in_use = stats_guard.current_size.saturating_sub(available.len());
+                stats_guard.available = available.len();
             }
             // If locks are contended, object is dropped and will be recreated
             // This is acceptable for pool efficiency and maintains correctness

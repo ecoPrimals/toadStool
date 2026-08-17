@@ -49,29 +49,27 @@ pub fn parse_service_info(info: &ServiceInfo) -> ToadStoolResult<DiscoveredServi
     // Iterate through all properties to find capabilities
     for prop in info.get_properties().iter() {
         let key = prop.key();
-        if let Some(cap_name) = key.strip_prefix(CAPABILITY_PREFIX) {
-            if !cap_name.ends_with(CAPABILITY_FEATURES_SUFFIX)
-                && processed_caps.insert(cap_name.to_string())
-            {
-                let cap_version = info
-                    .get_property_val_str(key)
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "unknown".to_string());
+        if let Some(cap_name) = key.strip_prefix(CAPABILITY_PREFIX)
+            && !cap_name.ends_with(CAPABILITY_FEATURES_SUFFIX)
+            && processed_caps.insert(cap_name.to_string())
+        {
+            let cap_version = info
+                .get_property_val_str(key)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
 
-                let features_key =
-                    format!("{CAPABILITY_PREFIX}{cap_name}{CAPABILITY_FEATURES_SUFFIX}");
-                let features = info
-                    .get_property_val_str(&features_key)
-                    .map(|f| f.split(',').map(|s| s.to_string()).collect())
-                    .unwrap_or_default();
+            let features_key = format!("{CAPABILITY_PREFIX}{cap_name}{CAPABILITY_FEATURES_SUFFIX}");
+            let features = info
+                .get_property_val_str(&features_key)
+                .map(|f| f.split(',').map(|s| s.to_string()).collect())
+                .unwrap_or_default();
 
-                capabilities.push(Capability {
-                    name: cap_name.to_string(),
-                    version: cap_version,
-                    features,
-                    characteristics: HashMap::new(),
-                });
-            }
+            capabilities.push(Capability {
+                name: cap_name.to_string(),
+                version: cap_version,
+                features,
+                characteristics: HashMap::new(),
+            });
         }
     }
 

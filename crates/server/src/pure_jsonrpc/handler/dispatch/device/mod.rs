@@ -26,7 +26,10 @@ impl DispatchHandler {
     /// actively being used for dispatch. When Phase D enables local VFIO
     /// dispatch, this handle will actually open and hold the device fd.
     pub(super) async fn acquire_device_handle(&self, bdf: &str) {
-        let mut pool = self.device_pool.write().unwrap_or_else(|e| e.into_inner());
+        let mut pool = self
+            .device_pool
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if pool.contains_key(bdf) {
             tracing::debug!(bdf, "ember: reusing existing device handle");
         } else {
@@ -39,7 +42,10 @@ impl DispatchHandler {
 
     /// Return the number of actively held device handles.
     pub(super) async fn held_device_count(&self) -> usize {
-        let pool = self.device_pool.read().unwrap_or_else(|e| e.into_inner());
+        let pool = self
+            .device_pool
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         pool.values().filter(|h| h.is_alive()).count()
     }
 
@@ -122,7 +128,10 @@ impl DispatchHandler {
         buffer_descs: &serde_json::Value,
     ) -> Option<Result<serde_json::Value, String>> {
         {
-            let pool = self.device_pool.read().unwrap_or_else(|e| e.into_inner());
+            let pool = self
+                .device_pool
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let held = pool.get(bdf)?;
             if !held.is_alive() {
                 tracing::warn!(bdf, "local dispatch: device handle not alive");

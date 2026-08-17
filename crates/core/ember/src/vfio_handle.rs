@@ -127,18 +127,18 @@ impl ResourceHandle for VfioResourceHandle {
         }
 
         let driver_path = crate::sysfs::pci_device_path(&self.bdf, "driver");
-        if driver_path.exists() {
-            if let Ok(link) = std::fs::read_link(&driver_path) {
-                let driver = link
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown");
-                if driver == "vfio-pci" {
-                    self.alive.store(true, Ordering::Relaxed);
-                    return Ok(true);
-                }
-                return Ok(false);
+        if driver_path.exists()
+            && let Ok(link) = std::fs::read_link(&driver_path)
+        {
+            let driver = link
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            if driver == "vfio-pci" {
+                self.alive.store(true, Ordering::Relaxed);
+                return Ok(true);
             }
+            return Ok(false);
         }
         Ok(false)
     }

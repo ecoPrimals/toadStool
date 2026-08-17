@@ -40,7 +40,7 @@ impl GateOwnership {
             &*self
                 .hardware_owner_gate_id
                 .read()
-                .unwrap_or_else(|e| e.into_inner()),
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
         )
     }
 
@@ -58,7 +58,7 @@ impl GateOwnership {
             *self
                 .hardware_owner_gate_id
                 .write()
-                .unwrap_or_else(|e| e.into_inner()) = Arc::clone(gate_id);
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Arc::clone(gate_id);
         }
     }
 
@@ -68,6 +68,6 @@ impl GateOwnership {
         *self
             .hardware_owner_gate_id
             .write()
-            .unwrap_or_else(|e| e.into_inner()) = Arc::clone(&self.local_gate_id);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Arc::clone(&self.local_gate_id);
     }
 }

@@ -77,10 +77,10 @@ impl RuntimePortDiscovery {
     /// NO hardcoding, NO assumptions!
     pub fn discover_port(&self, preferred: Option<u16>) -> PortResult<u16> {
         // Try preferred port first
-        if let Some(port) = preferred {
-            if self.is_port_available(port) {
-                return Ok(port);
-            }
+        if let Some(port) = preferred
+            && self.is_port_available(port)
+        {
+            return Ok(port);
         }
 
         // Try range if specified

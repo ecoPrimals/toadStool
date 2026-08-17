@@ -20,28 +20,28 @@ pub(in crate::universal::scheduler::execution) fn discover_self_ip_address() -> 
         }
     }
     // 2. TOADSTOOL_BIND_HOST
-    if let Ok(h) = std::env::var(socket_env::TOADSTOOL_BIND_HOST) {
-        if !h.is_empty() {
-            return h;
-        }
+    if let Ok(h) = std::env::var(socket_env::TOADSTOOL_BIND_HOST)
+        && !h.is_empty()
+    {
+        return h;
     }
     // 3. BIND_HOST
-    if let Ok(h) = std::env::var(socket_env::BIND_HOST) {
-        if !h.is_empty() {
-            return h;
-        }
+    if let Ok(h) = std::env::var(socket_env::BIND_HOST)
+        && !h.is_empty()
+    {
+        return h;
     }
     // 4. HOST
-    if let Ok(h) = std::env::var(socket_env::HOST) {
-        if !h.is_empty() {
-            return h;
-        }
+    if let Ok(h) = std::env::var(socket_env::HOST)
+        && !h.is_empty()
+    {
+        return h;
     }
     // 5. HOSTNAME
-    if let Ok(h) = std::env::var(socket_env::HOSTNAME) {
-        if !h.is_empty() {
-            return h;
-        }
+    if let Ok(h) = std::env::var(socket_env::HOSTNAME)
+        && !h.is_empty()
+    {
+        return h;
     }
     // 6. Fallback: loopback default
     BIND_ADDRESS_DEFAULT.to_string()

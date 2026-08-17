@@ -80,15 +80,15 @@ pub fn disk_usage() -> Result<Vec<DiskInfo>> {
             continue;
         }
 
-        if let Ok(stat) = toadstool_hw_safe::fs_stats(std::path::Path::new(mount_point)) {
-            if stat.total_bytes > 0 {
-                disks.push(DiskInfo {
-                    mount_point: mount_point.to_string(),
-                    filesystem: filesystem.to_string(),
-                    total_space: stat.total_bytes,
-                    available_space: stat.available_bytes,
-                });
-            }
+        if let Ok(stat) = toadstool_hw_safe::fs_stats(std::path::Path::new(mount_point))
+            && stat.total_bytes > 0
+        {
+            disks.push(DiskInfo {
+                mount_point: mount_point.to_string(),
+                filesystem: filesystem.to_string(),
+                total_space: stat.total_bytes,
+                available_space: stat.available_bytes,
+            });
         }
     }
 

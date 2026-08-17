@@ -146,10 +146,10 @@ fn print_tier(result: &serde_json::Value) {
         b("tpc_alive").map_or("?", |v| if v { "alive" } else { "dead" }),
         b("pramin_accessible").map_or("?", |v| if v { "yes" } else { "no" }),
     );
-    if b("fecs_alive") == Some(false) {
-        if let Some(pc) = u("fecs_pc") {
-            println!("  blocker: FECS not live (fecs_pc={pc:#010x}) — no shader dispatch");
-        }
+    if b("fecs_alive") == Some(false)
+        && let Some(pc) = u("fecs_pc")
+    {
+        println!("  blocker: FECS not live (fecs_pc={pc:#010x}) — no shader dispatch");
     }
 }
 
@@ -273,10 +273,10 @@ pub async fn execute_sovereign_command(cmd: SovereignCommand) -> Result<()> {
                 "gr_initialized",
                 "halted_at",
             ] {
-                if let Some(v) = result.get(key) {
-                    if !v.is_null() {
-                        println!("  {key}: {v}");
-                    }
+                if let Some(v) = result.get(key)
+                    && !v.is_null()
+                {
+                    println!("  {key}: {v}");
                 }
             }
             print_tier(&result);

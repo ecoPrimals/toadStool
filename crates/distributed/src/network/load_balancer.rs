@@ -37,7 +37,7 @@ impl NetworkLoadBalancer {
     pub async fn register_node(&self, node_id: String, health: NodeHealth) {
         self.node_health
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(node_id, health);
     }
 
@@ -45,13 +45,16 @@ impl NetworkLoadBalancer {
     pub async fn deregister_node(&self, node_id: &str) {
         self.node_health
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(node_id);
     }
 
     /// Select the least-loaded healthy node. Returns `None` if no remote nodes are registered.
     pub async fn select_node(&self) -> Option<String> {
-        let health = self.node_health.read().unwrap_or_else(|e| e.into_inner());
+        let health = self
+            .node_health
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         health
             .iter()
             .filter(|(_, h)| h.healthy)
@@ -70,7 +73,7 @@ impl NetworkLoadBalancer {
     pub async fn node_health_snapshot(&self) -> HashMap<String, NodeHealth> {
         self.node_health
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 }

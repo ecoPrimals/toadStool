@@ -312,15 +312,14 @@ impl EsnSubstrate for HybridEsn {
     }
 
     fn reservoir_state(&self) -> Vec<f32> {
-        match self.mode {
-            SubstrateMode::PureSoftware => self.sw_backend.reservoir_state(),
-            _ => {
-                #[cfg(target_os = "linux")]
-                if let Some(hw) = self.hw_backend.as_ref() {
-                    return hw.state.clone();
-                }
-                self.sw_backend.reservoir_state()
+        if self.mode == SubstrateMode::PureSoftware {
+            self.sw_backend.reservoir_state()
+        } else {
+            #[cfg(target_os = "linux")]
+            if let Some(hw) = self.hw_backend.as_ref() {
+                return hw.state.clone();
             }
+            self.sw_backend.reservoir_state()
         }
     }
 

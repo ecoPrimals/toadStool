@@ -110,20 +110,18 @@ impl NvVfioComputeDevice {
         // matches the GR engine's hardware-assigned runlist. Prevents
         // wrong-slot failure where runlist writes land on a different
         // engine's PRI domain (RCA failure mode #2).
-        if !is_kepler {
-            if let Some(hw_rl) =
+        if !is_kepler
+            && let Some(hw_rl) =
                 validate_gr_runlist(&bar0, profile, init.channel.runlist_id_hint(), &self.bdf)
-            {
-                if hw_rl != init.channel.runlist_id_hint() {
-                    tracing::warn!(
-                        bdf = %self.bdf,
-                        correcting_from = init.channel.runlist_id_hint(),
-                        correcting_to = hw_rl,
-                        "forcing channel to hardware-verified GR runlist"
-                    );
-                    init.channel.force_runlist(hw_rl);
-                }
-            }
+            && hw_rl != init.channel.runlist_id_hint()
+        {
+            tracing::warn!(
+                bdf = %self.bdf,
+                correcting_from = init.channel.runlist_id_hint(),
+                correcting_to = hw_rl,
+                "forcing channel to hardware-verified GR runlist"
+            );
+            init.channel.force_runlist(hw_rl);
         }
 
         // Deferred GR falcon boot: now that PFIFO + channel infrastructure

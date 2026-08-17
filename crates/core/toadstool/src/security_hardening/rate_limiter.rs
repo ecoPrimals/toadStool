@@ -76,12 +76,12 @@ impl RateLimiter {
             });
 
         // Check if ban has expired
-        if let Some(ban_expiry) = client_data.ban_expiry {
-            if now > ban_expiry {
-                client_data.is_banned = false;
-                client_data.ban_expiry = None;
-                info!("Rate limit ban expired for client: {}", client_id);
-            }
+        if let Some(ban_expiry) = client_data.ban_expiry
+            && now > ban_expiry
+        {
+            client_data.is_banned = false;
+            client_data.ban_expiry = None;
+            info!("Rate limit ban expired for client: {}", client_id);
         }
 
         // Check if currently banned

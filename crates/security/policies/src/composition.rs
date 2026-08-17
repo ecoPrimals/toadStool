@@ -46,7 +46,7 @@ pub(crate) fn generate_composed_policy_id(policy_ids: &[String]) -> String {
         hasher.update(id.as_bytes());
     }
     let digest = hasher.finalize();
-    format!("composed_{}", &encode_hex_lower(&digest[..8]))
+    format!("composed_{}", encode_hex_lower(&digest[..8]))
 }
 
 /// Build a merged [`SecurityPolicy`] from loaded policies (rules + metadata).

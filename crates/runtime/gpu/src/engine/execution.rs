@@ -96,7 +96,7 @@ impl UniversalGpuEngine {
             let sessions = self
                 .active_sessions
                 .read()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             sessions
                 .get(&parent_id)
                 .map_or(0, |s| s.recursion_depth + 1)
@@ -131,7 +131,7 @@ impl UniversalGpuEngine {
             let mut sessions = self
                 .active_sessions
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(parent_session) = sessions.get_mut(&parent_id) {
                 parent_session.child_sessions.push(session_id);
             }
@@ -139,7 +139,7 @@ impl UniversalGpuEngine {
 
         self.active_sessions
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(session_id, session);
         Ok(session_id)
     }
@@ -158,7 +158,7 @@ impl UniversalGpuEngine {
             let mut sessions = self
                 .active_sessions
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.status = SessionStatus::Running;
             }
@@ -202,7 +202,7 @@ impl UniversalGpuEngine {
             let mut sessions = self
                 .active_sessions
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.status = SessionStatus::Completed;
             }
@@ -223,7 +223,7 @@ impl UniversalGpuEngine {
             let mut sessions = self
                 .active_sessions
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             sessions.remove(&session_id)
         };
 

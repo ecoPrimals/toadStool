@@ -135,10 +135,10 @@ impl BtspClient {
         let complete_bytes = framing::read_frame(stream).await?;
 
         // Check for error response
-        if let Ok(err_obj) = serde_json::from_slice::<serde_json::Value>(&complete_bytes) {
-            if err_obj.get("error").is_some() {
-                return Err(HandshakeError::FamilyVerification);
-            }
+        if let Ok(err_obj) = serde_json::from_slice::<serde_json::Value>(&complete_bytes)
+            && err_obj.get("error").is_some()
+        {
+            return Err(HandshakeError::FamilyVerification);
         }
 
         let complete: HandshakeComplete = serde_json::from_slice(&complete_bytes)?;

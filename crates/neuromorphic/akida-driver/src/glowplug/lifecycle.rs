@@ -33,7 +33,7 @@ pub trait NpuLifecycle: std::fmt::Debug + Send + Sync {
     /// Post-bind health check. Returns false if device is unhealthy.
     fn verify_health(&self, bdf: &str) -> bool;
 
-    /// The kernel module name for the native driver (e.g. "akida_pcie").
+    /// The kernel module name for the native driver (e.g. "`akida_pcie`").
     fn native_driver_module(&self) -> &str;
 
     /// The sysfs driver directory name (may differ from module name).
@@ -50,7 +50,7 @@ pub struct BrainChipLifecycle {
 }
 
 impl NpuLifecycle for BrainChipLifecycle {
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "BrainChip Akida (simple PCIe accelerator, no GPU quirks)"
     }
 
@@ -77,11 +77,11 @@ impl NpuLifecycle for BrainChipLifecycle {
         true
     }
 
-    fn native_driver_module(&self) -> &str {
+    fn native_driver_module(&self) -> &'static str {
         "akida_pcie"
     }
 
-    fn native_driver_sysfs(&self) -> &str {
+    fn native_driver_sysfs(&self) -> &'static str {
         "akida"
     }
 }
@@ -91,7 +91,7 @@ impl NpuLifecycle for BrainChipLifecycle {
 /// Generic NPU lifecycle for devices without vendor-specific quirks.
 ///
 /// Provides conservative defaults. Use as a base for new NPU vendors
-/// (Intel Loihi, SynSense, etc.) until empirical testing reveals
+/// (Intel Loihi, `SynSense`, etc.) until empirical testing reveals
 /// device-specific requirements.
 #[derive(Debug)]
 pub struct GenericNpuLifecycle {
@@ -106,7 +106,7 @@ pub struct GenericNpuLifecycle {
 }
 
 impl NpuLifecycle for GenericNpuLifecycle {
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "Generic NPU (conservative defaults)"
     }
 

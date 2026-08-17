@@ -212,7 +212,7 @@ impl StreamingDispatchContext {
             DispatchMode::Single => true,
             DispatchMode::Streaming => false,
             DispatchMode::MegaBatch { batch_size } => {
-                batch_size > 0 && self.stats.n_dispatches % batch_size == 0
+                batch_size > 0 && self.stats.n_dispatches.is_multiple_of(batch_size)
             }
         }
     }

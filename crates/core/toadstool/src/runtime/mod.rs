@@ -118,18 +118,16 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
     }
 
     fn select_runtime(&self, request: &ExecutionRequest) -> ToadStoolResult<RuntimeType> {
-        if let Some(hint) = &request.runtime_hint {
-            if let Some(engine) = self
+        if let Some(hint) = &request.runtime_hint
+            && let Some(engine) = self
                 .registry
                 .engines()
                 .read()
                 .unwrap_or_else(|e| e.into_inner())
                 .get(hint)
-            {
-                if engine.supports_workload(&request.workload.workload_type()) {
-                    return Ok(hint.clone());
-                }
-            }
+            && engine.supports_workload(&request.workload.workload_type())
+        {
+            return Ok(hint.clone());
         }
 
         let workload_type = request.workload.workload_type();

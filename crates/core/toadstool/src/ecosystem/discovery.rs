@@ -76,13 +76,13 @@ impl DiscoveryManager {
                 .capability_cache
                 .read()
                 .unwrap_or_else(|e| e.into_inner());
-            if let Some(service_ids) = cap_cache.get(&capability_key) {
-                if let Some(service_id) = service_ids.first() {
-                    let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
-                    if let Some(service) = cache.get(service_id) {
-                        debug!("✅ Found service in cache: {}", service.name);
-                        return Ok(service.clone());
-                    }
+            if let Some(service_ids) = cap_cache.get(&capability_key)
+                && let Some(service_id) = service_ids.first()
+            {
+                let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+                if let Some(service) = cache.get(service_id) {
+                    debug!("✅ Found service in cache: {}", service.name);
+                    return Ok(service.clone());
                 }
             }
         }
@@ -230,10 +230,7 @@ impl DiscoveryManager {
                 .capability_cache
                 .write()
                 .unwrap_or_else(|e| e.into_inner());
-            cap_cache
-                .entry(cap_key)
-                .or_insert_with(Vec::new)
-                .push(service.id.clone());
+            cap_cache.entry(cap_key).or_default().push(service.id);
         }
     }
 

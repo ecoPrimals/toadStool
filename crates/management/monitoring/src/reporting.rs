@@ -40,15 +40,15 @@ impl ResourceMonitor for SystemResourceMonitor {
         tokio::spawn(async move {
             process_map
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .remove(&workload_id);
             usage_data
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .remove(&workload_id);
             threshold_data
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .remove(&workload_id);
         });
         Ok(())
@@ -61,7 +61,10 @@ impl ResourceMonitor for SystemResourceMonitor {
         let workload_id = workload_id.to_string();
         async move {
             // Modern async access - no blocking!
-            let usage_data = self.usage_data.read().unwrap_or_else(|e| e.into_inner());
+            let usage_data = self
+                .usage_data
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             usage_data.get(&workload_id).cloned().ok_or_else(|| {
                 ResourceMonitorError::ProcessNotRegistered(workload_id.clone()).into()
@@ -139,9 +142,7 @@ pub(crate) fn load_to_cpu_usage_percent(load_one: f64, cpu_cores: usize) -> f64 
 fn statvfs_root_available_bytes() -> u64 {
     use std::path::Path;
 
-    toadstool_hw_safe::fs_stats(Path::new("/"))
-        .map(|s| s.available_bytes)
-        .unwrap_or(0)
+    toadstool_hw_safe::fs_stats(Path::new("/")).map_or(0, |s| s.available_bytes)
 }
 
 #[cfg(not(target_os = "linux"))]

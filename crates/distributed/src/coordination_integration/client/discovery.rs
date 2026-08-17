@@ -66,7 +66,7 @@ impl CoordinationDiscovery {
         (*self
             .discovered_services
             .write()
-            .unwrap_or_else(|e| e.into_inner()))
+            .unwrap_or_else(std::sync::PoisonError::into_inner))
         .clone_from(&filtered);
 
         Ok(filtered)
@@ -118,7 +118,7 @@ impl CoordinationDiscovery {
     pub async fn get_cached(&self) -> Vec<DiscoveredService> {
         self.discovered_services
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 }

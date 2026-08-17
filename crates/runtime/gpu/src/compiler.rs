@@ -73,7 +73,10 @@ impl KernelStringOptimizer {
         let cache_key = self.generate_cache_key(kernel_source, &format, &target_framework, device);
 
         if self.config.caching.enabled {
-            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+            let cache = self
+                .cache
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(cached_kernel) = cache.get(&cache_key) {
                 return Ok(Arc::clone(cached_kernel));
             }
@@ -87,7 +90,10 @@ impl KernelStringOptimizer {
         )?);
 
         if self.config.caching.enabled {
-            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cache = self
+                .cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             cache.insert(cache_key, Arc::clone(&compiled_kernel));
         }
 
@@ -151,13 +157,19 @@ impl KernelStringOptimizer {
 
     /// Clear compilation cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.clear();
     }
 
     /// Get cache statistics
     pub async fn get_cache_stats(&self) -> CacheStatistics {
-        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+        let cache = self
+            .cache
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         CacheStatistics {
             entries: cache.len(),
             memory_usage_bytes: cache.values().map(|k| k.binary.len()).sum::<usize>() as u64,

@@ -36,7 +36,7 @@ impl SystemResourceMonitor {
 
         self.process_map
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(workload_id.to_string(), process_info);
         info!(
             "Registered process {} with PID {} for monitoring",
@@ -50,17 +50,17 @@ impl SystemResourceMonitor {
         let was_registered = self
             .process_map
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(workload_id)
             .is_some();
         if was_registered {
             self.usage_data
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .remove(workload_id);
             self.threshold_data
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .remove(workload_id);
             info!("Unregistered process {} from monitoring", workload_id);
             Ok(())
@@ -71,7 +71,10 @@ impl SystemResourceMonitor {
 
     /// Gets current metrics for a workload (async version)
     pub async fn get_metrics_async(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
-        let usage_data = self.usage_data.read().unwrap_or_else(|e| e.into_inner());
+        let usage_data = self
+            .usage_data
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         usage_data.get(workload_id).cloned().ok_or_else(|| {
             ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into()
         })

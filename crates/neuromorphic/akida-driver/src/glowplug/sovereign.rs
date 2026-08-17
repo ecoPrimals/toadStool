@@ -6,7 +6,7 @@
 //! the NPU-specific version of the sovereign boot pattern:
 //!
 //! 1. Detect current driver state
-//! 2. If cold on vfio-pci → warm via native driver (akida_pcie)
+//! 2. If cold on vfio-pci → warm via native driver (`akida_pcie`)
 //! 3. Swap back to vfio-pci (firmware state may survive)
 //! 4. Verify firmware is alive by probing BAR0 values
 //!
@@ -45,7 +45,7 @@ pub struct BootResult {
 /// A single step in the boot sequence.
 #[derive(Debug)]
 pub struct BootStep {
-    /// Step name (e.g. "detect_driver", "warm_cycle").
+    /// Step name (e.g. "`detect_driver`", "`warm_cycle`").
     pub name: String,
     /// Status.
     pub status: StepStatus,
@@ -181,7 +181,14 @@ pub fn sovereign_boot_with_lifecycle(bdf: &str, lifecycle: &dyn NpuLifecycle) ->
     });
 
     // ── Step 4: Warm cycle ────────────────────────────────────────────
-    if !is_native {
+    if is_native {
+        steps.push(BootStep {
+            name: "swap_to_native".into(),
+            status: StepStatus::Skipped,
+            detail: Some("already on native driver".into()),
+            duration_ms: 0,
+        });
+    } else {
         // Swap to native driver for firmware init
         let step_start = Instant::now();
         match swap::swap_to_driver(bdf, native_sysfs, lifecycle) {
@@ -220,13 +227,6 @@ pub fn sovereign_boot_with_lifecycle(bdf: &str, lifecycle: &dyn NpuLifecycle) ->
                 return fail(steps, format!("swap to {native_sysfs} failed: {e}"));
             }
         }
-    } else {
-        steps.push(BootStep {
-            name: "swap_to_native".into(),
-            status: StepStatus::Skipped,
-            detail: Some("already on native driver".into()),
-            duration_ms: 0,
-        });
     }
 
     // ── Step 5: Swap back to vfio-pci ─────────────────────────────────

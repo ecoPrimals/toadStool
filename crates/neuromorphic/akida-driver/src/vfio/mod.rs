@@ -207,7 +207,7 @@ impl VfioBackend {
 
     /// Get the mapped BAR0 control region size in bytes.
     #[must_use]
-    pub fn bar0_size(&self) -> usize {
+    pub const fn bar0_size(&self) -> usize {
         self.control_regs.size()
     }
 

@@ -25,7 +25,7 @@ impl UniversalGpuEngine {
         let sessions = self
             .active_sessions
             .read()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let frameworks = self.frameworks.read().await;
 
         let recursive_sessions = sessions.values().filter(|s| s.recursion_depth > 0).count();
@@ -49,7 +49,7 @@ impl UniversalGpuEngine {
         let metrics = self
             .evolution_metrics
             .read()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         metrics.log_status();
     }
 
@@ -57,7 +57,7 @@ impl UniversalGpuEngine {
     pub async fn get_evolution_metrics(&self) -> EvolutionMetrics {
         self.evolution_metrics
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 
@@ -66,7 +66,7 @@ impl UniversalGpuEngine {
         *self
             .evolution_metrics
             .write()
-            .unwrap_or_else(|e| e.into_inner()) = metrics;
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = metrics;
         self.log_evolution_status().await;
     }
 

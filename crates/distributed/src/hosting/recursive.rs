@@ -129,8 +129,8 @@ impl RecursiveHostingManager {
             let mut instances = self
                 .child_instances
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
-            instances.insert(instance_id.clone(), instance.clone());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            instances.insert(instance_id, instance.clone());
         }
 
         Ok(instance)

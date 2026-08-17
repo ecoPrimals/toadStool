@@ -105,7 +105,7 @@ impl DeviceManager {
 
     /// Scan `/sys/bus/pci/devices/` for BrainChip vendor IDs.
     ///
-    /// Works regardless of which driver is bound (vfio-pci, akida_pcie, or
+    /// Works regardless of which driver is bound (vfio-pci, `akida_pcie`, or
     /// none). This is the pure-VFIO discovery path.
     fn discover_via_sysfs() -> Result<Vec<DeviceInfo>> {
         use crate::pcie_ids::{ALL_DEVICE_IDS, BRAINCHIP_VENDOR_ID};

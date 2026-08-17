@@ -180,7 +180,10 @@ impl PolicyManager for FilePolicyManager {
 
         // Check cache first; update LRU metadata on hit.
         {
-            let mut cache = self.policy_cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cache = self
+                .policy_cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(cached) = cache.get_mut(policy_id)
                 && is_cache_valid(cached, &self.config)
             {
@@ -199,7 +202,10 @@ impl PolicyManager for FilePolicyManager {
 
         // Update cache
         if self.config.cache_enabled {
-            let mut cache = self.policy_cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cache = self
+                .policy_cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             cache.insert(
                 policy_id.to_string(),
                 CachedPolicy {
@@ -231,7 +237,10 @@ impl PolicyManager for FilePolicyManager {
 
         // Update cache
         if self.config.cache_enabled {
-            let mut cache = self.policy_cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cache = self
+                .policy_cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             cache.insert(
                 policy.id.clone(),
                 CachedPolicy {
@@ -264,7 +273,7 @@ impl PolicyManager for FilePolicyManager {
         // Remove from cache
         self.policy_cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(policy_id);
 
         info!("Deleted policy: {}", policy_id);

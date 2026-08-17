@@ -77,18 +77,27 @@ impl ModuleCache {
 
     /// Get a module from cache
     pub fn get(&self, key: &str) -> Option<Module> {
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(entry) = cache.get_mut(key) {
             // Record hit
             entry.record_access();
-            *self.hits.write().unwrap_or_else(|e| e.into_inner()) += 1;
+            *self
+                .hits
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) += 1;
 
             debug!("Cache hit for key: {}", key);
             Some(entry.module.clone())
         } else {
             // Record miss
-            *self.misses.write().unwrap_or_else(|e| e.into_inner()) += 1;
+            *self
+                .misses
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) += 1;
             debug!("Cache miss for key: {}", key);
             None
         }
@@ -96,7 +105,10 @@ impl ModuleCache {
 
     /// Insert a module into cache
     pub fn insert(&self, key: String, module: Module) {
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         // Evict old entries if at capacity
         if cache.len() >= self.max_entries {
@@ -130,8 +142,14 @@ impl ModuleCache {
 
     /// Get cache hit rate
     pub fn hit_rate(&self) -> f64 {
-        let hits = *self.hits.read().unwrap_or_else(|e| e.into_inner());
-        let misses = *self.misses.read().unwrap_or_else(|e| e.into_inner());
+        let hits = *self
+            .hits
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let misses = *self
+            .misses
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let total = hits + misses;
 
         if total == 0 {
@@ -143,17 +161,26 @@ impl ModuleCache {
 
     /// Get cache size
     pub fn size(&self) -> usize {
-        self.cache.read().unwrap_or_else(|e| e.into_inner()).len()
+        self.cache
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .len()
     }
 
     /// Clear the cache
     pub fn clear(&self) {
         self.cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clear();
-        *self.hits.write().unwrap_or_else(|e| e.into_inner()) = 0;
-        *self.misses.write().unwrap_or_else(|e| e.into_inner()) = 0;
+        *self
+            .hits
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
+        *self
+            .misses
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
         debug!("Cache cleared");
     }
 }

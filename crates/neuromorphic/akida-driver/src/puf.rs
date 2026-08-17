@@ -250,7 +250,7 @@ fn puf_entropy_from_deltas(deltas: &[i8]) -> f64 {
     for &count in &counts {
         if count > 0 {
             let p = f64::from(count) / total;
-            entropy -= p * p.log2();
+            entropy = p.mul_add(-p.log2(), entropy);
         }
     }
 

@@ -156,10 +156,10 @@ impl MockV4l2Device {
     ///
     /// Returns error if `config.fail_open` is `Some(DeviceBusy)` or similar.
     pub fn open(config: MockV4l2Config) -> Result<Self, String> {
-        if let Some(err) = config.fail_open {
-            if err == MockV4l2Error::DeviceBusy {
-                return Err("device busy".to_string());
-            }
+        if let Some(err) = config.fail_open
+            && err == MockV4l2Error::DeviceBusy
+        {
+            return Err("device busy".to_string());
         }
         Ok(Self::new(config))
     }

@@ -203,11 +203,11 @@ impl PrimalDiscovery {
         capability: &str,
     ) -> Result<PrimalEndpoint, DiscoveryError> {
         // 1. Check cache
-        if let Some(cached) = self.get_from_cache(capability).await {
-            if cached.is_fresh(self.config.cache_ttl) {
-                tracing::debug!("Cache hit for capability: {}", capability);
-                return Ok(cached);
-            }
+        if let Some(cached) = self.get_from_cache(capability).await
+            && cached.is_fresh(self.config.cache_ttl)
+        {
+            tracing::debug!("Cache hit for capability: {}", capability);
+            return Ok(cached);
         }
 
         // 2. Try mDNS discovery (production-grade implementation available)
@@ -271,7 +271,7 @@ impl PrimalDiscovery {
     pub async fn refresh(&self) -> Result<(), DiscoveryError> {
         self.cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clear();
         tracing::debug!("Discovery cache cleared");
         Ok(())
@@ -280,7 +280,10 @@ impl PrimalDiscovery {
     // Internal helpers
 
     async fn get_from_cache(&self, capability: &str) -> Option<PrimalEndpoint> {
-        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+        let cache = self
+            .cache
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache
             .get(capability)
             .and_then(|endpoints| endpoints.first())
@@ -288,10 +291,13 @@ impl PrimalDiscovery {
     }
 
     async fn cache_endpoint(&self, capability: &str, endpoint: PrimalEndpoint) {
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache
             .entry(capability.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(endpoint);
     }
 

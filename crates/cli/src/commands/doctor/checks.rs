@@ -42,11 +42,11 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
             if let Ok(entries) = std::fs::read_dir(pci_devices) {
                 for entry in entries.flatten() {
                     let vendor_path = entry.path().join("vendor");
-                    if let Ok(v) = std::fs::read_to_string(&vendor_path) {
-                        if v.trim() == "0x1e7c" {
-                            found = true;
-                            break;
-                        }
+                    if let Ok(v) = std::fs::read_to_string(&vendor_path)
+                        && v.trim() == "0x1e7c"
+                    {
+                        found = true;
+                        break;
                     }
                 }
             }
@@ -122,24 +122,21 @@ pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
     let mut sockets_found = vec![];
     let mut discovered_primal_names = HashSet::new();
 
-    if biomeos_dir_exists {
-        if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().map(|e| e == "sock").unwrap_or(false)
-                    || path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|n| n.ends_with(".sock") || !n.contains('.'))
-                        .unwrap_or(false)
-                {
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        sockets_found.push(name.to_string());
-                        let primal_name = name.strip_suffix(".sock").unwrap_or(name).to_string();
-                        if !primal_name.is_empty() {
-                            discovered_primal_names.insert(primal_name);
-                        }
-                    }
+    if biomeos_dir_exists && let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if (path.extension().map(|e| e == "sock").unwrap_or(false)
+                || path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.ends_with(".sock") || !n.contains('.'))
+                    .unwrap_or(false))
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+            {
+                sockets_found.push(name.to_string());
+                let primal_name = name.strip_suffix(".sock").unwrap_or(name).to_string();
+                if !primal_name.is_empty() {
+                    discovered_primal_names.insert(primal_name);
                 }
             }
         }

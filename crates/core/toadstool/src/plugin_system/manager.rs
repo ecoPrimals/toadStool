@@ -256,10 +256,10 @@ impl PluginManager {
 
             // Check for direct plugin.json in search path
             let direct_manifest = search_path.join("plugin.json");
-            if direct_manifest.exists() {
-                if let Some(manifest) = self.parse_manifest(&direct_manifest) {
-                    discovered.push(manifest);
-                }
+            if direct_manifest.exists()
+                && let Some(manifest) = self.parse_manifest(&direct_manifest)
+            {
+                discovered.push(manifest);
             }
 
             // Scan subdirectories for plugin bundles
@@ -268,10 +268,10 @@ impl PluginManager {
                     let entry_path = entry.path();
                     if entry_path.is_dir() {
                         let manifest_path = entry_path.join("plugin.json");
-                        if manifest_path.exists() {
-                            if let Some(manifest) = self.parse_manifest(&manifest_path) {
-                                discovered.push(manifest);
-                            }
+                        if manifest_path.exists()
+                            && let Some(manifest) = self.parse_manifest(&manifest_path)
+                        {
+                            discovered.push(manifest);
                         }
                     }
                 }

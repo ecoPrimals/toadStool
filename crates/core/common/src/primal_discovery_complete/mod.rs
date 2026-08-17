@@ -291,39 +291,39 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
         let capability_str = Self::capability_to_string(capability);
 
         // 1. Check cache
-        if let Some(cached) = self.get_from_cache(&capability_str).await {
-            if cached.is_fresh(self.config.cache_ttl) {
-                debug!("✅ Cache hit for capability: {}", capability_str);
-                return Ok(vec![cached.service]);
-            }
+        if let Some(cached) = self.get_from_cache(&capability_str).await
+            && cached.is_fresh(self.config.cache_ttl)
+        {
+            debug!("✅ Cache hit for capability: {}", capability_str);
+            return Ok(vec![cached.service]);
         }
 
         // 2. Try mDNS discovery
-        if self.config.enable_mdns {
-            if let Some(ref mdns) = self.mdns_client {
-                debug!("🔍 Querying mDNS for capability: {}", capability_str);
+        if self.config.enable_mdns
+            && let Some(ref mdns) = self.mdns_client
+        {
+            debug!("🔍 Querying mDNS for capability: {}", capability_str);
 
-                match mdns.discover_by_capability(capability).await {
-                    Ok(services) if !services.is_empty() => {
-                        info!(
-                            "✅ mDNS discovered {} services for {}",
-                            services.len(),
-                            capability_str
-                        );
+            match mdns.discover_by_capability(capability).await {
+                Ok(services) if !services.is_empty() => {
+                    info!(
+                        "✅ mDNS discovered {} services for {}",
+                        services.len(),
+                        capability_str
+                    );
 
-                        // Cache all discovered services
-                        for service in &services {
-                            self.cache_service(&capability_str, service.clone()).await;
-                        }
+                    // Cache all discovered services
+                    for service in &services {
+                        self.cache_service(&capability_str, service.clone()).await;
+                    }
 
-                        return Ok(services);
-                    }
-                    Ok(_) => {
-                        debug!("mDNS query returned no results for {}", capability_str);
-                    }
-                    Err(e) => {
-                        warn!("mDNS query failed for {}: {}", capability_str, e);
-                    }
+                    return Ok(services);
+                }
+                Ok(_) => {
+                    debug!("mDNS query returned no results for {}", capability_str);
+                }
+                Err(e) => {
+                    warn!("mDNS query failed for {}: {}", capability_str, e);
                 }
             }
         }
@@ -444,7 +444,7 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
     async fn get_from_cache(&self, capability: &str) -> Option<CachedEndpoint> {
         self.cache
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get(capability)
             .cloned()
     }
@@ -460,7 +460,7 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
 
         self.cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(capability.to_string(), cached);
     }
 
@@ -468,7 +468,7 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
     pub async fn clear_cache(&self) {
         self.cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clear();
         debug!("Discovery cache cleared");
     }
@@ -476,7 +476,10 @@ impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
     /// Get cache statistics
     pub async fn cache_stats(&self) -> CacheStats {
         let (total, fresh) = {
-            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+            let cache = self
+                .cache
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let total = cache.len();
             let fresh = cache
                 .values()

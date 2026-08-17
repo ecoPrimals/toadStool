@@ -86,10 +86,10 @@ impl MockVfioDevice {
     /// Panics if an internal mutex is poisoned.
     #[must_use]
     pub fn read_register(&self, offset: u64) -> u32 {
-        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset) {
-            if *err == MockVfioError::ReadFault || *err == MockVfioError::DeviceReset {
-                return 0;
-            }
+        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset)
+            && (*err == MockVfioError::ReadFault || *err == MockVfioError::DeviceReset)
+        {
+            return 0;
         }
 
         let value = self
@@ -119,10 +119,10 @@ impl MockVfioDevice {
     ///
     /// Panics if an internal mutex is poisoned.
     pub fn write_register(&self, offset: u64, value: u32) {
-        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset) {
-            if *err == MockVfioError::WriteFault || *err == MockVfioError::DeviceReset {
-                return;
-            }
+        if let Some(err) = self.error_at.lock().expect(POISONED).get(&offset)
+            && (*err == MockVfioError::WriteFault || *err == MockVfioError::DeviceReset)
+        {
+            return;
         }
 
         self.registers.lock().expect(POISONED).insert(offset, value);

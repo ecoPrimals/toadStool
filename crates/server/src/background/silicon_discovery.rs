@@ -76,7 +76,9 @@ pub async fn run(shader_client: SharedVisualizationClient, registry: SharedSilic
                     );
 
                     {
-                        let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
+                        let mut reg = registry
+                            .write()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
                         reg.status = ShaderCompilerStatus::Available(
                             caps.compiler_version
                                 .clone()
@@ -94,7 +96,9 @@ pub async fn run(shader_client: SharedVisualizationClient, registry: SharedSilic
                 Err(e) => {
                     debug!(error = %e, "shader.compile.capabilities query failed — will retry");
                     {
-                        let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
+                        let mut reg = registry
+                            .write()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
                         reg.status = ShaderCompilerStatus::Error(e.clone());
                     }
 
@@ -103,7 +107,9 @@ pub async fn run(shader_client: SharedVisualizationClient, registry: SharedSilic
             }
         } else {
             {
-                let mut reg = registry.write().unwrap_or_else(|e| e.into_inner());
+                let mut reg = registry
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if reg.status != ShaderCompilerStatus::Unavailable {
                     debug!("shader compiler not yet available — silicon registry pending");
                     reg.status = ShaderCompilerStatus::Unavailable;

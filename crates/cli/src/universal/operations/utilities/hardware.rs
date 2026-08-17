@@ -48,22 +48,21 @@ pub(crate) async fn detect_gpu_info() -> Result<GpuInfo> {
         .arg("--query-gpu=name,memory.total")
         .arg("--format=csv,noheader")
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            let parts: Vec<&str> = output_str.trim().split(',').collect();
-            if parts.len() >= 2 {
-                return Ok(GpuInfo {
-                    vendor: "NVIDIA".to_string(),
-                    model: parts[0].trim().to_string(),
-                    memory_mb: parts[1]
-                        .split_whitespace()
-                        .next()
-                        .and_then(|s| s.parse().ok())
-                        .unwrap_or(0),
-                    compute_capability: "Unknown".to_string(),
-                });
-            }
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let parts: Vec<&str> = output_str.trim().split(',').collect();
+        if parts.len() >= 2 {
+            return Ok(GpuInfo {
+                vendor: "NVIDIA".to_string(),
+                model: parts[0].trim().to_string(),
+                memory_mb: parts[1]
+                    .split_whitespace()
+                    .next()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0),
+                compute_capability: "Unknown".to_string(),
+            });
         }
     }
 
@@ -71,33 +70,32 @@ pub(crate) async fn detect_gpu_info() -> Result<GpuInfo> {
     if let Ok(output) = std::process::Command::new("rocm-smi")
         .arg("--showproductname")
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            return Ok(GpuInfo {
-                vendor: "AMD".to_string(),
-                model: output_str.trim().to_string(),
-                memory_mb: 0, // Would need additional command to get memory
-                compute_capability: "Unknown".to_string(),
-            });
-        }
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        return Ok(GpuInfo {
+            vendor: "AMD".to_string(),
+            model: output_str.trim().to_string(),
+            memory_mb: 0, // Would need additional command to get memory
+            compute_capability: "Unknown".to_string(),
+        });
     }
 
     // Method 3: Generic detection
     #[cfg(target_os = "linux")]
     {
-        if let Ok(output) = std::process::Command::new("lspci").output() {
-            if output.status.success() {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                for line in output_str.lines() {
-                    if line.contains("VGA") || line.contains("3D") {
-                        return Ok(GpuInfo {
-                            vendor: "Unknown".to_string(),
-                            model: line.to_string(),
-                            memory_mb: 0,
-                            compute_capability: "Unknown".to_string(),
-                        });
-                    }
+        if let Ok(output) = std::process::Command::new("lspci").output()
+            && output.status.success()
+        {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            for line in output_str.lines() {
+                if line.contains("VGA") || line.contains("3D") {
+                    return Ok(GpuInfo {
+                        vendor: "Unknown".to_string(),
+                        model: line.to_string(),
+                        memory_mb: 0,
+                        compute_capability: "Unknown".to_string(),
+                    });
                 }
             }
         }

@@ -83,18 +83,18 @@ impl PciFilter {
     }
 
     fn matches(&self, vendor: u16, device: u16, class: u32) -> bool {
-        if let Some(v) = self.vendor_id {
-            if vendor != v {
-                return false;
-            }
+        if let Some(v) = self.vendor_id
+            && vendor != v
+        {
+            return false;
         }
         if !self.device_ids.is_empty() && !self.device_ids.contains(&device) {
             return false;
         }
-        if let Some(ref pred) = self.class_match {
-            if !pred(class) {
-                return false;
-            }
+        if let Some(ref pred) = self.class_match
+            && !pred(class)
+        {
+            return false;
         }
         true
     }

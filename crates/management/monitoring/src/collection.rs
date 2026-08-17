@@ -42,7 +42,10 @@ impl SystemResourceMonitor {
         self.config = config;
 
         // Restart monitoring with new configuration if currently monitoring
-        let is_monitoring = *self.is_monitoring.read().unwrap_or_else(|e| e.into_inner());
+        let is_monitoring = *self
+            .is_monitoring
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if is_monitoring {
             self.stop_monitoring_loop().await?;
             self.start_monitoring_loop().await?;
@@ -56,7 +59,7 @@ impl SystemResourceMonitor {
         let mut is_monitoring = self
             .is_monitoring
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if *is_monitoring {
             return Ok(());
         }
@@ -75,12 +78,17 @@ impl SystemResourceMonitor {
         tokio::spawn(async move {
             let mut interval_timer = time::interval(interval);
 
-            while *is_monitoring_flag.read().unwrap_or_else(|e| e.into_inner()) {
+            while *is_monitoring_flag
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+            {
                 interval_timer.tick().await;
 
                 // Snapshot process list and release lock before await (avoid holding lock across .await)
                 let process_snapshot: Vec<(String, ProcessInfo)> = {
-                    let processes = process_map.read().unwrap_or_else(|e| e.into_inner());
+                    let processes = process_map
+                        .read()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     processes
                         .iter()
                         .map(|(k, v)| (k.clone(), v.clone()))
@@ -112,8 +120,12 @@ impl SystemResourceMonitor {
                 }
 
                 // Update usage data and check thresholds
-                let mut usage_data_guard = usage_data.write().unwrap_or_else(|e| e.into_inner());
-                let thresholds = threshold_data.read().unwrap_or_else(|e| e.into_inner());
+                let mut usage_data_guard = usage_data
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let thresholds = threshold_data
+                    .read()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
 
                 for (workload_id, metrics) in updated_metrics {
                     usage_data_guard.insert(workload_id.clone(), metrics.clone());
@@ -145,7 +157,7 @@ impl SystemResourceMonitor {
             let mut is_monitoring = self
                 .is_monitoring
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *is_monitoring = false;
         }
         info!("Stopped resource monitoring");

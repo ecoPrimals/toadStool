@@ -26,7 +26,10 @@ impl JobTracker {
 
     /// Register a new job
     pub async fn register_job(&self, job: DistributedJobState) {
-        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
+        let mut jobs = self
+            .jobs
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let job_id = job.job_id.clone();
 
         tracing::debug!("Registering job: {}", job_id);
@@ -35,7 +38,10 @@ impl JobTracker {
 
     /// Update job status
     pub async fn update_status(&self, job_id: &str, status: JobStatus) {
-        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
+        let mut jobs = self
+            .jobs
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(job) = jobs.get_mut(job_id) {
             job.status = status.clone();
@@ -50,7 +56,10 @@ impl JobTracker {
 
     /// Assign job to tower
     pub async fn assign_to_tower(&self, job_id: &str, tower_id: String) {
-        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
+        let mut jobs = self
+            .jobs
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(job) = jobs.get_mut(job_id) {
             job.assigned_tower = Some(tower_id.clone());
@@ -67,7 +76,10 @@ impl JobTracker {
 
     /// Complete job with result
     pub async fn complete_job(&self, job_id: &str, result: WorkloadResult) {
-        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
+        let mut jobs = self
+            .jobs
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(job) = jobs.get_mut(job_id) {
             job.status = JobStatus::Completed;
@@ -80,7 +92,10 @@ impl JobTracker {
 
     /// Mark job as failed
     pub async fn fail_job(&self, job_id: &str) {
-        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
+        let mut jobs = self
+            .jobs
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(job) = jobs.get_mut(job_id) {
             job.status = JobStatus::Failed;
@@ -92,19 +107,28 @@ impl JobTracker {
 
     /// Get job state
     pub async fn get_job(&self, job_id: &str) -> Option<DistributedJobState> {
-        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
+        let jobs = self
+            .jobs
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         jobs.get(job_id).cloned()
     }
 
     /// Get all jobs
     pub async fn all_jobs(&self) -> Vec<DistributedJobState> {
-        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
+        let jobs = self
+            .jobs
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         jobs.values().cloned().collect()
     }
 
     /// Get jobs by status
     pub async fn jobs_by_status(&self, status: JobStatus) -> Vec<DistributedJobState> {
-        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
+        let jobs = self
+            .jobs
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         jobs.values()
             .filter(|job| job.status == status)
             .cloned()
@@ -113,7 +137,10 @@ impl JobTracker {
 
     /// Get statistics
     pub async fn statistics(&self) -> DistributedStats {
-        let jobs = self.jobs.read().unwrap_or_else(|e| e.into_inner());
+        let jobs = self
+            .jobs
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let total_jobs = jobs.len();
         let pending_jobs = jobs
@@ -148,7 +175,10 @@ impl JobTracker {
 
     /// Prune completed jobs older than specified duration
     pub async fn prune_old_jobs(&self, max_age_secs: u64) {
-        let mut jobs = self.jobs.write().unwrap_or_else(|e| e.into_inner());
+        let mut jobs = self
+            .jobs
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let now = std::time::Instant::now();
 
         let before_count = jobs.len();

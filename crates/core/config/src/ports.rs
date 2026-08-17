@@ -208,10 +208,10 @@ pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
 #[must_use]
 pub fn get_capability_port(capability: &str, fallback_port: u16) -> u16 {
     let capability_env = format!("TOADSTOOL_{capability}_PORT");
-    if let Ok(v) = std::env::var(&capability_env) {
-        if let Ok(p) = v.parse::<u16>() {
-            return p;
-        }
+    if let Ok(v) = std::env::var(&capability_env)
+        && let Ok(p) = v.parse::<u16>()
+    {
+        return p;
     }
     fallback_port
 }

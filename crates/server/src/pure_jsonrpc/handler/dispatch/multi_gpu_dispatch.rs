@@ -57,8 +57,7 @@ impl DispatchHandler {
                 let gpu_count = p
                     .get("gpu_count")
                     .and_then(serde_json::Value::as_u64)
-                    .map(|n| n as usize)
-                    .unwrap_or(total_adapters);
+                    .map_or(total_adapters, |n| n as usize);
 
                 // Use topology-aware placement via WorkloadRouter
                 let available: Vec<u32> = (0..total_adapters as u32).collect();

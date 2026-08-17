@@ -91,14 +91,14 @@ impl DriftMonitor {
             // Fast EWMA (short memory — tracks recent distribution)
             let alpha_fast = self.config.fast_alpha;
             let diff_fast = x - self.fast_mean[i];
-            self.fast_mean[i] += alpha_fast * diff_fast;
+            self.fast_mean[i] = alpha_fast.mul_add(diff_fast, self.fast_mean[i]);
             self.fast_variance[i] = (1.0 - alpha_fast)
                 * (alpha_fast * diff_fast).mul_add(diff_fast, self.fast_variance[i]);
 
             // Slow EWMA (long memory — tracks baseline distribution)
             let alpha_slow = self.config.slow_alpha;
             let diff_slow = x - self.slow_mean[i];
-            self.slow_mean[i] += alpha_slow * diff_slow;
+            self.slow_mean[i] = alpha_slow.mul_add(diff_slow, self.slow_mean[i]);
             self.slow_variance[i] = (1.0 - alpha_slow)
                 * (alpha_slow * diff_slow).mul_add(diff_slow, self.slow_variance[i]);
         }

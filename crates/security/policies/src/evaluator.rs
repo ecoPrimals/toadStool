@@ -227,7 +227,10 @@ impl ConditionEvaluator {
             }
 
             PolicyCondition::Custom { expression, .. } => {
-                let compiled = self.regex_cache.read().unwrap_or_else(|e| e.into_inner());
+                let compiled = self
+                    .regex_cache
+                    .read()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if let Some(re) = compiled.get(expression) {
                     Ok(re.is_match(&format!("{context:?}")))
                 } else {

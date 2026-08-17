@@ -32,13 +32,19 @@ impl DiscoveryEngine {
 
     /// Register an endpoint source.
     pub async fn register_source(&self, source: Arc<dyn EndpointSource>) {
-        let mut sources = self.sources.write().unwrap_or_else(|e| e.into_inner());
+        let mut sources = self
+            .sources
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         sources.push(source);
     }
 
     /// Register a substrate detector.
     pub async fn register_detector(&self, detector: Arc<dyn SubstrateDetector>) {
-        let mut detectors = self.detectors.write().unwrap_or_else(|e| e.into_inner());
+        let mut detectors = self
+            .detectors
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         detectors.push(detector);
     }
 
@@ -52,7 +58,7 @@ impl DiscoveryEngine {
         let sources: Vec<Arc<dyn EndpointSource>> = self
             .sources
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .map(Arc::clone)
             .collect();
@@ -98,7 +104,7 @@ impl DiscoveryEngine {
         let detectors: Vec<Arc<dyn SubstrateDetector>> = self
             .detectors
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .map(Arc::clone)
             .collect();
@@ -139,7 +145,10 @@ impl DiscoveryEngine {
 
     /// Clear the cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.clear();
     }
 }

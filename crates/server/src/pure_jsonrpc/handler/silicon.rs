@@ -46,7 +46,10 @@ impl SiliconHandler {
         let unit_name = measurement.silicon_unit.as_str().to_string();
         let op_name = measurement.operation.clone();
 
-        let mut store = self.measurements.write().unwrap_or_else(|e| e.into_inner());
+        let mut store = self
+            .measurements
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         store.push(measurement);
         let total = store.len();
@@ -76,7 +79,10 @@ impl SiliconHandler {
             .and_then(serde_json::Value::as_f64)
             .ok_or_else(|| JsonRpcError::invalid_params("missing 'tolerance_required'"))?;
 
-        let store = self.measurements.read().unwrap_or_else(|e| e.into_inner());
+        let store = self
+            .measurements
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let matching: Vec<&PerformanceMeasurement> = store
             .iter()
@@ -125,7 +131,10 @@ impl SiliconHandler {
 
     /// `compute.performance_surface.list` — list all measurements and available operations.
     pub async fn list(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let store = self.measurements.read().unwrap_or_else(|e| e.into_inner());
+        let store = self
+            .measurements
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let operations: Vec<&str> = {
             let mut ops: Vec<&str> = store.iter().map(|m| m.operation.as_str()).collect();
@@ -190,11 +199,17 @@ impl SiliconHandler {
 
         let energy_aware = params
             .get("energy_aware")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(true);
 
-        let store = self.measurements.read().unwrap_or_else(|e| e.into_inner());
-        let ledger = self.energy_ledger.read().unwrap_or_else(|e| e.into_inner());
+        let store = self
+            .measurements
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let ledger = self
+            .energy_ledger
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let idle_units: Vec<SiliconUnit> = if energy_aware {
             ledger
@@ -222,37 +237,35 @@ impl SiliconHandler {
 
             let prefer_idle = item
                 .get("prefer_idle_unit")
-                .and_then(|v| v.as_bool())
+                .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false);
 
             let mut routed = route_single_op(&store, op, tolerance);
 
-            if prefer_idle && !idle_units.is_empty() {
-                if let Some(idle_candidate) = idle_units
+            if prefer_idle
+                && !idle_units.is_empty()
+                && let Some(idle_candidate) = idle_units
                     .iter()
                     .find(|u| !units_in_use.contains(u) && **u != routed.silicon_unit)
-                {
-                    let idle_measurement = store.iter().find(|m| {
-                        m.silicon_unit == *idle_candidate
-                            && m.operation == op
-                            && m.tolerance_achieved <= tolerance
-                    });
-                    if let Some(m) = idle_measurement {
-                        routed = RoutedOperation {
-                            operation: op.to_string(),
-                            silicon_unit: *idle_candidate,
-                            precision_mode: m.precision_mode.clone(),
-                            estimated_throughput_gflops: m.throughput_gflops,
-                            reason: format!(
-                                "idle-silicon opportunistic: {} is powered but unused, \
+            {
+                let idle_measurement = store.iter().find(|m| {
+                    m.silicon_unit == *idle_candidate
+                        && m.operation == op
+                        && m.tolerance_achieved <= tolerance
+                });
+                if let Some(m) = idle_measurement {
+                    routed = RoutedOperation {
+                        operation: op.to_string(),
+                        silicon_unit: *idle_candidate,
+                        precision_mode: m.precision_mode.clone(),
+                        estimated_throughput_gflops: m.throughput_gflops,
+                        reason: format!(
+                            "idle-silicon opportunistic: {} is powered but unused, \
                                  scheduling at {:.0} GFLOPS (vs {:.0} on primary)",
-                                idle_candidate,
-                                m.throughput_gflops,
-                                routed.estimated_throughput_gflops
-                            ),
-                            fallback: Some(Box::new(routed)),
-                        };
-                    }
+                            idle_candidate, m.throughput_gflops, routed.estimated_throughput_gflops
+                        ),
+                        fallback: Some(Box::new(routed)),
+                    };
                 }
             }
 
@@ -291,7 +304,7 @@ impl SiliconHandler {
         let mut store = self
             .energy_ledger
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *store = Some(ledger);
 
         Ok(serde_json::json!({
@@ -310,7 +323,10 @@ impl SiliconHandler {
         &self,
         _params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let store = self.energy_ledger.read().unwrap_or_else(|e| e.into_inner());
+        let store = self
+            .energy_ledger
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         match store.as_ref() {
             Some(ledger) => serde_json::to_value(ledger)

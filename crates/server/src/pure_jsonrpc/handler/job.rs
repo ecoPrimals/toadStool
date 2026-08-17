@@ -71,7 +71,10 @@ impl JobHandler {
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid job type: {e}")))?;
 
         let routing = {
-            let router = self.router.read().unwrap_or_else(|e| e.into_inner());
+            let router = self
+                .router
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let model = match &job_type {
                 crate::gpu_job_queue::JobType::Inference { model, .. } => model.as_str(),
                 _ => "",
@@ -81,7 +84,10 @@ impl JobHandler {
 
         // If routing to a remote gate, forward the job instead of local submit
         let remote_forward = {
-            let router = self.router.read().unwrap_or_else(|e| e.into_inner());
+            let router = self
+                .router
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if router.is_remote_gate(routing.gate_id.as_ref()) {
                 router
                     .gate_endpoint(routing.gate_id.as_ref())
@@ -233,7 +239,7 @@ impl JobHandler {
         }
         self.router
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .update_gate(gate_info);
         Ok(serde_json::json!({"updated": true, "gate_id": gate_id.as_ref()}))
     }
@@ -251,13 +257,16 @@ impl JobHandler {
         }
         self.router
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove_gate(gate_id);
         Ok(serde_json::json!({"removed": true, "gate_id": gate_id}))
     }
 
     pub(super) async fn gate_list(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let router = self.router.read().unwrap_or_else(|e| e.into_inner());
+        let router = self
+            .router
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let gates: Vec<&crate::cross_gate::GateGpuInfo> = router.gates().values().collect();
         Ok(serde_json::json!({"gates": gates}))
     }
@@ -272,7 +281,10 @@ impl JobHandler {
             .get("vram_required_mb")
             .and_then(serde_json::Value::as_u64)
             .unwrap_or(4096);
-        let router = self.router.read().unwrap_or_else(|e| e.into_inner());
+        let router = self
+            .router
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let decision = router.route(model, vram);
         Ok(serde_json::json!({
             "gate_id": decision.gate_id.as_ref(),

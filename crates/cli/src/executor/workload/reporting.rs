@@ -42,24 +42,24 @@ pub(super) fn print_text_output(
 
     println!();
 
-    if let Some(stdout) = &response.output.stdout {
-        if !stdout.is_empty() {
-            println!("{}", "Standard Output:".bright_blue());
-            println!("{}", "─".repeat(60));
-            println!("{stdout}");
-            println!("{}", "─".repeat(60));
-            println!();
-        }
+    if let Some(stdout) = &response.output.stdout
+        && !stdout.is_empty()
+    {
+        println!("{}", "Standard Output:".bright_blue());
+        println!("{}", "─".repeat(60));
+        println!("{stdout}");
+        println!("{}", "─".repeat(60));
+        println!();
     }
 
-    if let Some(stderr) = &response.output.stderr {
-        if !stderr.is_empty() {
-            println!("{}", "Standard Error:".bright_yellow());
-            println!("{}", "─".repeat(60));
-            println!("{stderr}");
-            println!("{}", "─".repeat(60));
-            println!();
-        }
+    if let Some(stderr) = &response.output.stderr
+        && !stderr.is_empty()
+    {
+        println!("{}", "Standard Error:".bright_yellow());
+        println!("{}", "─".repeat(60));
+        println!("{stderr}");
+        println!("{}", "─".repeat(60));
+        println!();
     }
 
     Ok(())

@@ -6,7 +6,7 @@
 //! passthrough infrastructure. It provides everything rustChip needs to
 //! manage PCIe device driver transitions without depending on coralReef.
 //!
-//! For the full-scale GPU + NPU orchestrator with SCM_RIGHTS fd passing,
+//! For the full-scale GPU + NPU orchestrator with `SCM_RIGHTS` fd passing,
 //! ring persistence, multi-vendor lifecycle, and systemd integration, see:
 //! `primals/coralReef/crates/coral-ember/` and `coral-glowplug/`.
 //!

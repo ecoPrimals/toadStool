@@ -151,16 +151,16 @@ impl CapabilityResolver {
         let mut providers = self.registry.get_providers(&capability).await;
 
         // If empty, try discovery
-        if providers.is_empty() {
-            if let Ok(discovered) = self.discovery.discover(capability.as_str()).await {
-                let provider = ServiceProvider::from(discovered);
+        if providers.is_empty()
+            && let Ok(discovered) = self.discovery.discover(capability.as_str()).await
+        {
+            let provider = ServiceProvider::from(discovered);
 
-                if self.auto_register {
-                    self.registry.register(capability, provider.clone()).await;
-                }
-
-                providers.push(provider);
+            if self.auto_register {
+                self.registry.register(capability, provider.clone()).await;
             }
+
+            providers.push(provider);
         }
 
         Ok(providers)

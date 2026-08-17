@@ -202,14 +202,14 @@ impl RuntimeEngine for ContainerRuntimeEngine {
                     let containers = self
                         .active_containers
                         .read()
-                        .unwrap_or_else(|e| e.into_inner());
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     containers.keys().copied().collect()
                 };
                 let ids: Vec<String> = {
                     let containers = self
                         .active_containers
                         .read()
-                        .unwrap_or_else(|e| e.into_inner());
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     container_ids
                         .iter()
                         .filter_map(|id| containers.get(id).map(|h| h.container_id.clone()))
@@ -222,7 +222,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
                 let mut containers = self
                     .active_containers
                     .write()
-                    .unwrap_or_else(|e| e.into_inner());
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 containers.clear();
             }
 

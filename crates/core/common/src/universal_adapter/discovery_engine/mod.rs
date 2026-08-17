@@ -378,64 +378,64 @@ impl DiscoverySource for EnvironmentSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let mut providers = Vec::new();
 
-        if let Some(url) = &self.providers.security_provider_url {
-            if let Ok(endpoint) = Self::parse_endpoint(url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Security {
-                        features: vec![],
-                        min_trust_level: crate::universal_adapter::TrustLevel::Medium,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
-            }
+        if let Some(url) = &self.providers.security_provider_url
+            && let Ok(endpoint) = Self::parse_endpoint(url)
+        {
+            providers.push(CapabilityInfo {
+                provider_id: uuid::Uuid::new_v4().to_string(),
+                capability: crate::universal_adapter::CapabilityType::Security {
+                    features: vec![],
+                    min_trust_level: crate::universal_adapter::TrustLevel::Medium,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint,
+                health: HealthStatus::Unknown,
+            });
         }
 
-        if let Some(url) = &self.providers.storage_provider_url {
-            if let Ok(endpoint) = Self::parse_endpoint(url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Storage {
-                        features: vec![],
-                        min_throughput_mbps: None,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
-            }
+        if let Some(url) = &self.providers.storage_provider_url
+            && let Ok(endpoint) = Self::parse_endpoint(url)
+        {
+            providers.push(CapabilityInfo {
+                provider_id: uuid::Uuid::new_v4().to_string(),
+                capability: crate::universal_adapter::CapabilityType::Storage {
+                    features: vec![],
+                    min_throughput_mbps: None,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint,
+                health: HealthStatus::Unknown,
+            });
         }
 
-        if let Some(url) = &self.providers.coordination_provider_url {
-            if let Ok(endpoint) = Self::parse_endpoint(url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Coordination {
-                        features: vec![],
-                        max_latency_ms: None,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
-            }
+        if let Some(url) = &self.providers.coordination_provider_url
+            && let Ok(endpoint) = Self::parse_endpoint(url)
+        {
+            providers.push(CapabilityInfo {
+                provider_id: uuid::Uuid::new_v4().to_string(),
+                capability: crate::universal_adapter::CapabilityType::Coordination {
+                    features: vec![],
+                    max_latency_ms: None,
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint,
+                health: HealthStatus::Unknown,
+            });
         }
 
-        if let Some(url) = &self.providers.intelligence_provider_url {
-            if let Ok(endpoint) = Self::parse_endpoint(url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Intelligence {
-                        features: vec![],
-                        model_types: vec![],
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
-            }
+        if let Some(url) = &self.providers.intelligence_provider_url
+            && let Ok(endpoint) = Self::parse_endpoint(url)
+        {
+            providers.push(CapabilityInfo {
+                provider_id: uuid::Uuid::new_v4().to_string(),
+                capability: crate::universal_adapter::CapabilityType::Intelligence {
+                    features: vec![],
+                    model_types: vec![],
+                },
+                metadata: std::collections::HashMap::new(),
+                endpoint,
+                health: HealthStatus::Unknown,
+            });
         }
 
         tracing::debug!("Environment discovery found {} providers", providers.len());

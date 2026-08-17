@@ -73,7 +73,7 @@ impl AiMcpInterface {
             let mut counter = self
                 .request_counter
                 .write()
-                .unwrap_or_else(|e| e.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *counter += 1;
         }
 
@@ -130,7 +130,7 @@ impl AiMcpInterface {
         let mut sessions = self
             .active_sessions
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(session) = sessions.get_mut(session_id) {
             session.last_activity = SystemTime::now();
         }
@@ -141,11 +141,11 @@ impl AiMcpInterface {
         let sessions = self
             .active_sessions
             .read()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let request_count = *self
             .request_counter
             .read()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let mut stats = HashMap::new();
         stats.insert(

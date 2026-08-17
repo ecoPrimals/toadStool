@@ -130,10 +130,10 @@ impl MdnsAdapter {
                         }
 
                         // Extract capabilities (cap_{name}={version})
-                        if let Some(cap_name) = key.strip_prefix("cap_") {
-                            if !cap_name.ends_with("_features") {
-                                capabilities.push(cap_name.to_string());
-                            }
+                        if let Some(cap_name) = key.strip_prefix("cap_")
+                            && !cap_name.ends_with("_features")
+                        {
+                            capabilities.push(cap_name.to_string());
                         }
                     }
 
@@ -215,10 +215,10 @@ impl MdnsAdapter {
                                 .get_property_val_str(key)
                                 .map(std::string::ToString::to_string);
                         }
-                        if let Some(cap_name) = key.strip_prefix("cap_") {
-                            if !cap_name.ends_with("_features") {
-                                capabilities.push(cap_name.to_string());
-                            }
+                        if let Some(cap_name) = key.strip_prefix("cap_")
+                            && !cap_name.ends_with("_features")
+                        {
+                            capabilities.push(cap_name.to_string());
                         }
                     }
 

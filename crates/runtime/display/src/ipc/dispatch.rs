@@ -57,7 +57,7 @@ async fn dispatch_method(
 
             let window_id = manager
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .create_window(params)?;
 
             Ok(serde_json::json!({
@@ -75,7 +75,7 @@ async fn dispatch_method(
 
             manager
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .destroy_window(window_id)?;
 
             Ok(serde_json::json!({"destroyed": true}))
@@ -108,7 +108,7 @@ async fn dispatch_method(
 
             manager
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .resize_window(window_id, Size { width, height })?;
 
             Ok(serde_json::json!({"resized": true}))
@@ -124,7 +124,7 @@ async fn dispatch_method(
 
             let info = manager
                 .read()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .get_window_info(window_id)?;
 
             Ok(serde_json::to_value(info)
@@ -155,7 +155,7 @@ async fn dispatch_method(
 
             manager
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .present_window(window_id, &pixels)?;
 
             Ok(serde_json::json!({"presented": true}))
@@ -171,7 +171,7 @@ async fn dispatch_method(
 
             input
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .set_focus(Some(window_id));
 
             Ok(serde_json::json!({
@@ -182,7 +182,7 @@ async fn dispatch_method(
         "display.poll_events" => {
             let events = input
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .poll_events()?;
 
             Ok(serde_json::json!({
@@ -198,8 +198,8 @@ async fn dispatch_method(
             "has_gpu_acceleration": true,
             "vsync_available": true,
             "display_count": 1,
-            "input_device_count": input.read().unwrap_or_else(|e| e.into_inner()).device_count(),
-            "window_count": manager.read().unwrap_or_else(|e| e.into_inner()).window_count(),
+            "input_device_count": input.read().unwrap_or_else(std::sync::PoisonError::into_inner).device_count(),
+            "window_count": manager.read().unwrap_or_else(std::sync::PoisonError::into_inner).window_count(),
             "isomorphic": true,
         })),
         _ => Err(DisplayError::IpcError(format!(

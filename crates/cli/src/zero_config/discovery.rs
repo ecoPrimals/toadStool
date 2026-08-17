@@ -112,10 +112,10 @@ impl ZeroConfigDeployment {
         let content = String::from_utf8(output.stdout)?;
 
         for line in content.lines() {
-            if line.starts_with("model name") {
-                if let Some(model) = line.split(':').nth(1) {
-                    return Ok(model.trim().to_string());
-                }
+            if line.starts_with("model name")
+                && let Some(model) = line.split(':').nth(1)
+            {
+                return Ok(model.trim().to_string());
             }
         }
 
@@ -140,10 +140,10 @@ impl ZeroConfigDeployment {
                 if let Some(value) = line.split_whitespace().nth(1) {
                     total_bytes = value.parse::<u64>().unwrap_or(0) * 1024;
                 }
-            } else if line.starts_with("MemAvailable:") {
-                if let Some(value) = line.split_whitespace().nth(1) {
-                    available_bytes = value.parse::<u64>().unwrap_or(0) * 1024;
-                }
+            } else if line.starts_with("MemAvailable:")
+                && let Some(value) = line.split_whitespace().nth(1)
+            {
+                available_bytes = value.parse::<u64>().unwrap_or(0) * 1024;
             }
         }
 
@@ -201,12 +201,12 @@ impl ZeroConfigDeployment {
 
         // Parse network interfaces
         for line in content.lines() {
-            if line.contains("inet ") && !line.contains(LOCALHOST_IPV4) {
-                if let Some(ip) = line.split_whitespace().nth(1) {
-                    if let Some(ip_addr) = ip.split('/').next() {
-                        local_ips.push(ip_addr.to_string());
-                    }
-                }
+            if line.contains("inet ")
+                && !line.contains(LOCALHOST_IPV4)
+                && let Some(ip) = line.split_whitespace().nth(1)
+                && let Some(ip_addr) = ip.split('/').next()
+            {
+                local_ips.push(ip_addr.to_string());
             }
         }
 
@@ -303,20 +303,20 @@ impl ZeroConfigDeployment {
             .arg("--format=csv,noheader,nounits")
             .output();
 
-        if let Ok(output) = nvidia_output {
-            if output.status.success() {
-                let content = String::from_utf8(output.stdout)?;
-                if let Some(line) = content.lines().next() {
-                    let parts: Vec<&str> = line.split(',').collect();
-                    if parts.len() >= 3 {
-                        return Ok(GpuInfo {
-                            count: parts[0].trim().parse().unwrap_or(0),
-                            vendor: "NVIDIA".to_string(),
-                            model: parts[1].trim().to_string(),
-                            memory_bytes: parts[2].trim().parse::<u64>().unwrap_or(0) * 1024 * 1024,
-                            cuda: true,
-                        });
-                    }
+        if let Ok(output) = nvidia_output
+            && output.status.success()
+        {
+            let content = String::from_utf8(output.stdout)?;
+            if let Some(line) = content.lines().next() {
+                let parts: Vec<&str> = line.split(',').collect();
+                if parts.len() >= 3 {
+                    return Ok(GpuInfo {
+                        count: parts[0].trim().parse().unwrap_or(0),
+                        vendor: "NVIDIA".to_string(),
+                        model: parts[1].trim().to_string(),
+                        memory_bytes: parts[2].trim().parse::<u64>().unwrap_or(0) * 1024 * 1024,
+                        cuda: true,
+                    });
                 }
             }
         }

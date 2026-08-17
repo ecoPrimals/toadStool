@@ -31,9 +31,7 @@ pub struct HardwareCapabilities {
 impl Default for HardwareCapabilities {
     fn default() -> Self {
         Self {
-            cpu_cores: std::thread::available_parallelism()
-                .map(std::num::NonZero::get)
-                .unwrap_or(4),
+            cpu_cores: std::thread::available_parallelism().map_or(4, std::num::NonZero::get),
             ram_bytes: Self::detect_ram(),
             gpu_devices: Vec::new(),
             cuda_compute_capability: None,

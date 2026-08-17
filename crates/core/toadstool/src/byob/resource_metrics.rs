@@ -239,10 +239,10 @@ pub(crate) fn parse_io_stat_rbytes_wbytes(io_stat: &str) -> (u64, u64) {
                 if let Ok(n) = v.parse::<u64>() {
                     r = r.saturating_add(n);
                 }
-            } else if let Some(v) = part.strip_prefix("wbytes=") {
-                if let Ok(n) = v.parse::<u64>() {
-                    w = w.saturating_add(n);
-                }
+            } else if let Some(v) = part.strip_prefix("wbytes=")
+                && let Ok(n) = v.parse::<u64>()
+            {
+                w = w.saturating_add(n);
             }
         }
     }

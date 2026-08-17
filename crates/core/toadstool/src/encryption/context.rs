@@ -148,10 +148,10 @@ impl<P: CryptoProvider> EncryptionContext<P> {
         key_id: &str,
         provider: &P,
     ) -> ToadStoolResult<EncryptionKey> {
-        if let Some(ref key) = self.active_key {
-            if key.id == key_id {
-                return Ok(key.clone());
-            }
+        if let Some(ref key) = self.active_key
+            && key.id == key_id
+        {
+            return Ok(key.clone());
         }
 
         let key = provider.get_key(key_id).await?;

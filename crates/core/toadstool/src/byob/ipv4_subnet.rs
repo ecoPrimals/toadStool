@@ -77,10 +77,10 @@ pub(crate) fn gateway_and_service_ips(
         return (gw, ips);
     }
 
-    if primary != DEFAULT_NETWORK_SUBNET {
-        if let Some((gw, ips)) = compute_layout(DEFAULT_NETWORK_SUBNET, service_count) {
-            return (gw, ips);
-        }
+    if primary != DEFAULT_NETWORK_SUBNET
+        && let Some((gw, ips)) = compute_layout(DEFAULT_NETWORK_SUBNET, service_count)
+    {
+        return (gw, ips);
     }
 
     (GATEWAY_FALLBACK_IP.to_string(), Vec::new())

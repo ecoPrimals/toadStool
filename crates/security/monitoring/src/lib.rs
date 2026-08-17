@@ -177,7 +177,7 @@ impl SecurityMonitor {
     pub async fn events(&self) -> Vec<SecurityEvent> {
         self.events
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .cloned()
             .collect()
@@ -187,7 +187,7 @@ impl SecurityMonitor {
     pub async fn events_above(&self, min: Severity) -> Vec<SecurityEvent> {
         self.events
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .filter(|e| e.severity >= min)
             .cloned()
@@ -198,7 +198,7 @@ impl SecurityMonitor {
     pub async fn count_by_category(&self, category: EventCategory) -> usize {
         self.events
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .filter(|e| e.category == category)
             .count()
@@ -235,7 +235,7 @@ impl SecurityMonitor {
         let mut history = self
             .resource_history
             .write()
-            .unwrap_or_else(|e| e.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if history.len() >= 64 {
             history.pop_front();
         }
@@ -260,7 +260,10 @@ impl SecurityMonitor {
     // ── Internal ──────────────────────────────────────────────────────────────
 
     async fn push_event(&self, event: SecurityEvent) {
-        let mut buf = self.events.write().unwrap_or_else(|e| e.into_inner());
+        let mut buf = self
+            .events
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if buf.len() >= self.capacity {
             buf.pop_front();
         }

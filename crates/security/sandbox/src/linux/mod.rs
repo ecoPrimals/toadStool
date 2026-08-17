@@ -119,7 +119,10 @@ impl LinuxSandboxManager {
         debug!("Creating Linux sandbox: {}", spec.sandbox_id);
 
         {
-            let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
+            let mut rt = self
+                .runtime
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             rt.entry(spec.sandbox_id.clone())
                 .or_insert_with(|| SandboxLinuxRuntime {
                     namespaces_created: false,
@@ -154,7 +157,10 @@ impl LinuxSandboxManager {
         debug!("Stopping execution in Linux sandbox: {}", sandbox_id);
 
         let pid = {
-            let processes = self.processes.read().unwrap_or_else(|e| e.into_inner());
+            let processes = self
+                .processes
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             processes.get(sandbox_id).copied()
         };
 
@@ -165,7 +171,10 @@ impl LinuxSandboxManager {
         }
 
         {
-            let mut processes = self.processes.write().unwrap_or_else(|e| e.into_inner());
+            let mut processes = self
+                .processes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             processes.remove(sandbox_id);
         }
 
@@ -186,7 +195,10 @@ impl LinuxSandboxManager {
         let mut had_mounts = false;
         let mut had_namespaces = false;
         {
-            let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
+            let mut rt = self
+                .runtime
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(state) = rt.get_mut(sandbox_id) {
                 had_namespaces = state.namespaces_created;
                 had_mounts = !state.mounts.is_empty();
@@ -267,7 +279,7 @@ impl LinuxSandboxManager {
 
         match result {
             Ok(()) => {
-                let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
+                let mut rt = self.runtime.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 let e = rt.entry(sandbox_id.to_string()).or_default();
                 e.mounts.push(target_path.to_path_buf());
                 info!("Filesystem mount applied at {}", target_path.display());
@@ -300,7 +312,10 @@ impl LinuxSandboxManager {
         debug!("Monitoring Linux sandbox: {}", sandbox_id);
 
         let pid = {
-            let processes = self.processes.read().unwrap_or_else(|e| e.into_inner());
+            let processes = self
+                .processes
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             processes.get(sandbox_id).copied()
         };
 
@@ -313,7 +328,10 @@ impl LinuxSandboxManager {
         };
 
         let cgroup_rel = {
-            let rt = self.runtime.read().unwrap_or_else(|e| e.into_inner());
+            let rt = self
+                .runtime
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             rt.get(sandbox_id)
                 .and_then(|s| s.cgroup_v2_rel.clone())
                 .or_else(|| {
@@ -322,7 +340,10 @@ impl LinuxSandboxManager {
                 })
         };
 
-        let mut rt = self.runtime.write().unwrap_or_else(|e| e.into_inner());
+        let mut rt = self
+            .runtime
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let entry = rt.entry(sandbox_id.to_string()).or_default();
         if entry.cgroup_v2_rel.is_none()
             && let Ok(cg) = std::fs::read_to_string(format!("/proc/{pid}/cgroup"))

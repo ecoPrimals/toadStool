@@ -261,7 +261,10 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         capability: &Capability,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
         let cached: Vec<DiscoveredService> = {
-            let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+            let cache = self
+                .cache
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             cache
                 .values()
                 .filter(|s| s.has_capability(capability))
@@ -285,22 +288,25 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
             let lr = self
                 .last_refreshed
                 .read()
-                .unwrap_or_else(|e| e.into_inner());
-            if let Some(t) = *lr {
-                if t.elapsed() < self.config.cache_ttl {
-                    debug!(
-                        "Cache recently refreshed ({}ms ago); skipping re-discovery for {:?}",
-                        t.elapsed().as_millis(),
-                        capability
-                    );
-                    return Ok(vec![]);
-                }
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(t) = *lr
+                && t.elapsed() < self.config.cache_ttl
+            {
+                debug!(
+                    "Cache recently refreshed ({}ms ago); skipping re-discovery for {:?}",
+                    t.elapsed().as_millis(),
+                    capability
+                );
+                return Ok(vec![]);
             }
         }
 
         let services = self.discover_via_method().await?;
         {
-            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cache = self
+                .cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             for service in &services {
                 cache
                     .entry(service.id.clone())
@@ -310,7 +316,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         *self
             .last_refreshed
             .write()
-            .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
         Ok(services
             .into_iter()
             .filter(|s| s.has_capability(capability))
@@ -334,7 +340,10 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
     async fn refresh(&self) -> DiscoveryResult<()> {
         let services = self.discover_via_method().await?;
         let count = {
-            let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+            let mut cache = self
+                .cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             cache.clear();
             for service in services {
                 cache.insert(service.id.clone(), service);
@@ -344,7 +353,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
         *self
             .last_refreshed
             .write()
-            .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
         info!("Discovery cache refreshed: {count} services");
         Ok(())
     }

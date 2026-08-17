@@ -235,10 +235,10 @@ fn probe_keyring(name: &str) -> Option<SecretString> {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if let Some((key, value)) = line.split_once('=') {
-            if key.trim() == name {
-                return Some(SecretString::new(value.trim().to_owned()));
-            }
+        if let Some((key, value)) = line.split_once('=')
+            && key.trim() == name
+        {
+            return Some(SecretString::new(value.trim().to_owned()));
         }
     }
     None

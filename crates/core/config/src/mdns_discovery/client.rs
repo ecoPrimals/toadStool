@@ -114,7 +114,10 @@ impl MdnsDiscoveryClient {
 
     /// Clean up stale entries from cache
     pub(super) async fn cleanup_stale_entries(&self) {
-        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let now = SystemTime::now();
 
         cache.retain(|id, entry| match now.duration_since(entry.last_seen) {
@@ -157,7 +160,7 @@ impl MdnsDiscoveryClient {
 
         self.cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(id, cached);
     }
 
@@ -166,7 +169,7 @@ impl MdnsDiscoveryClient {
         if let Some(entry) = self
             .cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get_mut(service_id)
         {
             entry.last_seen = SystemTime::now();
@@ -204,7 +207,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         let services: Vec<DiscoveredService> = self
             .cache
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .values()
             .filter_map(|entry| {
                 if entry.service.capabilities.contains(capability) {
@@ -237,7 +240,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         let services: Vec<DiscoveredService> = self
             .cache
             .read()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .values()
             .map(|entry| entry.service.clone())
             .collect();
@@ -255,7 +258,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
 
             self.advertised_services
                 .write()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .insert(service_id.to_string(), hostname.clone());
 
             info!(
@@ -276,7 +279,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
         let value = self
             .advertised_services
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(service_id);
         if let Some(hostname) = value {
             info!(
@@ -287,7 +290,7 @@ impl DiscoveryClient for MdnsDiscoveryClient {
 
         self.cache
             .write()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(service_id);
 
         Ok(())
@@ -296,7 +299,10 @@ impl DiscoveryClient for MdnsDiscoveryClient {
     async fn health_check<'a>(&'a self, service_id: &'a str) -> ToadStoolResult<bool> {
         self.touch_service(service_id).await;
 
-        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
+        let cache = self
+            .cache
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.get(service_id).map_or(Ok(false), |entry| {
             let age = SystemTime::now()
                 .duration_since(entry.last_seen)

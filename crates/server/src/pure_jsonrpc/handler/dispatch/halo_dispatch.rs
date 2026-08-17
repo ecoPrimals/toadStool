@@ -58,12 +58,12 @@ impl HaloExchangeConfig {
 
         for i in 0..gpu_count {
             let mut local_dims = self.lattice_dims;
-            let extra = if (i as u32) < remainder { 1 } else { 0 };
+            let extra = u32::from((i as u32) < remainder);
             local_dims[self.split_axis] = partition_size + extra;
 
             // Buffer includes ghost cells on both sides
-            let ghost_elements = self.ghost_width as u64 * self.non_split_volume() as u64;
-            let local_elements = self.partition_volume(&local_dims) as u64;
+            let ghost_elements = u64::from(self.ghost_width) * self.non_split_volume();
+            let local_elements = self.partition_volume(&local_dims);
             let total_elements = local_elements + 2 * ghost_elements;
             let buffer_size = total_elements * element_size;
 
@@ -166,8 +166,7 @@ impl DispatchHandler {
             let gpu_count = p
                 .get("gpu_count")
                 .and_then(serde_json::Value::as_u64)
-                .map(|n| n as usize)
-                .unwrap_or(total_adapters)
+                .map_or(total_adapters, |n| n as usize)
                 .min(total_adapters);
 
             if gpu_count == 0 {
@@ -255,7 +254,7 @@ impl DispatchHandler {
                 // via PcieTransport when physical GPU links are available.
                 let mut exchanges = Vec::new();
                 for i in 0..partitions.len().saturating_sub(1) {
-                    let ghost_bytes = ghost_width as u64 * config.non_split_volume() * 8;
+                    let ghost_bytes = u64::from(ghost_width) * config.non_split_volume() * 8;
 
                     // Find PCIe link between adjacent adapters
                     let link_info = pcie_links.iter().find(|link| {
