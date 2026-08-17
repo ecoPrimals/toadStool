@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 13, 2026 (Sessions 43-381+)
+## [Unreleased] - Aug 17, 2026 (Sessions 43-382+)
+
+### Session S382 (Aug 16-17, 2026) — Vendor Tool Excision + Test Recovery
+
+- **GPU detection evolved off vendor tools** — `nvidia-smi`, `rocm-smi`, and `lspci` replaced by native sysfs + procfs. Detection goes **1 → 4 GPUs** on biomeGate: `nvidia-smi` reports only devices bound to the proprietary driver, so it missed an unbound Titan V and both `vfio-pci` Tesla K80 dies — the sovereign configuration this project targets.
+- **Phantom GPU removed** — the Intel path asserted a hardcoded 2 GB integrated device whenever `/dev/dri` existed, which is true on any host with any DRM driver. biomeGate has no Intel graphics and was reporting one.
+- **Capability no longer read off marketing strings** — `gpu_name.contains("RTX 40") → "8.9"` removed; it returned `"Unknown"` for every GPU on this gate.
+- **`nvidia-smi` addressed by PCI bus ID, not positional index** — `capabilities/gpu.rs` passed our own all-vendor enumeration counter as nvidia-smi's NVIDIA-only index. They diverge silently, attributing memory to the wrong GPU or querying a nonexistent index (returns nothing, leaves memory at 0, indistinguishable from a measurement).
+- **New: `pci_discovery::scan_accelerators`** (cylinder) — pairs cached sysfs identity, which survives a device going silent, with a live config-space liveness probe. A wedged GPU reports as "Tesla K80 at 0000:4b:00.0, not responding" instead of being class-filtered into nonexistence (an unresponsive device's class reads `0xffffff`). `Liveness::Unknown` is explicitly not usable. Selection is by PCI class, so class `0x12` accelerators and unrecognised vendors both enumerate.
+- **Model names** — `pci.ids` with the kernel's own `Model:` line preferred; the installed database has no entry for the RTX 5060 (`10de:2d05`) while procfs names it exactly. **Driver version** from `driver/module/version` — the same string `nvidia-smi` prints.
+- **VRAM reported only where measurable** — `amdgpu` publishes it, the proprietary NVIDIA driver does not. BAR1 aperture deliberately not substituted: it measures host-visible VRAM, not capacity (12 GB K80 die presents a 16 GiB BAR; unbound Titan V, 256 MiB). Scoring treats unknown as neutral so a discrete GPU is not ranked below integrated graphics.
+- **216 tests recovered** across nine files that had silently stopped compiling — awaited calls that had been made synchronous, missing `hardening` / `legacy-*` feature gates on files importing gated types, and `tokio`/`std` `RwLock` drift. `npu_dispatch_coverage_tests` tried to disable itself with `#![cfg(all())]`, which is vacuously *true*, so it stayed enabled and never built.
+- **Fix: intrusion-detection ban expiry** — timed with `std::time::Instant` while its test runs under `#[tokio::test(start_paused = true)]`. Tokio's clock control moves only tokio's time, so bans never expired under test. Now `tokio::time::Instant`, identical in production.
+- **Fix: BYOB config-path test** — asserted a config error unreachable on hosts without Docker, because the container engine is built first. Skips cleanly now.
+- **8,521 lib tests, 0 failures.** `futures` dependency avoided in three test files by awaiting already-spawned tasks directly.
 
 ### Session S381 (Aug 13, 2026) — Deep Debt + Overstep Cleanup + Evolution
 

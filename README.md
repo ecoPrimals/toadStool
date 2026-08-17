@@ -1,12 +1,12 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 13, 2026 | S381 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | Aug 17, 2026 | S382 | v0.2.0
 
 ---
 
 ## What Is This?
 
-**ToadStool** is the hardware infrastructure primal — the **WHERE** in the Compute Trio (barraCuda = WHAT, toadStool = WHERE, coralReef = HOW). It discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. **All-silicon pipeline**: discovers every functional unit on the GPU die (shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizer, depth buffer, tessellator, video encoder) and routes work to the cheapest unit that meets the requested tolerance.
+**ToadStool** is the hardware infrastructure primal — the **WHERE** in the Compute Trio (barraCuda = WHAT, toadStool = WHERE, coralReef = HOW). It discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe — natively, with no vendor tooling: identity, bound driver, driver version, and liveness all come from the kernel, so accelerators are found whatever driver is bound, or none. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. **All-silicon pipeline**: discovers every functional unit on the GPU die (shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizer, depth buffer, tessellator, video encoder) and routes work to the cheapest unit that meets the requested tolerance.
 
 **Key principles:**
 - **Every piece of silicon** -- a GPU has 8+ special-purpose computers; toadStool discovers and routes to all of them
@@ -44,7 +44,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **8,446 lib tests, 0 failures** (lib-only default); **~20** ignored (hardware-gated); full workspace ~8m on Dual EPYC |
+| `cargo test --workspace` | **8,521 lib tests, 0 failures** (lib-only default); **~20** ignored (hardware-gated); full workspace ~8m on Dual EPYC |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **160 blocks** across designated containment crates (hw-safe, cylinder, nvpmu, display, runtime/gpu, akida-driver); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **39 crates `forbid`** + hw crates with narrow `#[allow(unsafe_code, reason)]`; S346: madvise/DRM-ioctl/systemd-fds/SPIR-V migrated into hw-safe/runtime-gpu |
@@ -280,7 +280,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **8,446 lib**, 0 failures |
+| Workspace tests | **8,521 lib**, 0 failures |
 | Lib-only line coverage | ~85%+ |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **160 blocks** across designated containment crates (hw-safe, cylinder, nvpmu, display, runtime/gpu, akida-driver); **all SAFETY-documented**; workspace `unsafe_code = "deny"`, **39 crates `forbid`** + hw crates with `#[allow(unsafe_code, reason)]` |
@@ -303,7 +303,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 8,446 lib tests; ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 8,521 lib tests; ~85%+ lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live. **Plumbing only: no shader has executed on this path on any NVIDIA GPU.** Blocked on PFIFO runlist (`PFIFO_RUNLIST_BASE=0`, `GP_GET` never advances) and FECS context load. Titan V reaches Tier 1 warm infrastructure; verified compute today runs through wgpu/Vulkan with a vendor driver
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
@@ -374,7 +374,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 8,446 lib tests; ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 8,521 lib tests; ~85%+ lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -418,7 +418,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: Aug 13, 2026 — S381 (deep debt + overstep cleanup; S380: wgpu 22→28, P1 vulkan feature fix, axum excised, silicon ledger, darwin cfg fix). **8,446 lib tests**, 0 failures. ~85%+ lib-only line coverage (target 90%). **131 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **160 unsafe blocks** — all SAFETY-documented, all in designated containment crates; workspace `unsafe_code = "deny"`, **39 crates `forbid`**; **all cylinder `#[allow]` have `reason`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list**. **Zero dead deps**. **Zero production files >800L** (S373–S381). **Zero clippy warnings** (`-D warnings`). **Zero doc warnings**. **46 crates `version.workspace = true`**. **18-target cross-compile** — 16 native (Mac M4, iPhone XS, Pixel 8, Milk-V Jupiter 2, Steam Deck, Raspberry Pi, IBM POWER, IBM Z, LoongArch) + 2 WASM (S376: 38/48 crates). **Security fail-closed** — sandbox/PKI/mainframe/probe require explicit config. Rust 1.92+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced. **C2 dual-socket** — `compute.tarpc.sock` (S354). **Zero hardcoded primal name violations** (S355). **G68 COMPLETE** — zero rustix outside hw-safe (S365). **Node Atomic fleet ready** (S369). **WASM compute kernel** (S376: 38/48). **NUCLEUS manifest convergence** (S377: 5→2 `BiomeManifest` structs, canonical in `toadstool-core`). **Tokio vestigial segmentation** (S378: 118→65 files, 45% reduction). **wgpu 28** (S380: leads ecosystem, P1 vulkan fix). **axum excised** (S380: HTTP is songBird's). **Silicon ledger** (S380: idle-aware routing). **Vertebrate self-audit** (S372: 128 methods). **Deep debt clean** (S373–S381).
+**Last Updated**: Aug 17, 2026 — S382 (vendor tool excision + test recovery; S381: deep debt + overstep cleanup; S380: wgpu 22→28, P1 vulkan feature fix, axum excised, silicon ledger, darwin cfg fix). **8,521 lib tests**, 0 failures. ~85%+ lib-only line coverage (target 90%). **131 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). **160 unsafe blocks** — all SAFETY-documented, all in designated containment crates; workspace `unsafe_code = "deny"`, **39 crates `forbid`**; **all cylinder `#[allow]` have `reason`**. **Zero production panics.** Zero production TODO/FIXME/HACK. **100% env centralized** (zero raw env literals). **19+ crate deny.toml ban list**. **Zero dead deps**. **Zero production files >800L** (S373–S381). **Zero clippy warnings** (`-D warnings`). **Zero doc warnings**. **46 crates `version.workspace = true`**. **18-target cross-compile** — 16 native (Mac M4, iPhone XS, Pixel 8, Milk-V Jupiter 2, Steam Deck, Raspberry Pi, IBM POWER, IBM Z, LoongArch) + 2 WASM (S376: 38/48 crates). **Security fail-closed** — sandbox/PKI/mainframe/probe require explicit config. Rust 1.92+ (edition 2024). **Phase D dispatch live**. **Capability-based discovery compliant**. **Auto-register hardware** (S309). **riboCipher REJECT** — Wave 113 enforced. **C2 dual-socket** — `compute.tarpc.sock` (S354). **Zero hardcoded primal name violations** (S355). **G68 COMPLETE** — zero rustix outside hw-safe (S365). **Node Atomic fleet ready** (S369). **WASM compute kernel** (S376: 38/48). **NUCLEUS manifest convergence** (S377: 5→2 `BiomeManifest` structs, canonical in `toadstool-core`). **Tokio vestigial segmentation** (S378: 118→65 files, 45% reduction). **wgpu 28** (S380: leads ecosystem, P1 vulkan fix). **axum excised** (S380: HTTP is songBird's). **Silicon ledger** (S380: idle-aware routing). **Vertebrate self-audit** (S372: 128 methods). **Deep debt clean** (S373–S381).
 
 ---
 

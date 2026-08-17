@@ -1,12 +1,39 @@
 # Active Technical Debt Register
 
-**Date**: August 13, 2026 — S381
+**Date**: August 17, 2026 — S382
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S382 (biomeGate Vendor Tool Excision + Test Recovery — Aug 16–17, 2026)**:
+GPU detection evolved off `nvidia-smi` / `rocm-smi` / `lspci` onto native
+sysfs + procfs. Detection went **1 → 4 GPUs** on biomeGate (`nvidia-smi` sees
+only proprietary-driver-bound devices, missing the unbound Titan V and both
+`vfio-pci` K80 dies). Removed a **phantom GPU**: the Intel path asserted a
+hardcoded 2 GB iGPU whenever `/dev/dri` existed — true on any DRM host, and
+this machine has no Intel graphics. Removed marketing-string capability
+inference (`gpu_name.contains("RTX 40")` → `"8.9"`), which returned `"Unknown"`
+for every GPU on this gate. Fixed `nvidia-smi -i <our enumeration index>` in
+`capabilities/gpu.rs` — our counter is all-vendor directory order, nvidia-smi's
+is NVIDIA-only in its own order; they diverge silently, attributing memory to
+the wrong GPU or returning nothing. Now addressed by PCI bus ID.
+New `pci_discovery::scan_accelerators` in cylinder pairs **cached sysfs
+identity** (survives a device going silent) with a **live config-space liveness
+probe**, so a wedged GPU reports as "Tesla K80 at 0000:4b:00.0, not responding"
+rather than being class-filtered into nonexistence. `Liveness::Unknown` is
+explicitly not usable. VRAM is reported only where the kernel publishes it;
+BAR1 aperture deliberately **not** substituted (12 GB K80 die presents a 16 GiB
+BAR). **216 tests recovered** across nine files that had silently stopped
+compiling — awaited-sync-calls, missing `hardening`/`legacy-*` feature gates,
+and `tokio`/`std` `RwLock` drift; `npu_dispatch_coverage_tests` disabled itself
+with `#![cfg(all())]`, which is vacuously *true*. Two real bugs surfaced by that
+recovery: intrusion-detection ban expiry timed with `std::time::Instant` under a
+paused tokio clock (never expired), and a BYOB test asserting a config error it
+could not reach on a host without Docker.
+See `wateringHole/handoffs/BIOMEGATE_VENDOR_TOOL_EXCISION_AAR_AUG17_2026.md`.
 
 **S381 (strandGate Deep Debt + Overstep Cleanup — Aug 13, 2026)**:
 `hw-safe/platform_backends.rs` (805L) smart-refactored into 7 focused modules
@@ -787,8 +814,34 @@ tightened; 7,789 lib tests, 0 failures, clippy and fmt clean.
 
 ## Active Debt
 
-Outstanding technical debt that still requires active engineering work (four
+Outstanding technical debt that still requires active engineering work (six
 items).
+
+### D-TEST-COMPILE — Active (S382)
+**Scope**: Workspace | **Metric**: `cargo test --workspace --no-run`
+Twelve test targets in `toadstool-cli`, `toadstool-distributed`, and
+`toadstool-runtime-gpu` **do not compile**, so their tests have never run. A
+build failure is not a test failure, so a green `cargo test` on the passing
+crates hides them entirely — this is invisible unless compilation is checked as
+its own question.
+**S382**: recovered 216 tests across nine files (awaited-sync calls, missing
+feature gates, `RwLock` type drift). The remainder need real fixes, not
+mechanical ones: `RwLockReadGuard` lifetime errors (45× E0277) and a `wgpu`
+trait-resolution overflow (11× E0275).
+**Closure**: `cargo test --workspace --no-run` exits 0. Worth a CI gate — this
+class of rot is silent by construction.
+
+### D-VRAM-NATIVE — Active (S382)
+**Crate**: `core/cylinder`, `auto_config/hardware`
+Total VRAM has **no native source on NVIDIA**. `amdgpu` publishes
+`mem_info_vram_total`; the proprietary driver does not, and unbound or
+`vfio-pci` devices have no driver to ask. Detection now reports VRAM only where
+measurable and treats unknown as neutral in scoring rather than zero.
+The BAR1 aperture is **not** a substitute — it measures host-visible VRAM, not
+capacity (measured: 12 GB K80 die → 16 GiB BAR; unbound Titan V → 256 MiB).
+**Remaining**: read capacity from BAR0 `PFB` registers in cylinder's privileged
+path. Would close the last real gap left by dropping `nvidia-smi`, which now
+survives in exactly one place — live used/free telemetry in `query_gpu_memory`.
 
 ### D-HW-LEARN-VERIFY — Active (evolved)
 **Crate**: `core/hw-learn` | **File**: `applicator/verify.rs`
