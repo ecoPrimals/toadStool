@@ -647,6 +647,18 @@ mod offline_interpreter_tests {
             "K80: ops={seen} unknown={unknown} ({pct}%) writes={}",
             writes.len()
         );
+        for (offset, op) in &stats.unknown_opcodes {
+            eprintln!("  unknown opcode {op:#04x} at ROM {offset:#06x}");
+        }
+
+        // `0x4D` (INIT_ZM_I2C_BYTE) is variable-length: 4 + count * 2. It was
+        // fixed at 6, which on this image landed mid-payload at 0xb84e and
+        // desynced the tail of the last script. Nothing may reintroduce a
+        // constant there.
+        assert!(
+            !stats.unknown_opcodes.iter().any(|&(off, _)| off == 0xb84e),
+            "0xb84e is unknown again — 0x4D has gone back to a fixed length"
+        );
 
         // Well under the refusal threshold, not merely at it. A parse that
         // squeaks past 25% is still mostly noise; this one decodes cleanly.

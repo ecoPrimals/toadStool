@@ -19,7 +19,16 @@ pub(super) fn dispatch_io(vm: &mut VbiosInterpreter<'_>, op: u8) -> Result<(), D
             vm.offset += 8 + count * 2;
         }
         0x4C => vm.offset += 7,
-        0x4D => vm.offset += 6,
+        0x4D => {
+            // INIT_ZM_I2C_BYTE: index(u8) + addr(u8) + count(u8), then count
+            // pairs of (reg, val). Variable length, not the fixed 6 this used
+            // to advance — on a measured GK210 image a count of 2 needs 8
+            // bytes, and stopping at 6 landed mid-payload and desynced the
+            // remainder of the script.
+            // nouveau: init_zm_i2c_byte, offset += 4 then += 2 per entry.
+            let count = vm.rd08(vm.offset + 3) as usize;
+            vm.offset += 4 + count * 2;
+        }
         0x4E => {
             let count = vm.rd08(vm.offset + 4) as usize;
             vm.offset += 5 + count;
@@ -44,6 +53,11 @@ pub(super) fn dispatch_io(vm: &mut VbiosInterpreter<'_>, op: u8) -> Result<(), D
         0x5E => vm.offset += 6,
         0x62 => vm.offset += 5,
         0x78 => vm.offset += 6,
+        // INIT_I2C_LONG_IF. nouveau's init_i2c_long_if advances 7, and 7 was
+        // tried here: on the measured GK210 image it takes unknown opcodes from
+        // 1 to 5, so this image's encoding is 11 bytes. Left at 11 on the
+        // evidence. If a Volta image ever decodes worse at 11, this needs to
+        // become capability-selected rather than flipped.
         0x96 => vm.offset += 11,
         0x98 => vm.offset += 8,
         0x99 => {
