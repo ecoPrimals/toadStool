@@ -26,9 +26,10 @@ probe**, so a wedged GPU reports as "Tesla K80 at 0000:4b:00.0, not responding"
 rather than being class-filtered into nonexistence. `Liveness::Unknown` is
 explicitly not usable. VRAM is reported only where the kernel publishes it;
 BAR1 aperture deliberately **not** substituted (12 GB K80 die presents a 16 GiB
-BAR). **216 tests recovered** across nine files that had silently stopped
-compiling — awaited-sync-calls, missing `hardening`/`legacy-*` feature gates,
-and `tokio`/`std` `RwLock` drift; `npu_dispatch_coverage_tests` disabled itself
+BAR). **21 test files unblocked** from the build (awaited-sync calls, missing
+`hardening`/`legacy-*` feature gates, `tokio`/`std` `RwLock` drift) — of the 623
+test functions in them, **113 now run** and **510 compile-skip** because their
+features are not default and nothing enables them; `npu_dispatch_coverage_tests` disabled itself
 with `#![cfg(all())]`, which is vacuously *true*. Two real bugs surfaced by that
 recovery: intrusion-detection ban expiry timed with `std::time::Instant` under a
 paused tokio clock (never expired), and a BYOB test asserting a config error it
@@ -841,12 +842,18 @@ Twelve test targets in `toadstool-cli`, `toadstool-distributed`, and
 build failure is not a test failure, so a green `cargo test` on the passing
 crates hides them entirely — this is invisible unless compilation is checked as
 its own question.
-**S382**: recovered 216 tests across nine files (awaited-sync calls, missing
-feature gates, `RwLock` type drift). The remainder need real fixes, not
-mechanical ones: `RwLockReadGuard` lifetime errors (45× E0277) and a `wgpu`
+**S382**: unblocked 21 test files (awaited-sync calls, missing feature gates,
+`RwLock` type drift) — 113 tests now run, 510 compile-skip behind non-default
+features. The remainder need real fixes, not mechanical ones: `RwLockReadGuard` lifetime errors (45× E0277) and a `wgpu`
 trait-resolution overflow (11× E0275).
-**Closure**: `cargo test --workspace --no-run` exits 0. Worth a CI gate — this
-class of rot is silent by construction.
+**Root cause found S382 (audit)**: CI runs `cargo test --workspace --lib`.
+`--lib` never builds or runs a `tests/` directory — 731 files, ~13,102 test
+functions, ungated. `clippy --all-targets` would catch the rot, so either CI is
+not executing (workflows are GitHub-format, `origin` is Forgejo) or it is red
+and unattended. **Unresolved — check on golgiBody.** Every quality claim in the
+root docs is downstream of that answer.
+**Closure**: `cargo test --workspace --no-run` exits 0 *and* runs as a CI gate;
+decide whether the feature-gated suites are meant to execute at all.
 
 ### D-VRAM-NATIVE — Active (S382)
 **Crate**: `core/cylinder`, `auto_config/hardware`
