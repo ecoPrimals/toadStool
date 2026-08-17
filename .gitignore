@@ -1,8 +1,12 @@
 # Rust
 target/
-Cargo.lock
 **/*.rs.bk
 *.pdb
+
+# Cargo.lock IS tracked. This workspace ships binaries, so the lockfile is
+# part of what makes a build reproducible — and barraCuda, coralReef and
+# songBird all track theirs. Leaving it ignored let the dependency graph
+# float for the same reason the toolchain did (S382, D-TOOLCHAIN-DRIFT).
 
 # IDE
 .idea/

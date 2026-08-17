@@ -30,8 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      # No @stable: the version comes from rust-toolchain.toml so CI and local
+      # builds cannot drift apart. @stable floated CI onto whatever shipped
+      # that week, independently of the checked-in pin.
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.97.1"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -41,6 +45,12 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Asserts every test target *builds*, which is a different question from
+      # whether tests pass and is not answered by any other step. 21 targets had
+      # rotted to non-compiling before this gate existed (S382, D-TEST-COMPILE).
+      - name: Test compilation
+        run: cargo test --workspace --no-run --locked
 
       - name: Test
         run: cargo test --workspace --lib

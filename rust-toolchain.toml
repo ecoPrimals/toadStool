@@ -1,7 +1,15 @@
 # ecoPrimals / toadStool — Rust toolchain pinning
 # Ensures CI and local builds use the same compiler.
+#
+# Pin an explicit version, not bare "stable". A floating channel makes every
+# compiler release an unannounced change: 1.97.1 moved rustfmt's output and
+# clippy's lint set, which silently falsified a documented "quality gates
+# green" claim that was true when written (S382, D-TOOLCHAIN-DRIFT).
+#
+# Bump deliberately: change this line, run fmt and clippy, fix the fallout in
+# its own commit. That way the compiler upgrade is attributable.
 [toolchain]
-channel = "stable"
+channel = "1.97.1"
 components = ["rustfmt", "clippy", "llvm-tools-preview"]
 targets = [
     "x86_64-unknown-linux-gnu",
