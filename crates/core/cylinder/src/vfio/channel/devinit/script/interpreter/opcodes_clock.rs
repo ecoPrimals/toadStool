@@ -122,21 +122,31 @@ pub(super) fn dispatch_clock(vm: &mut VbiosInterpreter<'_>, op: u8) -> Result<()
             vm.offset += 6 + count * n * 4;
         }
         0x8F => {
-            // Same layout as 0x88.
-            let base = vm.rd32(vm.offset + 1);
-            let count = vm.rd08(vm.offset + 5) as usize;
+            // INIT_RAM_RESTRICT_ZM_REG_GROUP
+            //   addr(u32) @+1, incr(u8) @+5, num(u8) @+6, then num × N × u32.
+            //
+            // Header is **7** bytes, and +5 is the address stride, not a
+            // count. Reading +5 as the count over a 6-byte header consumed
+            // `incr × N × 4` payload bytes instead of `num × N × 4` — on the
+            // K80's first group that is 134 bytes where the opcode occupies
+            // 39, so the walk resumed inside the payload and the remainder of
+            // the script decoded as noise.
+            let mut addr = vm.rd32(vm.offset + 1);
+            let incr = u32::from(vm.rd08(vm.offset + 5));
+            let num = vm.rd08(vm.offset + 6) as usize;
             let n = ram_restrict_group_count(vm.rom);
             let strap = vm.bar0_rd32(0x0010_0000) as usize;
             let idx = strap % n;
-            let data_start = vm.offset + 6;
-            for i in 0..count {
-                let reg = base + (i as u32) * 4;
+
+            let data_start = vm.offset + 7;
+            for i in 0..num {
                 let val = vm.rd32(data_start + (i * n + idx) * 4);
-                if reg < 0x0100_0000 {
-                    vm.bar0_wr32(reg, val);
+                if addr < 0x0100_0000 {
+                    vm.bar0_wr32(addr, val);
                 }
+                addr = addr.wrapping_add(incr);
             }
-            vm.offset += 6 + count * n * 4;
+            vm.offset += 7 + num * n * 4;
         }
         _ => unreachable!("dispatch_clock called with non-clock opcode {op:#04x}"),
     }

@@ -221,28 +221,49 @@ impl<'a> VbiosInterpreter<'a> {
     }
 }
 
-/// Number of RAM-restrict groups from VBIOS M (rammap) table header.
+/// Number of RAM-restrict groups, read directly out of the BIT 'M' entry.
 ///
-/// BIT 'M' data\[0:2\] points to the rammap table. The table header's
-/// `snr` field (offset +4 for version < 0x10, offset +4 for version >= 0x10)
-/// gives the number of sub-entries per timing entry, which equals the
-/// RAM-restrict group count used by opcodes 0x87, 0x88, 0x8F.
+/// This count sets the payload length of opcodes `0x87`, `0x88`, `0x8A` and
+/// `0x8F`, which carry one `u32` per group. Get it wrong and the offset
+/// advances by the wrong amount, so **every byte after the first such opcode
+/// is decoded at the wrong boundary** — the rest of the script becomes noise.
+///
+/// The count is a field of the BIT 'M' data itself, at a version-dependent
+/// offset (nouveau `nvbios_ramcfg_count`, `bios/ramcfg.c`):
+///
+/// | BIT 'M' version | Requires | Count is at |
+/// |-----------------|----------|-------------|
+/// | 1 | `data_size >= 5` | `data_offset + 2` |
+/// | 2 | `data_size >= 3` | `data_offset + 0` |
+///
+/// It is **not** reached by dereferencing `data[0:2]` as a pointer to the
+/// rammap table. An earlier version did that and then read `+4` of whatever it
+/// landed on. On a Tesla K80 that produced 58, which failed the sanity bound
+/// and fell through to a default of 4, where the true count is 8. Measured on
+/// that ROM: the boot scripts decoded at **75% unknown opcodes with 4, and 15%
+/// with 8** — the misparse that made the interpreter refuse to run, and which
+/// had previously driven 196 writes decoded from noise into a live die.
 pub(crate) fn ram_restrict_group_count(rom: &[u8]) -> usize {
-    if let Ok(bit) = BitTable::parse(rom)
-        && let Some(m) = bit.find(b'M')
-    {
-        let m_off = m.data_offset as usize;
-        if m_off + 2 <= rom.len() {
-            let tbl_ptr = u16::from_le_bytes([rom[m_off], rom[m_off + 1]]) as usize;
-            if tbl_ptr != 0 && tbl_ptr + 5 <= rom.len() {
-                let snr = rom[tbl_ptr + 4] as usize;
-                if snr > 0 && snr <= 16 {
-                    return snr;
-                }
-            }
-        }
+    const DEFAULT_GROUPS: usize = 4;
+
+    let Ok(bit) = BitTable::parse(rom) else {
+        return DEFAULT_GROUPS;
+    };
+    let Some(m) = bit.find(b'M') else {
+        return DEFAULT_GROUPS;
+    };
+
+    let base = m.data_offset as usize;
+    let field = match m.version {
+        1 if m.data_size >= 5 => base + 2,
+        2 if m.data_size >= 3 => base,
+        _ => return DEFAULT_GROUPS,
+    };
+
+    match rom.get(field) {
+        Some(&count) if count > 0 => usize::from(count),
+        _ => DEFAULT_GROUPS,
     }
-    4
 }
 
 /// Maximum share of unrecognised opcodes tolerated before a script is
@@ -427,43 +448,11 @@ pub fn interpret_boot_scripts(
     Ok(combined_stats)
 }
 
-#[cfg(test)]
-mod ram_restrict_tests {
-    use super::ram_restrict_group_count;
-    use crate::vfio::channel::devinit::vbios::BitTable;
-
-    fn rom_with_bit_m(m_data_off: usize, count: u8) -> Vec<u8> {
-        let bit_off = 0x100;
-        let tbl_off = m_data_off + 16;
-        let mut rom = vec![0u8; tbl_off + 16];
-        rom[bit_off..bit_off + 5].copy_from_slice(&[0xFF, 0xB8, b'B', b'I', b'T']);
-        rom[bit_off + 9] = 6;
-        rom[bit_off + 10] = 1;
-        let e0 = bit_off + 12;
-        rom[e0] = b'M';
-        rom[e0 + 1] = 1;
-        rom[e0 + 2..e0 + 4].copy_from_slice(&0x10u16.to_le_bytes());
-        rom[e0 + 4..e0 + 6].copy_from_slice(&(m_data_off as u16).to_le_bytes());
-        // M data[0:2] = pointer to rammap table
-        rom[m_data_off..m_data_off + 2].copy_from_slice(&(tbl_off as u16).to_le_bytes());
-        // Rammap table header: snr (ram restrict groups) at offset +4
-        rom[tbl_off + 4] = count;
-        rom
-    }
-
-    #[test]
-    fn ram_restrict_default_without_m() {
-        let rom = vec![0u8; 4096];
-        assert_eq!(ram_restrict_group_count(&rom), 4);
-    }
-
-    #[test]
-    fn ram_restrict_from_bit_m_table() {
-        let rom = rom_with_bit_m(0x400, 8);
-        assert!(BitTable::parse(&rom).is_ok());
-        assert_eq!(ram_restrict_group_count(&rom), 8);
-    }
-}
+// The former tests here built a ROM in which the group count sat behind a
+// rammap pointer, then asserted the reader found it. They passed because the
+// fixture was constructed to match the reader's own misreading — the test and
+// the code shared the bug, so the test could never see it. Replaced by
+// `ram_restrict_tests` below, which pins the layout to real hardware data.
 
 #[cfg(test)]
 mod desync_guard_tests {
@@ -538,6 +527,78 @@ impl ScriptBus for RecordingBus {
 }
 
 #[cfg(test)]
+mod ram_restrict_tests {
+    use super::*;
+
+    /// Build a minimal ROM carrying one BIT 'M' entry.
+    fn rom_with_bit_m(version: u8, data: &[u8]) -> Vec<u8> {
+        let mut rom = vec![0u8; 0x400];
+        let bit = 0x100usize;
+        rom[bit..bit + 5].copy_from_slice(&[0xFF, 0xB8, b'B', b'I', b'T']);
+        rom[bit + 9] = 6; // entry_size
+        rom[bit + 10] = 1; // entry_count
+
+        let data_off = 0x200usize;
+        let e = bit + 12;
+        rom[e] = b'M';
+        rom[e + 1] = version;
+        rom[e + 2..e + 4].copy_from_slice(&(data.len() as u16).to_le_bytes());
+        rom[e + 4..e + 6].copy_from_slice(&(data_off as u16).to_le_bytes());
+        rom[data_off..data_off + data.len()].copy_from_slice(data);
+        rom
+    }
+
+    /// The exact BIT 'M' data from the Tesla K80 (GK210) VBIOS: version 2,
+    /// 17 bytes, first byte 8. Reading it as a rammap pointer instead yielded
+    /// 58, which fell through a sanity bound to a default of 4 and desynced
+    /// the boot scripts to 75% unknown opcodes.
+    #[test]
+    fn k80_bit_m_v2_group_count_is_eight() {
+        let m_data = [
+            0x08, 0x5b, 0x4e, 0xa7, 0x4f, 0xa5, 0x8d, 0x00, 0x00, 0xec, 0x8d, 0x00, 0x00, 0x3e,
+            0x50, 0x00, 0x00,
+        ];
+        let rom = rom_with_bit_m(2, &m_data);
+        assert_eq!(ram_restrict_group_count(&rom), 8);
+    }
+
+    /// Version 1 keeps the count at +2, not +0.
+    #[test]
+    fn v1_reads_the_count_at_offset_two() {
+        let rom = rom_with_bit_m(1, &[0xAA, 0xBB, 0x06, 0x00, 0x00]);
+        assert_eq!(ram_restrict_group_count(&rom), 6);
+    }
+
+    /// A version we do not know must not guess from an arbitrary byte.
+    #[test]
+    fn unknown_version_falls_back() {
+        let rom = rom_with_bit_m(9, &[0x20, 0x20, 0x20, 0x20, 0x20]);
+        assert_eq!(ram_restrict_group_count(&rom), 4);
+    }
+
+    /// Too short to contain the field: fall back rather than read past it.
+    #[test]
+    fn truncated_entry_falls_back() {
+        assert_eq!(ram_restrict_group_count(&rom_with_bit_m(2, &[])), 4);
+        assert_eq!(ram_restrict_group_count(&rom_with_bit_m(1, &[0, 0])), 4);
+    }
+
+    /// A zero count would make group-carrying opcodes zero-length and hang
+    /// the walk in place.
+    #[test]
+    fn zero_count_falls_back() {
+        let rom = rom_with_bit_m(2, &[0x00, 0x00, 0x00]);
+        assert_eq!(ram_restrict_group_count(&rom), 4);
+    }
+
+    /// No BIT 'M' at all.
+    #[test]
+    fn missing_m_entry_falls_back() {
+        assert_eq!(ram_restrict_group_count(&vec![0u8; 4096]), 4);
+    }
+}
+
+#[cfg(test)]
 mod offline_interpreter_tests {
     use super::*;
 
@@ -580,6 +641,75 @@ mod offline_interpreter_tests {
                     bus.writes().len()
                 );
             }
+        }
+    }
+
+    /// Kepler boot scripts must actually decode.
+    ///
+    /// The K80's six boot scripts previously walked at 75% unknown opcodes,
+    /// because `ram_restrict_group_count` misread BIT 'M' and returned a
+    /// fallback of 4 where the ROM says 8. Every `0x8F` then advanced the
+    /// offset by the wrong number of payload words and the rest of the script
+    /// decoded at the wrong boundary.
+    ///
+    /// Fixture is vendor firmware and is gitignored; the test skips without
+    /// it. Dump with `read_vbios_prom` or from `BAR0 + 0x300000`.
+    #[test]
+    fn kepler_boot_scripts_decode() {
+        let Some(rom) = fixture("k80_gk210.rom") else {
+            eprintln!("skipping: testdata/vbios/k80_gk210.rom not present");
+            return;
+        };
+
+        assert_eq!(
+            ram_restrict_group_count(&rom),
+            8,
+            "K80 BIT 'M' is version 2 and its first data byte is 8"
+        );
+
+        let bus = RecordingBus::default();
+        let stats = interpret_boot_scripts(&bus, &rom).expect("interpreter must complete");
+        let unknown = stats.unknown_opcodes.len();
+        let seen = stats.ops_executed + stats.ops_skipped;
+        assert!(seen > 0, "no opcodes walked — script table not found");
+
+        let pct = unknown * 100 / seen;
+        let writes = bus.writes();
+        eprintln!(
+            "K80: ops={seen} unknown={unknown} ({pct}%) writes={}",
+            writes.len()
+        );
+
+        // Well under the refusal threshold, not merely at it. A parse that
+        // squeaks past 25% is still mostly noise; this one decodes cleanly.
+        assert!(
+            pct <= 2,
+            "boot scripts decode at {pct}% unknown ({unknown}/{seen}); \
+             this ROM is known to decode at 0% (2 residual opcodes), so a \
+             regression here means an opcode length or table offset moved"
+        );
+
+        // A decode that produces nothing is not a decode. The scripts carry
+        // roughly 300 register writes.
+        assert!(
+            writes.len() > 250,
+            "only {} writes from {seen} opcodes — expected ~300; the walk is \
+             terminating early even though what it did read parsed",
+            writes.len()
+        );
+
+        // Sanity-check the targets rather than just the count: a correct
+        // Kepler devinit touches the framebuffer and clock trees. Landing
+        // entirely outside them would mean a plausible-looking decode of the
+        // wrong bytes.
+        let domains: std::collections::BTreeSet<usize> =
+            writes.iter().map(|(r, _)| r & 0xFFF000).collect();
+        for expected in [0x10f000, 0x137000] {
+            assert!(
+                domains.contains(&expected),
+                "no writes to {expected:#08x}; decoded stream does not look \
+                 like a framebuffer/clock init"
+            );
         }
     }
 
