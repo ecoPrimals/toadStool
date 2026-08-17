@@ -402,7 +402,7 @@ async fn coordinator_select_device_with_devices() {
 }
 
 fn make_test_device(id: &str, total_memory: u64, compute_units: u32) -> UniversalComputeDevice {
-    use tokio::sync::RwLock;
+    use std::sync::RwLock;
     UniversalComputeDevice {
         id: DeviceId::new(GpuFramework::Cuda, 0, id.to_string()),
         info: DeviceInfo {

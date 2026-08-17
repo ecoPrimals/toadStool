@@ -117,6 +117,9 @@ temp-env = { workspace = true }
 tempfile = { workspace = true }
 assert_cmd = "2.0"
 predicates = "3.0"
+# `process` is needed only by the e2e tests spawning the built binary; keeping
+# it out of the runtime dependency avoids pulling it into the shipped CLI.
+tokio = { workspace = true, features = ["signal", "process"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 toadstool-cylinder = { path = "../core/cylinder" }

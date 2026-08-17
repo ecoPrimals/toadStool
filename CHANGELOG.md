@@ -5,7 +5,16 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Aug 17, 2026 (Sessions 43-382+)
+## [Unreleased] - Aug 17, 2026 (Sessions 43-383+)
+
+### Session S383 (Aug 17, 2026) — Every Test Target Compiles
+
+- **`cargo test --workspace --no-run` exits 0** for the first time, and is now a CI gate. Closes D-TEST-COMPILE.
+- **Fixed three production `!Send` bugs**, not test bugs. `RuntimeOrchestrator::execute`, `show_logs`, and `list_biomes` each held a `std::sync` lock guard across an `await`. The orchestrator one is the worst: it kept the runtime-engine registry read-locked for the entire duration of every workload, blocking engine registration behind long-running jobs. The tests were simply the first callers to `tokio::spawn` these futures, which is why compilation — not execution — surfaced them. This is the fourth instance of the pattern after `AgentBackend::get_provider` (S382).
+- **A resolver overflow was masking a real error.** The `wgpu` E0275 in `workload_simple_concurrent_tests` looked like the blocker; raising `recursion_limit` to 256 revealed it had been hiding the third `!Send` bug underneath.
+- **Recovered 104 integration tests** — 25 in `detection_coverage_tests`, 79 in `gpu_coverage_s155_tests`.
+- **`UniversalSubstrateCapabilities::detect_all()` documented as missing** (D-SUBSTRATE-DETECT-ALL). It is advertised in module docs and called by a gated unit test but was never written; the detectors exist, the mapping into ten typed hierarchies does not. Its two tests are kept disabled beside the gap under `#[cfg(any())]` rather than deleted or faked.
+- `tokio`'s `process` feature moved to `cli` dev-dependencies, keeping it out of the shipped binary.
 
 ### Session S382 (Aug 16-17, 2026) — Vendor Tool Excision + Test Recovery
 

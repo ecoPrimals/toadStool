@@ -29,31 +29,36 @@ impl BiomeExecutor {
         } else {
             (target.to_owned(), None)
         };
-        // Get biome
-        let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
-        let biome = biomes.get(&biome_name).ok_or_else(|| {
-            crate::CliError::Other(format!("Biome '{biome_name}' is not running"))
-        })?;
+        // Resolve the log file inside a block so the guard is provably gone
+        // before the awaits below. An explicit `drop` is not enough here: the
+        // borrow of `biome` keeps the guard in the generator, making this
+        // future !Send and unspawnable.
+        let log_file = {
+            let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
+            let biome = biomes.get(&biome_name).ok_or_else(|| {
+                crate::CliError::Other(format!("Biome '{biome_name}' is not running"))
+            })?;
 
-        // Determine log file (clone to release borrow)
-        let log_file = if let Some(service) = &service_name {
-            biome
-                .log_files
-                .get(service)
-                .ok_or_else(|| crate::CliError::Other(format!("Service '{service}' not found")))?
-                .clone()
-        } else {
-            // Show all logs (default to first service or biome log)
-            biome
-                .log_files
-                .values()
-                .next()
-                .ok_or_else(|| crate::CliError::Other("No log files found for biome".to_string()))?
-                .clone()
+            if let Some(service) = &service_name {
+                biome
+                    .log_files
+                    .get(service)
+                    .ok_or_else(|| {
+                        crate::CliError::Other(format!("Service '{service}' not found"))
+                    })?
+                    .clone()
+            } else {
+                // Show all logs (default to first service or biome log)
+                biome
+                    .log_files
+                    .values()
+                    .next()
+                    .ok_or_else(|| {
+                        crate::CliError::Other("No log files found for biome".to_string())
+                    })?
+                    .clone()
+            }
         };
-
-        // Drop the lock before async operations
-        drop(biomes);
 
         // Apply filters (for future use)
         let _ = timestamps;

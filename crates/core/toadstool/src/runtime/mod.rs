@@ -91,14 +91,20 @@ impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
         let runtime_type = self.select_runtime(&request)?;
         debug!("Selected runtime: {:?}", runtime_type);
 
-        let engines = self
-            .registry
-            .engines()
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
-        let engine = engines.get(&runtime_type).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
-        })?;
+        // Clone the Arc out and release the registry lock before executing.
+        // Holding it across the await made this future !Send and kept the
+        // whole registry read-locked for the lifetime of every execution,
+        // blocking engine registration behind long-running workloads.
+        let engine = {
+            let engines = self
+                .registry
+                .engines()
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            Arc::clone(engines.get(&runtime_type).ok_or_else(|| {
+                ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
+            })?)
+        };
 
         let result = engine.execute(request).await;
 

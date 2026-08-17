@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: August 17, 2026 — S382
+**Date**: August 17, 2026 — S383
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
@@ -835,7 +835,7 @@ repo.
 **Closure**: pin an explicit version, and bump deliberately. A floating pin
 turns every compiler release into an unannounced, unattributed change.
 
-### D-TEST-COMPILE — Active (S382)
+### D-TEST-COMPILE — Resolved (S383)
 **Scope**: Workspace | **Metric**: `cargo test --workspace --no-run`
 Twelve test targets in `toadstool-cli`, `toadstool-distributed`, and
 `toadstool-runtime-gpu` **do not compile**, so their tests have never run. A
@@ -854,6 +854,51 @@ and unattended. **Unresolved — check on golgiBody.** Every quality claim in th
 root docs is downstream of that answer.
 **Closure**: `cargo test --workspace --no-run` exits 0 *and* runs as a CI gate;
 decide whether the feature-gated suites are meant to execute at all.
+
+**S383 — resolved. `cargo test --workspace --no-run` exits 0.** The remaining
+targets fell to four fixes, and the gate is now in CI so this cannot silently
+return.
+
+The E0277s were not test bugs. Three *production* functions held a
+`std::sync` guard across an `await`, which makes the future `!Send` — the tests
+were the first callers to `tokio::spawn` them, so they were the first to notice:
+
+| Site | Guard held across | Consequence |
+|---|---|---|
+| `runtime/mod.rs::execute` | `engine.execute().await` | engine registry read-locked for the whole workload; registration blocked behind long runs |
+| `cli executor/commands/logs.rs::show_logs` | `tail_log_file().await` | `!Send`; an explicit `drop` was present but the borrow kept the guard in the generator |
+| `cli executor/commands/down_list.rs::list_biomes` | `print_biomes_table().await` | `!Send`; `drop` placed *after* the await |
+
+All three now take an owned snapshot (or clone the `Arc`) inside a block and
+release the lock before awaiting. This is the same defect fixed in
+`AgentBackend::get_provider` — a *fourth* instance, which makes it a pattern
+worth linting rather than fixing case by case.
+
+The E0275 `wgpu` overflow was a red herring: raising `recursion_limit` to 256
+in the one affected test revealed it had been *masking* the third `!Send` bug.
+A resolver overflow can hide a real error underneath it.
+
+Also fixed: `tokio`'s `process` feature moved to `cli` dev-dependencies (test-only,
+kept out of the shipped binary), and a third `std`/`tokio` `RwLock` drift site.
+
+Recovered: 25 tests in `detection_coverage_tests`, 79 in `gpu_coverage_s155_tests`.
+Still open: whether the feature-gated suites are meant to execute at all, and the
+CI `--lib` question above.
+
+### D-SUBSTRATE-DETECT-ALL — Active (S383)
+**Crate**: `distributed` | **Metric**: `UniversalSubstrateCapabilities::detect_all()` exists
+`universal::substrate` module docs advertise `detect_all()`, and a
+`legacy-scheduler`-gated unit test calls it, but **it was never implemented**.
+`substrate_detection` returns `Vec<PlatformType>`; the capability struct has ten
+separately-typed fields (`TraditionalPlatform`, `OperatingSystemSupport`, …,
+~3,067 lines across 10 files) with no conversion between the two hierarchies.
+The missing piece is that mapping layer, not the detectors.
+The two specification tests are kept beside the gap under `#[cfg(any())]` in
+`tests/detection_coverage_tests/universal_substrate_capabilities.rs`.
+**Constraint**: the mapping must not synthesise entries for platforms it cannot
+observe. Reporting an unobserved platform is the phantom-Intel-GPU bug (S382) in
+another costume — an honest empty vector beats a plausible invented one.
+**Closure**: `detect_all()` implemented against real probes, both tests re-enabled.
 
 ### D-VRAM-NATIVE — Active (S382)
 **Crate**: `core/cylinder`, `auto_config/hardware`

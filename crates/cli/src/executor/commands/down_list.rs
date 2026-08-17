@@ -61,8 +61,15 @@ impl BiomeExecutor {
         show_resources: bool,
         _status_filter: Option<&str>,
     ) -> Result<()> {
-        let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
-        let biome_refs: Vec<&RunningBiome> = biomes.values().collect();
+        // Snapshot under the lock and release it before awaiting. Holding a
+        // std guard across an await makes this future !Send (so it cannot be
+        // spawned) and risks deadlock on a single-threaded executor.
+        let snapshot: Vec<RunningBiome> = {
+            let biomes = self.biomes.read().unwrap_or_else(|e| e.into_inner());
+            biomes.values().cloned().collect()
+        };
+
+        let biome_refs: Vec<&RunningBiome> = snapshot.iter().collect();
         self.print_biomes_table(&biome_refs, show_resources).await?;
 
         // Print summary
@@ -71,7 +78,6 @@ impl BiomeExecutor {
             println!("💡 Use 'toadstool logs <name>' to view logs");
             println!("💡 Use 'toadstool down <name>' to stop a biome");
         }
-        drop(biomes);
 
         Ok(())
     }

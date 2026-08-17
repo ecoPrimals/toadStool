@@ -4,6 +4,10 @@
 //! Tests encrypt, decrypt, sign, verify, `validate_token`, `generate_key`, `delete_key`,
 //! `list_keys`, `is_available`, `provider_info`, rediscover. No live security provider.
 
+// `security` is re-exported only under these features, so without the gate
+// this file cannot compile in the default configuration and the whole target
+// is skipped — including the tests that would otherwise run.
+#![cfg(all(feature = "runtime", feature = "legacy-security"))]
 #![allow(deprecated)] // Testing client_evolved for coverage
 
 use toadstool_distributed::security::client_evolved::{

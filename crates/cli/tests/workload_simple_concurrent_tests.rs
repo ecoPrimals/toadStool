@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Proving the spawned futures `Send` walks wgpu's deeply nested validation
+// types, which exceeds the default limit of 128.
+#![recursion_limit = "256"]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
