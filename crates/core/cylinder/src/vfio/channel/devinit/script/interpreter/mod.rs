@@ -11,6 +11,7 @@ use crate::error::DevinitError;
 use crate::vfio::device::MappedBar;
 
 use super::super::vbios::BitTable;
+use super::discovery::ScriptTable;
 
 /// Statistics from a VBIOS interpreter run.
 #[derive(Debug, Clone, Default)]
@@ -284,55 +285,32 @@ pub fn interpret_boot_scripts(
     bar0: &dyn ScriptBus,
     rom: &[u8],
 ) -> Result<InterpreterStats, DevinitError> {
-    let bit = BitTable::parse(rom)?;
-    let bit_i = bit.find(b'I').ok_or(DevinitError::BitINotFound)?;
+    // Shared with the register-write scanner so the two cannot form different
+    // opinions about which scripts this image contains.
+    let table = ScriptTable::discover(rom)?;
 
-    let i_off = bit_i.data_offset as usize;
-    if i_off + 2 > rom.len() {
-        return Err(DevinitError::BitIDataTooShort);
-    }
-
-    // Detect BIOS generation from BIT I data size:
-    // Kepler (GK110/GK210) has 18-byte BIT I (no PMU script pointers).
-    // Maxwell+ has >=28-byte BIT I with extended PMU firmware fields.
-    let bios_gen = if bit_i.data_size < 0x1c {
+    // The encoding is selected by what the ROM advertises about itself, not by
+    // a device ID: the artifact being parsed is the only authority on how it is
+    // encoded, and a second source can disagree with it.
+    let bios_gen = if table.capability.uses_short_opcode_strides() {
         BiosGeneration::Kepler
     } else {
         BiosGeneration::MaxwellPlus
     };
-    tracing::debug!(
-        data_size = bit_i.data_size,
-        gen = ?bios_gen,
-        "VBIOS generation detected"
-    );
-
-    // BIT I data[0:2] is the "init tables base" — a table of u16 script
-    // offsets.  Each entry points directly to an init script in the ROM.
-    // nouveau: nvbios_init_table(bios, n) reads rd16(tbl + n * 2).
-    let script_table = u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
-
-    if script_table == 0 || script_table + 2 > rom.len() {
-        return Err(DevinitError::InterpreterInitTablesInvalid);
-    }
 
     tracing::debug!(
-        script_table = format!("{script_table:#06x}"),
+        data_size = table.capability.data_size,
+        script_table = format!("{:#06x}", table.table_offset),
+        scripts = table.entries.len(),
         gen = ?bios_gen,
         "VBIOS interpreter entry points"
     );
 
     let mut combined_stats = InterpreterStats::default();
-    let mut script_idx = 0;
 
-    loop {
-        let entry_off = script_table + script_idx * 2;
-        if entry_off + 2 > rom.len() {
-            break;
-        }
-        let script_off = u16::from_le_bytes([rom[entry_off], rom[entry_off + 1]]) as usize;
-        if script_off == 0 || script_off >= rom.len() {
-            break;
-        }
+    for entry in &table.entries {
+        let script_idx = entry.index;
+        let script_off = entry.offset;
 
         tracing::debug!(
             script_idx,
@@ -366,10 +344,6 @@ pub fn interpret_boot_scripts(
             combined_stats
                 .unknown_opcodes
                 .extend(check.stats.unknown_opcodes.clone());
-            script_idx += 1;
-            if script_idx > 50 {
-                break;
-            }
             continue;
         }
 
@@ -413,15 +387,10 @@ pub fn interpret_boot_scripts(
                 combined_stats.faulted_domains.push(domain.clone());
             }
         }
-
-        script_idx += 1;
-        if script_idx > 50 {
-            break;
-        }
     }
 
     tracing::info!(
-        scripts = script_idx,
+        scripts = table.entries.len(),
         ops = combined_stats.ops_executed,
         writes = combined_stats.writes_applied,
         pri_skipped = combined_stats.writes_skipped_pri,
@@ -632,15 +601,14 @@ mod offline_interpreter_tests {
         );
 
         // The desync guard must hold: a misparsed script contributes no writes.
-        if stats.ops_executed > 0 {
-            let pct = stats.unknown_opcodes.len() * 100 / stats.ops_executed;
-            if pct > MAX_UNKNOWN_PERCENT {
-                assert!(
-                    bus.writes().is_empty(),
-                    "a {pct}% unknown parse issued {} writes — the guard failed",
-                    bus.writes().len()
-                );
-            }
+        if let Some(pct) = (stats.unknown_opcodes.len() * 100).checked_div(stats.ops_executed)
+            && pct > MAX_UNKNOWN_PERCENT
+        {
+            assert!(
+                bus.writes().is_empty(),
+                "a {pct}% unknown parse issued {} writes — the guard failed",
+                bus.writes().len()
+            );
         }
     }
 

@@ -1,0 +1,10 @@
+# Vendor firmware images. Never committed — they are not ours to redistribute.
+#
+# Tests that use these fixtures skip when the file is absent, so the suite is
+# green without them; they simply measure less.
+#
+# Regenerate a Kepler image from a live die:
+#   BAR0 + 0x300000 is the PROM aperture. See
+#   infra/wateringHole/experiments/vbios/README.md for the dump procedure.
+*.rom
+*.bin

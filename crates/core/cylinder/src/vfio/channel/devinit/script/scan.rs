@@ -5,7 +5,7 @@
 
 use crate::error::DevinitError;
 
-use super::super::vbios::BitTable;
+use super::discovery::ScriptTable;
 
 /// A register write extracted from a VBIOS init script.
 #[derive(Debug, Clone)]
@@ -178,48 +178,32 @@ pub fn scan_init_script_writes(rom: &[u8], start: usize, length: usize) -> Vec<S
 /// Parses the BIT 'I' entry to find boot script location and size,
 /// then scans for register write opcodes.
 pub fn extract_boot_script_writes(rom: &[u8]) -> Result<Vec<ScriptRegWrite>, DevinitError> {
-    let bit = BitTable::parse(rom)?;
-    let bit_i = bit.find(b'I').ok_or(DevinitError::BitINotFound)?;
+    // Discovery is shared with the interpreter so the two cannot disagree about
+    // which scripts an image contains. This previously derived its own answer
+    // and took only the first table entry, scanning forward to the end of the
+    // ROM: on a measured GK210 image that missed entry [2] entirely, because it
+    // sits below the first entry and forward scanning never reaches it.
+    let table = ScriptTable::discover(rom)?;
 
-    let i_off = bit_i.data_offset as usize;
-
-    // Extended BIT I (>=0x1c): PMU script blob pointer at 0x18-0x1b.
-    // Short BIT I (Kepler, 0x12): only init-directory at 0x00-0x01.
-    // For the short form, derive script region from the init table chain.
-    let (script_off, script_len) = if bit_i.data_size >= 0x1c && i_off + 0x1c <= rom.len() {
-        let off = u16::from_le_bytes([rom[i_off + 0x18], rom[i_off + 0x19]]) as usize;
-        let len = u16::from_le_bytes([rom[i_off + 0x1a], rom[i_off + 0x1b]]) as usize;
-        (off, len)
-    } else if i_off + 2 <= rom.len() {
-        // Short form: init_tables_base at i_off+0x00 points to the
-        // script table. Walk it to find the first script offset and
-        // scan to ROM end.
-        let init_tables_base = u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
-        if init_tables_base == 0 || init_tables_base + 2 > rom.len() {
-            return Err(DevinitError::InterpreterInitTablesInvalid);
-        }
-        let first_script =
-            u16::from_le_bytes([rom[init_tables_base], rom[init_tables_base + 1]]) as usize;
-        if first_script == 0 || first_script >= rom.len() {
-            return Err(DevinitError::NoBootScriptsInBitI);
-        }
-        (first_script, rom.len().saturating_sub(first_script))
-    } else {
-        return Err(DevinitError::BitIDataTooShort);
-    };
-
-    if script_off == 0 || script_len == 0 {
-        return Err(DevinitError::NoBootScriptsInBitI);
+    let mut writes = Vec::new();
+    for entry in &table.entries {
+        let found = scan_init_script_writes(rom, entry.offset, entry.extent);
+        tracing::debug!(
+            index = entry.index,
+            offset = format!("{:#06x}", entry.offset),
+            extent = entry.extent,
+            writes = found.len(),
+            "scanned init script for register writes"
+        );
+        writes.extend(found);
     }
 
-    tracing::debug!(
-        script_off = format!("{script_off:#06x}"),
-        script_len,
-        "scanning boot scripts for register writes"
-    );
+    // Table order is not address order; return in ROM order so callers see an
+    // approximation of execution sequence.
+    writes.sort_by_key(|w| w.rom_offset);
 
-    let writes = scan_init_script_writes(rom, script_off, script_len);
     tracing::debug!(
+        scripts = table.entries.len(),
         count = writes.len(),
         "register writes found in boot scripts"
     );
@@ -272,6 +256,59 @@ mod tests {
         assert_eq!(w[0].value, 0x1111);
         assert_eq!(w[1].reg, 0x1004);
         assert_eq!(w[1].value, 0x2222);
+    }
+
+    fn fixture(name: &str) -> Option<Vec<u8>> {
+        std::fs::read(format!(
+            "{}/../../../testdata/vbios/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .ok()
+    }
+
+    /// The scanner must cover every script the table advertises.
+    ///
+    /// It used to take only the first table entry and scan forward to the end
+    /// of the ROM. On this image entry `[2]` sits at `0x65ff`, below the first
+    /// entry at `0x9271`, so forward scanning never reached it and the writes
+    /// it contains were invisible. Sharing discovery with the interpreter is
+    /// what fixed it; this pins the outcome.
+    ///
+    /// Fixture is vendor firmware and is gitignored; the test skips without it.
+    #[test]
+    fn scanner_covers_scripts_below_the_first_table_entry() {
+        let Some(rom) = fixture("k80_gk210.rom") else {
+            eprintln!("skipping: testdata/vbios/k80_gk210.rom not present");
+            return;
+        };
+
+        let writes = extract_boot_script_writes(&rom).expect("K80 ROM must yield writes");
+        assert!(!writes.is_empty(), "no writes extracted");
+
+        // Writes sourced from the script the old code could not reach.
+        let recovered = writes
+            .iter()
+            .filter(|w| (0x65ff..0x9271).contains(&w.rom_offset))
+            .count();
+        assert!(
+            recovered > 0,
+            "no writes found in 0x65ff..0x9271 — the out-of-order script is \
+             still being missed"
+        );
+        eprintln!(
+            "K80: {} writes across all scripts, {recovered} from the \
+             previously-unreachable script",
+            writes.len()
+        );
+
+        // Ordered by ROM offset regardless of table order.
+        let mut sorted = writes.clone();
+        sorted.sort_by_key(|w| w.rom_offset);
+        assert_eq!(
+            writes.iter().map(|w| w.rom_offset).collect::<Vec<_>>(),
+            sorted.iter().map(|w| w.rom_offset).collect::<Vec<_>>(),
+            "writes must be returned in ROM order"
+        );
     }
 
     #[test]
